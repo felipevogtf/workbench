@@ -1,0 +1,19 @@
+export interface IssueProps {
+  id: string;
+  name: string;
+  isLocal: boolean;
+  externalId: string | null;
+  externalState: string | null;
+  sequenceNumber: number | null;
+  localId: number | null;
+  description: string | null;
+  priority: string | null;
+  hoursWorked: number | null;
+  stateId: string | null;
+  projectId: string;
+  labelIds: string[];
+  startDate: string | null;
+  dueDate: string | null;
+  syncedAt: Date;
+  createdAt: Date;
+}

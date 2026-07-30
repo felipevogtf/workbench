@@ -1,0 +1,20 @@
+services:
+  server:
+    build:
+      context: ../../workbench-server
+      dockerfile: ../deploy/dev/Dockerfile
+    volumes:
+      - ../../workbench-server:/app
+      - server_node_modules:/app/node_modules
+    ports:
+      - '3000:3000'
+    env_file:
+      - ../../workbench-server/.env
+    environment:
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+volumes:
+  server_node_modules:

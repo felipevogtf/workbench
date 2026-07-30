@@ -1,0 +1,22 @@
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Node (in case dependencies end up at the root)
+node_modules/
