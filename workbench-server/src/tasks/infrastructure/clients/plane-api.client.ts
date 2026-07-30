@@ -117,7 +117,7 @@ export class PlaneApiClient {
   getProjectMembers(projectId: string): Promise<PlaneProjectMember[]> {
     return this.callList(() =>
       this.http.get<PlaneList<PlaneProjectMember>>(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/members/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/project-members/`,
         { headers: this.headers },
       ),
     );
@@ -126,7 +126,7 @@ export class PlaneApiClient {
   getIssues(projectId: string): Promise<PlaneIssue[]> {
     return this.callList(() =>
       this.http.get<PlaneList<PlaneIssue>>(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/work-items/`,
         { headers: this.headers },
       ),
     );
@@ -135,7 +135,7 @@ export class PlaneApiClient {
   getIssue(projectId: string, issueId: string): Promise<PlaneIssue> {
     return this.call(() =>
       this.http.get<PlaneIssue>(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/work-items/${issueId}/`,
         { headers: this.headers },
       ),
     );
@@ -147,7 +147,7 @@ export class PlaneApiClient {
   ): Promise<PlaneIssue> {
     return this.call(() =>
       this.http.post<PlaneIssue>(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/work-items/`,
         dto,
         { headers: this.headers },
       ),
@@ -161,7 +161,7 @@ export class PlaneApiClient {
   ): Promise<PlaneIssue> {
     return this.call(() =>
       this.http.patch<PlaneIssue>(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/work-items/${issueId}/`,
         dto,
         { headers: this.headers },
       ),
@@ -171,7 +171,7 @@ export class PlaneApiClient {
   async deleteIssue(projectId: string, issueId: string): Promise<void> {
     await this.call(() =>
       this.http.delete(
-        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/work-items/${issueId}/`,
         { headers: this.headers },
       ),
     );

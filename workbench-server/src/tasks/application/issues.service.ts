@@ -18,6 +18,13 @@ import {
 } from '@tasks/domain/ports/issue-repository.port';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 
+interface CreateIssueData {
+  name: string;
+  description?: string | null;
+  projectId: string;
+  stateId?: string | null;
+}
+
 @Injectable()
 export class IssuesService {
   constructor(
@@ -28,6 +35,85 @@ export class IssuesService {
     @Inject(PROJECT_REPOSITORY_PORT)
     private readonly projectRepository: ProjectRepositoryPort,
   ) {}
+
+  async createIssue(data: CreateIssueData): Promise<Issue> {
+    const project = await this.projectRepository.findById(data.projectId);
+    if (!project) {
+      throw new NotFoundException(
+        `Project with id ${data.projectId} not found`,
+      );
+    }
+
+    const issue = Issue.createLocal({
+      name: data.name,
+      description: data.description || null,
+      projectId: data.projectId,
+    });
+
+    await this.issueRepository.save(issue);
+    return issue;
+  }
+
+  async updateIssue(
+    id: string,
+    data: Partial<CreateIssueData>,
+  ): Promise<Issue> {
+    const existingIssue = await this.issueRepository.findById(id);
+    if (!existingIssue) {
+      throw new NotFoundException(`Issue with id ${id} not found`);
+    }
+
+    if (data.name !== undefined) {
+      existingIssue.rename(data.name);
+    }
+    if (data.description !== undefined) {
+      existingIssue.updateDescription(data.description);
+    }
+    if (data.projectId !== undefined) {
+      const project = await this.projectRepository.findById(data.projectId);
+      if (!project) {
+        throw new NotFoundException(
+          `Project with id ${data.projectId} not found`,
+        );
+      }
+
+      existingIssue.changeProject(data.projectId);
+    }
+
+    await this.issueRepository.save(existingIssue);
+    return existingIssue;
+  }
+
+  async deleteIssue(id: string): Promise<void> {
+    const existingIssue = await this.issueRepository.findById(id);
+    if (!existingIssue) {
+      throw new NotFoundException(`Issue with id ${id} not found`);
+    }
+
+    if (!existingIssue.isLocal) {
+      throw new BadRequestException(
+        `Cannot delete issue with id ${id} because it is not a local issue`,
+      );
+    }
+
+    await this.issueRepository.delete(id);
+  }
+
+  async setState(id: string, stateId: string): Promise<Issue> {
+    const existingIssue = await this.issueRepository.findById(id);
+    if (!existingIssue) {
+      throw new NotFoundException(`Issue with id ${id} not found`);
+    }
+
+    const state = await this.issueRepository.findById(stateId);
+    if (!state) {
+      throw new NotFoundException(`State with id ${stateId} not found`);
+    }
+
+    existingIssue.setState(stateId);
+    await this.issueRepository.save(existingIssue);
+    return existingIssue;
+  }
 
   async syncByProject(
     projectId: string,
@@ -77,7 +163,7 @@ export class IssuesService {
           externalState: raw.externalState,
           description: raw.description,
           priority: raw.priority,
-          hoursWorked: null,
+          estimatedHours: null,
           stateId: null,
           projectId: project.id,
           labelIds: [],
@@ -92,6 +178,14 @@ export class IssuesService {
     }
 
     return { created, updated };
+  }
+
+  async getIssueById(id: string): Promise<Issue> {
+    const issue = await this.issueRepository.findById(id);
+    if (!issue) {
+      throw new NotFoundException(`Issue with id ${id} not found`);
+    }
+    return issue;
   }
 
   async getAllIssues(): Promise<Issue[]> {

@@ -62,8 +62,8 @@ export class IssueOrmEntity {
   @Column({ type: 'date', nullable: true })
   due_date!: string | null;
 
-  @Column({ type: 'decimal', precision: 6, scale: 2, nullable: true })
-  hours_worked!: number | null;
+  @Column({ type: 'decimal', nullable: true, precision: 10, scale: 2 })
+  estimated_hours!: number | null;
 
   @ManyToMany(() => LabelOrmEntity, (label) => label.issues, { cascade: true })
   @JoinTable({

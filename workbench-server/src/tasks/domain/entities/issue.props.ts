@@ -8,12 +8,12 @@ export interface IssueProps {
   localId: number | null;
   description: string | null;
   priority: string | null;
-  hoursWorked: number | null;
   stateId: string | null;
   projectId: string;
   labelIds: string[];
   startDate: string | null;
   dueDate: string | null;
+  estimatedHours: number | null;
   syncedAt: Date;
   createdAt: Date;
 }

@@ -4,6 +4,7 @@ export class Issue {
   private constructor(private props: IssueProps) {
     this.validateIdentity();
     this.validateDates();
+    this.validateEstimatedHours();
   }
 
   static createLocal(
@@ -18,11 +19,11 @@ export class Issue {
       localId: null,
       externalState: null,
       priority: null,
-      hoursWorked: null,
       stateId: null,
       labelIds: [],
       startDate: null,
       dueDate: null,
+      estimatedHours: null,
       syncedAt: new Date(),
       createdAt: new Date(),
     });
@@ -80,6 +81,13 @@ export class Issue {
     const { startDate, dueDate } = this.props;
     if (startDate && dueDate && new Date(startDate) > new Date(dueDate)) {
       throw new Error('Start date cannot be after due date');
+    }
+  }
+
+  private validateEstimatedHours() {
+    const { estimatedHours } = this.props;
+    if (estimatedHours !== null && estimatedHours < 0) {
+      throw new Error('Estimated hours cannot be negative');
     }
   }
 
@@ -147,8 +155,8 @@ export class Issue {
     return this.props.priority;
   }
 
-  get hoursWorked(): number | null {
-    return this.props.hoursWorked;
+  get estimatedHours(): number | null {
+    return this.props.estimatedHours;
   }
 
   rename(name: string): void {
@@ -174,6 +182,10 @@ export class Issue {
     }
   }
 
+  changeProject(projectId: string): void {
+    this.props.projectId = projectId;
+  }
+
   setDueDate(date: string | null): void {
     const previousDueDate = this.props.dueDate;
     this.props.dueDate = date;
@@ -184,5 +196,9 @@ export class Issue {
       this.props.dueDate = previousDueDate;
       throw error;
     }
+  }
+
+  setState(stateId: string | null): void {
+    this.props.stateId = stateId;
   }
 }
