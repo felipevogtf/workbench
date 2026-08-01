@@ -14,7 +14,8 @@
     "sourceMap": true,
     "outDir": "./dist",
     "paths": {
-      "@tasks/*": ["./src/tasks/*"]
+      "@tasks/*": ["./src/tasks/*"],
+      "@time-tracking/*": ["./src/time-tracking/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
