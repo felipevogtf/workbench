@@ -37,7 +37,7 @@ export class BoardService {
       throw new NotFoundException(`Board with id ${id} not found`);
     }
 
-    if (data.name) {
+    if (data.name !== undefined) {
       board.rename(data.name);
     }
 

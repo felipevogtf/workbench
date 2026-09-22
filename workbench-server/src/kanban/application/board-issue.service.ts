@@ -39,7 +39,7 @@ export interface MoveIssueInBoardData {
 }
 
 @Injectable()
-export class BoardService {
+export class BoardIssueService {
   constructor(
     @Inject(BOARD_ISSUE_REPOSITORY_PORT)
     private readonly boardIssueRepository: BoardIssueRepositoryPort,
@@ -90,6 +90,16 @@ export class BoardService {
     return boardIssue;
   }
 
+  async listByBoard(boardId: string): Promise<BoardIssue[]> {
+    const board = await this.boardRepository.findById(boardId);
+
+    if (!board) {
+      throw new NotFoundException(`Board with id ${boardId} not found`);
+    }
+
+    return this.boardIssueRepository.findByBoardId(boardId);
+  }
+
   async removeIssueFromBoard(data: RemoveIssueFromBoardData): Promise<void> {
     const board = await this.boardRepository.findById(data.boardId);
 
@@ -110,7 +120,11 @@ export class BoardService {
     await this.boardIssueRepository.delete(issueInBoard.id);
   }
 
-  async moveIssue(boardId: string, issueId: string, {stateId, position}): Promise<void> {
+  async moveIssue(
+    boardId: string,
+    issueId: string,
+    { stateId, position }: { stateId: string | null; position: number },
+  ): Promise<void> {
     const boardIssue = await this.boardIssueRepository.findByIssueId(issueId);
 
     if (!boardIssue || boardIssue.boardId !== boardId) {
@@ -118,6 +132,25 @@ export class BoardService {
         `Issue with id ${issueId} is not in board with id ${boardId}`,
       );
     }
+
+    const issue = await this.issueRepository.findById(issueId);
+    if (!issue) {
+      throw new NotFoundException(`Issue with id ${issueId} not found`);
+    }
+
+    if (stateId !== issue.stateId) {
+      if (stateId !== null) {
+        const state = await this.stateRepository.findById(stateId);
+        if (!state) {
+          throw new NotFoundException(`State with id ${stateId} not found`);
+        }
+      }
+      issue.setState(stateId);
+      await this.issueRepository.save(issue);
+    }
+
+    boardIssue.reposition(position);
+    await this.boardIssueRepository.save(boardIssue);
   }
 
   private async nextPositionInColumn(

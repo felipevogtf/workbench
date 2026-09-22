@@ -4,9 +4,10 @@ import { AppService } from './app.service';
 import { TasksModule } from '@tasks/tasks.module';
 import { CoreModule } from './core/core.module';
 import { TimeTrackingModule } from '@time-tracking/time-tracking.module';
+import { KanbanModule } from '@kanban/kanban.module';
 
 @Module({
-  imports: [CoreModule, TasksModule, TimeTrackingModule],
+  imports: [CoreModule, TasksModule, TimeTrackingModule, KanbanModule],
   controllers: [AppController],
   providers: [AppService],
 })
