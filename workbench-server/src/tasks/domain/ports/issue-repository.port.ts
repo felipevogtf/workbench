@@ -2,6 +2,7 @@ import { Issue } from '@tasks/domain/entities/issue.entity';
 
 export interface IssueRepositoryPort {
   findById(id: string): Promise<Issue | null>;
+  findByIds(ids: string[]): Promise<Issue[]>;
   findByExternalId(externalId: string): Promise<Issue | null>;
   findByProjectId(projectId: string): Promise<Issue[]>;
   findAll(): Promise<Issue[]>;

@@ -15,7 +15,8 @@
     "outDir": "./dist",
     "paths": {
       "@tasks/*": ["./src/tasks/*"],
-      "@time-tracking/*": ["./src/time-tracking/*"]
+      "@time-tracking/*": ["./src/time-tracking/*"],
+      "@kanban/*": ["./src/kanban/*"],
     },
     "incremental": true,
     "skipLibCheck": true,

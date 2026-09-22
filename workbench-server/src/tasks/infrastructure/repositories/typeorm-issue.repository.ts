@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { IssueRepositoryPort } from '@tasks/domain/ports/issue-repository.port';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 import { IssueProps } from '@tasks/domain/entities/issue.props';
@@ -20,6 +20,17 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     });
 
     return issueOrmEntity ? this.toDomain(issueOrmEntity) : null;
+  }
+
+  async findByIds(ids: string[]): Promise<Issue[]> {
+    if (ids.length === 0) return [];
+    const issueOrmEntities = await this.issueRepository.find({
+      where: { id: In(ids) },
+    });
+
+    return issueOrmEntities.map((issueOrmEntity) =>
+      this.toDomain(issueOrmEntity),
+    );
   }
 
   async findAll(): Promise<Issue[]> {
