@@ -1,0 +1,57 @@
+<ol class="history">
+  @for (review of reviews(); track review.id) {
+    <li class="item" [class.is-selected]="review.id === selectedId()">
+      <div class="item__head">
+        @if (review.status === 'ok') {
+          <app-badge tone="success" dot>Correcta</app-badge>
+        } @else {
+          <app-badge tone="danger" dot>Fallida</app-badge>
+        }
+        <span class="item__when">{{ review.createdAt | timeAgo }}</span>
+      </div>
+
+      <p class="item__meta break-anywhere">
+        @if (review.agentName) {
+          {{ review.agentName }} ·
+        }
+        @if (review.model) {
+          <code>{{ review.model }}</code> ·
+        }
+        <code>{{ short(review.commit) }}</code>
+      </p>
+
+      @if (review.status === 'ok') {
+        <div class="item__comment">
+          @switch (review.commentStatus) {
+            @case ('posted') {
+              <app-badge tone="success">Comentada</app-badge>
+              @if (review.commentUrl) {
+                <a app-text-button [href]="review.commentUrl">Ver comentario</a>
+              }
+            }
+            @case ('failed') {
+              <app-badge tone="danger" [title]="review.commentError ?? ''"
+                >Comentario falló</app-badge
+              >
+            }
+            @default {
+              <app-badge tone="warning">Sin comentar</app-badge>
+            }
+          }
+        </div>
+        <button
+          type="button"
+          class="item__open"
+          [attr.aria-pressed]="review.id === selectedId()"
+          (click)="reviewSelected.emit(review)"
+        >
+          {{ review.id === selectedId() ? 'Mostrando' : 'Ver esta revisión' }}
+        </button>
+      } @else if (review.error) {
+        <p class="item__error break-anywhere">{{ review.error }}</p>
+      }
+    </li>
+  } @empty {
+    <li class="empty">Todavía no hay revisiones.</li>
+  }
+</ol>

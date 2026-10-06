@@ -1,0 +1,22 @@
+<a class="skip-link" href="#main">Saltar al contenido</a>
+
+<header class="topbar">
+  <button app-icon-button type="button" label="Abrir menú" (click)="openDrawer()">
+    <app-icon name="menu" />
+  </button>
+  <span class="topbar__brand"><app-icon name="logo" size="1.3rem" /> Workbench</span>
+</header>
+
+<button
+  type="button"
+  class="overlay"
+  tabindex="-1"
+  aria-label="Cerrar menú"
+  [class.is-active]="drawerOpen()"
+  (click)="closeDrawer()"
+></button>
+<app-sidebar [open]="drawerOpen()" (closed)="closeDrawer()" />
+
+<main id="main" tabindex="-1">
+  <router-outlet />
+</main>

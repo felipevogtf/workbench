@@ -1,0 +1,104 @@
+<!-- Desktop: tabla -->
+<div class="table-wrap">
+  <table>
+    <caption class="visually-hidden">
+      Pull requests
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Pull request</th>
+        <th scope="col">Autor</th>
+        <th scope="col">Ramas</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Revisada</th>
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (pr of items(); track pr.id) {
+        <tr [class.is-closed]="pr.state === 'closed'">
+          <td class="cell-main">
+            <a class="title break-anywhere" [routerLink]="['/pull-requests', pr.id]">{{
+              pr.title
+            }}</a>
+            <span class="meta">
+              <app-provider-icon [provider]="pr.provider" />
+              <span class="break-anywhere">{{ pr.repo }} #{{ pr.externalId }}</span>
+            </span>
+          </td>
+          <td>{{ pr.author }}</td>
+          <td class="branches break-anywhere">
+            <code>{{ pr.sourceBranch }}</code>
+            <app-icon name="chevron-right" size="1em" />
+            <code>{{ pr.destBranch }}</code>
+          </td>
+          <td>
+            <app-status-badge
+              [status]="pr.status"
+              [stale]="pr.isStale"
+              [closed]="pr.state === 'closed'"
+            />
+          </td>
+          <td class="muted">{{ pr.lastReviewedAt | timeAgo }}</td>
+          <td class="actions">
+            <a app-icon-button [routerLink]="['/pull-requests', pr.id]" [label]="'Ver ' + pr.title">
+              <app-icon name="chevron-right" />
+            </a>
+            <button
+              app-button
+              size="sm"
+              variant="secondary"
+              type="button"
+              [disabled]="!canReReview(pr)"
+              (click)="reReview.emit(pr)"
+            >
+              <app-icon name="refresh" size="1em" /> Re-revisar
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<!-- Móvil: cards -->
+<ul class="cards">
+  @for (pr of items(); track pr.id) {
+    <li>
+      <app-card interactive [class.is-closed]="pr.state === 'closed'">
+        <ng-container card-header>
+          <app-provider-icon [provider]="pr.provider" showLabel />
+          <span class="break-anywhere">{{ pr.repo }} #{{ pr.externalId }}</span>
+        </ng-container>
+
+        <a class="title break-anywhere" [routerLink]="['/pull-requests', pr.id]">{{ pr.title }}</a>
+        <p class="card__line">{{ pr.author }}</p>
+        <p class="card__line break-anywhere">
+          <code>{{ pr.sourceBranch }}</code> → <code>{{ pr.destBranch }}</code>
+        </p>
+        <app-status-badge
+          [status]="pr.status"
+          [stale]="pr.isStale"
+          [closed]="pr.state === 'closed'"
+        />
+        <p class="card__line muted">Revisada: {{ pr.lastReviewedAt | timeAgo }}</p>
+
+        <ng-container card-footer>
+          <a app-button size="sm" variant="ghost" [routerLink]="['/pull-requests', pr.id]"
+            >Ver detalle</a
+          >
+          <button
+            app-button
+            size="sm"
+            variant="secondary"
+            type="button"
+            [disabled]="!canReReview(pr)"
+            (click)="reReview.emit(pr)"
+          >
+            <app-icon name="refresh" size="1em" /> Re-revisar
+          </button>
+        </ng-container>
+      </app-card>
+    </li>
+  }
+</ul>

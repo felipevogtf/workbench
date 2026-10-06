@@ -1,0 +1,81 @@
+<div class="page">
+  <app-page-header
+    heading="Pull requests"
+    subtitle="Las PRs donde eres reviewer y el estado de su revisión automática."
+  >
+    <button actions app-button type="button" [loading]="store.syncing()" (click)="sync()">
+      <app-icon name="refresh" size="1em" /> Sincronizar
+    </button>
+  </app-page-header>
+
+  @if (store.queue(); as queue) {
+    @if (queueHasWork()) {
+      <div class="queue"><app-queue-panel [queue]="queue" /></div>
+    }
+  }
+
+  <div class="filters">
+    <app-segmented-control
+      label="Filtrar por estado"
+      [options]="statusOptions"
+      [value]="store.filters().status"
+      (valueChange)="setStatus($event)"
+    />
+    <div class="filters__row">
+      <app-form-field class="filters__provider" label="Proveedor" for="filter-provider">
+        <app-select
+          inputId="filter-provider"
+          [options]="providerOptions"
+          [formControl]="providerControl"
+        />
+      </app-form-field>
+      <app-checkbox [value]="store.filters().staleOnly" (valueChange)="setStaleOnly($event)">
+        Solo desactualizadas
+      </app-checkbox>
+    </div>
+  </div>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las pull requests">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3, 4]; track n) {
+        <app-skeleton height="72px" />
+      }
+    </div>
+  } @else if (store.pullRequests().length === 0) {
+    @if (hasFilters()) {
+      <app-empty-state icon="inbox" heading="Ninguna PR coincide con los filtros">
+        Prueba con otro estado o quita los filtros.
+      </app-empty-state>
+    } @else {
+      <app-empty-state icon="git-pull-request" heading="Todavía no hay pull requests">
+        Sincroniza para traer las PRs donde eres reviewer.
+        <button empty-action app-button type="button" [loading]="store.syncing()" (click)="sync()">
+          Sincronizar
+        </button>
+      </app-empty-state>
+    }
+  } @else {
+    <app-pull-request-table [items]="store.pullRequests()" (reReview)="askReReview($event)" />
+  }
+
+  <app-re-review-dialog
+    [(open)]="dialogOpen"
+    [title]="reReviewTarget()?.title ?? ''"
+    [agents]="agentsStore.agents()"
+    (confirmed)="reReview($event)"
+  />
+</div>

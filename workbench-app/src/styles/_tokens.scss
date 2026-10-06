@@ -1,0 +1,50 @@
+// Variables del portfolio (minimalist-portfolio/src/theme/_variables.scss), más las que necesita la app.
+:root {
+  // --- Portfolio ---
+  --primary: #141414;
+  --text-color: #666666;
+  --background: #fbfbfb;
+  --border-radius: 24px;
+
+  // Acentos que el portfolio deja comentados en su _variables.scss
+  --success: #06d6a0;
+  --danger: #ef476f;
+  --warning: #ffc43d;
+
+  // --- App ---
+  --border: #3333333f;
+  --surface: var(--background);
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --font-sans: 'Figtree Variable', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --sidebar-width: 250px;
+  --content-max-width: 1200px;
+  --touch-target: 44px;
+
+  --shadow-hover: 0 0 10px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 2px 0 10px rgba(0, 0, 0, 0.2);
+  --focus-ring: 2px solid var(--primary);
+
+  // Fondos translúcidos y textos de cada tono (badges, alertas)
+  --tone-neutral-bg: rgba(20, 20, 20, 0.06);
+  --tone-neutral-fg: var(--text-color);
+  --tone-success-bg: color-mix(in srgb, var(--success) 20%, transparent);
+  --tone-success-fg: color-mix(in srgb, var(--success) 45%, var(--primary));
+  --tone-warning-bg: color-mix(in srgb, var(--warning) 28%, transparent);
+  --tone-warning-fg: color-mix(in srgb, var(--warning) 30%, var(--primary));
+  --tone-danger-bg: color-mix(in srgb, var(--danger) 16%, transparent);
+  --tone-danger-fg: color-mix(in srgb, var(--danger) 70%, var(--primary));
+  --tone-info-bg: rgba(20, 20, 20, 0.1);
+  --tone-info-fg: var(--primary);
+}

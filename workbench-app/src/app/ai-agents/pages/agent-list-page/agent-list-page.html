@@ -1,0 +1,45 @@
+<div class="page">
+  <app-page-header
+    heading="Agentes de IA"
+    subtitle="Definen el prompt, el modelo y las herramientas con que se revisan las PRs."
+  >
+    <a actions app-button routerLink="new"><app-icon name="plus" size="1em" /> Nuevo agente</a>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los agentes">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="grid" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="260px" />
+      }
+    </div>
+  } @else if (store.agents().length === 0) {
+    <app-empty-state icon="bot" heading="Todavía no hay agentes">
+      Crea un agente para definir cómo se revisan las pull requests.
+      <a empty-action app-button routerLink="new">Nuevo agente</a>
+    </app-empty-state>
+  } @else {
+    <div class="grid">
+      @for (agent of store.agents(); track agent.id) {
+        <app-agent-card
+          [agent]="agent"
+          (setDefault)="setDefault($event)"
+          (remove)="remove($event)"
+        />
+      }
+    </div>
+  }
+</div>

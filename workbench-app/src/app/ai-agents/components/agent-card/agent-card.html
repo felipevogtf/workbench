@@ -1,0 +1,55 @@
+<app-card interactive>
+  <ng-container card-header>
+    <app-badge tone="neutral"
+      ><code>{{ agent().model }}</code></app-badge
+    >
+    @if (agent().isDefault) {
+      <app-badge tone="success" dot>Por defecto</app-badge>
+    }
+  </ng-container>
+
+  <h3 class="agent__name break-anywhere">{{ agent().name }}</h3>
+  <p class="agent__prompt">{{ agent().systemPrompt }}</p>
+  <ul class="agent__tools" aria-label="Herramientas permitidas">
+    @for (tool of agent().allowedTools; track tool) {
+      <li>
+        <code>{{ tool }}</code>
+      </li>
+    } @empty {
+      <li class="agent__none">Sin herramientas</li>
+    }
+  </ul>
+
+  <ng-container card-footer>
+    @if (!agent().isDefault) {
+      <button
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="setDefault.emit(agent())"
+      >
+        <app-icon name="check" size="1em" />
+        Marcar por defecto
+      </button>
+    }
+    <a app-icon-button [routerLink]="[agent().id, 'edit']" [label]="'Editar ' + agent().name">
+      <app-icon name="edit" size="1.1rem" />
+    </a>
+    <button
+      app-icon-button
+      type="button"
+      tone="danger"
+      [label]="'Eliminar ' + agent().name"
+      [disabled]="agent().isDefault"
+      [attr.title]="
+        agent().isDefault
+          ? 'El agente por defecto no se puede eliminar'
+          : 'Eliminar ' + agent().name
+      "
+      (click)="remove.emit(agent())"
+    >
+      <app-icon name="trash" size="1.1rem" />
+    </button>
+  </ng-container>
+</app-card>

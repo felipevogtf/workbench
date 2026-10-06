@@ -1,0 +1,186 @@
+<div class="page">
+  @if (store.error(); as error) {
+    <a app-button variant="ghost" size="sm" routerLink="/pull-requests">
+      <app-icon name="arrow-left" size="1em" /> Pull requests
+    </a>
+    <app-alert tone="danger" heading="No se pudo cargar la pull request">{{ error }}</app-alert>
+  } @else if (store.detail(); as pr) {
+    <app-page-header [heading]="pr.title" [subtitle]="pr.repo + ' #' + pr.externalId">
+      <a back app-button variant="ghost" size="sm" routerLink="/pull-requests">
+        <app-icon name="arrow-left" size="1em" /> Pull requests
+      </a>
+
+      <ng-container actions>
+        <a app-button variant="secondary" [href]="pr.url" target="_blank" rel="noopener noreferrer">
+          <app-icon name="arrow-outward" size="1em" /> Abrir en {{ providerLabel[pr.provider] }}
+        </a>
+        @if (store.commentToRetry()) {
+          <button
+            app-button
+            variant="secondary"
+            type="button"
+            [loading]="store.acting()"
+            (click)="retryComment()"
+          >
+            Reintentar comentario
+          </button>
+        }
+        <button
+          app-button
+          type="button"
+          [disabled]="!canReReview() || store.acting()"
+          (click)="dialogOpen.set(true)"
+        >
+          <app-icon name="refresh" size="1em" /> Re-revisar
+        </button>
+      </ng-container>
+    </app-page-header>
+
+    <div class="stack">
+      <!-- Estado de la cola / errores -->
+      @switch (pr.status) {
+        @case ('pending') {
+          <app-alert tone="info" heading="En cola">
+            @if (store.queuePosition(); as position) {
+              Lugar {{ position }} en la espera.
+            }
+            Se revisará en cuanto haya un turno libre; esta pantalla se actualiza sola.
+          </app-alert>
+        }
+        @case ('reviewing') {
+          <app-alert tone="info" heading="Revisando">
+            El agente está analizando la PR; esta pantalla se actualiza sola.
+          </app-alert>
+        }
+        @case ('failed') {
+          <app-alert tone="danger" heading="La última revisión falló">
+            {{ pr.lastError ?? 'Sin detalle del error.' }}
+          </app-alert>
+        }
+      }
+      @if (pr.isStale) {
+        <app-alert tone="warning" heading="Desactualizada">
+          Llegaron commits después de la última revisión. Usa «Re-revisar» para revisar de nuevo.
+        </app-alert>
+      }
+      @if (pr.state === 'closed') {
+        <app-alert tone="info" heading="PR cerrada">
+          Ya no aparece entre tus PRs pendientes; se conserva con su historial.
+        </app-alert>
+      }
+
+      <!-- Datos -->
+      <app-card>
+        <dl class="facts">
+          <div>
+            <dt>Estado</dt>
+            <dd><app-status-badge [status]="pr.status" [stale]="pr.isStale" /></dd>
+          </div>
+          <div>
+            <dt>Proveedor</dt>
+            <dd><app-provider-icon [provider]="pr.provider" showLabel /></dd>
+          </div>
+          <div>
+            <dt>Autor</dt>
+            <dd>{{ pr.author }}</dd>
+          </div>
+          <div>
+            <dt>Ramas</dt>
+            <dd class="break-anywhere">
+              <code>{{ pr.sourceBranch }}</code> → <code>{{ pr.destBranch }}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Commit actual</dt>
+            <dd>
+              <code>{{ short(pr.headCommit) }}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Commit revisado</dt>
+            <dd>
+              <code>{{ short(pr.reviewedCommit) }}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Última revisión</dt>
+            <dd>{{ pr.lastReviewedAt | timeAgo }}</dd>
+          </div>
+        </dl>
+      </app-card>
+
+      <!-- Historial + revisión -->
+      <div class="review">
+        <section class="review__history" aria-labelledby="history-title">
+          <h4 id="history-title">Historial</h4>
+          <app-review-history
+            [reviews]="pr.reviews"
+            [selectedId]="store.selectedReviewId()"
+            (reviewSelected)="selectReview($event)"
+          />
+        </section>
+
+        <section class="review__doc" aria-labelledby="doc-title">
+          <app-card>
+            <div card-header class="doc__head">
+              <h4 id="doc-title">Revisión</h4>
+              @if (store.markdown(); as markdown) {
+                <div class="doc__tools">
+                  <button
+                    app-button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    (click)="copy(markdown)"
+                  >
+                    <app-icon name="copy" size="1em" /> Copiar
+                  </button>
+                  <button
+                    app-button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    (click)="download(markdown)"
+                  >
+                    <app-icon name="download" size="1em" /> Descargar
+                  </button>
+                </div>
+              }
+            </div>
+
+            @if (store.markdownLoading()) {
+              <div class="stack" aria-busy="true">
+                <app-skeleton height="1.5rem" width="40%" />
+                <app-skeleton height="5rem" />
+                <app-skeleton height="5rem" />
+              </div>
+            } @else if (store.markdownError(); as markdownError) {
+              <app-alert tone="danger" heading="No se pudo leer la revisión">{{
+                markdownError
+              }}</app-alert>
+            } @else if (store.markdown(); as markdown) {
+              <app-markdown-viewer [content]="markdown" />
+            } @else {
+              <p class="doc__empty">
+                Todavía no hay una revisión completada para esta pull request.
+              </p>
+            }
+          </app-card>
+        </section>
+      </div>
+    </div>
+
+    <app-re-review-dialog
+      [(open)]="dialogOpen"
+      [title]="pr.title"
+      [agents]="agentsStore.agents()"
+      (confirmed)="reReview($event)"
+    />
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton width="60%" height="2rem" />
+      <app-skeleton height="120px" />
+      <app-skeleton height="300px" />
+    </div>
+  }
+</div>

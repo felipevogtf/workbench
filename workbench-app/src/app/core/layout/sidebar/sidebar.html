@@ -1,0 +1,34 @@
+<div class="sidebar__header">
+  <a class="brand" routerLink="/" aria-label="Workbench, ir al inicio" (click)="closed.emit()">
+    <app-icon name="logo" size="1.4rem" />
+    <span>Workbench</span>
+  </a>
+  <button
+    class="sidebar__close"
+    app-icon-button
+    type="button"
+    label="Cerrar menú"
+    (click)="closed.emit()"
+  >
+    <app-icon name="x" />
+  </button>
+</div>
+
+<nav aria-label="Módulos">
+  <ul>
+    @for (item of items(); track item.path) {
+      <li>
+        <a
+          class="nav-link"
+          [routerLink]="item.path"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+          (click)="closed.emit()"
+        >
+          <app-icon [name]="item.icon" />
+          <span class="nav-link__label">{{ item.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

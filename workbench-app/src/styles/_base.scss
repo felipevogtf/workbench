@@ -1,0 +1,91 @@
+// Estilos globales. Mismos valores que minimalist-portfolio (theme/_global.scss y Layout.astro).
+
+.section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 50px 10px;
+}
+
+h3 {
+  font-weight: 500;
+  padding: 0;
+  margin: 0;
+}
+
+h4 {
+  font-weight: normal;
+  font-size: 1rem;
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--primary);
+}
+
+p,
+ul {
+  color: var(--text-color);
+}
+
+ul {
+  padding-left: 20px;
+}
+
+li {
+  padding-bottom: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+// Foco visible solo para teclado
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// Overlay de ruido del portfolio (la textura se sirve desde /textures)
+.noise {
+  position: fixed;
+  inset: 0;
+  background-image: url('/textures/noise.png');
+  background-repeat: repeat;
+  opacity: 0.5;
+  z-index: 3;
+  pointer-events: none;
+}

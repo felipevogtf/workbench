@@ -1,0 +1,82 @@
+<div class="page">
+  <app-page-header
+    [heading]="isEdit() ? 'Editar agente' : 'Nuevo agente'"
+    subtitle="El prompt le dice al agente cómo revisar; las herramientas son siempre de solo lectura."
+  >
+    <a back app-button variant="ghost" size="sm" routerLink="/agents">
+      <app-icon name="arrow-left" size="1em" /> Agentes
+    </a>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="48px" />
+      <app-skeleton height="48px" />
+      <app-skeleton height="240px" />
+    </div>
+  } @else {
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (error(); as message) {
+        <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
+      }
+
+      <div class="form__row">
+        <app-form-field label="Nombre" for="agent-name" required [error]="fieldError('name')">
+          <app-text-input
+            inputId="agent-name"
+            formControlName="name"
+            placeholder="reviewer-estricto"
+            [invalid]="!!fieldError('name')"
+            [describedBy]="fieldError('name') ? 'agent-name-msg' : null"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Modelo"
+          for="agent-model"
+          required
+          hint="Puedes escribir cualquier id de modelo."
+          [error]="fieldError('model')"
+        >
+          <app-text-input
+            inputId="agent-model"
+            formControlName="model"
+            placeholder="claude-sonnet-5-5"
+            [suggestions]="modelSuggestions"
+            [invalid]="!!fieldError('model')"
+            [describedBy]="'agent-model-msg'"
+          />
+        </app-form-field>
+      </div>
+
+      <app-form-field
+        label="Prompt del agente"
+        for="agent-prompt"
+        required
+        hint="Se agrega al prompt de sistema; el contexto de cada PR se envía aparte."
+        [error]="fieldError('systemPrompt')"
+      >
+        <app-textarea
+          inputId="agent-prompt"
+          formControlName="systemPrompt"
+          mono
+          [rows]="14"
+          [invalid]="!!fieldError('systemPrompt')"
+          [describedBy]="'agent-prompt-msg'"
+        />
+      </app-form-field>
+
+      <section class="form__tools">
+        <h4>Herramientas permitidas</h4>
+        <app-tools-picker [options]="toolOptions" [(selected)]="tools" />
+      </section>
+
+      <div class="form__actions">
+        <a app-button variant="secondary" routerLink="/agents">Cancelar</a>
+        <button app-button type="submit" [loading]="saving()">
+          {{ isEdit() ? 'Guardar cambios' : 'Crear agente' }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

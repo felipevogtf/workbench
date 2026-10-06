@@ -1,0 +1,35 @@
+.queue {
+  margin-bottom: var(--space-5);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.filters__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .filters__row {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: var(--space-5);
+  }
+
+  .filters__provider {
+    width: 240px;
+  }
+}

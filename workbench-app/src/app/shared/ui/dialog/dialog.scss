@@ -1,0 +1,106 @@
+:host {
+  display: contents;
+}
+
+dialog {
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--primary);
+  // Móvil: hoja inferior a todo el ancho
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--space-5));
+  margin: auto 0 0;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+
+  &::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+    animation: sheet-in 0.2s ease-out;
+  }
+}
+
+.dialog__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-2) var(--space-5);
+
+  h3 {
+    font-weight: 700;
+    font-size: 1.25rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.dialog__body {
+  padding: var(--space-2) var(--space-5) var(--space-4);
+  overflow-y: auto;
+  color: var(--text-color);
+}
+
+footer {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-5);
+
+  &:empty {
+    display: none;
+  }
+}
+
+footer ::ng-deep > * {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  dialog {
+    width: min(560px, calc(100vw - 2 * var(--space-5)));
+    margin: auto;
+    border-radius: var(--border-radius);
+
+    &[open] {
+      animation: fade-in 0.15s ease-out;
+    }
+  }
+
+  footer {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  footer ::ng-deep > * {
+    width: auto;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}

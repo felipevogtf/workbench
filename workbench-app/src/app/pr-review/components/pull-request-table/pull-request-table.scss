@@ -1,0 +1,124 @@
+:host {
+  display: block;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  text-decoration: none;
+  color: var(--primary);
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.muted {
+  color: var(--text-color);
+}
+
+.is-closed {
+  opacity: 0.65;
+}
+
+// Móvil: cards
+.table-wrap {
+  display: none;
+}
+
+.cards {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0;
+  }
+
+  app-card {
+    gap: var(--space-3);
+  }
+}
+
+.card__line {
+  margin: 0;
+}
+
+// Desktop: tabla dentro de un contenedor con el borde del portfolio
+@media (min-width: 768px) {
+  .cards {
+    display: none;
+  }
+
+  .table-wrap {
+    display: block;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--space-3) var(--space-4);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: var(--tone-neutral-bg);
+  }
+
+  .cell-main {
+    min-width: 240px;
+    max-width: 420px;
+
+    .title {
+      display: block;
+    }
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    font-size: 0.8125rem;
+    color: var(--text-color);
+  }
+
+  .branches {
+    min-width: 160px;
+    color: var(--text-color);
+  }
+
+  .actions {
+    white-space: nowrap;
+    text-align: right;
+  }
+}
