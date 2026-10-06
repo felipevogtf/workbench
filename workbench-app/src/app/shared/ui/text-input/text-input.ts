@@ -22,6 +22,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
       [value]="value()"
       [placeholder]="placeholder()"
       [disabled]="disabled()"
+      [attr.min]="min()"
+      [attr.step]="step()"
       [attr.autocomplete]="autocomplete()"
       [attr.list]="suggestions().length ? inputId() + '-list' : null"
       [attr.aria-invalid]="invalid() ? 'true' : null"
@@ -45,7 +47,10 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 })
 export class TextInput implements ControlValueAccessor {
   readonly inputId = input.required<string>();
-  readonly type = input<'text' | 'search' | 'url'>('text');
+  readonly type = input<'text' | 'search' | 'url' | 'date' | 'number'>('text');
+  /** Solo para los tipos `number` y `date`. */
+  readonly min = input<string | number | null>(null);
+  readonly step = input<string | number | null>(null);
   readonly placeholder = input('');
   readonly autocomplete = input<string>('off');
   readonly invalid = input(false, { transform: booleanAttribute });

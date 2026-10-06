@@ -17,7 +17,9 @@
       "@core/*": ["./src/app/core/*"],
       "@shared/*": ["./src/app/shared/*"],
       "@pr-review/*": ["./src/app/pr-review/*"],
-      "@ai-agents/*": ["./src/app/ai-agents/*"]
+      "@ai-agents/*": ["./src/app/ai-agents/*"],
+      "@tasks/*": ["./src/app/tasks/*"],
+      "@kanban/*": ["./src/app/kanban/*"]
     },
     "module": "preserve"
   },

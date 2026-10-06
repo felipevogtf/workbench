@@ -1,5 +1,6 @@
 export class CreateStateDto {
   name!: string;
-  color!: string | null;
-  position!: number;
+  color?: string | null;
+  // Opcional: sin posición, el estado queda al final.
+  position?: number;
 }

@@ -1,0 +1,81 @@
+<div class="page">
+  <app-page-header
+    heading="Estados"
+    subtitle="Son las columnas del kanban, en este orden. Valen para todos los proyectos."
+  >
+    <button actions app-button type="button" (click)="openCreate()">
+      <app-icon name="plus" size="1em" /> Nuevo estado
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los estados">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="60px" />
+      }
+    </div>
+  } @else if (store.states().length === 0) {
+    <app-empty-state icon="circle-dot" heading="Todavía no hay estados">
+      Crea los estados por los que pasan tus tareas (por ejemplo «Por hacer», «En curso» y «Hecho»):
+      serán las columnas del kanban.
+      <button empty-action app-button type="button" (click)="openCreate()">Nuevo estado</button>
+    </app-empty-state>
+  } @else {
+    <ol class="list">
+      @for (state of store.states(); track state.id; let first = $first; let last = $last) {
+        <li>
+          <span class="swatch" [style.background]="state.color ?? 'var(--text-color)'"></span>
+          <div class="list__main">
+            <span class="list__name">{{ state.name }}</span>
+          </div>
+          <div class="list__actions">
+            <button
+              app-icon-button
+              type="button"
+              [label]="'Subir ' + state.name"
+              [disabled]="first"
+              (click)="move(state, -1)"
+            >
+              <app-icon name="arrow-up" />
+            </button>
+            <button
+              app-icon-button
+              type="button"
+              [label]="'Bajar ' + state.name"
+              [disabled]="last"
+              (click)="move(state, 1)"
+            >
+              <app-icon name="arrow-down" />
+            </button>
+            <app-menu
+              [label]="'Acciones de ' + state.name"
+              [items]="menu"
+              (selected)="onMenu(state, $event)"
+            />
+          </div>
+        </li>
+      }
+    </ol>
+  }
+
+  <app-named-item-dialog
+    [(open)]="dialogOpen"
+    [heading]="editing() ? 'Editar estado' : 'Nuevo estado'"
+    [initial]="editing()"
+    [save]="save"
+  />
+</div>

@@ -39,6 +39,12 @@ export class TypeOrmLabelRepository implements LabelRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
+    // La FK de issue_labels hacia labels no tiene cascade: sin esto, borrar una
+    // etiqueta en uso falla. Se quita primero de las tareas.
+    await this.ormRepo.manager.query(
+      'DELETE FROM "issue_labels" WHERE "label_id" = $1',
+      [id],
+    );
     await this.ormRepo.delete(id);
   }
 

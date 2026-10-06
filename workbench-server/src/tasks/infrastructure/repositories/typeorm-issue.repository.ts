@@ -28,6 +28,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     if (ids.length === 0) return [];
     const issueOrmEntities = await this.issueRepository.find({
       where: { id: In(ids) },
+      relations: { project: true, state: true, labels: true },
     });
 
     return issueOrmEntities.map((issueOrmEntity) =>
@@ -103,7 +104,11 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       localSequence: issueOrmEntity.local_sequence,
       externalState: issueOrmEntity.external_state,
       description: issueOrmEntity.description,
-      estimatedHours: issueOrmEntity.estimated_hours,
+      // Postgres devuelve los decimal como string.
+      estimatedHours:
+        issueOrmEntity.estimated_hours === null
+          ? null
+          : Number(issueOrmEntity.estimated_hours),
       priority: issueOrmEntity.priority,
       stateId: issueOrmEntity.state?.id || null,
       projectId: issueOrmEntity.project.id,

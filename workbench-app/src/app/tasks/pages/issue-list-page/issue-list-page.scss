@@ -1,0 +1,44 @@
+.filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.count {
+  margin: 0 0 var(--space-3);
+  font-size: 0.875rem;
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
+}
+
+@media (min-width: 560px) {
+  .filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filters__search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  .filters {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+// Con el sidebar fijo, 5 columnas solo caben en pantallas anchas.
+@media (min-width: 1360px) {
+  .filters {
+    grid-template-columns: 2fr repeat(4, 1fr);
+  }
+
+  .filters__search {
+    grid-column: auto;
+  }
+}

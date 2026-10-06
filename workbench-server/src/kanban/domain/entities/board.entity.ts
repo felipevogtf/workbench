@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { BoardProps } from './board.props';
 
 export class Board {
@@ -36,13 +37,13 @@ export class Board {
 
   private validateName(): void {
     if (!this.props.name || this.props.name.trim() === '') {
-      throw new Error('Name is required');
+      throw new DomainError('Name is required');
     }
   }
 
   rename(name: string): void {
     if (!name || name.trim() === '') {
-      throw new Error('New name is required');
+      throw new DomainError('New name is required');
     }
     this.props.name = name;
   }

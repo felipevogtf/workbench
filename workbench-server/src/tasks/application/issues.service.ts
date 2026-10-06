@@ -16,13 +16,26 @@ import {
   ISSUE_REPOSITORY_PORT,
   type IssueRepositoryPort,
 } from '@tasks/domain/ports/issue-repository.port';
+import {
+  STATE_REPOSITORY_PORT,
+  type StateRepositoryPort,
+} from '@tasks/domain/ports/state-repository.port';
+import {
+  LABEL_REPOSITORY_PORT,
+  type LabelRepositoryPort,
+} from '@tasks/domain/ports/label-repository.port';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 
-interface CreateIssueData {
+interface IssueData {
   name: string;
   description?: string | null;
   projectId: string;
   stateId?: string | null;
+  priority?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  estimatedHours?: number | null;
+  labelIds?: string[];
 }
 
 @Injectable()
@@ -34,15 +47,14 @@ export class IssuesService {
     private readonly issueRepository: IssueRepositoryPort,
     @Inject(PROJECT_REPOSITORY_PORT)
     private readonly projectRepository: ProjectRepositoryPort,
+    @Inject(STATE_REPOSITORY_PORT)
+    private readonly stateRepository: StateRepositoryPort,
+    @Inject(LABEL_REPOSITORY_PORT)
+    private readonly labelRepository: LabelRepositoryPort,
   ) {}
 
-  async createIssue(data: CreateIssueData): Promise<Issue> {
-    const project = await this.projectRepository.findById(data.projectId);
-    if (!project) {
-      throw new NotFoundException(
-        `Project with id ${data.projectId} not found`,
-      );
-    }
+  async createIssue(data: IssueData): Promise<Issue> {
+    await this.ensureProject(data.projectId);
 
     const localSequence = await this.issueRepository.nextLocalSequence(
       data.projectId,
@@ -54,19 +66,14 @@ export class IssuesService {
       projectId: data.projectId,
       localSequence,
     });
+    await this.applyOptionalFields(issue, data);
 
     await this.issueRepository.save(issue);
     return issue;
   }
 
-  async updateIssue(
-    id: string,
-    data: Partial<CreateIssueData>,
-  ): Promise<Issue> {
-    const existingIssue = await this.issueRepository.findById(id);
-    if (!existingIssue) {
-      throw new NotFoundException(`Issue with id ${id} not found`);
-    }
+  async updateIssue(id: string, data: Partial<IssueData>): Promise<Issue> {
+    const existingIssue = await this.getIssueById(id);
 
     if (data.name !== undefined) {
       existingIssue.rename(data.name);
@@ -75,15 +82,10 @@ export class IssuesService {
       existingIssue.updateDescription(data.description);
     }
     if (data.projectId !== undefined) {
-      const project = await this.projectRepository.findById(data.projectId);
-      if (!project) {
-        throw new NotFoundException(
-          `Project with id ${data.projectId} not found`,
-        );
-      }
-
+      await this.ensureProject(data.projectId);
       existingIssue.changeProject(data.projectId);
     }
+    await this.applyOptionalFields(existingIssue, data);
 
     await this.issueRepository.save(existingIssue);
     return existingIssue;
@@ -104,16 +106,9 @@ export class IssuesService {
     await this.issueRepository.delete(id);
   }
 
-  async setState(id: string, stateId: string): Promise<Issue> {
-    const existingIssue = await this.issueRepository.findById(id);
-    if (!existingIssue) {
-      throw new NotFoundException(`Issue with id ${id} not found`);
-    }
-
-    const state = await this.issueRepository.findById(stateId);
-    if (!state) {
-      throw new NotFoundException(`State with id ${stateId} not found`);
-    }
+  async setState(id: string, stateId: string | null): Promise<Issue> {
+    const existingIssue = await this.getIssueById(id);
+    await this.ensureState(stateId);
 
     existingIssue.setState(stateId);
     await this.issueRepository.save(existingIssue);
@@ -202,5 +197,46 @@ export class IssuesService {
 
   async getIssuesByProject(projectId: string): Promise<Issue[]> {
     return this.issueRepository.findByProjectId(projectId);
+  }
+
+  // Campos que se pueden editar en una tarea. undefined = sin cambios,
+  // null = limpiar el valor.
+  private async applyOptionalFields(
+    issue: Issue,
+    data: Partial<IssueData>,
+  ): Promise<void> {
+    if (data.priority !== undefined) {
+      issue.setPriority(data.priority);
+    }
+    if (data.startDate !== undefined || data.dueDate !== undefined) {
+      issue.setDates({ startDate: data.startDate, dueDate: data.dueDate });
+    }
+    if (data.estimatedHours !== undefined) {
+      issue.setEstimatedHours(data.estimatedHours);
+    }
+    if (data.stateId !== undefined) {
+      await this.ensureState(data.stateId);
+      issue.setState(data.stateId);
+    }
+    if (data.labelIds !== undefined) {
+      const ids = [...new Set(data.labelIds)];
+      const labels = await this.labelRepository.findByIds(ids);
+      if (labels.length !== ids.length) {
+        throw new NotFoundException('One or more labels were not found');
+      }
+      issue.setLabels(ids);
+    }
+  }
+
+  private async ensureProject(projectId: string): Promise<void> {
+    if (!(await this.projectRepository.findById(projectId))) {
+      throw new NotFoundException(`Project with id ${projectId} not found`);
+    }
+  }
+
+  private async ensureState(stateId: string | null): Promise<void> {
+    if (stateId !== null && !(await this.stateRepository.findById(stateId))) {
+      throw new NotFoundException(`State with id ${stateId} not found`);
+    }
   }
 }

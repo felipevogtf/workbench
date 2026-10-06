@@ -23,8 +23,20 @@ describe('app routes', () => {
     return (harness.routeNativeElement as HTMLElement).tagName.toLowerCase();
   }
 
-  it('redirects the root to the pull requests list', async () => {
-    expect(await open('/')).toBe('app-pull-request-list-page');
+  it('redirects the root to the tasks list', async () => {
+    expect(await open('/')).toBe('app-issue-list-page');
+  });
+
+  it.each([
+    ['/tasks', 'app-issue-list-page'],
+    ['/tasks/issues/abc', 'app-issue-detail-page'],
+    ['/tasks/projects', 'app-project-list-page'],
+    ['/tasks/states', 'app-state-list-page'],
+    ['/tasks/labels', 'app-label-list-page'],
+    ['/kanban', 'app-board-page'],
+    ['/kanban/abc', 'app-board-page'],
+  ])('lazy loads %s', async (url, tag) => {
+    expect(await open(url)).toBe(tag);
   });
 
   it('lazy loads the agents list at /agents', async () => {

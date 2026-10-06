@@ -1,0 +1,110 @@
+<div class="page">
+  @if (boards.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los tableros">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (!boards.loaded()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="48px" />
+      <app-skeleton height="320px" />
+    </div>
+  } @else if (boards.boards().length === 0) {
+    <app-page-header
+      heading="Kanban"
+      subtitle="Tableros con una columna por estado para mover tus tareas."
+    />
+    <app-empty-state icon="kanban" heading="Todavía no hay tableros">
+      Crea un tablero y agrega las tareas que quieras ver como columnas.
+      <button empty-action app-button type="button" (click)="openCreate()">Nuevo tablero</button>
+    </app-empty-state>
+  } @else if (board(); as board) {
+    <app-page-header [heading]="board.name" [subtitle]="board.description ?? undefined">
+      <button actions app-button type="button" (click)="addOpen.set(true)">
+        <app-icon name="plus" size="1em" /> Agregar tareas
+      </button>
+      <button actions app-button variant="secondary" type="button" (click)="openCreate()">
+        Nuevo tablero
+      </button>
+      <app-menu
+        actions
+        label="Acciones del tablero"
+        [items]="boardMenu"
+        (selected)="onBoardMenu($event)"
+      />
+    </app-page-header>
+
+    @if (boards.boards().length > 1) {
+      <label class="switcher" for="board-switcher">
+        <span>Tablero</span>
+        <app-select
+          inputId="board-switcher"
+          [options]="boardOptions()"
+          [formControl]="boardControl"
+          (change)="openBoard(boardControl.value)"
+        />
+      </label>
+    }
+
+    @if (view.error(); as error) {
+      <app-alert tone="danger" heading="No se pudo cargar el tablero">{{ error }}</app-alert>
+    } @else if (!view.loaded()) {
+      <div class="columns" aria-busy="true">
+        @for (n of [1, 2, 3]; track n) {
+          <app-skeleton class="columns__skeleton" height="260px" />
+        }
+      </div>
+    } @else if (!hasStates()) {
+      <app-empty-state icon="circle-dot" heading="Faltan los estados">
+        Las columnas del tablero son los estados de las tareas. Crea al menos uno.
+        <a empty-action app-button routerLink="/tasks/states">Ir a Estados</a>
+      </app-empty-state>
+    } @else {
+      @if (view.cardCount() === 0) {
+        <app-alert tone="info" heading="El tablero está vacío">
+          Usa «Agregar tareas» para traer tareas; cada una aparece en la columna de su estado.
+        </app-alert>
+      }
+      <div class="columns" cdkDropListGroup>
+        @for (column of view.columns(); track column.key) {
+          <app-board-column
+            [column]="column"
+            [columns]="view.columns()"
+            [issues]="issues.issueById()"
+            (dropped)="onDrop($event)"
+            (moved)="onMoveTo($event)"
+            (removed)="onRemove($event)"
+          />
+        }
+      </div>
+    }
+
+    <app-add-issues-dialog
+      [(open)]="addOpen"
+      [boardName]="board.name"
+      (confirmed)="addIssues($event)"
+    />
+  } @else {
+    <app-alert tone="warning" heading="No existe ese tablero">
+      <a alert-action app-button variant="secondary" size="sm" routerLink="/kanban">
+        Ver los tableros
+      </a>
+    </app-alert>
+  }
+
+  <app-board-form-dialog
+    [(open)]="formOpen"
+    [heading]="editing() ? 'Editar tablero' : 'Nuevo tablero'"
+    [initial]="editing()"
+    [save]="save"
+  />
+</div>

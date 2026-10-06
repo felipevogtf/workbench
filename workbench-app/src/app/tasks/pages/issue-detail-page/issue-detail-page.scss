@@ -1,0 +1,99 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+// En móvil, los detalles (estado, fechas) van antes que la descripción y las horas.
+.layout__side {
+  order: -1;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-color);
+}
+
+h4[card-header] {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+
+  dt {
+    margin-bottom: var(--space-1);
+    font-size: 0.875rem;
+    color: var(--text-color);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.hours-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  align-items: end;
+  margin-bottom: var(--space-4);
+}
+
+.days,
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.days > li {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.day__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.entries li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  color: var(--text-color);
+}
+
+.total {
+  margin: var(--space-3) 0 0;
+}
+
+@media (min-width: 560px) {
+  .hours-form {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .layout__side {
+    order: 0;
+  }
+}

@@ -23,12 +23,15 @@ Con Docker (servidor + front): `docker compose up -d --build` desde `deploy/dev`
 src/app/
   core/        shell, sidebar, cliente de API, registro de módulos del menú
   shared/      kit de UI global (botones, cards, formularios, diálogos…), pipes, utilidades
+  tasks/       módulo Tareas (tareas, proyectos, estados, etiquetas, horas)
+  kanban/      módulo Kanban (tableros con una columna por estado)
   pr-review/   módulo Pull requests
   ai-agents/   módulo Agentes de IA
 ```
 
-Imports con alias por módulo: `@core/*`, `@shared/*`, `@pr-review/*`, `@ai-agents/*`. Un módulo solo
-importa a otro por su `index.ts` (lo hace cumplir ESLint). Para sumar un módulo nuevo: carpeta en
+Imports con alias por módulo: `@core/*`, `@shared/*`, `@tasks/*`, `@kanban/*`, `@pr-review/*`, `@ai-agents/*`. Un módulo solo
+importa a otro por su `index.ts` (lo hace cumplir ESLint; `kanban` usa `@tasks/index`). El menú admite grupos desplegables
+(`NavItem.children`). Para sumar un módulo nuevo: carpeta en
 `src/app/`, su alias en `tsconfig.json`, sus rutas lazy y un `*.nav.ts` registrado en `app.config.ts`.
 
 ## Producción

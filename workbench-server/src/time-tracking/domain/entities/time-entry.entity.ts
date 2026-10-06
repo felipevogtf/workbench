@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { TimeEntryProps } from './time-entry.props';
 
 export class TimeEntry {
@@ -25,11 +26,11 @@ export class TimeEntry {
 
   private validateHours(): void {
     if (this.props.hours <= 0) {
-      throw new Error('Hours must be greater than zero');
+      throw new DomainError('Hours must be greater than zero');
     }
 
     if (this.props.hours > 24) {
-      throw new Error('Hours cannot exceed 24');
+      throw new DomainError('Hours cannot exceed 24');
     }
   }
 

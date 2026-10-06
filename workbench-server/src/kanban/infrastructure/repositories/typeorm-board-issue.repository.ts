@@ -21,6 +21,11 @@ export class TypeOrmBoardIssueRepository implements BoardIssueRepositoryPort {
     return boardIssueOrmEntity ? this.toDomain(boardIssueOrmEntity) : null;
   }
 
+  async findAll(): Promise<BoardIssue[]> {
+    const rows = await this.boardIssueRepository.find();
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async findByBoardId(boardId: string): Promise<BoardIssue[]> {
     const boardIssueOrmEntities = await this.boardIssueRepository.find({
       where: { board_id: boardId },
@@ -43,6 +48,12 @@ export class TypeOrmBoardIssueRepository implements BoardIssueRepositoryPort {
   async save(boardIssue: BoardIssue): Promise<void> {
     const boardIssueOrmEntity = this.toOrm(boardIssue);
     await this.boardIssueRepository.save(boardIssueOrmEntity);
+  }
+
+  async saveMany(boardIssues: BoardIssue[]): Promise<void> {
+    await this.boardIssueRepository.save(
+      boardIssues.map((boardIssue) => this.toOrm(boardIssue)),
+    );
   }
 
   async delete(id: string): Promise<void> {

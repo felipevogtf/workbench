@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { BoardIssueProps } from './board-issue.props';
 
 export class BoardIssue {
@@ -43,7 +44,7 @@ export class BoardIssue {
 
   reposition(newPosition: number): void {
     if (newPosition < 0) {
-      throw new Error('Position cannot be negative');
+      throw new DomainError('Position cannot be negative');
     }
     this.props.position = newPosition;
   }

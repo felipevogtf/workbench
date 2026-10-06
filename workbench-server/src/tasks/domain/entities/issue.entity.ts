@@ -1,4 +1,7 @@
+import { DomainError } from '@core/domain/domain.error';
 import { IssueProps } from './issue.props';
+
+export const ISSUE_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'];
 
 export class Issue {
   private constructor(private props: IssueProps) {
@@ -71,25 +74,25 @@ export class Issue {
 
   private validateIdentity() {
     if (this.props.isLocal && this.props.externalId !== null) {
-      throw new Error('Local issue cannot have an externalId');
+      throw new DomainError('Local issue cannot have an externalId');
     }
 
     if (!this.props.isLocal && this.props.externalId === null) {
-      throw new Error('Non-local issue must have an externalId');
+      throw new DomainError('Non-local issue must have an externalId');
     }
   }
 
   private validateDates() {
     const { startDate, dueDate } = this.props;
     if (startDate && dueDate && new Date(startDate) > new Date(dueDate)) {
-      throw new Error('Start date cannot be after due date');
+      throw new DomainError('Start date cannot be after due date');
     }
   }
 
   private validateEstimatedHours() {
     const { estimatedHours } = this.props;
     if (estimatedHours !== null && estimatedHours < 0) {
-      throw new Error('Estimated hours cannot be negative');
+      throw new DomainError('Estimated hours cannot be negative');
     }
   }
 
@@ -162,45 +165,86 @@ export class Issue {
   }
 
   rename(name: string): void {
+    this.assertLocal('name');
     if (!name.trim()) {
-      throw new Error('Name cannot be empty');
+      throw new DomainError('Name cannot be empty');
     }
     this.props.name = name;
   }
 
   updateDescription(description: string | null): void {
+    this.assertLocal('description');
     this.props.description = description;
   }
 
-  setStartDate(date: string | null): void {
-    const previousStartDate = this.props.startDate;
-    this.props.startDate = date;
-
-    try {
-      this.validateDates();
-    } catch (error) {
-      this.props.startDate = previousStartDate;
-      throw error;
-    }
-  }
-
   changeProject(projectId: string): void {
+    this.assertLocal('project');
     this.props.projectId = projectId;
   }
 
-  setDueDate(date: string | null): void {
-    const previousDueDate = this.props.dueDate;
-    this.props.dueDate = date;
+  setPriority(priority: string | null): void {
+    this.assertLocal('priority');
+    if (priority !== null && !ISSUE_PRIORITIES.includes(priority)) {
+      throw new DomainError(
+        `Priority must be one of: ${ISSUE_PRIORITIES.join(', ')}`,
+      );
+    }
+    this.props.priority = priority;
+  }
 
+  // Cambia las fechas juntas: validarlas una a una rechazaría rangos válidos
+  // (por ejemplo, mover inicio y vencimiento a un período posterior).
+  setDates(dates: {
+    startDate?: string | null;
+    dueDate?: string | null;
+  }): void {
+    this.assertLocal('dates');
+    const startDate =
+      dates.startDate === undefined ? this.props.startDate : dates.startDate;
+    const dueDate =
+      dates.dueDate === undefined ? this.props.dueDate : dates.dueDate;
+    for (const date of [startDate, dueDate]) {
+      if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new DomainError('Dates must use the YYYY-MM-DD format');
+      }
+    }
+
+    const previous = { start: this.props.startDate, due: this.props.dueDate };
+    this.props.startDate = startDate;
+    this.props.dueDate = dueDate;
     try {
       this.validateDates();
     } catch (error) {
-      this.props.dueDate = previousDueDate;
+      this.props.startDate = previous.start;
+      this.props.dueDate = previous.due;
       throw error;
     }
+  }
+
+  // Las horas estimadas, las etiquetas y el estado no vienen de Plane, así
+  // que se pueden editar en cualquier tarea.
+  setEstimatedHours(hours: number | null): void {
+    if (hours !== null && (!Number.isFinite(hours) || hours < 0)) {
+      throw new DomainError('Estimated hours must be a number of 0 or more');
+    }
+    this.props.estimatedHours = hours;
+  }
+
+  setLabels(labelIds: string[]): void {
+    this.props.labelIds = [...new Set(labelIds)];
   }
 
   setState(stateId: string | null): void {
     this.props.stateId = stateId;
+  }
+
+  // El sync con Plane sobrescribe estos campos: editarlos aquí se perdería
+  // en la siguiente sincronización.
+  private assertLocal(field: string): void {
+    if (!this.props.isLocal) {
+      throw new DomainError(
+        `The ${field} of a Plane issue is managed in Plane and cannot be edited here`,
+      );
+    }
   }
 }

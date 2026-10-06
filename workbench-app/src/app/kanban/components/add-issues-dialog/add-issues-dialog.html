@@ -1,0 +1,44 @@
+<app-dialog [heading]="'Agregar tareas a ' + boardName()" [(open)]="open">
+  <div class="stack">
+    <app-form-field label="Buscar" for="add-issues-search">
+      <app-text-input
+        inputId="add-issues-search"
+        type="search"
+        placeholder="Nombre, proyecto o número"
+        (input)="search.set($any($event.target).value)"
+      />
+    </app-form-field>
+
+    @if (error(); as message) {
+      <app-alert tone="danger" heading="No se pudieron cargar las tareas">{{ message }}</app-alert>
+    } @else if (loading()) {
+      <p class="muted"><app-spinner size="1em" /> Cargando…</p>
+    } @else if (available().length === 0) {
+      <p class="muted">
+        No hay tareas libres{{ search() ? ' que coincidan' : '' }}. Las tareas que ya están en un
+        tablero no aparecen aquí.
+      </p>
+    } @else {
+      <ul class="options">
+        @for (option of available(); track option.issue.id) {
+          <li>
+            <app-checkbox
+              [value]="isSelected(option.issue.id)"
+              (valueChange)="toggle(option.issue.id, $event)"
+            >
+              <span class="option__name break-anywhere">{{ option.issue.name }}</span>
+              <span class="option__meta">{{ option.label }}</span>
+            </app-checkbox>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <ng-container dialog-footer>
+    <button app-button variant="secondary" type="button" (click)="open.set(false)">Cancelar</button>
+    <button app-button type="button" [disabled]="selected().size === 0" (click)="submit()">
+      Agregar {{ selected().size > 0 ? '(' + selected().size + ')' : '' }}
+    </button>
+  </ng-container>
+</app-dialog>

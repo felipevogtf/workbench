@@ -1,0 +1,59 @@
+<div class="page">
+  <app-page-header heading="Etiquetas" subtitle="Sirven para agrupar y filtrar tareas.">
+    <button actions app-button type="button" (click)="openCreate()">
+      <app-icon name="plus" size="1em" /> Nueva etiqueta
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las etiquetas">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="60px" />
+      }
+    </div>
+  } @else if (store.labels().length === 0) {
+    <app-empty-state icon="tag" heading="Todavía no hay etiquetas">
+      Crea etiquetas con color para clasificar tus tareas.
+      <button empty-action app-button type="button" (click)="openCreate()">Nueva etiqueta</button>
+    </app-empty-state>
+  } @else {
+    <ul class="list">
+      @for (label of store.labels(); track label.id) {
+        <li>
+          <span class="swatch" [style.background]="label.color ?? 'var(--text-color)'"></span>
+          <div class="list__main">
+            <span class="list__name">{{ label.name }}</span>
+          </div>
+          <div class="list__actions">
+            <app-menu
+              [label]="'Acciones de ' + label.name"
+              [items]="menu"
+              (selected)="onMenu(label, $event)"
+            />
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-named-item-dialog
+    [(open)]="dialogOpen"
+    [heading]="editing() ? 'Editar etiqueta' : 'Nueva etiqueta'"
+    [initial]="editing()"
+    [save]="save"
+  />
+</div>

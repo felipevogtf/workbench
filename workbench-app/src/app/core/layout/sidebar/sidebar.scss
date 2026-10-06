@@ -84,6 +84,42 @@ li {
   }
 }
 
+// Grupo desplegable: un botón con el mismo aspecto que un enlace.
+.nav-group {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+
+  &.has-active {
+    color: var(--primary);
+  }
+
+  &[aria-expanded='true'] .nav-group__chevron {
+    transform: rotate(180deg);
+  }
+}
+
+.nav-group__chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.nav-sub {
+  margin: var(--space-1) 0 var(--space-1) var(--space-5);
+  padding: 0 0 0 var(--space-2);
+  border-left: 1px solid var(--border);
+  gap: 2px;
+}
+
+.nav-link--child {
+  min-height: 40px;
+  font-size: 0.9375rem;
+}
+
 @media (min-width: 768px) {
   :host,
   :host(.is-open) {

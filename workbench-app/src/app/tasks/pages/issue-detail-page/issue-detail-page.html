@@ -1,0 +1,194 @@
+<div class="page">
+  @if (issue(); as issue) {
+    <app-page-header [heading]="issue.name" [subtitle]="(project()?.name ?? '—') + ' #' + number()">
+      <a back app-button variant="ghost" size="sm" routerLink="/tasks/issues">
+        <app-icon name="arrow-left" size="1em" /> Tareas
+      </a>
+      <button actions app-button variant="secondary" type="button" (click)="editOpen.set(true)">
+        <app-icon name="edit" size="1em" /> Editar
+      </button>
+      @if (issue.isLocal) {
+        <button actions app-button variant="danger" type="button" (click)="remove()">
+          <app-icon name="trash" size="1em" /> Eliminar
+        </button>
+      }
+    </app-page-header>
+
+    <div class="layout">
+      <div class="layout__main stack">
+        <app-card>
+          <h4 card-header>Descripción</h4>
+          @if (issue.description) {
+            <app-markdown-viewer [content]="issue.description" />
+          } @else {
+            <p class="muted">Sin descripción.</p>
+          }
+        </app-card>
+
+        <app-card>
+          <h4 card-header>Horas registradas</h4>
+
+          <form class="hours-form" [formGroup]="hoursForm" (ngSubmit)="addHours()" novalidate>
+            <app-form-field
+              label="Día"
+              for="hours-date"
+              [error]="hoursInvalid('date') ? 'Elige un día' : null"
+            >
+              <app-text-input
+                inputId="hours-date"
+                type="date"
+                formControlName="date"
+                [invalid]="hoursInvalid('date')"
+                [describedBy]="'hours-date-msg'"
+              />
+            </app-form-field>
+            <app-form-field
+              label="Horas"
+              for="hours-amount"
+              [error]="hoursInvalid('hours') ? 'Entre 0,25 y 24 horas' : null"
+            >
+              <app-text-input
+                inputId="hours-amount"
+                type="number"
+                min="0.25"
+                step="0.25"
+                placeholder="1,5"
+                formControlName="hours"
+                [invalid]="hoursInvalid('hours')"
+                [describedBy]="'hours-amount-msg'"
+              />
+            </app-form-field>
+            <button app-button type="submit" [loading]="addingHours()">
+              <app-icon name="plus" size="1em" /> Agregar
+            </button>
+          </form>
+          @if (hoursError(); as message) {
+            <app-alert tone="danger" heading="No se pudo registrar">{{ message }}</app-alert>
+          }
+
+          @if (hours.error(); as message) {
+            <app-alert tone="danger" heading="No se pudieron cargar las horas">{{
+              message
+            }}</app-alert>
+          } @else if (hours.days().length === 0) {
+            <p class="muted">
+              Todavía no registras horas en esta tarea. Puedes agregar varias el mismo día.
+            </p>
+          } @else {
+            <ul class="days">
+              @for (day of hours.days(); track day.date) {
+                <li>
+                  <div class="day__head">
+                    <strong>{{ formatDay(day.date) }}</strong>
+                    <span class="muted">{{ formatHours(day.hours) }}</span>
+                  </div>
+                  <ul class="entries">
+                    @for (entry of day.entries; track entry.id) {
+                      <li>
+                        <span>{{ formatHours(entry.hours) }}</span>
+                        <button
+                          app-icon-button
+                          type="button"
+                          tone="danger"
+                          [label]="
+                            'Eliminar ' + formatHours(entry.hours) + ' del ' + formatDay(day.date)
+                          "
+                          (click)="removeHours(entry.id)"
+                        >
+                          <app-icon name="trash" size="1.1rem" />
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          }
+
+          <p class="total">
+            Total: <strong>{{ formatHours(hours.totalHours()) }}</strong>
+            @if (issue.estimatedHours !== null) {
+              de {{ formatHours(issue.estimatedHours) }} estimadas
+            }
+          </p>
+        </app-card>
+      </div>
+
+      <aside class="layout__side">
+        <app-card>
+          <h4 card-header>Detalles</h4>
+          <dl class="props">
+            <div>
+              <dt><label for="detail-state">Estado</label></dt>
+              <dd>
+                <app-select
+                  inputId="detail-state"
+                  placeholder="Sin estado"
+                  [options]="stateOptions()"
+                  [formControl]="stateControl"
+                  (change)="changeState(stateControl.value)"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Prioridad</dt>
+              <dd>
+                @if (issue.priority && issue.priority !== 'none') {
+                  <app-priority-badge [priority]="issue.priority" />
+                } @else {
+                  <span class="muted">Sin prioridad</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Etiquetas</dt>
+              <dd class="tags">
+                @for (label of labels(); track label.id) {
+                  <app-tag [color]="label.color">{{ label.name }}</app-tag>
+                } @empty {
+                  <span class="muted">Ninguna</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Inicio</dt>
+              <dd>{{ formatDay(issue.startDate) }}</dd>
+            </div>
+            <div>
+              <dt>Vencimiento</dt>
+              <dd>{{ formatDay(issue.dueDate) }}</dd>
+            </div>
+            <div>
+              <dt>Horas estimadas</dt>
+              <dd>{{ formatHours(issue.estimatedHours) }}</dd>
+            </div>
+            <div>
+              <dt>Origen</dt>
+              <dd>
+                @if (issue.isLocal) {
+                  <app-badge tone="success">Local</app-badge>
+                } @else {
+                  <app-badge>Plane</app-badge>
+                }
+              </dd>
+            </div>
+          </dl>
+        </app-card>
+      </aside>
+    </div>
+
+    <app-issue-form-dialog [(open)]="editOpen" [issue]="issue" />
+  } @else if (loadError(); as message) {
+    <app-alert tone="danger" heading="No se pudo cargar la tarea">
+      {{ message }}
+      <a alert-action app-button variant="secondary" size="sm" routerLink="/tasks/issues">
+        Volver a las tareas
+      </a>
+    </app-alert>
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="48px" />
+      <app-skeleton height="200px" />
+    </div>
+  }
+</div>

@@ -1,3 +1,5 @@
+import { DomainError } from '@core/domain/domain.error';
+import { insertAt, positionAt } from '@kanban/domain/column-order';
 import { BoardIssue } from '@kanban/domain/entities/board-issue.entity';
 import {
   BOARD_ISSUE_REPOSITORY_PORT,
@@ -28,14 +30,9 @@ export interface RemoveIssueFromBoardData {
   issueId: string;
 }
 
-export interface MoveIssueInBoardData {
-  boardId: string;
-  issueId: string;
-  newPosition: number;
-}
-
+export
 @Injectable()
-export class BoardIssueService {
+class BoardIssueService {
   constructor(
     @Inject(BOARD_ISSUE_REPOSITORY_PORT)
     private readonly boardIssueRepository: BoardIssueRepositoryPort,
@@ -64,7 +61,7 @@ export class BoardIssueService {
 
     if (issueInBoard) {
       throw new ConflictException(
-        `Issue with id ${data.issueId} is already in board with id ${data.boardId}`,
+        `Issue with id ${data.issueId} is already in board with id ${issueInBoard.boardId}`,
       );
     }
 
@@ -117,11 +114,17 @@ export class BoardIssueService {
     await this.boardIssueRepository.delete(issueInBoard.id);
   }
 
+  // Mueve la tarjeta a una columna (estado) y a un lugar de ella, y renumera
+  // la columna de destino para que el orden siempre quede bien definido.
   async moveIssue(
     boardId: string,
     issueId: string,
-    { stateId, position }: { stateId: string | null; position: number },
+    { stateId, index }: { stateId?: string | null; index: number },
   ): Promise<void> {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new DomainError('index must be an integer of 0 or more');
+    }
+
     const boardIssue = await this.boardIssueRepository.findByIssueId(issueId);
 
     if (!boardIssue || boardIssue.boardId !== boardId) {
@@ -130,23 +133,50 @@ export class BoardIssueService {
       );
     }
 
-    const [issueRef] = await this.tasksGateway.findIssueRefsByIds([issueId]);
-    if (!issueRef) {
+    const boardIssues = await this.boardIssueRepository.findByBoardId(boardId);
+    const refs = await this.tasksGateway.findIssueRefsByIds(
+      boardIssues.map((item) => item.issueId),
+    );
+    const currentState = refs.find((ref) => ref.id === issueId);
+    if (!currentState) {
       throw new NotFoundException(`Issue with id ${issueId} not found`);
     }
 
-    if (stateId !== issueRef.stateId) {
-      if (stateId !== null) {
-        const stateExists = await this.tasksGateway.stateExists(stateId);
+    const targetState = stateId === undefined ? currentState.stateId : stateId;
+    if (targetState !== currentState.stateId) {
+      if (targetState !== null) {
+        const stateExists = await this.tasksGateway.stateExists(targetState);
         if (!stateExists) {
-          throw new NotFoundException(`State with id ${stateId} not found`);
+          throw new NotFoundException(`State with id ${targetState} not found`);
         }
       }
-      await this.tasksGateway.setIssueState(issueId, stateId);
+      await this.tasksGateway.setIssueState(issueId, targetState);
     }
 
-    boardIssue.reposition(position);
-    await this.boardIssueRepository.save(boardIssue);
+    const stateByIssueId = new Map(refs.map((ref) => [ref.id, ref.stateId]));
+    const column = boardIssues.filter(
+      (item) =>
+        item.id !== boardIssue.id &&
+        (stateByIssueId.get(item.issueId) ?? null) === targetState,
+    );
+
+    const changed: BoardIssue[] = [];
+    for (const [position, item] of insertAt(
+      column,
+      boardIssue,
+      index,
+    ).entries()) {
+      const newPosition = positionAt(position);
+      if (item.position !== newPosition) {
+        item.reposition(newPosition);
+        changed.push(item);
+      }
+    }
+    await this.boardIssueRepository.saveMany(changed);
+  }
+
+  async listAll(): Promise<BoardIssue[]> {
+    return this.boardIssueRepository.findAll();
   }
 
   private async nextPositionInColumn(

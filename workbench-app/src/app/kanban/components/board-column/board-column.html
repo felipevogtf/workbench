@@ -1,0 +1,28 @@
+<section class="column" [attr.aria-label]="column().name + ', ' + cards().length + ' tareas'">
+  <header>
+    <span class="dot" [style.background]="column().color ?? 'var(--text-color)'"></span>
+    <h4>{{ column().name }}</h4>
+    <span class="count">{{ cards().length }}</span>
+  </header>
+
+  <div
+    class="list"
+    cdkDropList
+    [cdkDropListData]="column().key"
+    (cdkDropListDropped)="dropped.emit($event)"
+  >
+    @for (issue of cards(); track issue.id) {
+      <app-board-card
+        cdkDrag
+        [cdkDragData]="issue.id"
+        [cdkDragStartDelay]="dragDelay"
+        [issue]="issue"
+        [targets]="targets()"
+        (moveTo)="moved.emit({ issueId: issue.id, targetKey: $event })"
+        (remove)="removed.emit(issue.id)"
+      />
+    } @empty {
+      <p class="empty">Sin tareas</p>
+    }
+  </div>
+</section>

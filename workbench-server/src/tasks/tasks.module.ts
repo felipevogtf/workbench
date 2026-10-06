@@ -26,6 +26,9 @@ import { StatesController } from './infrastructure/http/states.controller';
 import { LabelsController } from './infrastructure/http/labels.controller';
 import { LabelsService } from './application/labels.service';
 import { TICKET_SOURCE_PORT } from './domain/ports/ticket-source.port';
+import { TasksSyncService } from './application/tasks-sync.service';
+import { SyncController } from './infrastructure/http/sync.controller';
+import { TasksSyncScheduler } from './infrastructure/scheduling/tasks-sync.scheduler';
 import { TicketLookupService } from './application/ticket-lookup.service';
 
 @Module({
@@ -53,6 +56,8 @@ import { TicketLookupService } from './application/ticket-lookup.service';
     StatesService,
     LabelsService,
     TicketLookupService,
+    TasksSyncService,
+    TasksSyncScheduler,
   ],
   exports: [
     ISSUE_REPOSITORY_PORT,
@@ -66,6 +71,7 @@ import { TicketLookupService } from './application/ticket-lookup.service';
     IssuesController,
     StatesController,
     LabelsController,
+    SyncController,
   ],
 })
 export class TasksModule {}

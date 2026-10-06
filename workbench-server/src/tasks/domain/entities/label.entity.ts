@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { LabelProps } from './label.props';
 
 export class Label {
@@ -19,7 +20,7 @@ export class Label {
 
   private validateName(): void {
     if (!this.props.name.trim()) {
-      throw new Error('Label name cannot be empty');
+      throw new DomainError('Label name cannot be empty');
     }
   }
 

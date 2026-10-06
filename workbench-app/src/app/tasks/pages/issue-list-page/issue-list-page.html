@@ -1,0 +1,98 @@
+<div class="page">
+  <app-page-header
+    heading="Tareas"
+    subtitle="Las tareas locales y las que se traen de Plane (el sync corre cada hora)."
+  >
+    <button
+      actions
+      app-button
+      variant="secondary"
+      type="button"
+      [loading]="store.syncing()"
+      (click)="sync()"
+    >
+      <app-icon name="refresh" size="1em" /> Sincronizar con Plane
+    </button>
+    <button actions app-button type="button" (click)="openCreate()">
+      <app-icon name="plus" size="1em" /> Nueva tarea
+    </button>
+  </app-page-header>
+
+  <form class="filters" [formGroup]="filterForm" (submit)="$event.preventDefault()">
+    <app-form-field class="filters__search" label="Buscar" for="filter-search">
+      <app-text-input
+        inputId="filter-search"
+        type="search"
+        placeholder="Nombre, proyecto o número"
+        formControlName="search"
+      />
+    </app-form-field>
+    <app-form-field label="Proyecto" for="filter-project">
+      <app-select
+        inputId="filter-project"
+        [options]="projectOptions()"
+        formControlName="projectId"
+      />
+    </app-form-field>
+    <app-form-field label="Estado" for="filter-state">
+      <app-select inputId="filter-state" [options]="stateOptions()" formControlName="stateId" />
+    </app-form-field>
+    <app-form-field label="Etiqueta" for="filter-label">
+      <app-select inputId="filter-label" [options]="labelOptions()" formControlName="labelId" />
+    </app-form-field>
+    <app-form-field label="Origen" for="filter-origin">
+      <app-select inputId="filter-origin" [options]="originOptions" formControlName="origin" />
+    </app-form-field>
+  </form>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las tareas">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3, 4]; track n) {
+        <app-skeleton height="72px" />
+      }
+    </div>
+  } @else if (store.filtered().length === 0) {
+    @if (store.hasFilters()) {
+      <app-empty-state icon="search" heading="Ninguna tarea coincide con los filtros">
+        Prueba con otra búsqueda o quita los filtros.
+        <button empty-action app-button variant="secondary" type="button" (click)="clearFilters()">
+          Quitar filtros
+        </button>
+      </app-empty-state>
+    } @else {
+      <app-empty-state icon="list-checks" heading="Todavía no hay tareas">
+        Crea una tarea o sincroniza para traer las que tienes asignadas en Plane.
+        <button empty-action app-button type="button" (click)="openCreate()">Nueva tarea</button>
+      </app-empty-state>
+    }
+  } @else {
+    <p class="count" aria-live="polite">
+      {{ store.filtered().length }}
+      {{ store.filtered().length === 1 ? 'tarea' : 'tareas' }}
+    </p>
+    <app-issue-table [items]="visible()" (edit)="openEdit($event)" (remove)="remove($event)" />
+    @if (hiddenCount() > 0) {
+      <div class="more">
+        <button app-button variant="secondary" type="button" (click)="showMore()">
+          Mostrar más ({{ hiddenCount() }})
+        </button>
+      </div>
+    }
+  }
+
+  <app-issue-form-dialog [(open)]="formOpen" [issue]="editing()" />
+</div>

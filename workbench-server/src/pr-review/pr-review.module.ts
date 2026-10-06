@@ -1,7 +1,6 @@
 import { Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { TasksModule } from '@tasks/tasks.module';
@@ -56,7 +55,6 @@ function enabledProviders(
 @Module({
   imports: [
     HttpModule,
-    ScheduleModule.forRoot(),
     AiAgentsModule,
     TasksModule,
     TypeOrmModule.forFeature([PullRequestOrmEntity, ReviewOrmEntity]),

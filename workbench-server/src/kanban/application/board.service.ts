@@ -3,6 +3,10 @@ import {
   BOARD_REPOSITORY_PORT,
   type BoardRepositoryPort,
 } from '@kanban/domain/ports/board-repository.port';
+import {
+  BOARD_ISSUE_REPOSITORY_PORT,
+  type BoardIssueRepositoryPort,
+} from '@kanban/domain/ports/board-issue-repository.port';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
 interface CreateBoardData {
@@ -15,6 +19,8 @@ export class BoardService {
   constructor(
     @Inject(BOARD_REPOSITORY_PORT)
     private readonly boardRepository: BoardRepositoryPort,
+    @Inject(BOARD_ISSUE_REPOSITORY_PORT)
+    private readonly boardIssueRepository: BoardIssueRepositoryPort,
   ) {}
 
   async createBoard(data: CreateBoardData): Promise<Board> {
@@ -56,6 +62,9 @@ export class BoardService {
       throw new NotFoundException(`Board with id ${id} not found`);
     }
 
+    // Sin esto las tarjetas quedarían huérfanas y, como una tarea solo puede
+    // estar en un tablero, no se podrían asignar a otro.
+    await this.boardIssueRepository.deleteByBoardId(id);
     await this.boardRepository.delete(id);
   }
 

@@ -39,6 +39,14 @@ export class BoardController {
     return boards.map((board) => this.toResponseDto(board));
   }
 
+  // Todas las asignaciones de tareas a tableros (una tarea solo puede estar en
+  // uno). Va antes de ":id" para que no se confunda con un id.
+  @Get('assignments')
+  async findAssignments(): Promise<BoardIssueResponseDto[]> {
+    const boardIssues = await this.boardIssueService.listAll();
+    return boardIssues.map((boardIssue) => this.toBoardIssueDto(boardIssue));
+  }
+
   @Get(':id')
   async findById(@Param('id') id: string): Promise<BoardResponseDto> {
     const board = await this.boardService.getBoard(id);
@@ -96,7 +104,7 @@ export class BoardController {
   ): Promise<void> {
     await this.boardIssueService.moveIssue(id, issueId, {
       stateId: moveIssueDto.stateId,
-      position: moveIssueDto.position,
+      index: moveIssueDto.index,
     });
   }
 

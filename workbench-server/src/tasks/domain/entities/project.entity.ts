@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { ProjectProps } from './project.props';
 
 export class Project {
@@ -34,7 +35,7 @@ export class Project {
 
   private validateName() {
     if (!this.props.name || this.props.name.trim() === '') {
-      throw new Error('Project name cannot be empty');
+      throw new DomainError('Project name cannot be empty');
     }
   }
 
@@ -43,7 +44,7 @@ export class Project {
     const hasSource = this.props.source !== null;
 
     if (hasExternalId !== hasSource) {
-      throw new Error(
+      throw new DomainError(
         'A project must have both externalId and source, or neither',
       );
     }
@@ -73,7 +74,26 @@ export class Project {
     return this.props.createdAt;
   }
 
+  get isLocal() {
+    return this.props.source === null;
+  }
+
+  // Edición manual: los proyectos de Plane solo cambian con el sync.
   rename(name: string) {
+    this.assertLocal('edited');
+    this.applyName(name);
+  }
+
+  assertDeletable() {
+    this.assertLocal('deleted');
+  }
+
+  syncFromRemote(name: string) {
+    this.applyName(name);
+    this.props.syncedAt = new Date();
+  }
+
+  private applyName(name: string) {
     const previous = this.props.name;
     this.props.name = name;
     try {
@@ -84,7 +104,11 @@ export class Project {
     }
   }
 
-  markAsSynced() {
-    this.props.syncedAt = new Date();
+  private assertLocal(action: string) {
+    if (!this.isLocal) {
+      throw new DomainError(
+        `A Plane project cannot be ${action} here: it only changes with the sync`,
+      );
+    }
   }
 }

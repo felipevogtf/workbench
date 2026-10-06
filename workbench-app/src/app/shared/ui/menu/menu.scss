@@ -1,0 +1,87 @@
+:host {
+  display: inline-flex;
+}
+
+.menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 5px;
+  border: none;
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background: var(--tone-neutral-bg);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  @media (pointer: coarse) {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+}
+
+// El panel se renderiza en el overlay del CDK (fuera del host), pero sus elementos son de esta
+// plantilla, así que estos estilos encapsulados sí les llegan.
+.menu__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: calc(100vw - 2 * var(--space-4));
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  color: var(--primary);
+  box-shadow: var(--shadow-overlay);
+
+  hr {
+    width: 100%;
+    margin: var(--space-1) 0;
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--tone-neutral-bg);
+  }
+
+  &[data-tone='danger'] {
+    color: var(--tone-danger-fg);
+  }
+
+  &[aria-disabled='true'] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  @media (pointer: coarse) {
+    min-height: var(--touch-target);
+  }
+}

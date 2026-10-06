@@ -5,7 +5,8 @@ export interface IconDef {
   paths: readonly string[];
 }
 
-// Los de relleno (arrow-outward, github, logo) y menu/code salen de minimalist-portfolio/src/icons.
+// Los de relleno (arrow-outward, github) y menu/code salen de minimalist-portfolio/src/icons.
+// El logo usa el escudo del portfolio con una W (Workbench) en lugar de la F.
 // Los de trazo restantes siguen el mismo estilo (24x24, trazo 2, extremos redondeados).
 export const ICONS = {
   'arrow-outward': {
@@ -26,7 +27,7 @@ export const ICONS = {
     viewBox: '0 0 80 100',
     kind: 'fill',
     paths: [
-      'M40 18.575 80 0v77.095L40.289 100 0 77.095V0l40 18.575ZM27.56 32.044v41.201l10.252.139v-16.2l15.885.139-.144-9.637-15.741.28v-6.705h16.463v-9.217H27.56Z',
+      'M40 18.575 80 0v77.095L40.289 100 0 77.095V0l40 18.575ZM12.2 32 27.3 72.8 40 54 52.7 72.8 67.8 32H58.2L50.3 53.2 40 38 29.7 53.2 21.8 32Z',
     ],
   },
   menu: { viewBox: '0 0 24 24', kind: 'stroke', paths: ['M4 12h16M4 6h16M4 18h16'] },
@@ -128,6 +129,49 @@ export const ICONS = {
       'M22 12h-6l-2 3h-4l-2-3H2',
       'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
     ],
+  },
+  more: { viewBox: '0 0 24 24', kind: 'stroke', paths: ['M12 5h.01', 'M12 12h.01', 'M12 19h.01'] },
+  'arrow-up': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m5 12 7-7 7 7', 'M12 19V5'] },
+  'arrow-down': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['M12 5v14', 'm19 12-7 7-7-7'] },
+  search: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: ['m21 21-4.34-4.34', 'M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z'],
+  },
+  'list-checks': {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: ['m3 17 2 2 4-4', 'm3 7 2 2 4-4', 'M13 6h8', 'M13 12h8', 'M13 18h8'],
+  },
+  kanban: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: [
+      'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
+      'M8 7v7',
+      'M12 7v4',
+      'M16 7v9',
+    ],
+  },
+  folder: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: [
+      'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z',
+    ],
+  },
+  tag: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: [
+      'M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z',
+      'M7.5 7.5h.01',
+    ],
+  },
+  'circle-dot': {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'],
   },
 } as const satisfies Record<string, IconDef>;
 

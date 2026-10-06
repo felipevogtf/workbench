@@ -1,0 +1,109 @@
+<!-- Desktop: tabla -->
+<div class="table-wrap">
+  <table>
+    <caption class="visually-hidden">
+      Tareas
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Tarea</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Prioridad</th>
+        <th scope="col">Etiquetas</th>
+        <th scope="col">Vence</th>
+        <th scope="col">Estimado</th>
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.issue.id) {
+        <tr>
+          <td class="cell-main">
+            <a class="title break-anywhere" [routerLink]="['/tasks/issues', row.issue.id]">{{
+              row.issue.name
+            }}</a>
+            <span class="meta">
+              <span class="break-anywhere">{{ row.project }} #{{ issueNumber(row.issue) }}</span>
+              @if (!row.issue.isLocal) {
+                <app-badge title="Viene de Plane">Plane</app-badge>
+              }
+            </span>
+          </td>
+          <td class="state">
+            @if (row.state; as state) {
+              <app-tag [color]="state.color">{{ state.name }}</app-tag>
+            } @else {
+              <span class="muted">Sin estado</span>
+            }
+          </td>
+          <td><app-priority-badge [priority]="row.issue.priority" /></td>
+          <td>
+            <span class="tags">
+              @for (label of row.labels; track label.id) {
+                <app-tag [color]="label.color">{{ label.name }}</app-tag>
+              }
+            </span>
+          </td>
+          <td class="muted nowrap">{{ formatDay(row.issue.dueDate) }}</td>
+          <td class="muted nowrap">{{ formatHours(row.issue.estimatedHours) }}</td>
+          <td class="actions">
+            <app-menu
+              [label]="'Acciones de ' + row.issue.name"
+              [items]="row.menu"
+              (selected)="onMenu(row.issue, $event)"
+            />
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<!-- Móvil: cards -->
+<ul class="cards">
+  @for (row of rows(); track row.issue.id) {
+    <li>
+      <app-card interactive>
+        <ng-container card-header>
+          <span class="break-anywhere">{{ row.project }} #{{ issueNumber(row.issue) }}</span>
+          @if (!row.issue.isLocal) {
+            <app-badge title="Viene de Plane">Plane</app-badge>
+          }
+        </ng-container>
+
+        <a class="title break-anywhere" [routerLink]="['/tasks/issues', row.issue.id]">{{
+          row.issue.name
+        }}</a>
+        <div class="tags">
+          @if (row.state; as state) {
+            <app-tag [color]="state.color">{{ state.name }}</app-tag>
+          } @else {
+            <span class="muted">Sin estado</span>
+          }
+          <app-priority-badge [priority]="row.issue.priority" />
+          @for (label of row.labels; track label.id) {
+            <app-tag [color]="label.color">{{ label.name }}</app-tag>
+          }
+        </div>
+        @if (row.issue.dueDate || row.issue.estimatedHours !== null) {
+          <p class="card__line">
+            @if (row.issue.dueDate) {
+              Vence {{ formatDay(row.issue.dueDate) }}
+            }
+            @if (row.issue.estimatedHours !== null) {
+              · Estimado {{ formatHours(row.issue.estimatedHours) }}
+            }
+          </p>
+        }
+
+        <ng-container card-footer>
+          <app-menu
+            [label]="'Acciones de ' + row.issue.name"
+            [items]="row.menu"
+            (selected)="onMenu(row.issue, $event)"
+          />
+        </ng-container>
+      </app-card>
+    </li>
+  }
+</ul>

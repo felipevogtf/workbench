@@ -11,6 +11,7 @@ import { StatesService } from '@tasks/application/states.service';
 import { CreateStateDto } from '@tasks/dto/create-state.dto';
 import { State } from '@tasks/domain/entities/state.entity';
 import { UpdateStateDto } from '@tasks/dto/update-state.dto';
+import { ReorderStatesDto } from '@tasks/dto/reorder-states.dto';
 import { StateResponseDto } from '@tasks/dto/state-response.dto';
 
 @Controller('states')
@@ -29,6 +30,12 @@ export class StatesController {
   ): Promise<StateResponseDto> {
     const state = await this.statesService.create(createStateDto);
     return this.toResponseDto(state);
+  }
+
+  @Post('reorder')
+  async reorder(@Body() dto: ReorderStatesDto): Promise<StateResponseDto[]> {
+    const states = await this.statesService.reorder(dto.ids);
+    return states.map((state) => this.toResponseDto(state));
   }
 
   @Patch(':id')

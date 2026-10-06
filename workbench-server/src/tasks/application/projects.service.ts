@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   PROJECT_REPOSITORY_PORT,
   type ProjectRepositoryPort,
@@ -24,6 +24,21 @@ export class ProjectsService {
     return project;
   }
 
+  async updateProject(id: string, data: { name?: string }): Promise<Project> {
+    const project = await this.getProject(id);
+    if (data.name !== undefined) {
+      project.rename(data.name);
+    }
+    await this.projectRepository.save(project);
+    return project;
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    const project = await this.getProject(id);
+    project.assertDeletable();
+    await this.projectRepository.delete(id);
+  }
+
   async syncProjects(): Promise<{ created: number; updated: number }> {
     const remoteProjects = await this.projectSource.getProjects();
 
@@ -36,8 +51,7 @@ export class ProjectsService {
       );
 
       if (existing) {
-        existing.rename(raw.name);
-        existing.markAsSynced();
+        existing.syncFromRemote(raw.name);
         await this.projectRepository.save(existing);
         updated++;
       } else {
@@ -60,5 +74,13 @@ export class ProjectsService {
 
   async getAllProjects(): Promise<Project[]> {
     return this.projectRepository.findAll();
+  }
+
+  private async getProject(id: string): Promise<Project> {
+    const project = await this.projectRepository.findById(id);
+    if (!project) {
+      throw new NotFoundException(`Project with id ${id} not found`);
+    }
+    return project;
   }
 }

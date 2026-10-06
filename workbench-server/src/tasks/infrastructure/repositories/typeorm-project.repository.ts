@@ -39,6 +39,10 @@ export class TypeOrmProjectRepository implements ProjectRepositoryPort {
     });
   }
 
+  async delete(id: string): Promise<void> {
+    await this.ormRepo.delete(id);
+  }
+
   private toDomain(orm: ProjectOrmEntity): Project {
     return Project.reconstruct({
       id: orm.id,

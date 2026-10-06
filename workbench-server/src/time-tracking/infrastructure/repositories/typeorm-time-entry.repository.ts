@@ -58,7 +58,7 @@ export class TypeOrmTimeEntryRepository implements TimeEntryRepositoryPort {
     return TimeEntry.reconstruct({
       id: orm.id,
       issueId: orm.issue_id,
-      hours: orm.hours,
+      hours: Number(orm.hours),
       date: orm.date,
       createdAt: orm.created_at,
     });

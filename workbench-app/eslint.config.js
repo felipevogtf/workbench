@@ -3,7 +3,8 @@ const eslint = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
-const stateMessage = 'Respeta los límites entre módulos (ver docs/plans/pr-review-ui.md, sección 6).';
+const stateMessage =
+  'Respeta los límites entre módulos (ver docs/plans/pr-review-ui.md, sección 6, y tasks-kanban-ui.md, sección 5).';
 
 module.exports = tseslint.config(
   {
@@ -45,7 +46,10 @@ module.exports = tseslint.config(
         'error',
         {
           patterns: [
-            { group: ['@core/*', '@pr-review/*', '@ai-agents/*'], message: stateMessage },
+            {
+              group: ['@core/*', '@pr-review/*', '@ai-agents/*', '@tasks/*', '@kanban/*'],
+              message: stateMessage,
+            },
           ],
         },
       ],
@@ -61,6 +65,7 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
+            { group: ['@tasks/*', '@kanban/*'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },
@@ -77,6 +82,40 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@pr-review/*', '!@pr-review/index'], message: stateMessage },
+            { group: ['@tasks/*', '@kanban/*'], message: stateMessage },
+            { group: ['@core/layout/*'], message: stateMessage },
+          ],
+        },
+      ],
+    },
+  },
+  // tasks no conoce a ningún otro módulo de negocio (el kanban depende de él, no al revés).
+  {
+    files: ['src/app/tasks/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@kanban/*', '@pr-review/*', '@ai-agents/*'], message: stateMessage },
+            { group: ['@core/layout/*'], message: stateMessage },
+          ],
+        },
+      ],
+    },
+  },
+  // kanban solo toca a tasks por su API pública (@tasks/index).
+  {
+    files: ['src/app/kanban/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@tasks/*', '!@tasks/index'], message: stateMessage },
+            { group: ['@pr-review/*', '@ai-agents/*'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },

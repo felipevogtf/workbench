@@ -1,0 +1,37 @@
+<article class="card">
+  <div class="card__top">
+    <a class="card__title break-anywhere" [routerLink]="['/tasks/issues', issue().id]">{{
+      issue().name
+    }}</a>
+    <app-menu
+      [label]="'Acciones de ' + issue().name"
+      [items]="menu()"
+      (selected)="onMenu($event)"
+    />
+  </div>
+  <p class="card__meta break-anywhere">{{ project() }} #{{ number() }}</p>
+
+  @if (issue().priority && issue().priority !== 'none') {
+    <app-priority-badge [priority]="issue().priority" />
+  }
+  @if (labels().length > 0) {
+    <div class="card__tags">
+      @for (label of shownLabels(); track label.id) {
+        <app-tag [color]="label.color">{{ label.name }}</app-tag>
+      }
+      @if (hiddenLabels() > 0) {
+        <span class="card__more">+{{ hiddenLabels() }}</span>
+      }
+    </div>
+  }
+  @if (issue().dueDate || issue().estimatedHours !== null) {
+    <p class="card__foot">
+      @if (issue().dueDate) {
+        <span>Vence {{ formatDay(issue().dueDate) }}</span>
+      }
+      @if (issue().estimatedHours !== null) {
+        <span>{{ formatHours(issue().estimatedHours) }}</span>
+      }
+    </p>
+  }
+</article>

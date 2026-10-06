@@ -1,0 +1,103 @@
+<app-dialog [heading]="isEdit() ? 'Editar tarea' : 'Nueva tarea'" [(open)]="open">
+  <form id="issue-form" class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (error(); as message) {
+      <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
+    }
+    @if (remoteLocked()) {
+      <app-alert tone="info" heading="Tarea de Plane">
+        El nombre, la descripción, la prioridad, las fechas y el proyecto se cambian en Plane (el
+        próximo sync los sobrescribiría). Aquí puedes cambiar el estado, las etiquetas y las horas
+        estimadas.
+      </app-alert>
+    }
+
+    <app-form-field
+      label="Nombre"
+      for="issue-name"
+      required
+      [error]="invalid('name') ? 'Escribe un nombre' : null"
+    >
+      <app-text-input
+        inputId="issue-name"
+        formControlName="name"
+        [invalid]="invalid('name')"
+        [describedBy]="'issue-name-msg'"
+      />
+    </app-form-field>
+
+    <div class="row">
+      <app-form-field
+        label="Proyecto"
+        for="issue-project"
+        required
+        [error]="invalid('projectId') ? 'Elige un proyecto' : null"
+      >
+        <app-select
+          inputId="issue-project"
+          formControlName="projectId"
+          placeholder="Elige un proyecto"
+          [options]="projectOptions()"
+          [invalid]="invalid('projectId')"
+          [describedBy]="'issue-project-msg'"
+        />
+      </app-form-field>
+      <app-form-field label="Estado" for="issue-state">
+        <app-select
+          inputId="issue-state"
+          formControlName="stateId"
+          placeholder="Sin estado"
+          [options]="stateOptions()"
+        />
+      </app-form-field>
+    </div>
+
+    <app-form-field label="Descripción" for="issue-description">
+      <app-textarea inputId="issue-description" formControlName="description" [rows]="5" />
+    </app-form-field>
+
+    <div class="row">
+      <app-form-field label="Prioridad" for="issue-priority">
+        <app-select
+          inputId="issue-priority"
+          formControlName="priority"
+          placeholder="Sin prioridad"
+          [options]="priorityOptions"
+        />
+      </app-form-field>
+      <app-form-field label="Horas estimadas" for="issue-hours">
+        <app-text-input
+          inputId="issue-hours"
+          formControlName="estimatedHours"
+          type="number"
+          min="0"
+          step="0.25"
+        />
+      </app-form-field>
+    </div>
+
+    <div class="row">
+      <app-form-field label="Inicio" for="issue-start">
+        <app-text-input inputId="issue-start" formControlName="startDate" type="date" />
+      </app-form-field>
+      <app-form-field label="Vencimiento" for="issue-due">
+        <app-text-input inputId="issue-due" formControlName="dueDate" type="date" />
+      </app-form-field>
+    </div>
+
+    <app-form-field label="Etiquetas" for="issue-labels">
+      <app-chip-picker
+        label="Etiquetas"
+        emptyText="Todavía no hay etiquetas. Créalas en Tareas → Etiquetas."
+        [options]="labelOptions()"
+        [(selected)]="labelIds"
+      />
+    </app-form-field>
+  </form>
+
+  <ng-container dialog-footer>
+    <button app-button variant="secondary" type="button" (click)="open.set(false)">Cancelar</button>
+    <button app-button type="submit" form="issue-form" [loading]="saving()">
+      {{ isEdit() ? 'Guardar cambios' : 'Crear tarea' }}
+    </button>
+  </ng-container>
+</app-dialog>

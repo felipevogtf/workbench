@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 // tasks/domain/entities/state.entity.ts
 import { StateProps } from './state.props';
 
@@ -25,7 +26,7 @@ export class State {
 
   private validateName(): void {
     if (!this.props.name.trim()) {
-      throw new Error('State name cannot be empty');
+      throw new DomainError('State name cannot be empty');
     }
   }
 
@@ -54,7 +55,7 @@ export class State {
   }
 
   moveTo(position: number): void {
-    if (position < 0) throw new Error('Position cannot be negative');
+    if (position < 0) throw new DomainError('Position cannot be negative');
     this.props.position = position;
   }
 

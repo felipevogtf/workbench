@@ -1,0 +1,86 @@
+<div class="page">
+  <app-page-header
+    heading="Proyectos"
+    subtitle="Los de Plane se actualizan solo con el sync; los locales los administras aquí."
+  >
+    <button
+      actions
+      app-button
+      variant="secondary"
+      type="button"
+      [loading]="issues.syncing()"
+      (click)="sync()"
+    >
+      <app-icon name="refresh" size="1em" /> Sincronizar con Plane
+    </button>
+    <button actions app-button type="button" (click)="openCreate()">
+      <app-icon name="plus" size="1em" /> Nuevo proyecto
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los proyectos">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="60px" />
+      }
+    </div>
+  } @else if (store.projects().length === 0) {
+    <app-empty-state icon="folder" heading="Todavía no hay proyectos">
+      Sincroniza para traer tus proyectos de Plane o crea uno local.
+      <button empty-action app-button type="button" (click)="openCreate()">Nuevo proyecto</button>
+    </app-empty-state>
+  } @else {
+    <ul class="list">
+      @for (project of store.projects(); track project.id) {
+        <li>
+          <app-icon name="folder" />
+          <div class="list__main">
+            <span class="list__name">{{ project.name }}</span>
+            @if (project.source) {
+              <app-badge title="Se actualiza solo con el sync">Plane</app-badge>
+            } @else {
+              <app-badge tone="success">Local</app-badge>
+            }
+            <span class="list__meta">
+              {{ issueCount(project) }} {{ issueCount(project) === 1 ? 'tarea' : 'tareas' }}
+              @if (project.source) {
+                · sincronizado {{ project.syncedAt | timeAgo }}
+              }
+            </span>
+          </div>
+          @if (!project.source) {
+            <div class="list__actions">
+              <app-menu
+                [label]="'Acciones de ' + project.name"
+                [items]="localMenu"
+                (selected)="onMenu(project, $event)"
+              />
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <app-named-item-dialog
+    [(open)]="dialogOpen"
+    [heading]="editing() ? 'Renombrar proyecto' : 'Nuevo proyecto'"
+    [initial]="editing()"
+    [withColor]="false"
+    [save]="save"
+  />
+</div>
