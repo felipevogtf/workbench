@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { validateEnv } from './config/env.validation';
 import { buildDatabaseConfig } from './config/database.config';
+import { DomainErrorFilter } from './http/domain-error.filter';
 
 @Module({
   imports: [
@@ -12,5 +14,6 @@ import { buildDatabaseConfig } from './config/database.config';
       useFactory: buildDatabaseConfig,
     }),
   ],
+  providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
 })
 export class CoreModule {}

@@ -1,0 +1,43 @@
+# Producción: servidor + front (nginx). La base de datos NO está aquí: se usa el Postgres que ya
+# corre en el host (compose ~/git_repos/docker-compose.db.yml, red `git_repos_default`).
+#
+#   cp server.env.example server.env      # y completar las credenciales
+#   docker compose up -d --build
+name: workbench
+
+services:
+  server:
+    build:
+      context: ../../workbench-server
+      dockerfile: ../deploy/prod/server.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./server.env
+    volumes:
+      - reviews:/data/reviews
+    networks:
+      - default
+      - db
+    # Sin puertos publicados: solo el nginx de `app` lo alcanza (por /api).
+
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/prod/app.Dockerfile
+    restart: unless-stopped
+    ports:
+      - '4321:80'
+    volumes:
+      # Credenciales de acceso (usuario y contraseña). Ver README.md.
+      - ./secrets/htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - server
+
+networks:
+  # Red del Postgres existente.
+  db:
+    external: true
+    name: git_repos_default
+
+volumes:
+  reviews:

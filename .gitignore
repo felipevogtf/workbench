@@ -20,3 +20,7 @@ Thumbs.db
 
 # Node (in case dependencies end up at the root)
 node_modules/
+
+# Producción: secretos del despliegue
+deploy/prod/server.env
+deploy/prod/secrets/

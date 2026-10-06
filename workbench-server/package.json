@@ -30,6 +30,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^12.0.2",
     "@nestjs/typeorm": "^11.0.3",
     "dotenv": "^17.4.2",
     "pg": "^8.22.0",
@@ -74,7 +75,12 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "moduleNameMapper": {
-      "^@tasks/(.*)$": "<rootDir>/tasks/$1"
+      "^@tasks/(.*)$": "<rootDir>/tasks/$1",
+      "^@time-tracking/(.*)$": "<rootDir>/time-tracking/$1",
+      "^@kanban/(.*)$": "<rootDir>/kanban/$1",
+      "^@ai-agents/(.*)$": "<rootDir>/ai-agents/$1",
+      "^@pr-review/(.*)$": "<rootDir>/pr-review/$1",
+      "^@core/(.*)$": "<rootDir>/core/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
