@@ -15,16 +15,15 @@ cd deploy/prod
 cp server.env.example server.env && chmod 600 server.env
 #    completar: DATABASE_URL, PLANE_*, CLAUDE_CODE_OAUTH_TOKEN, BITBUCKET_*/GITHUB_TOKEN
 
-# 3. Usuario y contraseña de acceso al sitio (no se versiona)
-mkdir -p secrets
-printf 'usuario:%s\n' "$(openssl passwd -apr1 'LA-CONTRASEÑA')" > secrets/htpasswd
+# 3. Atar el puerto a la IP de Tailscale del host (no se versiona)
+echo "WORKBENCH_BIND=$(tailscale ip -4 | head -1)" > .env
 
 # 4. Levantar
 docker compose up -d --build
 ```
 
-El sitio queda en el puerto **4321** del host, protegido con usuario y contraseña. Las migraciones se
-aplican solas al arrancar el servidor.
+El sitio queda en el puerto **4321**, sin login, escuchando solo en la IP de Tailscale del host
+(`WORKBENCH_BIND`). Las migraciones se aplican solas al arrancar el servidor.
 
 ## Actualizar
 
@@ -43,9 +42,9 @@ docker exec git_repos-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d postgres \
 
 ## Notas de seguridad
 
-- El sitio va por **HTTP**: el usuario y la contraseña viajan sin cifrar. Para uso fuera de una red
-  de confianza, ponle TLS delante (un proxy con certificado) o accede por túnel SSH
-  (`ssh -L 4321:localhost:4321 personal_server`).
+- **No hay login**: la seguridad es la red. El puerto solo escucha en la IP de Tailscale; no lo abras a
+  internet ni quites `WORKBENCH_BIND` sin poner antes autenticación y TLS delante, porque cualquiera que
+  llegue podría disparar revisiones con tu cuenta de Claude y leer el código revisado.
 - El servidor no publica puertos: solo el nginx lo alcanza.
 - Las revisiones (.md) viven en el volumen `workbench_reviews`.
-- `server.env` y `secrets/` están en `.gitignore`.
+- `server.env` y `.env` están en `.gitignore`.
