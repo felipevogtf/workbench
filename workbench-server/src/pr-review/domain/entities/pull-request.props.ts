@@ -23,6 +23,9 @@ export interface PullRequestProps {
   sourceBranch: string;
   destBranch: string;
   headCommit: string;
+  description: string | null;
+  /** Códigos de ticket de Plane detectados en la rama y la descripción. */
+  ticketKeys: string[];
   state: PullRequestState;
   status: PullRequestStatus;
   queuedAt: Date;

@@ -25,6 +25,7 @@
               <app-provider-icon [provider]="pr.provider" />
               <span class="break-anywhere">{{ pr.repo }} #{{ pr.externalId }}</span>
             </span>
+            <app-ticket-tags class="tags" [tickets]="pr.tickets" />
           </td>
           <td>{{ pr.author }}</td>
           <td class="branches break-anywhere">
@@ -72,6 +73,7 @@
         </ng-container>
 
         <a class="title break-anywhere" [routerLink]="['/pull-requests', pr.id]">{{ pr.title }}</a>
+        <app-ticket-tags class="tags" [tickets]="pr.tickets" />
         <p class="card__line">{{ pr.author }}</p>
         <p class="card__line break-anywhere">
           <code>{{ pr.sourceBranch }}</code> → <code>{{ pr.destBranch }}</code>

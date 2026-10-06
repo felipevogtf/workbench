@@ -17,6 +17,7 @@ function pr(id: string, status: PullRequest['status']): PullRequest {
     sourceBranch: 'feature/x',
     destBranch: 'main',
     headCommit: 'abc12345',
+    tickets: [],
     state: 'open',
     status,
     isStale: false,

@@ -84,6 +84,7 @@ export class BitbucketAdapter
       sourceBranch: raw.source.branch.name,
       destBranch: raw.destination.branch.name,
       headCommit: raw.source.commit.hash,
+      description: raw.description?.trim() || null,
     };
   }
 }

@@ -121,6 +121,10 @@ export class PullRequestsController {
       sourceBranch: pr.sourceBranch,
       destBranch: pr.destBranch,
       headCommit: pr.headCommit,
+      tickets: pr.ticketKeys.map((key) => ({
+        key,
+        url: this.pullRequestsService.ticketUrl(key),
+      })),
       state: pr.state,
       status: pr.status,
       isStale: pr.isStale,
@@ -148,6 +152,7 @@ export class PullRequestsController {
       commentStatus: review.commentStatus,
       commentUrl: review.commentUrl,
       commentError: review.commentError,
+      tickets: review.tickets,
       createdAt: review.createdAt,
     };
   }

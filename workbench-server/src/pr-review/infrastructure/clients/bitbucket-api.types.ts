@@ -15,6 +15,7 @@ export interface BitbucketRepository {
 
 export interface BitbucketPullRequest {
   id: number;
+  description?: string | null;
   title: string;
   author: { display_name: string };
   source: { branch: { name: string }; commit: { hash: string } };

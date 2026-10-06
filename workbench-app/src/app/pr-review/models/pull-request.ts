@@ -8,6 +8,20 @@ export type PullRequestStatus = 'pending' | 'reviewing' | 'reviewed' | 'failed' 
 
 export type CommentStatus = 'pending' | 'posted' | 'failed';
 
+/** Ticket de Plane detectado en una PR, con su enlace. */
+export interface TicketLink {
+  key: string;
+  url: string;
+}
+
+/** Foto de un ticket tal como lo vio el agente al revisar. */
+export interface ReviewTicket extends TicketLink {
+  title: string | null;
+  state: string | null;
+  /** false si no existe, no es visible o Plane no respondió. */
+  found: boolean;
+}
+
 export interface PullRequest {
   id: string;
   provider: GitProvider;
@@ -19,6 +33,8 @@ export interface PullRequest {
   sourceBranch: string;
   destBranch: string;
   headCommit: string;
+  /** Tickets de Plane detectados en la rama y la descripción. */
+  tickets: TicketLink[];
   state: 'open' | 'closed';
   status: PullRequestStatus;
   /** Hay commits que la última revisión no vio. */
@@ -45,6 +61,8 @@ export interface Review {
   commentStatus: CommentStatus;
   commentUrl: string | null;
   commentError: string | null;
+  /** Tickets que el agente evaluó en esta revisión. */
+  tickets: ReviewTicket[];
   createdAt: string;
 }
 

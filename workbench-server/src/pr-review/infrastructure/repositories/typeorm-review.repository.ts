@@ -53,6 +53,7 @@ export class TypeOrmReviewRepository implements ReviewRepositoryPort {
       comment_status: review.commentStatus,
       comment_url: review.commentUrl,
       comment_error: review.commentError,
+      tickets: review.tickets,
       created_at: review.createdAt,
     });
     return this.toDomain(saved);
@@ -72,6 +73,7 @@ export class TypeOrmReviewRepository implements ReviewRepositoryPort {
       commentStatus: orm.comment_status as CommentStatus,
       commentUrl: orm.comment_url,
       commentError: orm.comment_error,
+      tickets: orm.tickets ?? [],
       createdAt: orm.created_at,
     });
   }

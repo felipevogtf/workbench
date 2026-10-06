@@ -4,15 +4,20 @@ import {
   PullRequestSourcePort,
   PullRequestSourceResult,
 } from '@pr-review/domain/ports/pull-request-source.port';
+import { TicketsGatewayPort } from '@pr-review/domain/ports/tickets-gateway.port';
 import { PullRequestsService } from './pull-requests.service';
 import { ReviewsService } from './reviews.service';
 import {
+  fakeTickets,
   InMemoryPullRequestRepository,
   InMemoryReviewRepository,
   remotePullRequest,
 } from './testing/fakes';
 
-function build(results: Array<PullRequestSourceResult | Error>) {
+function build(
+  results: Array<PullRequestSourceResult | Error>,
+  ticketsOverrides: Partial<TicketsGatewayPort> = {},
+) {
   const prs = new InMemoryPullRequestRepository();
   const reviews = new InMemoryReviewRepository();
   const queue = [...results];
@@ -28,13 +33,15 @@ function build(results: Array<PullRequestSourceResult | Error>) {
   };
   const kick = jest.fn();
   const reviewsService = { kick } as unknown as ReviewsService;
+  const tickets = fakeTickets(ticketsOverrides);
   const service = new PullRequestsService(
     prs,
     reviews,
     [source],
+    tickets,
     reviewsService,
   );
-  return { service, prs, kick };
+  return { service, prs, kick, tickets };
 }
 
 const listing = (
@@ -145,6 +152,7 @@ describe('PullRequestsService.sync with skipped pull requests', () => {
     const now = new Date();
     const skipped = PullRequest.reconstruct({
       ...remotePullRequest('1'),
+      ticketKeys: [],
       id: 'skipped-1',
       state: 'closed',
       status: 'skipped',
@@ -176,6 +184,75 @@ describe('PullRequestsService.findById', () => {
 
     await expect(service.findById('nope')).rejects.toBeInstanceOf(
       NotFoundException,
+    );
+  });
+});
+
+describe('PullRequestsService.sync with tickets', () => {
+  const listingOf = (overrides: Parameters<typeof remotePullRequest>[2]) => ({
+    pullRequests: [remotePullRequest('1', 'ws/app', overrides)],
+    unreachableRepos: [],
+  });
+
+  it('detects the tickets of the branch and the description of a new pull request', async () => {
+    const { service, prs } = build([
+      listingOf({
+        sourceBranch: 'feature/MEL-1/x',
+        description: 'Tickets: SER-2',
+      }),
+    ]);
+
+    await service.sync();
+
+    expect([...prs.items.values()][0].ticketKeys).toEqual(['MEL-1', 'SER-2']);
+  });
+
+  it('updates the tickets when the description changes', async () => {
+    const { service, prs } = build([
+      listingOf({ description: 'MEL-1' }),
+      listingOf({ description: 'MEL-1 y MEL-2' }),
+    ]);
+
+    await service.sync();
+    await service.sync();
+
+    expect([...prs.items.values()][0].ticketKeys).toEqual(['MEL-1', 'MEL-2']);
+  });
+
+  it('keeps the detected tickets when Plane does not answer', async () => {
+    const getProjectIdentifiers = jest
+      .fn()
+      .mockResolvedValueOnce(['MEL'])
+      .mockRejectedValueOnce(new Error('Plane down'));
+    const { service, prs } = build(
+      [
+        listingOf({ description: 'MEL-1' }),
+        listingOf({ description: 'MEL-1' }),
+      ],
+      { getProjectIdentifiers },
+    );
+
+    await service.sync();
+    await service.sync();
+
+    expect([...prs.items.values()][0].ticketKeys).toEqual(['MEL-1']);
+  });
+
+  it('stores the pull request without tickets when it has none', async () => {
+    const { service, prs } = build([
+      listingOf({ sourceBranch: 'fix/log-email' }),
+    ]);
+
+    await service.sync();
+
+    expect([...prs.items.values()][0].ticketKeys).toEqual([]);
+  });
+
+  it('builds the link to a ticket through the gateway', () => {
+    const { service } = build([]);
+
+    expect(service.ticketUrl('MEL-253')).toBe(
+      'https://plane.test/ws/browse/MEL-253/',
     );
   });
 });

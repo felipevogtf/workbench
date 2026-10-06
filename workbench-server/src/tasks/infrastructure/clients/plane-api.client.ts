@@ -6,6 +6,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { firstValueFrom, Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
+  PlaneWorkItem,
   PlaneUser,
   PlaneList,
   PlaneProject,
@@ -85,6 +86,16 @@ export class PlaneApiClient {
     return new HttpException(
       messages[status] ?? `Plane responded with error ${status}: ${detail}`,
       status >= 400 && status < 500 ? status : HttpStatus.BAD_GATEWAY,
+    );
+  }
+
+  /** Un ticket por su clave (`MEL-253`), con el estado y las etiquetas como objetos. */
+  getWorkItemByKey(key: string): Promise<PlaneWorkItem> {
+    return this.call(() =>
+      this.http.get<PlaneWorkItem>(
+        `${this.baseUrl}/api/v1/workspaces/${this.workspaceSlug}/work-items/${encodeURIComponent(key)}/`,
+        { headers: this.headers, params: { expand: 'state,labels' } },
+      ),
     );
   }
 

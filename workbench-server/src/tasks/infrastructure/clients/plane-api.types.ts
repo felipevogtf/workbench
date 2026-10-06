@@ -9,6 +9,8 @@ export interface PlaneUser {
 export interface PlaneProject {
   id: string;
   name: string;
+  /** Prefijo de las claves de ticket, ej. `MEL`. */
+  identifier?: string;
 }
 
 export interface PlaneProjectMember {
@@ -32,4 +34,15 @@ export interface PlaneIssue {
   start_date: string | null;
   target_date: string | null;
   assignees?: string[];
+}
+
+/** Work item pedido con `?expand=state,labels`: estado y etiquetas llegan como objetos. */
+export interface PlaneWorkItem {
+  id: string;
+  sequence_id: number;
+  name: string;
+  description_html: string | null;
+  priority: string | null;
+  state: { name: string } | string | null;
+  labels: Array<{ name: string } | string> | null;
 }

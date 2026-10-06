@@ -11,6 +11,8 @@ export class PullRequestResponseDto {
   sourceBranch!: string;
   destBranch!: string;
   headCommit!: string;
+  /** Tickets de Plane detectados, con su enlace. */
+  tickets!: { key: string; url: string }[];
   state!: string;
   status!: string;
   isStale!: boolean;

@@ -39,6 +39,21 @@
             }
           }
         </div>
+        <p class="item__tickets">
+          Tickets:
+          @for (ticket of review.tickets; track ticket.key) {
+            <a
+              [href]="ticket.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              [attr.title]="ticket.found ? ticket.title : 'No se pudo leer este ticket'"
+              [class.is-missing]="!ticket.found"
+              >{{ ticket.key }}</a
+            >
+          } @empty {
+            <span>ninguno</span>
+          }
+        </p>
         <button
           type="button"
           class="item__open"

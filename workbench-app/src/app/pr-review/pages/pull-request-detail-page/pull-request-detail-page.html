@@ -106,6 +106,10 @@
             <dt>Última revisión</dt>
             <dd>{{ pr.lastReviewedAt | timeAgo }}</dd>
           </div>
+          <div class="facts__wide">
+            <dt>Tickets</dt>
+            <dd><app-ticket-tags [tickets]="pr.tickets" /></dd>
+          </div>
         </dl>
       </app-card>
 

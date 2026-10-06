@@ -25,6 +25,7 @@ import { ProviderIcon } from '../../components/provider-icon/provider-icon';
 import { ReReviewDialog } from '../../components/re-review-dialog/re-review-dialog';
 import { ReviewHistory } from '../../components/review-history/review-history';
 import { StatusBadge } from '../../components/status-badge/status-badge';
+import { TicketTags } from '../../components/ticket-tags/ticket-tags';
 import { PROVIDER_LABEL, ReReviewRequest, Review, shortCommit } from '../../models/pull-request';
 
 @Component({
@@ -41,6 +42,7 @@ import { PROVIDER_LABEL, ReReviewRequest, Review, shortCommit } from '../../mode
     MarkdownViewer,
     ProviderIcon,
     StatusBadge,
+    TicketTags,
     ReviewHistory,
     ReReviewDialog,
   ],

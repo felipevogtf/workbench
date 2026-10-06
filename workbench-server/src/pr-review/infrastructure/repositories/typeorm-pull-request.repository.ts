@@ -49,11 +49,11 @@ export class TypeOrmPullRequestRepository implements PullRequestRepositoryPort {
     }
     if (filters.stale === true) {
       query.andWhere(
-        'pr.reviewed_commit IS NOT NULL AND pr.head_commit <> pr.reviewed_commit',
+        'pr.reviewed_commit IS NOT NULL AND NOT (left(pr.head_commit, least(length(pr.head_commit), length(pr.reviewed_commit))) = left(pr.reviewed_commit, least(length(pr.head_commit), length(pr.reviewed_commit))))',
       );
     } else if (filters.stale === false) {
       query.andWhere(
-        '(pr.reviewed_commit IS NULL OR pr.head_commit = pr.reviewed_commit)',
+        '(pr.reviewed_commit IS NULL OR left(pr.head_commit, least(length(pr.head_commit), length(pr.reviewed_commit))) = left(pr.reviewed_commit, least(length(pr.head_commit), length(pr.reviewed_commit))))',
       );
     }
 
@@ -113,6 +113,8 @@ export class TypeOrmPullRequestRepository implements PullRequestRepositoryPort {
       source_branch: pullRequest.sourceBranch,
       dest_branch: pullRequest.destBranch,
       head_commit: pullRequest.headCommit,
+      description: pullRequest.description,
+      ticket_keys: pullRequest.ticketKeys,
       state: pullRequest.state,
       status: pullRequest.status,
       queued_at: pullRequest.queuedAt,
@@ -140,6 +142,8 @@ export class TypeOrmPullRequestRepository implements PullRequestRepositoryPort {
       sourceBranch: orm.source_branch,
       destBranch: orm.dest_branch,
       headCommit: orm.head_commit,
+      description: orm.description ?? null,
+      ticketKeys: orm.ticket_keys ?? [],
       state: orm.state as PullRequestState,
       status: orm.status as PullRequestStatus,
       queuedAt: orm.queued_at,

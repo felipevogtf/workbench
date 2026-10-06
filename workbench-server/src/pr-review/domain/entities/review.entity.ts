@@ -1,4 +1,4 @@
-import { CommentStatus, ReviewProps } from './review.props';
+import { CommentStatus, ReviewProps, ReviewTicket } from './review.props';
 
 export class Review {
   private constructor(private props: ReviewProps) {}
@@ -11,6 +11,7 @@ export class Review {
     agentName: string;
     model: string;
     docPath: string;
+    tickets: ReviewTicket[];
   }): Review {
     return new Review({
       id: crypto.randomUUID(),
@@ -32,10 +33,12 @@ export class Review {
     agentName: string | null;
     model: string | null;
     error: string;
+    tickets?: ReviewTicket[];
   }): Review {
     return new Review({
       id: crypto.randomUUID(),
       ...data,
+      tickets: data.tickets ?? [],
       docPath: null,
       status: 'failed',
       commentStatus: 'failed',
@@ -106,6 +109,10 @@ export class Review {
 
   get commentError(): string | null {
     return this.props.commentError;
+  }
+
+  get tickets(): ReviewTicket[] {
+    return this.props.tickets;
   }
 
   get createdAt(): Date {

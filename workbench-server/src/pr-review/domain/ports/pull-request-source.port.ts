@@ -11,6 +11,8 @@ export interface RemotePullRequestData {
   sourceBranch: string;
   destBranch: string;
   headCommit: string;
+  /** Descripción de la PR en el provider (texto/markdown). */
+  description: string | null;
 }
 
 export interface PullRequestSourceResult {

@@ -14,6 +14,7 @@ export interface GithubSearchResponse {
 export interface GithubPullRequest {
   number: number;
   title: string;
+  body: string | null;
   html_url: string;
   user: { login: string } | null;
   head: { ref: string; sha: string };

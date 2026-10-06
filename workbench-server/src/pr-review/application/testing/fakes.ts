@@ -5,6 +5,8 @@ import {
   PullRequestRepositoryPort,
 } from '@pr-review/domain/ports/pull-request-repository.port';
 import { ReviewRepositoryPort } from '@pr-review/domain/ports/review-repository.port';
+import { RemotePullRequestData } from '@pr-review/domain/ports/pull-request-source.port';
+import { TicketsGatewayPort } from '@pr-review/domain/ports/tickets-gateway.port';
 import {
   GitProvider,
   PullRequestStatus,
@@ -98,7 +100,11 @@ export class InMemoryReviewRepository implements ReviewRepositoryPort {
   }
 }
 
-export function remotePullRequest(externalId: string, repo = 'ws/app') {
+export function remotePullRequest(
+  externalId: string,
+  repo = 'ws/app',
+  overrides: Partial<RemotePullRequestData> = {},
+) {
   return {
     provider: 'bitbucket' as const,
     repo,
@@ -109,7 +115,21 @@ export function remotePullRequest(externalId: string, repo = 'ws/app') {
     sourceBranch: `feature/${externalId}`,
     destBranch: 'main',
     headCommit: `commit-${externalId}`,
+    description: null as string | null,
+    ...overrides,
   };
+}
+
+/** Pasarela de tickets falsa: por defecto conoce los proyectos MEL y SER y no encuentra ningún ticket. */
+export function fakeTickets(
+  overrides: Partial<TicketsGatewayPort> = {},
+): jest.Mocked<TicketsGatewayPort> {
+  return {
+    getProjectIdentifiers: jest.fn().mockResolvedValue(['MEL', 'SER']),
+    getTicket: jest.fn().mockResolvedValue(null),
+    ticketUrl: jest.fn((key: string) => `https://plane.test/ws/browse/${key}/`),
+    ...overrides,
+  } as jest.Mocked<TicketsGatewayPort>;
 }
 
 export const sleep = (ms: number) =>

@@ -4,6 +4,7 @@ import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
+import { TasksModule } from '@tasks/tasks.module';
 import { PullRequestOrmEntity } from './infrastructure/persistence/pull-request.orm-entity';
 import { ReviewOrmEntity } from './infrastructure/persistence/review.orm-entity';
 import { PULL_REQUEST_REPOSITORY_PORT } from './domain/ports/pull-request-repository.port';
@@ -13,6 +14,8 @@ import { PULL_REQUEST_COMMENT_PORTS } from './domain/ports/pull-request-comment.
 import { REPOSITORY_CHECKOUT_PORT } from './domain/ports/repository-checkout.port';
 import { REVIEW_STORAGE_PORT } from './domain/ports/review-storage.port';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
+import { TICKETS_GATEWAY_PORT } from './domain/ports/tickets-gateway.port';
+import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.adapter';
 import { TypeOrmPullRequestRepository } from './infrastructure/repositories/typeorm-pull-request.repository';
 import { TypeOrmReviewRepository } from './infrastructure/repositories/typeorm-review.repository';
 import { BitbucketApiClient } from './infrastructure/clients/bitbucket-api.client';
@@ -55,6 +58,7 @@ function enabledProviders(
     HttpModule,
     ScheduleModule.forRoot(),
     AiAgentsModule,
+    TasksModule,
     TypeOrmModule.forFeature([PullRequestOrmEntity, ReviewOrmEntity]),
   ],
   controllers: [PullRequestsController],
@@ -78,6 +82,7 @@ function enabledProviders(
     { provide: REPOSITORY_CHECKOUT_PORT, useClass: GitCliCheckoutAdapter },
     { provide: REVIEW_STORAGE_PORT, useClass: LocalFileReviewStorageAdapter },
     { provide: AGENTS_GATEWAY_PORT, useClass: AgentsGatewayAdapter },
+    { provide: TICKETS_GATEWAY_PORT, useClass: TasksGatewayAdapter },
     {
       provide: REVIEW_CONCURRENCY,
       useFactory: (config: ConfigService) =>

@@ -1,3 +1,11 @@
+export class ReviewTicketDto {
+  key!: string;
+  title!: string | null;
+  state!: string | null;
+  found!: boolean;
+  url!: string;
+}
+
 export class ReviewResponseDto {
   id!: string;
   pullRequestId!: string;
@@ -11,5 +19,6 @@ export class ReviewResponseDto {
   commentStatus!: string;
   commentUrl!: string | null;
   commentError!: string | null;
+  tickets!: ReviewTicketDto[];
   createdAt!: Date;
 }

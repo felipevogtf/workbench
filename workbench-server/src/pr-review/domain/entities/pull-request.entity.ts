@@ -16,6 +16,7 @@ export interface PullRequestRemoteData {
   sourceBranch: string;
   destBranch: string;
   headCommit: string;
+  description: string | null;
 }
 
 export class PullRequest {
@@ -27,6 +28,7 @@ export class PullRequest {
     return new PullRequest({
       id: crypto.randomUUID(),
       ...data,
+      ticketKeys: [],
       state: 'open',
       status: 'pending',
       queuedAt: now,
@@ -52,7 +54,13 @@ export class PullRequest {
   syncFromRemote(
     data: Pick<
       PullRequestRemoteData,
-      'url' | 'title' | 'author' | 'sourceBranch' | 'destBranch' | 'headCommit'
+      | 'url'
+      | 'title'
+      | 'author'
+      | 'sourceBranch'
+      | 'destBranch'
+      | 'headCommit'
+      | 'description'
     >,
   ): void {
     this.props.url = data.url;
@@ -61,7 +69,19 @@ export class PullRequest {
     this.props.sourceBranch = data.sourceBranch;
     this.props.destBranch = data.destBranch;
     this.props.headCommit = data.headCommit;
+    this.props.description = data.description;
     this.props.state = 'open';
+    this.touch();
+  }
+
+  /** Actualiza los tickets detectados; solo toca la PR si cambiaron. */
+  setTicketKeys(keys: readonly string[]): void {
+    const same =
+      keys.length === this.props.ticketKeys.length &&
+      keys.every((key, index) => key === this.props.ticketKeys[index]);
+    if (same) return;
+
+    this.props.ticketKeys = [...keys];
     this.touch();
   }
 
@@ -131,12 +151,20 @@ export class PullRequest {
     this.props.updatedAt = new Date();
   }
 
-  /** Hay commits que la última revisión no vio. */
+  /**
+   * Hay commits que la última revisión no vio. Los commits se comparan por prefijo:
+   * Bitbucket los entrega abreviados (12 caracteres) y git completos (40).
+   */
   get isStale(): boolean {
     return (
       this.props.reviewedCommit !== null &&
-      this.props.headCommit !== this.props.reviewedCommit
+      !PullRequest.sameCommit(this.props.headCommit, this.props.reviewedCommit)
     );
+  }
+
+  private static sameCommit(a: string, b: string): boolean {
+    const length = Math.min(a.length, b.length);
+    return length > 0 && a.slice(0, length) === b.slice(0, length);
   }
 
   get id(): string {
@@ -177,6 +205,14 @@ export class PullRequest {
 
   get headCommit(): string {
     return this.props.headCommit;
+  }
+
+  get description(): string | null {
+    return this.props.description;
+  }
+
+  get ticketKeys(): string[] {
+    return [...this.props.ticketKeys];
   }
 
   get state(): PullRequestState {

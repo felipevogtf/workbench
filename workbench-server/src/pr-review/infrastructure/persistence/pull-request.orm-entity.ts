@@ -46,6 +46,12 @@ export class PullRequestOrmEntity {
   @Column({ type: 'varchar' })
   head_commit!: string;
 
+  @Column({ type: 'text', nullable: true })
+  description!: string | null;
+
+  @Column({ type: 'text', array: true, default: () => "'{}'" })
+  ticket_keys!: string[];
+
   @Column({ type: 'varchar', default: 'open' })
   state!: string;
 

@@ -19,6 +19,7 @@ describe('LocalFileReviewStorageAdapter', () => {
     sourceBranch: 's',
     destBranch: 'd',
     headCommit: 'abcdef123456',
+    description: null,
   });
 
   beforeEach(async () => {

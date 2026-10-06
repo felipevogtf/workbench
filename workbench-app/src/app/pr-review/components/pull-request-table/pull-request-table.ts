@@ -8,11 +8,22 @@ import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { PROVIDER_LABEL, PullRequest } from '../../models/pull-request';
 import { ProviderIcon } from '../provider-icon/provider-icon';
 import { StatusBadge } from '../status-badge/status-badge';
+import { TicketTags } from '../ticket-tags/ticket-tags';
 
 /** Tabla desde 768px; lista de cards por debajo. */
 @Component({
   selector: 'app-pull-request-table',
-  imports: [RouterLink, TimeAgoPipe, Button, Card, Icon, IconButton, ProviderIcon, StatusBadge],
+  imports: [
+    RouterLink,
+    TimeAgoPipe,
+    Button,
+    Card,
+    Icon,
+    IconButton,
+    ProviderIcon,
+    StatusBadge,
+    TicketTags,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pull-request-table.html',
   styleUrl: './pull-request-table.scss',

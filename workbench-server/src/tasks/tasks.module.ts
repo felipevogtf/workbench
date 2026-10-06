@@ -25,6 +25,8 @@ import { StatesService } from './application/states.service';
 import { StatesController } from './infrastructure/http/states.controller';
 import { LabelsController } from './infrastructure/http/labels.controller';
 import { LabelsService } from './application/labels.service';
+import { TICKET_SOURCE_PORT } from './domain/ports/ticket-source.port';
+import { TicketLookupService } from './application/ticket-lookup.service';
 
 @Module({
   imports: [
@@ -41,6 +43,7 @@ import { LabelsService } from './application/labels.service';
     PlaneApiAdapter,
     { provide: PROJECT_SOURCE_PORT, useExisting: PlaneApiAdapter },
     { provide: ISSUE_SOURCE_PORT, useExisting: PlaneApiAdapter },
+    { provide: TICKET_SOURCE_PORT, useExisting: PlaneApiAdapter },
     { provide: ISSUE_REPOSITORY_PORT, useClass: TypeOrmIssueRepository },
     { provide: PROJECT_REPOSITORY_PORT, useClass: TypeOrmProjectRepository },
     { provide: STATE_REPOSITORY_PORT, useClass: TypeOrmStateRepository },
@@ -49,12 +52,14 @@ import { LabelsService } from './application/labels.service';
     ProjectsService,
     StatesService,
     LabelsService,
+    TicketLookupService,
   ],
   exports: [
     ISSUE_REPOSITORY_PORT,
     PROJECT_REPOSITORY_PORT,
     STATE_REPOSITORY_PORT,
     LABEL_REPOSITORY_PORT,
+    TicketLookupService,
   ],
   controllers: [
     ProjectsController,

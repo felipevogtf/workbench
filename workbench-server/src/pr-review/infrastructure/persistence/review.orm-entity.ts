@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { ReviewTicket } from '@pr-review/domain/entities/review.props';
 import { PullRequestOrmEntity } from './pull-request.orm-entity';
 
 @Entity('reviews')
@@ -52,6 +53,10 @@ export class ReviewOrmEntity {
 
   @Column({ type: 'text', nullable: true })
   comment_error!: string | null;
+
+  /** Foto de los tickets que el agente evaluó en esta revisión. */
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  tickets!: ReviewTicket[];
 
   @CreateDateColumn()
   created_at!: Date;

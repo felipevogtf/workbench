@@ -11,6 +11,7 @@ const remote = {
   sourceBranch: 'feature/x',
   destBranch: 'main',
   headCommit: 'aaaaaaaa1111',
+  description: null,
 };
 
 describe('PullRequest', () => {
@@ -41,6 +42,29 @@ describe('PullRequest', () => {
     expect(pr.isStale).toBe(true);
     // El sync no la vuelve a encolar: la re-revisión es manual.
     expect(pr.status).toBe('reviewed');
+  });
+
+  it('does not flag as stale a short head commit that is the reviewed commit', () => {
+    // Bitbucket entrega 12 caracteres; el checkout de git, 40.
+    const full = 'abc12345def6' + '7890abcdef1234567890abcdef12';
+    const pr = PullRequest.createFromRemote({ ...remote, headCommit: full });
+    pr.markReviewing();
+    pr.markReviewed({ commit: full, docPath: 'a.md' });
+
+    pr.syncFromRemote({ ...remote, headCommit: full.slice(0, 12) });
+
+    expect(pr.isStale).toBe(false);
+  });
+
+  it('flags as stale a different commit even when only one is abbreviated', () => {
+    const full = 'abc12345def6' + '7890abcdef1234567890abcdef12';
+    const pr = PullRequest.createFromRemote({ ...remote, headCommit: full });
+    pr.markReviewing();
+    pr.markReviewed({ commit: full, docPath: 'a.md' });
+
+    pr.syncFromRemote({ ...remote, headCommit: 'ffffffffffff' });
+
+    expect(pr.isStale).toBe(true);
   });
 
   it('records the reviewed commit and clears the requested override', () => {

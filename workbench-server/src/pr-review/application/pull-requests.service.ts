@@ -15,6 +15,11 @@ import {
   PULL_REQUEST_SOURCE_PORTS,
   type PullRequestSourcePort,
 } from '@pr-review/domain/ports/pull-request-source.port';
+import {
+  TICKETS_GATEWAY_PORT,
+  type TicketsGatewayPort,
+} from '@pr-review/domain/ports/tickets-gateway.port';
+import { extractTicketKeys } from '@pr-review/domain/ticket-keys';
 import { ReviewsService } from '@pr-review/application/reviews.service';
 
 export interface SyncResult {
@@ -35,6 +40,8 @@ export class PullRequestsService {
     private readonly reviews: ReviewRepositoryPort,
     @Inject(PULL_REQUEST_SOURCE_PORTS)
     private readonly sources: PullRequestSourcePort[],
+    @Inject(TICKETS_GATEWAY_PORT)
+    private readonly tickets: TicketsGatewayPort,
     private readonly reviewsService: ReviewsService,
   ) {}
 
@@ -55,6 +62,11 @@ export class PullRequestsService {
     return this.pullRequests.findAll(filters);
   }
 
+  /** Enlace al ticket en Plane. */
+  ticketUrl(key: string): string {
+    return this.tickets.ticketUrl(key);
+  }
+
   async findById(id: string): Promise<PullRequest> {
     const pullRequest = await this.pullRequests.findById(id);
     if (!pullRequest) {
@@ -73,10 +85,11 @@ export class PullRequestsService {
 
   private async doSync(): Promise<SyncResult> {
     const result: SyncResult = { created: 0, updated: 0, closed: 0 };
+    const identifiers = await this.loadProjectIdentifiers();
 
     for (const source of this.sources) {
       try {
-        await this.syncProvider(source, result);
+        await this.syncProvider(source, result, identifiers);
       } catch (error) {
         // Un provider caído no debe cerrar ni tocar sus PRs ni frenar al resto.
         const message = error instanceof Error ? error.message : String(error);
@@ -92,6 +105,7 @@ export class PullRequestsService {
   private async syncProvider(
     source: PullRequestSourcePort,
     result: SyncResult,
+    identifiers: string[] | null,
   ): Promise<void> {
     const { pullRequests: remotes, unreachableRepos } =
       await source.getReviewRequestedPullRequests();
@@ -108,10 +122,13 @@ export class PullRequestsService {
 
       if (existing) {
         existing.syncFromRemote(remote);
+        this.applyTicketKeys(existing, identifiers);
         await this.pullRequests.save(existing);
         result.updated++;
       } else {
-        await this.pullRequests.save(PullRequest.createFromRemote(remote));
+        const created = PullRequest.createFromRemote(remote);
+        this.applyTicketKeys(created, identifiers);
+        await this.pullRequests.save(created);
         result.created++;
       }
     }
@@ -133,6 +150,30 @@ export class PullRequestsService {
       await this.pullRequests.save(pullRequest);
       result.closed++;
     }
+  }
+
+  /** null si Plane no respondió: en ese caso no se tocan los tickets ya detectados. */
+  private async loadProjectIdentifiers(): Promise<string[] | null> {
+    try {
+      return await this.tickets.getProjectIdentifiers();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Could not read Plane projects: ${message}`);
+      return null;
+    }
+  }
+
+  private applyTicketKeys(
+    pullRequest: PullRequest,
+    identifiers: string[] | null,
+  ): void {
+    if (!identifiers) return;
+    pullRequest.setTicketKeys(
+      extractTicketKeys(
+        [pullRequest.sourceBranch, pullRequest.description],
+        identifiers,
+      ),
+    );
   }
 
   private key(provider: GitProvider, repo: string, externalId: string): string {

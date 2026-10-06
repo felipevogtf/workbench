@@ -32,11 +32,22 @@ import {
   PULL_REQUEST_COMMENT_PORTS,
   type PullRequestCommentPort,
 } from '@pr-review/domain/ports/pull-request-comment.port';
+import {
+  TICKETS_GATEWAY_PORT,
+  type TicketsGatewayPort,
+} from '@pr-review/domain/ports/tickets-gateway.port';
+import type { ReviewTicket } from '@pr-review/domain/entities/review.props';
+import { extractTicketKeys } from '@pr-review/domain/ticket-keys';
+import {
+  buildReviewPrompt,
+  type TicketContext,
+} from '@pr-review/application/review-prompt';
 
 /** Cuántas PRs se pueden revisar a la vez. */
 export const REVIEW_CONCURRENCY = Symbol('REVIEW_CONCURRENCY');
 
 const MAX_ERROR_LENGTH = 2000;
+const TICKET_TIMEOUT_MS = 10_000;
 
 export interface ReviewQueueSnapshot {
   concurrency: number;
@@ -64,6 +75,8 @@ export class ReviewsService {
     private readonly agents: AgentsGatewayPort,
     @Inject(PULL_REQUEST_COMMENT_PORTS)
     private readonly commentPorts: PullRequestCommentPort[],
+    @Inject(TICKETS_GATEWAY_PORT)
+    private readonly tickets: TicketsGatewayPort,
     @Inject(REVIEW_CONCURRENCY)
     private readonly concurrency: number,
   ) {}
@@ -203,13 +216,16 @@ export class ReviewsService {
       `Reviewing ${pullRequest.provider}:${pullRequest.repo}#${pullRequest.externalId}`,
     );
 
+    // Los tickets nunca bloquean la revisión: si algo falla, se revisa sin ellos.
+    const { loaded, snapshot } = await this.loadTickets(pullRequest);
+
     try {
       checkout = await this.checkoutPort.checkout(pullRequest);
 
       const run = await this.agents.runReview({
         agentId: requestedAgentId,
         model: requestedModel,
-        prompt: this.buildPrompt(pullRequest),
+        prompt: buildReviewPrompt(pullRequest, loaded),
         workdir: checkout.path,
       });
 
@@ -229,6 +245,7 @@ export class ReviewsService {
           agentName: run.agentName,
           model: run.model,
           docPath,
+          tickets: snapshot,
         }),
       );
       await this.publishComment(pullRequest, review, run.markdown);
@@ -246,6 +263,7 @@ export class ReviewsService {
         checkout?.commit ?? null,
         requestedAgentId,
         requestedModel,
+        snapshot,
       );
     } finally {
       await checkout?.dispose().catch((error: unknown) => {
@@ -262,6 +280,7 @@ export class ReviewsService {
     commit: string | null,
     agentId: string | undefined,
     model: string | undefined,
+    tickets: ReviewTicket[],
   ): Promise<void> {
     try {
       await this.reviews.save(
@@ -272,6 +291,7 @@ export class ReviewsService {
           agentName: null,
           model: model ?? null,
           error: message,
+          tickets,
         }),
       );
       pullRequest.markFailed(message);
@@ -311,16 +331,82 @@ export class ReviewsService {
     await this.reviews.save(review);
   }
 
-  private buildPrompt(pullRequest: PullRequest): string {
-    return [
-      `# PR #${pullRequest.externalId}: ${pullRequest.title}`,
-      `Repositorio: ${pullRequest.repo}`,
-      `Autor: ${pullRequest.author}`,
-      `Rama: ${pullRequest.sourceBranch} -> ${pullRequest.destBranch}`,
-      `URL: ${pullRequest.url}`,
-      '',
-      `Para ver los cambios usa: git diff origin/${pullRequest.destBranch}...origin/${pullRequest.sourceBranch}`,
-    ].join('\n');
+  /**
+   * Tickets de Plane referenciados por la PR (rama y descripción) y lo que se pudo leer de cada uno.
+   * Nunca lanza: un ticket que no se puede leer queda marcado como no encontrado.
+   */
+  private async loadTickets(
+    pullRequest: PullRequest,
+  ): Promise<{ loaded: TicketContext[]; snapshot: ReviewTicket[] }> {
+    try {
+      const keys = await this.detectTicketKeys(pullRequest);
+      const loaded = await Promise.all(
+        keys.map(async (key): Promise<TicketContext> => {
+          try {
+            return {
+              key,
+              ticket: await this.withTimeout(this.tickets.getTicket(key)),
+            };
+          } catch (error) {
+            this.logger.warn(
+              `Could not read ticket ${key}: ${this.errorMessage(error)}`,
+            );
+            return { key, ticket: null };
+          }
+        }),
+      );
+
+      const snapshot = loaded.map(({ key, ticket }) => ({
+        key,
+        title: ticket?.title ?? null,
+        state: ticket?.stateName ?? null,
+        found: ticket !== null,
+        url: this.tickets.ticketUrl(key),
+      }));
+      return { loaded, snapshot };
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve tickets: ${this.errorMessage(error)}`,
+      );
+      return { loaded: [], snapshot: [] };
+    }
+  }
+
+  private async detectTicketKeys(pullRequest: PullRequest): Promise<string[]> {
+    try {
+      const identifiers = await this.withTimeout(
+        this.tickets.getProjectIdentifiers(),
+      );
+      return extractTicketKeys(
+        [pullRequest.sourceBranch, pullRequest.description],
+        identifiers,
+      );
+    } catch (error) {
+      // Sin la lista de proyectos se usa lo que detectó el último sync.
+      this.logger.warn(
+        `Could not read Plane projects: ${this.errorMessage(error)}`,
+      );
+      return pullRequest.ticketKeys;
+    }
+  }
+
+  private withTimeout<T>(promise: Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Timed out after ${TICKET_TIMEOUT_MS} ms`)),
+        TICKET_TIMEOUT_MS,
+      );
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error: unknown) => {
+          clearTimeout(timer);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        },
+      );
+    });
   }
 
   private buildCommentBody(review: Review, markdown: string): string {
@@ -331,10 +417,16 @@ export class ReviewsService {
       .filter(Boolean)
       .join(' · ');
 
+    // Hasta qué commit llegó la revisión: lo que se suba después no está cubierto.
+    const reviewedCommit = review.commit
+      ? `\n**Último commit revisado:** \`${review.commit.slice(0, 8)}\``
+      : '';
+
     return (
       '**Revisión automática generada por Claude** ' +
       '(borrador, puede contener errores)' +
       (info ? `\n_${info}_` : '') +
+      reviewedCommit +
       `\n\n${markdown}`
     );
   }

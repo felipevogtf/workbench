@@ -69,6 +69,7 @@ export class GithubAdapter
       sourceBranch: raw.head.ref,
       destBranch: raw.base.ref,
       headCommit: raw.head.sha,
+      description: raw.body?.trim() || null,
     };
   }
 }
