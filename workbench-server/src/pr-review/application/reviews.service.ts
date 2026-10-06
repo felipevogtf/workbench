@@ -37,6 +37,10 @@ import {
   type TicketsGatewayPort,
 } from '@pr-review/domain/ports/tickets-gateway.port';
 import type { ReviewTicket } from '@pr-review/domain/entities/review.props';
+import {
+  PULL_REQUEST_SOURCE_PORTS,
+  type PullRequestSourcePort,
+} from '@pr-review/domain/ports/pull-request-source.port';
 import { extractTicketKeys } from '@pr-review/domain/ticket-keys';
 import {
   buildReviewPrompt,
@@ -75,6 +79,8 @@ export class ReviewsService {
     private readonly agents: AgentsGatewayPort,
     @Inject(PULL_REQUEST_COMMENT_PORTS)
     private readonly commentPorts: PullRequestCommentPort[],
+    @Inject(PULL_REQUEST_SOURCE_PORTS)
+    private readonly sources: PullRequestSourcePort[],
     @Inject(TICKETS_GATEWAY_PORT)
     private readonly tickets: TicketsGatewayPort,
     @Inject(REVIEW_CONCURRENCY)
@@ -217,7 +223,9 @@ export class ReviewsService {
     );
 
     // Los tickets nunca bloquean la revisión: si algo falla, se revisa sin ellos.
-    const { loaded, snapshot } = await this.loadTickets(pullRequest);
+    await this.refreshFromProvider(pullRequest);
+    const { keys, loaded, snapshot } = await this.loadTickets(pullRequest);
+    pullRequest.setTicketKeys(keys);
 
     try {
       checkout = await this.checkoutPort.checkout(pullRequest);
@@ -332,12 +340,39 @@ export class ReviewsService {
   }
 
   /**
+   * Vuelve a pedir la PR al provider para revisar con lo vigente: la descripción o el título pudieron
+   * editarse desde el último sync. Si el provider no responde se revisa con lo guardado.
+   */
+  private async refreshFromProvider(pullRequest: PullRequest): Promise<void> {
+    try {
+      const source = this.sources.find(
+        (candidate) => candidate.provider === pullRequest.provider,
+      );
+      if (!source) return;
+
+      const remote = await this.withTimeout(
+        source.getPullRequest(pullRequest.repo, pullRequest.externalId),
+      );
+      if (!remote) return;
+
+      pullRequest.refreshDetails(remote);
+      await this.pullRequests.save(pullRequest);
+    } catch (error) {
+      this.logger.warn(
+        `Could not refresh ${pullRequest.repo}#${pullRequest.externalId} from the provider: ${this.errorMessage(error)}`,
+      );
+    }
+  }
+
+  /**
    * Tickets de Plane referenciados por la PR (rama y descripción) y lo que se pudo leer de cada uno.
    * Nunca lanza: un ticket que no se puede leer queda marcado como no encontrado.
    */
-  private async loadTickets(
-    pullRequest: PullRequest,
-  ): Promise<{ loaded: TicketContext[]; snapshot: ReviewTicket[] }> {
+  private async loadTickets(pullRequest: PullRequest): Promise<{
+    keys: string[];
+    loaded: TicketContext[];
+    snapshot: ReviewTicket[];
+  }> {
     try {
       const keys = await this.detectTicketKeys(pullRequest);
       const loaded = await Promise.all(
@@ -363,12 +398,12 @@ export class ReviewsService {
         found: ticket !== null,
         url: this.tickets.ticketUrl(key),
       }));
-      return { loaded, snapshot };
+      return { keys, loaded, snapshot };
     } catch (error) {
       this.logger.warn(
         `Could not resolve tickets: ${this.errorMessage(error)}`,
       );
-      return { loaded: [], snapshot: [] };
+      return { keys: pullRequest.ticketKeys, loaded: [], snapshot: [] };
     }
   }
 

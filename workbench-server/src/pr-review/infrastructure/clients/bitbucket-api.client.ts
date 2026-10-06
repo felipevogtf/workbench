@@ -69,6 +69,18 @@ export class BitbucketApiClient {
     );
   }
 
+  getPullRequest(
+    repoFullName: string,
+    pullRequestId: string,
+  ): Promise<BitbucketPullRequest> {
+    return this.call(() =>
+      this.http.get<BitbucketPullRequest>(
+        `${API}/repositories/${repoFullName}/pullrequests/${pullRequestId}`,
+        this.options(),
+      ),
+    );
+  }
+
   postComment(
     repoFullName: string,
     pullRequestId: string,

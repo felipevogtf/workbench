@@ -5,6 +5,7 @@ import { AgentsGatewayPort } from '@pr-review/domain/ports/agents-gateway.port';
 import { RepositoryCheckoutPort } from '@pr-review/domain/ports/repository-checkout.port';
 import { ReviewStoragePort } from '@pr-review/domain/ports/review-storage.port';
 import { TicketsGatewayPort } from '@pr-review/domain/ports/tickets-gateway.port';
+import { PullRequestSourcePort } from '@pr-review/domain/ports/pull-request-source.port';
 import { ReviewsService } from './reviews.service';
 import {
   fakeTickets,
@@ -22,6 +23,7 @@ interface Harness {
   runs: string[];
   prompts: string[];
   tickets: ReturnType<typeof fakeTickets>;
+  source: { getPullRequest: jest.Mock };
   stats: { inFlight: number; maxInFlight: number };
   disposed: string[];
   comments: string[];
@@ -36,6 +38,7 @@ function build(
     gate?: Promise<void>;
     tickets?: Partial<TicketsGatewayPort>;
     checkoutCommit?: string;
+    provider?: Partial<PullRequestSourcePort>;
   } = {},
 ): Harness {
   const prs = new InMemoryPullRequestRepository();
@@ -87,6 +90,13 @@ function build(
     comments.push(`${repo}#${id}`);
     return Promise.resolve(`https://example.test/comment/${id}`);
   });
+  const source = {
+    provider: 'bitbucket',
+    getReviewRequestedPullRequests: jest.fn(),
+    getPullRequest: jest.fn().mockResolvedValue(null),
+    ...options.provider,
+  } as unknown as PullRequestSourcePort & { getPullRequest: jest.Mock };
+
   const commentPort = {
     provider: 'bitbucket',
     postComment,
@@ -99,6 +109,7 @@ function build(
     storage,
     agents,
     [commentPort],
+    [source],
     tickets,
     options.concurrency ?? 1,
   );
@@ -110,6 +121,7 @@ function build(
     runs,
     prompts,
     tickets,
+    source,
     stats,
     disposed,
     comments,
@@ -513,5 +525,96 @@ describe('ReviewsService comment', () => {
     await h.service.retryComment(pr.id);
 
     expect(postedBody(h, 1)).toContain('**Último commit revisado:** `head-3`');
+  });
+});
+
+describe('ReviewsService refreshes the pull request before reviewing', () => {
+  const fresh = (overrides = {}) => ({
+    ...remotePullRequest('1'),
+    ...overrides,
+  });
+
+  it('reviews with the current description, not the one saved by the last sync', async () => {
+    const h = build({
+      tickets: {
+        getTicket: jest.fn((key: string) =>
+          Promise.resolve({
+            key,
+            title: `Título de ${key}`,
+            stateName: 'En revisión',
+            labels: [],
+            priority: null,
+            descriptionText: 'Pide algo',
+          }),
+        ),
+      },
+      provider: {
+        getPullRequest: jest
+          .fn()
+          .mockResolvedValue(
+            fresh({ description: 'Tickets\n\n* **MEL-301**\n* MEL-303' }),
+          ),
+      },
+    });
+    // En la base la descripción todavía está vacía (la editaron después del último sync).
+    const pr = await addPending(h, '1', { description: null });
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.prompts[0]).toContain('### MEL-301 — Título de MEL-301');
+    expect(h.prompts[0]).toContain('### MEL-303 — Título de MEL-303');
+    expect(pr.description).toContain('MEL-301');
+    expect(pr.ticketKeys).toEqual(['MEL-301', 'MEL-303']);
+    expect(h.reviews.items[0].tickets.map((t) => t.key)).toEqual([
+      'MEL-301',
+      'MEL-303',
+    ]);
+  });
+
+  it('uses the current title in the prompt too', async () => {
+    const h = build({
+      provider: {
+        getPullRequest: jest
+          .fn()
+          .mockResolvedValue(fresh({ title: 'Título editado' })),
+      },
+    });
+    await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.prompts[0]).toContain('Título editado');
+  });
+
+  it('reviews with the saved data when the provider does not answer', async () => {
+    const h = build({
+      provider: {
+        getPullRequest: jest
+          .fn()
+          .mockRejectedValue(new Error('Bitbucket down')),
+      },
+    });
+    const pr = await addPending(h, '1', { description: 'Guardada' });
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(pr.status).toBe('reviewed');
+    expect(h.prompts[0]).toContain('Guardada');
+  });
+
+  it('reviews with the saved data when the provider no longer knows the pull request', async () => {
+    const h = build({
+      provider: { getPullRequest: jest.fn().mockResolvedValue(null) },
+    });
+    const pr = await addPending(h, '1', { description: 'Guardada' });
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(pr.status).toBe('reviewed');
+    expect(h.prompts[0]).toContain('Guardada');
   });
 });

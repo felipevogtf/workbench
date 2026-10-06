@@ -19,6 +19,18 @@ export interface PullRequestRemoteData {
   description: string | null;
 }
 
+/** Lo que el provider puede cambiar de una PR después de abierta. */
+export type PullRequestDetails = Pick<
+  PullRequestRemoteData,
+  | 'url'
+  | 'title'
+  | 'author'
+  | 'sourceBranch'
+  | 'destBranch'
+  | 'headCommit'
+  | 'description'
+>;
+
 export class PullRequest {
   private constructor(private props: PullRequestProps) {}
 
@@ -51,18 +63,16 @@ export class PullRequest {
    * Actualiza los datos que vienen del provider. No toca `status`: si llega un
    * commit nuevo la PR queda desactualizada (isStale) pero no se revisa sola.
    */
-  syncFromRemote(
-    data: Pick<
-      PullRequestRemoteData,
-      | 'url'
-      | 'title'
-      | 'author'
-      | 'sourceBranch'
-      | 'destBranch'
-      | 'headCommit'
-      | 'description'
-    >,
-  ): void {
+  syncFromRemote(data: PullRequestDetails): void {
+    this.refreshDetails(data);
+    this.props.state = 'open';
+  }
+
+  /**
+   * Actualiza título, rama, descripción y commit con los datos vigentes del provider, sin tocar el
+   * estado ni el `status` (una PR cerrada no se reabre por revisarla).
+   */
+  refreshDetails(data: PullRequestDetails): void {
     this.props.url = data.url;
     this.props.title = data.title;
     this.props.author = data.author;
@@ -70,7 +80,6 @@ export class PullRequest {
     this.props.destBranch = data.destBranch;
     this.props.headCommit = data.headCommit;
     this.props.description = data.description;
-    this.props.state = 'open';
     this.touch();
   }
 

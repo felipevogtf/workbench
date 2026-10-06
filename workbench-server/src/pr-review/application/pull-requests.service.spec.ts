@@ -23,6 +23,7 @@ function build(
   const queue = [...results];
   const source: PullRequestSourcePort = {
     provider: 'bitbucket',
+    getPullRequest: () => Promise.resolve(null),
     getReviewRequestedPullRequests: () => {
       const next = queue.shift();
       if (!next) throw new Error('no more results');
@@ -87,6 +88,7 @@ describe('PullRequestsService.sync', () => {
     (service as unknown as { sources: PullRequestSourcePort[] }).sources = [
       {
         provider: 'bitbucket',
+        getPullRequest: () => Promise.resolve(null),
         getReviewRequestedPullRequests: () =>
           Promise.resolve({
             pullRequests: [

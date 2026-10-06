@@ -50,6 +50,23 @@ export class BitbucketAdapter
     return { pullRequests, unreachableRepos };
   }
 
+  async getPullRequest(
+    repo: string,
+    externalId: string,
+  ): Promise<RemotePullRequestData | null> {
+    try {
+      return this.toRemote(
+        repo,
+        await this.client.getPullRequest(repo, externalId),
+      );
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async postComment(
     repo: string,
     externalId: string,

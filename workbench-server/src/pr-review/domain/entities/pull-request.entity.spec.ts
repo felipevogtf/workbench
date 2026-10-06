@@ -67,6 +67,22 @@ describe('PullRequest', () => {
     expect(pr.isStale).toBe(true);
   });
 
+  it('refreshes the details without reopening a closed pull request or changing its status', () => {
+    const pr = PullRequest.createFromRemote(remote);
+    pr.markClosed();
+
+    pr.refreshDetails({
+      ...remote,
+      title: 'Nuevo título',
+      description: 'MEL-1',
+    });
+
+    expect(pr.title).toBe('Nuevo título');
+    expect(pr.description).toBe('MEL-1');
+    expect(pr.state).toBe('closed');
+    expect(pr.status).toBe('pending');
+  });
+
   it('records the reviewed commit and clears the requested override', () => {
     const pr = PullRequest.createFromRemote(remote);
     pr.enqueue({ agentId: 'agent-1', model: 'opus' });

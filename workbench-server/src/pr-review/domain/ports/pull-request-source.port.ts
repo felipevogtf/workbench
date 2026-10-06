@@ -28,6 +28,14 @@ export interface PullRequestSourcePort {
   readonly provider: GitProvider;
   /** PRs abiertas donde el usuario es reviewer. */
   getReviewRequestedPullRequests(): Promise<PullRequestSourceResult>;
+  /**
+   * Datos actuales de una PR concreta (título, descripción, commit…). Sirve para revisar con lo vigente
+   * y no con lo que había en el último sync. null si el provider ya no la conoce.
+   */
+  getPullRequest(
+    repo: string,
+    externalId: string,
+  ): Promise<RemotePullRequestData | null>;
 }
 
 export const PULL_REQUEST_SOURCE_PORTS = Symbol('PULL_REQUEST_SOURCE_PORTS');
