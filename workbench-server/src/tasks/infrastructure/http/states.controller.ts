@@ -7,11 +7,11 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { StatesService } from './application/states.service';
-import { CreateStateDto } from './dto/create-state.dto';
-import { State } from './domain/entities/state.entity';
-import { UpdateStateDto } from './dto/update-state.dto';
-import { StateResponseDto } from './dto/state-response.dto';
+import { StatesService } from '@tasks/application/states.service';
+import { CreateStateDto } from '@tasks/dto/create-state.dto';
+import { State } from '@tasks/domain/entities/state.entity';
+import { UpdateStateDto } from '@tasks/dto/update-state.dto';
+import { StateResponseDto } from '@tasks/dto/state-response.dto';
 
 @Controller('states')
 export class StatesController {

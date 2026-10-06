@@ -8,7 +8,11 @@ export interface IssueRepositoryPort {
   findAll(): Promise<Issue[]>;
   save(issue: Issue): Promise<void>;
   delete(id: string): Promise<void>;
-  nextLocalId(): Promise<number>;
+  // Asigna el siguiente número visible dentro de un proyecto (empieza en 1 por
+  // proyecto). A diferencia del id (uuid, autogenerado por la entidad sin
+  // tocar la base), este valor depende de leer el estado actual de la tabla
+  // con control de concurrencia — por eso vive en el puerto, no en `Issue`.
+  nextLocalSequence(projectId: string): Promise<number>;
 }
 
 export const ISSUE_REPOSITORY_PORT = Symbol('ISSUE_REPOSITORY_PORT');

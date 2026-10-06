@@ -8,15 +8,17 @@ export class Issue {
   }
 
   static createLocal(
-    data: Pick<IssueProps, 'name' | 'projectId' | 'description'>,
+    data: Pick<
+      IssueProps,
+      'name' | 'projectId' | 'description' | 'localSequence'
+    >,
   ): Issue {
     return new Issue({
       ...data,
       id: crypto.randomUUID(),
       isLocal: true,
       externalId: null,
-      sequenceNumber: null,
-      localId: null,
+      remoteSequence: null,
       externalState: null,
       priority: null,
       stateId: null,
@@ -40,7 +42,7 @@ export class Issue {
       | 'description'
       | 'externalState'
       | 'priority'
-      | 'sequenceNumber'
+      | 'remoteSequence'
       | 'startDate'
       | 'dueDate'
     >,
@@ -49,7 +51,7 @@ export class Issue {
     this.props.description = data.description;
     this.props.externalState = data.externalState;
     this.props.priority = data.priority;
-    this.props.sequenceNumber = data.sequenceNumber;
+    this.props.remoteSequence = data.remoteSequence;
     this.props.startDate = data.startDate;
     this.props.dueDate = data.dueDate;
     this.props.syncedAt = new Date();
@@ -139,12 +141,12 @@ export class Issue {
     return this.props.stateId;
   }
 
-  get localId(): number | null {
-    return this.props.localId;
+  get remoteSequence(): number | null {
+    return this.props.remoteSequence;
   }
 
-  get sequenceNumber(): number | null {
-    return this.props.sequenceNumber;
+  get localSequence(): number {
+    return this.props.localSequence;
   }
 
   get externalState(): string | null {

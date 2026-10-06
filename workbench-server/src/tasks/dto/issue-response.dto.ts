@@ -3,8 +3,8 @@ export class IssueResponseDto {
   name!: string;
   isLocal!: boolean;
   externalId!: string | null;
-  sequenceNumber!: number | null;
-  localId!: number | null;
+  remoteSequence!: number | null;
+  localSequence!: number;
   externalState!: string | null;
   description!: string | null;
   priority!: string | null;

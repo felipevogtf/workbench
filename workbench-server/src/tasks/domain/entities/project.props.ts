@@ -1,7 +1,10 @@
+export type ExternalSource = 'plane' | 'jira';
+
 export interface ProjectProps {
   id: string;
   name: string;
   externalId: string | null;
-  syncedAt: Date;
+  source: ExternalSource | null;
+  syncedAt: Date | null;
   createdAt: Date;
 }

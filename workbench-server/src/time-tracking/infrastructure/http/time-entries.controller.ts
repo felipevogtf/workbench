@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { TimeEntriesService } from './application/time-entries.service';
-import { TimeEntry } from './domain/entities/time-entry.entity';
-import { TimeEntryResponseDto } from './dto/time-entry-response.dto';
-import { CreateTimeEntryDto } from './dto/create-time-entry.dto';
+import { TimeEntriesService } from '@time-tracking/application/time-entries.service';
+import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
+import { TimeEntryResponseDto } from '@time-tracking/dto/time-entry-response.dto';
+import { CreateTimeEntryDto } from '@time-tracking/dto/create-time-entry.dto';
 
 @Controller('time-entries')
 export class TimeEntriesController {

@@ -40,22 +40,6 @@ export class TypeOrmBoardIssueRepository implements BoardIssueRepositoryPort {
     return boardIssueOrmEntity ? this.toDomain(boardIssueOrmEntity) : null;
   }
 
-  // NOTA: el puerto declara este método como (boardId, issueId), pero
-  // "posición en columna" no puede calcularse aquí porque board_issues no
-  // guarda el estado (la columna vive en tasks.issues.state_id). Este
-  // método queda como "siguiente posición en el board completo"; hoy no lo
-  // llama nadie porque board-issue.service.ts reimplementa la lógica de
-  // columna a mano. Ver aviso en el resumen de la revisión.
-  async nextPositionInColumn(boardId: string): Promise<number> {
-    const result = await this.boardIssueRepository
-      .createQueryBuilder('board_issue')
-      .select('MAX(board_issue.position)', 'max')
-      .where('board_issue.board_id = :boardId', { boardId })
-      .getRawOne<{ max: number | null }>();
-
-    return (result?.max ?? 0) + 1000;
-  }
-
   async save(boardIssue: BoardIssue): Promise<void> {
     const boardIssueOrmEntity = this.toOrm(boardIssue);
     await this.boardIssueRepository.save(boardIssueOrmEntity);

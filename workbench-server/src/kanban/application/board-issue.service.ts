@@ -8,19 +8,15 @@ import {
   type BoardRepositoryPort,
 } from '@kanban/domain/ports/board-repository.port';
 import {
+  TASKS_GATEWAY_PORT,
+  type TasksGatewayPort,
+} from '@kanban/domain/ports/tasks-gateway.port';
+import {
   ConflictException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  ISSUE_REPOSITORY_PORT,
-  type IssueRepositoryPort,
-} from '@tasks/domain/ports/issue-repository.port';
-import {
-  STATE_REPOSITORY_PORT,
-  type StateRepositoryPort,
-} from '@tasks/domain/ports/state-repository.port';
 
 export interface AddIssueToBoardData {
   boardId: string;
@@ -45,10 +41,8 @@ export class BoardIssueService {
     private readonly boardIssueRepository: BoardIssueRepositoryPort,
     @Inject(BOARD_REPOSITORY_PORT)
     private readonly boardRepository: BoardRepositoryPort,
-    @Inject(ISSUE_REPOSITORY_PORT)
-    private readonly issueRepository: IssueRepositoryPort,
-    @Inject(STATE_REPOSITORY_PORT)
-    private readonly stateRepository: StateRepositoryPort,
+    @Inject(TASKS_GATEWAY_PORT)
+    private readonly tasksGateway: TasksGatewayPort,
   ) {}
 
   async addIssueToBoard(data: AddIssueToBoardData): Promise<BoardIssue> {
@@ -58,7 +52,7 @@ export class BoardIssueService {
       throw new NotFoundException(`Board with id ${data.boardId} not found`);
     }
 
-    const issue = await this.issueRepository.findById(data.issueId);
+    const issue = await this.tasksGateway.issueExists(data.issueId);
 
     if (!issue) {
       throw new NotFoundException(`Issue with id ${data.issueId} not found`);
@@ -74,9 +68,12 @@ export class BoardIssueService {
       );
     }
 
+    const [issueRef] = await this.tasksGateway.findIssueRefsByIds([
+      data.issueId,
+    ]);
     const position = await this.nextPositionInColumn(
       data.boardId,
-      data.issueId,
+      issueRef?.stateId ?? null,
     );
 
     const boardIssue = BoardIssue.create({
@@ -133,20 +130,19 @@ export class BoardIssueService {
       );
     }
 
-    const issue = await this.issueRepository.findById(issueId);
-    if (!issue) {
+    const [issueRef] = await this.tasksGateway.findIssueRefsByIds([issueId]);
+    if (!issueRef) {
       throw new NotFoundException(`Issue with id ${issueId} not found`);
     }
 
-    if (stateId !== issue.stateId) {
+    if (stateId !== issueRef.stateId) {
       if (stateId !== null) {
-        const state = await this.stateRepository.findById(stateId);
-        if (!state) {
+        const stateExists = await this.tasksGateway.stateExists(stateId);
+        if (!stateExists) {
           throw new NotFoundException(`State with id ${stateId} not found`);
         }
       }
-      issue.setState(stateId);
-      await this.issueRepository.save(issue);
+      await this.tasksGateway.setIssueState(issueId, stateId);
     }
 
     boardIssue.reposition(position);
@@ -163,7 +159,7 @@ export class BoardIssueService {
       return 1000;
     }
 
-    const issues = await this.issueRepository.findByIds(
+    const issues = await this.tasksGateway.findIssueRefsByIds(
       boardIssues.map((boardIssue) => boardIssue.issueId),
     );
 

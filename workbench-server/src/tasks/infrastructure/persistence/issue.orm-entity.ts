@@ -44,10 +44,10 @@ export class IssueOrmEntity {
   external_state!: string | null;
 
   @Column({ type: 'int', nullable: true })
-  sequence_number!: number | null;
+  remote_sequence!: number | null;
 
-  @Column({ type: 'int', nullable: true })
-  local_id!: number | null;
+  @Column({ type: 'int' })
+  local_sequence!: number;
 
   @ManyToOne(() => StateOrmEntity, (state) => state.issues, {
     onDelete: 'SET NULL',

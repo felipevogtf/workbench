@@ -7,11 +7,11 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { LabelsService } from './application/labels.service';
-import { CreateLabelDto } from './dto/create-label.dto';
-import { UpdateLabelDto } from './dto/update-label.dto';
-import { Label } from './domain/entities/label.entity';
-import { LabelResponseDto } from './dto/label-response.dto';
+import { LabelsService } from '@tasks/application/labels.service';
+import { CreateLabelDto } from '@tasks/dto/create-label.dto';
+import { UpdateLabelDto } from '@tasks/dto/update-label.dto';
+import { Label } from '@tasks/domain/entities/label.entity';
+import { LabelResponseDto } from '@tasks/dto/label-response.dto';
 
 @Controller('labels')
 export class LabelsController {

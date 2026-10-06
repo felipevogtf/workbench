@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IssueRepositoryPort } from '@tasks/domain/ports/issue-repository.port';
-import { DeepPartial, In, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, DeepPartial, In, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 import { IssueProps } from '@tasks/domain/entities/issue.props';
 import { IssueOrmEntity } from '@tasks/infrastructure/persistence/issue.orm-entity';
@@ -11,6 +11,8 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
   constructor(
     @InjectRepository(IssueOrmEntity)
     private readonly issueRepository: Repository<IssueOrmEntity>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async findById(id: string): Promise<Issue | null> {
@@ -72,13 +74,23 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     await this.issueRepository.delete(id);
   }
 
-  async nextLocalId(): Promise<number> {
-    const max = await this.issueRepository
-      .createQueryBuilder('issue')
-      .where('issue.is_local = true')
-      .select('MAX(issue.local_id)', 'max')
-      .getRawOne<{ max: number | null }>();
-    return (max?.max ?? 0) + 1;
+  async nextLocalSequence(projectId: string): Promise<number> {
+    return this.dataSource.transaction(async (manager) => {
+      // Advisory lock por proyecto: serializa dos inserts concurrentes en el
+      // mismo proyecto sin bloquear inserts de otros proyectos (no toca la
+      // fila de `projects`, así que no interfiere con updates a Project).
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        projectId,
+      ]);
+
+      const result = await manager
+        .createQueryBuilder(IssueOrmEntity, 'issue')
+        .select('MAX(issue.local_sequence)', 'max')
+        .where('issue.project_id = :projectId', { projectId })
+        .getRawOne<{ max: number | null }>();
+
+      return (result?.max ?? 0) + 1;
+    });
   }
 
   private toDomain(issueOrmEntity: IssueOrmEntity): Issue {
@@ -87,9 +99,9 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       name: issueOrmEntity.name,
       isLocal: issueOrmEntity.is_local,
       externalId: issueOrmEntity.external_id,
-      sequenceNumber: issueOrmEntity.sequence_number,
+      remoteSequence: issueOrmEntity.remote_sequence,
+      localSequence: issueOrmEntity.local_sequence,
       externalState: issueOrmEntity.external_state,
-      localId: issueOrmEntity.local_id,
       description: issueOrmEntity.description,
       estimatedHours: issueOrmEntity.estimated_hours,
       priority: issueOrmEntity.priority,
@@ -111,9 +123,9 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       name: issue.name,
       is_local: issue.isLocal,
       external_id: issue.externalId,
-      sequence_number: issue.sequenceNumber,
+      remote_sequence: issue.remoteSequence,
+      local_sequence: issue.localSequence,
       estimated_hours: issue.estimatedHours,
-      local_id: issue.localId,
       external_state: issue.externalState,
       description: issue.description,
       priority: issue.priority,

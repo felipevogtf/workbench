@@ -7,16 +7,16 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { BoardService } from './application/board.service';
-import { BoardIssueService } from './application/board-issue.service';
-import { Board } from './domain/entities/board.entity';
-import { BoardIssue } from './domain/entities/board-issue.entity';
-import { CreateBoardDto } from './dto/create-board.dto';
-import { UpdateBoardDto } from './dto/update-board.dto';
-import { BoardResponseDto } from './dto/board-response.dto';
-import { AddIssueToBoardDto } from './dto/add-issue-to-board.dto';
-import { MoveIssueDto } from './dto/move-issue.dto';
-import { BoardIssueResponseDto } from './dto/board-issue-response.dto';
+import { BoardService } from '@kanban/application/board.service';
+import { BoardIssueService } from '@kanban/application/board-issue.service';
+import { Board } from '@kanban/domain/entities/board.entity';
+import { BoardIssue } from '@kanban/domain/entities/board-issue.entity';
+import { CreateBoardDto } from '@kanban/dto/create-board.dto';
+import { UpdateBoardDto } from '@kanban/dto/update-board.dto';
+import { BoardResponseDto } from '@kanban/dto/board-response.dto';
+import { AddIssueToBoardDto } from '@kanban/dto/add-issue-to-board.dto';
+import { MoveIssueDto } from '@kanban/dto/move-issue.dto';
+import { BoardIssueResponseDto } from '@kanban/dto/board-issue-response.dto';
 
 @Controller('boards')
 export class BoardController {

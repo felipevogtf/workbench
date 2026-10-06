@@ -44,10 +44,15 @@ export class IssuesService {
       );
     }
 
+    const localSequence = await this.issueRepository.nextLocalSequence(
+      data.projectId,
+    );
+
     const issue = Issue.createLocal({
       name: data.name,
       description: data.description || null,
       projectId: data.projectId,
+      localSequence,
     });
 
     await this.issueRepository.save(issue);
@@ -146,20 +151,23 @@ export class IssuesService {
           description: raw.description,
           externalState: raw.externalState,
           priority: raw.priority,
-          sequenceNumber: raw.sequenceNumber,
+          remoteSequence: raw.sequenceNumber,
           startDate: raw.startDate,
           dueDate: raw.dueDate,
         });
         await this.issueRepository.save(existing);
         updated++;
       } else {
+        const localSequence =
+          await this.issueRepository.nextLocalSequence(projectId);
+
         const issue = Issue.reconstruct({
           id: crypto.randomUUID(),
           name: raw.name,
           isLocal: false,
           externalId: raw.externalId,
-          sequenceNumber: raw.sequenceNumber,
-          localId: null,
+          remoteSequence: raw.sequenceNumber,
+          localSequence,
           externalState: raw.externalState,
           description: raw.description,
           priority: raw.priority,

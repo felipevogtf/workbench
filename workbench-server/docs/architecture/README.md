@@ -20,6 +20,9 @@ No hace falta leer todo de una — está ordenado como un camino:
    paso a paso para agregar algo nuevo siguiendo el mismo patrón.
 7. **[07-reglas-y-errores-comunes.md](./07-reglas-y-errores-comunes.md)** — Checklist de "esto sí,
    esto no", con errores reales que se cometieron en este proyecto y cómo se corrigieron.
+8. **[pendientes-hexagonal/](./pendientes-hexagonal/README.md)** — A diferencia de los puntos
+   anteriores, acá están los errores del mismo tipo que **todavía no se corrigieron**, uno por
+   archivo, con el plan de solución detallado.
 
 ## Resumen en un párrafo
 

@@ -4,8 +4,8 @@ export interface IssueProps {
   isLocal: boolean;
   externalId: string | null;
   externalState: string | null;
-  sequenceNumber: number | null;
-  localId: number | null;
+  remoteSequence: number | null;
+  localSequence: number;
   description: string | null;
   priority: string | null;
   stateId: string | null;

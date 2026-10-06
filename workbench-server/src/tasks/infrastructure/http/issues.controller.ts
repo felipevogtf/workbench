@@ -7,11 +7,11 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { IssueResponseDto } from './dto/issue-response.dto';
-import { Issue } from './domain/entities/issue.entity';
-import { IssuesService } from './application/issues.service';
-import { CreateIssueDto } from './dto/create-issue.dto';
-import { UpdateIssueDto } from './dto/update-issue.dto';
+import { IssueResponseDto } from '@tasks/dto/issue-response.dto';
+import { Issue } from '@tasks/domain/entities/issue.entity';
+import { IssuesService } from '@tasks/application/issues.service';
+import { CreateIssueDto } from '@tasks/dto/create-issue.dto';
+import { UpdateIssueDto } from '@tasks/dto/update-issue.dto';
 
 @Controller('issues')
 export class IssuesController {
@@ -86,8 +86,8 @@ export class IssuesController {
       name: issue.name,
       isLocal: issue.isLocal,
       externalId: issue.externalId,
-      sequenceNumber: issue.sequenceNumber,
-      localId: issue.localId,
+      remoteSequence: issue.remoteSequence,
+      localSequence: issue.localSequence,
       externalState: issue.externalState,
       description: issue.description,
       priority: issue.priority,

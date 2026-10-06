@@ -1,11 +1,20 @@
-import { Controller, Get, Post } from '@nestjs/common';
-import { ProjectsService } from './application/projects.service';
-import { Project } from './domain/entities/project.entity';
-import { ProjectResponseDto } from './dto/project-response.dto';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ProjectsService } from '@tasks/application/projects.service';
+import { Project } from '@tasks/domain/entities/project.entity';
+import { CreateProjectDto } from '@tasks/dto/create-project.dto';
+import { ProjectResponseDto } from '@tasks/dto/project-response.dto';
 
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projectService: ProjectsService) {}
+
+  @Post()
+  async create(
+    @Body() createProjectDto: CreateProjectDto,
+  ): Promise<ProjectResponseDto> {
+    const project = await this.projectService.createProject(createProjectDto);
+    return this.toResponseDto(project);
+  }
 
   @Post('sync')
   async sync(): Promise<{ created: number; updated: number }> {
@@ -22,6 +31,8 @@ export class ProjectsController {
     return {
       id: project.id,
       name: project.name,
+      externalId: project.externalId,
+      source: project.source,
       syncedAt: project.syncedAt ? project.syncedAt.toISOString() : null,
       createdAt: project.createdAt.toISOString(),
     };

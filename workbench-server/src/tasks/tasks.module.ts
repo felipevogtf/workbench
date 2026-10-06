@@ -19,11 +19,11 @@ import { TypeOrmIssueRepository } from './infrastructure/repositories/typeorm-is
 import { IssuesService } from './application/issues.service';
 import { PROJECT_SOURCE_PORT } from './domain/ports/project-source.port';
 import { ProjectsService } from './application/projects.service';
-import { ProjectsController } from './projects.controller';
-import { IssuesController } from './issues.controller';
+import { ProjectsController } from './infrastructure/http/projects.controller';
+import { IssuesController } from './infrastructure/http/issues.controller';
 import { StatesService } from './application/states.service';
-import { StatesController } from './states.controller';
-import { LabelsController } from './labels.controller';
+import { StatesController } from './infrastructure/http/states.controller';
+import { LabelsController } from './infrastructure/http/labels.controller';
 import { LabelsService } from './application/labels.service';
 
 @Module({

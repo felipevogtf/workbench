@@ -4,7 +4,6 @@ export interface BoardIssueRepositoryPort {
   findById(id: string): Promise<BoardIssue | null>;
   findByBoardId(boardId: string): Promise<BoardIssue[]>;
   findByIssueId(issueId: string): Promise<BoardIssue | null>;
-  nextPositionInColumn(boardId: string, issueId: string): Promise<number>;
   save(boardIssue: BoardIssue): Promise<void>;
   delete(id: string): Promise<void>;
   deleteByBoardId(boardId: string): Promise<void>;
