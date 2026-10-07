@@ -34,6 +34,7 @@ export class TypeOrmLabelRepository implements LabelRepositoryPort {
       id: label.id,
       name: label.name,
       color: label.color,
+      repo_url: label.repoUrl,
     });
     return this.toDomain(savedLabel);
   }
@@ -53,6 +54,7 @@ export class TypeOrmLabelRepository implements LabelRepositoryPort {
       id: orm.id,
       name: orm.name,
       color: orm.color,
+      repoUrl: orm.repo_url,
     });
   }
 }

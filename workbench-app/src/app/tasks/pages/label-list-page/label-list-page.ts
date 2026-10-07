@@ -44,6 +44,11 @@ export class LabelListPage {
     void this.store.load();
   }
 
+  /** `organizacion/repo` a partir del enlace. */
+  protected repoName(url: string): string {
+    return url.replace(/^https:\/\/[^/]+\//, '');
+  }
+
   protected reload(): void {
     void this.store.load(true);
   }

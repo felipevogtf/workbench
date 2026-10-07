@@ -16,13 +16,40 @@ import { runCli } from './cli-process';
 // agente se traduce a los comandos de solo lectura equivalentes. Lo que escribe o sale del
 // directorio de trabajo se deniega (la denegación gana a cualquier permiso).
 const COMMAND_RULES: Record<string, string[]> = {
-  Read: ['command(cat)', 'command(head)', 'command(tail)', 'command(wc)'],
+  Read: [
+    'command(cat)',
+    'command(head)',
+    'command(tail)',
+    'command(wc)',
+    'command(pwd)',
+    'command(echo)',
+    'command(sort)',
+    'command(uniq)',
+    'command(cut)',
+    'command(file)',
+    'command(stat)',
+  ],
   Grep: ['command(grep)', 'command(rg)'],
   Glob: ['command(ls)', 'command(find)'],
   'Bash(git diff:*)': ['command(git diff)'],
   'Bash(git log:*)': ['command(git log)'],
   'Bash(git show:*)': ['command(git show)'],
 };
+
+// Comandos de git de solo lectura que el modelo usa junto a diff/log/show (ver el estado, listar
+// archivos, ramas, quién cambió una línea). Se permiten si el agente tiene alguna herramienta de git.
+const GIT_READ_ONLY = [
+  'command(git status)',
+  'command(git ls-files)',
+  'command(git ls-tree)',
+  'command(git rev-parse)',
+  'command(git branch)',
+  'command(git blame)',
+  'command(git merge-base)',
+  'command(git cat-file)',
+  'command(git describe)',
+  'command(git shortlog)',
+];
 const DENY_RULES = [
   'write_file(*)',
   'command(rm)',
@@ -43,7 +70,6 @@ const DENY_RULES = [
   'command(regex:.*/proc.*)',
   'command(regex:.*[.]env.*)',
   'command(regex:.*[.]ssh.*)',
-  'command(regex:.*[.][.].*)',
 ];
 
 interface AntigravitySettings {
@@ -128,6 +154,9 @@ export class AntigravityCliAgentRunnerAdapter implements AgentRunnerPort {
       // Los checkouts viven en el directorio temporal del sistema.
       `read_file(${tmpdir()})`,
       ...allowedTools.flatMap((tool) => COMMAND_RULES[tool] ?? []),
+      ...(allowedTools.some((tool) => tool.startsWith('Bash(git '))
+        ? GIT_READ_ONLY
+        : []),
     ]);
     const permissions = settings.permissions ?? {};
     permissions.allow = [...new Set([...(permissions.allow ?? []), ...allow])];

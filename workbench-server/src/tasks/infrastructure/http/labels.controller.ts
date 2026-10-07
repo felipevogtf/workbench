@@ -50,6 +50,7 @@ export class LabelsController {
       id: label.id,
       name: label.name,
       color: label.color,
+      repoUrl: label.repoUrl,
     };
   }
 }

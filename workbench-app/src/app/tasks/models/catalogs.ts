@@ -25,9 +25,13 @@ export interface Label {
   id: string;
   name: string;
   color: string | null;
+  /** Repositorio asociado: el planificador lo lee para las tareas con esta etiqueta. */
+  repoUrl: string | null;
 }
 
-export type LabelInput = StateInput;
+export interface LabelInput extends StateInput {
+  repoUrl?: string | null;
+}
 
 export interface Counts {
   created: number;

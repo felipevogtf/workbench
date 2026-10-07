@@ -8,6 +8,7 @@ import {
 export interface CreateLabelData {
   name: string;
   color?: string | null;
+  repoUrl?: string | null;
 }
 
 export type UpdateLabelData = Partial<CreateLabelData>;
@@ -40,6 +41,9 @@ export class LabelsService {
     }
     if (data.color !== undefined) {
       existingLabel.recolor(data.color);
+    }
+    if (data.repoUrl !== undefined) {
+      existingLabel.setRepoUrl(data.repoUrl);
     }
 
     await this.labelRepository.save(existingLabel);

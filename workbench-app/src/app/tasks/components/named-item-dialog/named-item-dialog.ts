@@ -21,6 +21,8 @@ import { TextInput } from '@shared/ui/text-input/text-input';
 export interface NamedItemValue {
   name: string;
   color: string | null;
+  /** Solo en las etiquetas (`withRepo`). */
+  repoUrl?: string | null;
 }
 
 /**
@@ -50,6 +52,21 @@ export interface NamedItemValue {
             [describedBy]="'named-item-name-msg'"
           />
         </app-form-field>
+        @if (withRepo()) {
+          <app-form-field
+            label="Repositorio (opcional)"
+            for="named-item-repo"
+            hint="https://github.com/organizacion/repo o https://bitbucket.org/workspace/repo. El planificador lo lee (rama main o master) para las tareas con esta etiqueta."
+          >
+            <app-text-input
+              inputId="named-item-repo"
+              type="url"
+              formControlName="repoUrl"
+              placeholder="https://github.com/organizacion/repo"
+              [describedBy]="'named-item-repo-msg'"
+            />
+          </app-form-field>
+        }
         @if (withColor()) {
           <app-form-field label="Color" for="named-item-color">
             <app-color-input inputId="named-item-color" formControlName="color" />
@@ -72,13 +89,20 @@ export class NamedItemDialog {
   readonly open = model(false);
   readonly heading = input.required<string>();
   /** Valores iniciales al editar; `null` al crear. */
-  readonly initial = input<{ name: string; color?: string | null } | null>(null);
+  readonly initial = input<{
+    name: string;
+    color?: string | null;
+    repoUrl?: string | null;
+  } | null>(null);
   readonly withColor = input(true, { transform: booleanAttribute });
+  /** Campo opcional de repositorio (etiquetas). */
+  readonly withRepo = input(false, { transform: booleanAttribute });
   readonly save = input.required<(value: NamedItemValue) => Promise<unknown>>();
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     color: [null as string | null],
+    repoUrl: [''],
   });
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -89,7 +113,11 @@ export class NamedItemDialog {
       if (!this.open()) return;
       const initial = this.initial();
       untracked(() => {
-        this.form.reset({ name: initial?.name ?? '', color: initial?.color ?? null });
+        this.form.reset({
+          name: initial?.name ?? '',
+          color: initial?.color ?? null,
+          repoUrl: initial?.repoUrl ?? '',
+        });
         this.error.set(null);
       });
     });
@@ -106,11 +134,15 @@ export class NamedItemDialog {
       return;
     }
 
-    const { name, color } = this.form.getRawValue();
+    const { name, color, repoUrl } = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
     try {
-      await this.save()({ name: name.trim(), color: this.withColor() ? color : null });
+      await this.save()({
+        name: name.trim(),
+        color: this.withColor() ? color : null,
+        ...(this.withRepo() ? { repoUrl: repoUrl.trim() || null } : {}),
+      });
       this.open.set(false);
     } catch (error) {
       this.error.set(errorMessage(error));

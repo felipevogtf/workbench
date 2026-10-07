@@ -12,6 +12,9 @@ export class LabelOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   color!: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  repo_url!: string | null;
+
   @ManyToMany(() => IssueOrmEntity, (issue) => issue.labels)
   issues!: IssueOrmEntity[];
 }

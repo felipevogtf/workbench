@@ -37,6 +37,16 @@
           <span class="swatch" [style.background]="label.color ?? 'var(--text-color)'"></span>
           <div class="list__main">
             <span class="list__name">{{ label.name }}</span>
+            @if (label.repoUrl) {
+              <a
+                class="list__meta repo"
+                [href]="label.repoUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="'Abrir el repositorio de ' + label.name"
+                ><app-icon name="code" size="1em" /> {{ repoName(label.repoUrl) }}</a
+              >
+            }
           </div>
           <div class="list__actions">
             <app-menu
@@ -54,6 +64,7 @@
     [(open)]="dialogOpen"
     [heading]="editing() ? 'Editar etiqueta' : 'Nueva etiqueta'"
     [initial]="editing()"
+    withRepo
     [save]="save"
   />
 </div>
