@@ -8,6 +8,10 @@ export interface Project {
   identifier: string | null;
   /** Base de los enlaces a Plane (`…/browse/`); null en los proyectos locales. */
   ticketBaseUrl: string | null;
+  /** Si el sync trae las tareas de este proyecto (solo los de Plane). */
+  syncEnabled: boolean;
+  /** Si el proyecto y sus tareas aparecen en la app. */
+  visible: boolean;
   syncedAt: string | null;
   createdAt: string;
 }

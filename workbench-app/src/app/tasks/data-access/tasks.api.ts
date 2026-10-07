@@ -65,7 +65,10 @@ export class TasksApi {
     return this.http.post<Project>(`${this.base}/projects`, input);
   }
 
-  updateProject(id: string, input: { name: string }): Observable<Project> {
+  updateProject(
+    id: string,
+    input: { name?: string; syncEnabled?: boolean; visible?: boolean },
+  ): Observable<Project> {
     return this.http.patch<Project>(`${this.base}/projects/${id}`, input);
   }
 

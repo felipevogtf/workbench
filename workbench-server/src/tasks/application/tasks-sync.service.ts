@@ -39,7 +39,8 @@ export class TasksSyncService {
     const failedProjects: TasksSyncResult['failedProjects'] = [];
 
     for (const project of await this.projectsService.getAllProjects()) {
-      if (!project.externalId) continue;
+      // Solo los proyectos de Plane cuyo sync está activado.
+      if (!project.externalId || !project.syncEnabled) continue;
       try {
         const result = await this.issuesService.syncByProject(project.id);
         issues.created += result.created;

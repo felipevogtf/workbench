@@ -15,11 +15,16 @@ import {
 } from '../../components/named-item-dialog/named-item-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
 import { ProjectsStore } from '../../data-access/projects.store';
+import { ProjectSettingsDialog } from '../../components/project-settings-dialog/project-settings-dialog';
 import { Project } from '../../models/catalogs';
 
 // Los proyectos de Plane solo se actualizan con el sync: no se editan ni se borran aquí.
+// Los proyectos de Plane solo se configuran (sincronizar y visible); los locales también se
+// renombran y se borran.
+const PLANE_MENU: MenuItem[] = [{ id: 'settings', label: 'Configurar', icon: 'edit' }];
 const LOCAL_MENU: MenuItem[] = [
   { id: 'edit', label: 'Renombrar', icon: 'edit' },
+  { id: 'settings', label: 'Configurar', icon: 'circle-dot' },
   { id: 'remove', label: 'Eliminar', icon: 'trash', tone: 'danger', separated: true },
 ];
 
@@ -36,6 +41,7 @@ const LOCAL_MENU: MenuItem[] = [
     EmptyState,
     Skeleton,
     NamedItemDialog,
+    ProjectSettingsDialog,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-list-page.html',
@@ -47,6 +53,9 @@ export class ProjectListPage {
   private readonly confirm = inject(ConfirmDialog);
 
   protected readonly localMenu = LOCAL_MENU;
+  protected readonly planeMenu = PLANE_MENU;
+  protected readonly settingsOpen = signal(false);
+  protected readonly configuring = signal<Project | null>(null);
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<Project | null>(null);
 
@@ -75,11 +84,14 @@ export class ProjectListPage {
   }
 
   protected issueCount(project: Project): number {
-    return this.issues.issues().filter((issue) => issue.projectId === project.id).length;
+    return this.issues.allIssues().filter((issue) => issue.projectId === project.id).length;
   }
 
   protected async onMenu(project: Project, action: string): Promise<void> {
-    if (action === 'edit') {
+    if (action === 'settings') {
+      this.configuring.set(project);
+      this.settingsOpen.set(true);
+    } else if (action === 'edit') {
       this.editing.set(project);
       this.dialogOpen.set(true);
     } else if (action === 'remove') {

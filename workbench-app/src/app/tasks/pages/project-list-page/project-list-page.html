@@ -1,7 +1,7 @@
 <div class="page">
   <app-page-header
     heading="Proyectos"
-    subtitle="Los de Plane se actualizan solo con el sync; los locales los administras aquí."
+    subtitle="Los de Plane se actualizan con el sync (solo eliges si se sincronizan y si se ven); los locales los administras aquí."
   >
     <button
       actions
@@ -38,14 +38,14 @@
         <app-skeleton height="60px" />
       }
     </div>
-  } @else if (store.projects().length === 0) {
+  } @else if (store.allProjects().length === 0) {
     <app-empty-state icon="folder" heading="Todavía no hay proyectos">
       Sincroniza para traer tus proyectos de Plane o crea uno local.
       <button empty-action app-button type="button" (click)="openCreate()">Nuevo proyecto</button>
     </app-empty-state>
   } @else {
     <ul class="list">
-      @for (project of store.projects(); track project.id) {
+      @for (project of store.allProjects(); track project.id) {
         <li>
           <app-icon name="folder" />
           <div class="list__main">
@@ -55,6 +55,12 @@
             } @else {
               <app-badge tone="success">Local</app-badge>
             }
+            @if (!project.visible) {
+              <app-badge title="No aparece en selectores ni listados">Oculto</app-badge>
+            }
+            @if (project.source && !project.syncEnabled) {
+              <app-badge title="El sync no trae sus tareas">Sin sincronizar</app-badge>
+            }
             <span class="list__meta">
               {{ issueCount(project) }} {{ issueCount(project) === 1 ? 'tarea' : 'tareas' }}
               @if (project.source) {
@@ -62,19 +68,19 @@
               }
             </span>
           </div>
-          @if (!project.source) {
-            <div class="list__actions">
-              <app-menu
-                [label]="'Acciones de ' + project.name"
-                [items]="localMenu"
-                (selected)="onMenu(project, $event)"
-              />
-            </div>
-          }
+          <div class="list__actions">
+            <app-menu
+              [label]="'Acciones de ' + project.name"
+              [items]="project.source ? planeMenu : localMenu"
+              (selected)="onMenu(project, $event)"
+            />
+          </div>
         </li>
       }
     </ul>
   }
+
+  <app-project-settings-dialog [(open)]="settingsOpen" [project]="configuring()" />
 
   <app-named-item-dialog
     [(open)]="dialogOpen"

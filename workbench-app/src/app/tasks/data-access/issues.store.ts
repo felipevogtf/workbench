@@ -58,8 +58,18 @@ export class IssuesStore extends ResourceStore<Issue> {
 
   readonly filters = this.filtersState.asReadonly();
   readonly syncing = this.syncingState.asReadonly();
-  readonly issues = this.items.asReadonly();
+  /** Todas las tareas, también las de proyectos ocultos (para contarlas o resolverlas por id). */
+  readonly allIssues = this.items.asReadonly();
+  /** Las de proyectos visibles: lo que muestran los listados y los selectores de tareas. */
+  readonly issues = computed(() => {
+    const hidden = this.projectsStore.hiddenIds();
+    return this.items().filter((issue) => !hidden.has(issue.projectId));
+  });
   readonly issueById = computed(() => new Map(this.items().map((issue) => [issue.id, issue])));
+  /** Por id, solo las de proyectos visibles (el tablero de Kanban no muestra las ocultas). */
+  readonly visibleIssueById = computed(
+    () => new Map(this.issues().map((issue) => [issue.id, issue])),
+  );
 
   /** Estados que se muestran: los elegidos o, por defecto, todos menos los finalizados. */
   readonly activeStateKeys = computed<ReadonlySet<string>>(() => {
@@ -81,7 +91,7 @@ export class IssuesStore extends ResourceStore<Issue> {
     const projects = this.projectsStore.projectById();
     const nameOf = (issue: Issue) => projects.get(issue.projectId)?.name ?? '';
 
-    return this.items()
+    return this.issues()
       .filter((issue) =>
         matchesFilters(
           issue,

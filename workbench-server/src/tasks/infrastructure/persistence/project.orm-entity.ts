@@ -22,6 +22,12 @@ export class ProjectOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   identifier!: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  sync_enabled!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
   @Column()
   name!: string;
 

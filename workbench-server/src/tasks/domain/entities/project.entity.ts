@@ -14,6 +14,9 @@ export class Project {
       externalId: null,
       source: null,
       identifier: null,
+      // El sync solo aplica a los proyectos de Plane.
+      syncEnabled: false,
+      visible: true,
       syncedAt: null,
       createdAt: new Date(),
     });
@@ -24,6 +27,8 @@ export class Project {
   ): Project {
     return new Project({
       ...data,
+      syncEnabled: true,
+      visible: true,
       id: crypto.randomUUID(),
       syncedAt: new Date(),
       createdAt: new Date(),
@@ -67,6 +72,14 @@ export class Project {
     return this.props.identifier;
   }
 
+  get syncEnabled() {
+    return this.props.syncEnabled;
+  }
+
+  get visible() {
+    return this.props.visible;
+  }
+
   get source() {
     return this.props.source;
   }
@@ -87,6 +100,22 @@ export class Project {
   rename(name: string) {
     this.assertLocal('edited');
     this.applyName(name);
+  }
+
+  /**
+   * Los proyectos de Plane no se editan, salvo estas dos opciones: si se sincronizan y si se ven.
+   * Sincronizar solo tiene sentido en los de Plane.
+   */
+  configure(options: { syncEnabled?: boolean; visible?: boolean }) {
+    if (options.syncEnabled !== undefined) {
+      if (this.isLocal) {
+        throw new DomainError('Only Plane projects can be synchronized');
+      }
+      this.props.syncEnabled = options.syncEnabled;
+    }
+    if (options.visible !== undefined) {
+      this.props.visible = options.visible;
+    }
   }
 
   assertDeletable() {

@@ -24,11 +24,18 @@ export class ProjectsService {
     return project;
   }
 
-  async updateProject(id: string, data: { name?: string }): Promise<Project> {
+  async updateProject(
+    id: string,
+    data: { name?: string; syncEnabled?: boolean; visible?: boolean },
+  ): Promise<Project> {
     const project = await this.getProject(id);
     if (data.name !== undefined) {
       project.rename(data.name);
     }
+    project.configure({
+      syncEnabled: data.syncEnabled,
+      visible: data.visible,
+    });
     await this.projectRepository.save(project);
     return project;
   }

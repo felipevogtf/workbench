@@ -64,4 +64,24 @@ describe('TasksSyncService', () => {
 
     expect(projects.syncProjects).toHaveBeenCalledTimes(1);
   });
+
+  it('skips the Plane projects whose sync is turned off', async () => {
+    const off = planeProject('Off');
+    off.configure({ syncEnabled: false });
+    const syncByProject = jest
+      .fn()
+      .mockResolvedValue({ created: 1, updated: 0 });
+    const projects = {
+      syncProjects: jest.fn().mockResolvedValue({ created: 0, updated: 0 }),
+      getAllProjects: jest.fn().mockResolvedValue([planeProject('On'), off]),
+    };
+    const service = new TasksSyncService(
+      projects as unknown as ProjectsService,
+      { syncByProject } as unknown as IssuesService,
+    );
+
+    await service.syncAll();
+
+    expect(syncByProject).toHaveBeenCalledTimes(1);
+  });
 });

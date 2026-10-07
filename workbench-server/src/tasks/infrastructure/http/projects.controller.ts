@@ -74,6 +74,8 @@ export class ProjectsController {
       externalId: project.externalId,
       source: project.source,
       identifier: project.identifier,
+      syncEnabled: project.syncEnabled,
+      visible: project.visible,
       ticketBaseUrl: project.source === 'plane' ? this.planeBrowseUrl() : null,
       syncedAt: project.syncedAt ? project.syncedAt.toISOString() : null,
       createdAt: project.createdAt.toISOString(),

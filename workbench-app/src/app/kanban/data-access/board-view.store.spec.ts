@@ -67,7 +67,8 @@ describe('BoardViewStore', () => {
           provide: IssuesStore,
           useValue: {
             load: () => Promise.resolve(),
-            issueById: () => new Map(issues().map((issue) => [issue.id, issue])),
+            // El tablero lee las tareas visibles (las de proyectos ocultos no se muestran).
+            visibleIssueById: () => new Map(issues().map((issue) => [issue.id, issue])),
             applyState: (id: string, stateId: string | null) => {
               applied.push([id, stateId]);
               issues.update((list) =>

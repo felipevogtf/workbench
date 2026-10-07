@@ -1,9 +1,11 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Toast } from '@shared/ui/toast/toast';
 import { State } from '../models/catalogs';
 import { Issue } from '../models/issue';
 import { IssuesStore } from './issues.store';
+import { ProjectsStore } from './projects.store';
 import { StatesStore } from './states.store';
 import { TasksApi } from './tasks.api';
 
@@ -37,8 +39,10 @@ describe('IssuesStore', () => {
   let api: Record<'listIssues' | 'closeIssues' | 'reopenIssues', ReturnType<typeof vi.fn>>;
   let store: IssuesStore;
   let toast: Toast;
+  const hidden = signal<ReadonlySet<string>>(new Set());
 
   beforeEach(async () => {
+    hidden.set(new Set());
     api = {
       listIssues: vi.fn(() =>
         of([
@@ -54,6 +58,14 @@ describe('IssuesStore', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: TasksApi, useValue: api },
+        {
+          provide: ProjectsStore,
+          useValue: {
+            hiddenIds: hidden,
+            projectById: () => new Map(),
+            load: () => Promise.resolve(),
+          },
+        },
         { provide: StatesStore, useValue: { states: () => states, load: () => Promise.resolve() } },
       ],
     });
@@ -111,5 +123,15 @@ describe('IssuesStore', () => {
   it('does nothing without ids', async () => {
     await store.close([]);
     expect(api.closeIssues).not.toHaveBeenCalled();
+  });
+
+  it('hides the tasks of hidden projects from every list, but keeps them findable by id', () => {
+    hidden.set(new Set(['p1']));
+
+    expect(ids()).toEqual([]);
+    expect(store.issues()).toHaveLength(0);
+    expect(store.visibleIssueById().size).toBe(0);
+    expect(store.allIssues()).toHaveLength(4);
+    expect(store.issueById().get('a')?.id).toBe('a');
   });
 });
