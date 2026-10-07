@@ -1,21 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { TicketLookupService } from '@tasks/application/ticket-lookup.service';
 import { htmlToText } from '@tasks/domain/html-to-text';
 import {
   TicketData,
   TicketsGatewayPort,
-} from '@pr-review/domain/ports/tickets-gateway.port';
+} from '@planner/domain/ports/tickets-gateway.port';
 
 const MAX_DESCRIPTION_CHARS = 4000;
 
-/** Único punto de pr-review que conoce al módulo tasks. */
+/** Lee los tickets de Plane citados en una tarea (a través de tasks). */
 @Injectable()
-export class TasksGatewayAdapter implements TicketsGatewayPort {
-  constructor(
-    private readonly tickets: TicketLookupService,
-    private readonly config: ConfigService,
-  ) {}
+export class TicketsGatewayAdapter implements TicketsGatewayPort {
+  constructor(private readonly tickets: TicketLookupService) {}
 
   getProjectIdentifiers(): Promise<string[]> {
     return this.tickets.listProjectIdentifiers();
@@ -36,15 +32,5 @@ export class TasksGatewayAdapter implements TicketsGatewayPort {
         MAX_DESCRIPTION_CHARS,
       ),
     };
-  }
-
-  /** `<PLANE_API_URL>/<workspace>/browse/MEL-253/` */
-  ticketUrl(key: string): string {
-    const base = (this.config.get<string>('PLANE_API_URL') ?? '').replace(
-      /\/+$/,
-      '',
-    );
-    const workspace = this.config.get<string>('PLANE_WORKSPACE_SLUG') ?? '';
-    return `${base}/${workspace}/browse/${encodeURIComponent(key)}/`;
   }
 }

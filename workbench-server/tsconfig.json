@@ -17,6 +17,7 @@
       "@tasks/*": ["./src/tasks/*"],
       "@time-tracking/*": ["./src/time-tracking/*"],
       "@kanban/*": ["./src/kanban/*"],
+      "@planner/*": ["./src/planner/*"],
       "@ai-agents/*": ["./src/ai-agents/*"],
       "@pr-review/*": ["./src/pr-review/*"],
       "@core/*": ["./src/core/*"],

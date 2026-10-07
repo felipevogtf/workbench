@@ -41,7 +41,7 @@ import {
   PULL_REQUEST_SOURCE_PORTS,
   type PullRequestSourcePort,
 } from '@pr-review/domain/ports/pull-request-source.port';
-import { extractTicketKeys } from '@pr-review/domain/ticket-keys';
+import { extractTicketKeys } from '@tasks/domain/ticket-keys';
 import {
   buildReviewPrompt,
   type TicketContext,

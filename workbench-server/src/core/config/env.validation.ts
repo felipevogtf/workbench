@@ -43,5 +43,14 @@ export function validateEnv(
     throw new Error('REVIEW_CONCURRENCY must be an integer >= 1');
   }
 
+  const plannerConcurrency = config['PLANNER_CONCURRENCY'];
+  if (
+    plannerConcurrency &&
+    (!Number.isInteger(Number(plannerConcurrency)) ||
+      Number(plannerConcurrency) < 1)
+  ) {
+    throw new Error('PLANNER_CONCURRENCY must be an integer >= 1');
+  }
+
   return config;
 }

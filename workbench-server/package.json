@@ -78,6 +78,7 @@
       "^@tasks/(.*)$": "<rootDir>/tasks/$1",
       "^@time-tracking/(.*)$": "<rootDir>/time-tracking/$1",
       "^@kanban/(.*)$": "<rootDir>/kanban/$1",
+      "^@planner/(.*)$": "<rootDir>/planner/$1",
       "^@ai-agents/(.*)$": "<rootDir>/ai-agents/$1",
       "^@pr-review/(.*)$": "<rootDir>/pr-review/$1",
       "^@core/(.*)$": "<rootDir>/core/$1"

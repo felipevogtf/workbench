@@ -50,26 +50,33 @@ const GIT_READ_ONLY = [
   'command(git describe)',
   'command(git shortlog)',
 ];
+// Las reglas regex se evalúan sobre el texto del comando. Se bloquean las rutas absolutas del
+// servidor (precedidas de un espacio, para no tocar rutas del repo como `src/app/`) y las carpetas
+// donde guardan sus credenciales los CLI. No se bloquea `.env` a secas: aparece en código normal
+// (`process.env`). Las reglas evitan `\.` (con el CLI deniega todo): se usa `[.]`.
 const DENY_RULES = [
   'write_file(*)',
-  'command(rm)',
-  'command(regex:curl .*)',
-  'command(regex:find .*-exec.*)',
-  'command(regex:find .*-delete.*)',
-  // Fuera del checkout hay credenciales (el servidor guarda tokens en su entorno y en su home). Se
-  // deniega tanto la herramienta de lectura como los comandos que nombren esas rutas. Las reglas
-  // regex evitan `\.` (con el CLI deniega todo): se usa `[.]`. Verificado contra agy 1.3.
   'read_file(/app)',
   'read_file(/home)',
   'read_file(/root)',
   'read_file(/etc)',
   'read_file(/proc)',
-  'command(regex:.*/app.*)',
-  'command(regex:.*/home.*)',
-  'command(regex:.*/etc.*)',
-  'command(regex:.*/proc.*)',
-  'command(regex:.*[.]env.*)',
+  'command(rm)',
+  'command(regex:curl .*)',
+  'command(regex:find .*-exec.*)',
+  'command(regex:find .*-delete.*)',
+  'command(regex:.* /app.*)',
+  'command(regex:.* /home.*)',
+  'command(regex:.* /root.*)',
+  'command(regex:.* /etc.*)',
+  'command(regex:.* /proc.*)',
+  'command(regex:.*[.]gemini.*)',
+  'command(regex:.*[.]copilot.*)',
+  'command(regex:.*[.]claude.*)',
   'command(regex:.*[.]ssh.*)',
+  'command(regex:.*[.]aws.*)',
+  'command(regex:.*[.]npmrc.*)',
+  'command(regex:.*[.]netrc.*)',
 ];
 
 interface AntigravitySettings {
@@ -159,10 +166,8 @@ export class AntigravityCliAgentRunnerAdapter implements AgentRunnerPort {
         : []),
     ]);
     const permissions = settings.permissions ?? {};
-    permissions.allow = [...new Set([...(permissions.allow ?? []), ...allow])];
-    permissions.deny = [
-      ...new Set([...(permissions.deny ?? []), ...DENY_RULES]),
-    ];
+    permissions.allow = [...allow];
+    permissions.deny = [...DENY_RULES];
     settings.permissions = permissions;
 
     await mkdir(dirname(path), { recursive: true });

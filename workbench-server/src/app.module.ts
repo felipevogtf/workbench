@@ -7,6 +7,7 @@ import { TimeTrackingModule } from '@time-tracking/time-tracking.module';
 import { KanbanModule } from '@kanban/kanban.module';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
+import { PlannerModule } from '@planner/planner.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrReviewModule } from '@pr-review/pr-review.module';
     KanbanModule,
     AiAgentsModule,
     PrReviewModule,
+    PlannerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

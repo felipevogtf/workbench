@@ -1,16 +1,15 @@
-import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { runGit } from '@core/git/run-git';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import {
   RepositoryCheckout,
   RepositoryCheckoutPort,
 } from '@pr-review/domain/ports/repository-checkout.port';
 
-const GIT_TIMEOUT_MS = 5 * 60 * 1000;
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 
 /**
@@ -94,45 +93,6 @@ export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
     args: string[],
     options: { cwd?: string; secret: string },
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('git', args, {
-        cwd: options.cwd,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      let stdout = '';
-      let stderr = '';
-      const timer = setTimeout(() => {
-        child.kill('SIGKILL');
-        reject(new Error(`git ${args[0]} timed out`));
-      }, GIT_TIMEOUT_MS);
-
-      child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-      child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-      child.on('error', (err: NodeJS.ErrnoException) => {
-        clearTimeout(timer);
-        reject(
-          new Error(
-            err.code === 'ENOENT'
-              ? 'git is not installed'
-              : `Could not run git: ${err.message}`,
-          ),
-        );
-      });
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        if (code === 0) {
-          resolve(stdout);
-          return;
-        }
-        const clean = stderr
-          .split(options.secret)
-          .join('***')
-          .split(encodeURIComponent(options.secret))
-          .join('***');
-        reject(new Error(`git ${args[0]} failed: ${clean.trim()}`));
-      });
-    });
+    return runGit(args, { cwd: options.cwd, secrets: [options.secret] });
   }
 }

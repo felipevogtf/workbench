@@ -19,7 +19,7 @@ import {
   TICKETS_GATEWAY_PORT,
   type TicketsGatewayPort,
 } from '@pr-review/domain/ports/tickets-gateway.port';
-import { extractTicketKeys } from '@pr-review/domain/ticket-keys';
+import { extractTicketKeys } from '@tasks/domain/ticket-keys';
 import { ReviewsService } from '@pr-review/application/reviews.service';
 
 export interface SyncResult {
