@@ -9,6 +9,10 @@ RUN apk add --no-cache bash git libgcc libstdc++ ripgrep \
 RUN apk add --no-cache curl \
   && (su node -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" || echo "agy no se pudo instalar")
 ENV PATH=/home/node/.local/bin:$PATH
+# Copilot CLI en Alpine: se ejecuta con el node del sistema (ver el script).
+COPY docker/copilot-node.sh /usr/local/bin/copilot-node
+RUN chmod 755 /usr/local/bin/copilot-node
+ENV COPILOT_BIN=/usr/local/bin/copilot-node
 ENV USE_BUILTIN_RIPGREP=0
 # La herramienta Bash de Claude exige una shell POSIX (bash o zsh); Alpine solo trae sh.
 ENV SHELL=/bin/bash
