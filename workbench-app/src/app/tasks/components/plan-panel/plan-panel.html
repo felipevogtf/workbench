@@ -1,0 +1,155 @@
+<app-card>
+  <h4 card-header>Plan de ejecución</h4>
+
+  <div class="plan">
+    <p class="plan__repos" aria-live="polite">
+      @if (repos().length > 0) {
+        <app-icon name="code" size="1em" />
+        Leerá el código de:
+        @for (repo of repos(); track repo) {
+          <a class="plan__repo" [href]="repo" target="_blank" rel="noopener noreferrer">{{
+            repoName(repo)
+          }}</a>
+        }
+        (rama <code>main</code> o <code>master</code>)
+      } @else {
+        Sin repositorio: planificará solo con los datos de la tarea. Para que lea código, agrega un
+        repositorio a una etiqueta de la tarea en
+        <a routerLink="/tasks/labels">Etiquetas</a>.
+      }
+    </p>
+
+    <div class="plan__actions">
+      @if (agentOptions().length > 1) {
+        <app-form-field class="plan__agent" label="Agente" for="plan-agent">
+          <app-select
+            inputId="plan-agent"
+            [options]="agentOptions()"
+            [placeholder]="defaultLabel()"
+            [formControl]="agentControl"
+          />
+        </app-form-field>
+      }
+      <button
+        app-button
+        type="button"
+        [loading]="store.requesting() || !!store.active()"
+        [disabled]="!!store.active()"
+        (click)="generate()"
+      >
+        <app-icon name="play" size="1em" />
+        {{ store.plans().length > 0 ? 'Volver a generar' : 'Generar plan' }}
+      </button>
+    </div>
+
+    @if (store.active(); as active) {
+      <p class="plan__progress" role="status">
+        <app-spinner size="1em" />
+        {{ active.status === 'pending' ? 'En cola…' : 'Generando el plan…' }} puede tardar unos
+        minutos.
+      </p>
+    }
+
+    @if (store.error(); as message) {
+      <app-alert tone="danger" heading="No se pudieron cargar los planes">{{ message }}</app-alert>
+    }
+
+    @if (store.latestFailed(); as failed) {
+      <app-alert tone="danger" heading="El último plan falló">
+        {{ failed.error }}
+      </app-alert>
+    }
+
+    @if (store.viewed(); as plan) {
+      <div class="plan__meta">
+        <app-badge [tone]="tone(plan.status)" dot>{{ statusLabel[plan.status] }}</app-badge>
+        <span class="plan__muted">
+          {{ plan.agentName }} · {{ plan.model }} · {{ plan.createdAt | timeAgo }}
+        </span>
+        <span class="plan__tools">
+          <button
+            app-icon-button
+            type="button"
+            label="Copiar el plan"
+            [disabled]="!store.viewedContent()"
+            (click)="copy()"
+          >
+            <app-icon name="copy" size="1.1rem" />
+          </button>
+          <button
+            app-icon-button
+            type="button"
+            label="Descargar el plan como .md"
+            [disabled]="!store.viewedContent()"
+            (click)="download()"
+          >
+            <app-icon name="download" size="1.1rem" />
+          </button>
+        </span>
+      </div>
+
+      @if (plan.repos.length > 0) {
+        <ul class="plan__used" aria-label="Repositorios del plan">
+          @for (repo of plan.repos; track repo.url) {
+            <li [class.is-skipped]="!repo.used">
+              {{ repoName(repo.url) }}
+              @if (!repo.used) {
+                <span class="plan__muted">— no se pudo leer: {{ repo.note }}</span>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="plan__muted">Este plan se hizo sin código (sin repositorio).</p>
+      }
+
+      @if (store.viewedContent(); as content) {
+        <app-markdown-viewer [content]="content" />
+      } @else {
+        <p class="plan__muted"><app-spinner size="1em" /> Cargando el plan…</p>
+      }
+    } @else if (!store.active() && !store.loading() && !store.latestFailed()) {
+      <p class="plan__muted">
+        Todavía no hay un plan para esta tarea. Pulsa «Generar plan»: un agente leerá la tarea (y el
+        código, si hay repositorio) y escribirá los pasos, riesgos y una estimación.
+      </p>
+    }
+
+    @if (history().length > 0) {
+      <details
+        class="plan__history"
+        [open]="historyOpen()"
+        (toggle)="historyOpen.set($any($event.target).open)"
+      >
+        <summary>Historial ({{ history().length }})</summary>
+        <ul>
+          @for (plan of history(); track plan.id) {
+            <li>
+              <span class="plan__muted">{{ plan.createdAt | timeAgo }}</span>
+              <app-badge [tone]="tone(plan.status)">{{ statusLabel[plan.status] }}</app-badge>
+              <span class="plan__muted">{{ plan.agentName ?? '—' }}</span>
+              <span class="plan__row-actions">
+                @if (plan.status === 'ready') {
+                  <button app-button variant="ghost" size="sm" type="button" (click)="view(plan)">
+                    Ver
+                  </button>
+                }
+                @if (plan.status === 'ready' || plan.status === 'failed') {
+                  <button
+                    app-icon-button
+                    type="button"
+                    tone="danger"
+                    label="Eliminar este plan"
+                    (click)="remove(plan)"
+                  >
+                    <app-icon name="trash" size="1.1rem" />
+                  </button>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </details>
+    }
+  </div>
+</app-card>

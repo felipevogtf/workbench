@@ -98,7 +98,8 @@ module.exports = tseslint.config(
         'error',
         {
           patterns: [
-            { group: ['@kanban/*', '@pr-review/*', '@ai-agents/*'], message: stateMessage },
+            { group: ['@kanban/*', '@pr-review/*'], message: stateMessage },
+            { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },

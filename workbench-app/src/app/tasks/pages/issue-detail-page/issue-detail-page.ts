@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -32,6 +33,8 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Tag } from '@shared/ui/tag/tag';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { PriorityBadge } from '../../components/priority-badge/priority-badge';
+import { PlanPanel } from '../../components/plan-panel/plan-panel';
+import { PlansStore } from '../../data-access/plans.store';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
@@ -61,8 +64,9 @@ import { Issue, issueNumber } from '../../models/issue';
     MarkdownViewer,
     PriorityBadge,
     IssueFormDialog,
+    PlanPanel,
   ],
-  providers: [TimeEntriesStore],
+  providers: [TimeEntriesStore, PlansStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './issue-detail-page.html',
   styleUrl: './issue-detail-page.scss',
@@ -73,6 +77,8 @@ export class IssueDetailPage {
 
   protected readonly store = inject(IssuesStore);
   protected readonly hours = inject(TimeEntriesStore);
+  private readonly plansStore = inject(PlansStore);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly projectsStore = inject(ProjectsStore);
   private readonly statesStore = inject(StatesStore);
   private readonly labelsStore = inject(LabelsStore);
@@ -187,6 +193,7 @@ export class IssueDetailPage {
     this.loadError.set(null);
     this.fetched.set(null);
     void this.hours.load(id);
+    void this.plansStore.load(id, this.destroyRef);
 
     await this.store.load();
     if (this.store.issueById().has(id)) return;

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
 import { Issue, IssueInput } from '../models/issue';
+import { Plan, PlanRequest } from '../models/plan';
 import {
   Label,
   LabelInput,
@@ -100,6 +101,23 @@ export class TasksApi {
 
   deleteLabel(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/labels/${id}`);
+  }
+
+  // Planes de ejecución
+  listPlans(issueId: string): Observable<Plan[]> {
+    return this.http.get<Plan[]>(`${this.base}/issues/${issueId}/plans`);
+  }
+
+  getPlan(id: string): Observable<Plan> {
+    return this.http.get<Plan>(`${this.base}/plans/${id}`);
+  }
+
+  createPlan(issueId: string, request: PlanRequest): Observable<Plan> {
+    return this.http.post<Plan>(`${this.base}/issues/${issueId}/plans`, request);
+  }
+
+  deletePlan(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/plans/${id}`);
   }
 
   // Horas

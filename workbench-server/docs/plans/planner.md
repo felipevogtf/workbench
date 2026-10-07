@@ -1,6 +1,6 @@
 # Plan: planificador de tareas con agentes por módulo
 
-Estado: **propuesta, sin implementar**. Agrega un módulo **planificador** que, desde una tarea, pide a un agente de IA un
+Estado: **implementado** (ver la sección 13). Agrega un módulo **planificador** que, desde una tarea, pide a un agente de IA un
 **plan de ejecución** en markdown. Para que sirva a la vez a la revisión de PRs y a la planificación, los agentes pasan a
 pertenecer a un **módulo** (cada módulo tiene su propio agente por defecto). Sigue la arquitectura hexagonal del
 backend y la estructura modular del front (ver [pr-review.md](./pr-review.md) y
@@ -219,3 +219,14 @@ proyecto, estado, prioridad, fechas, horas estimadas y registradas, etiquetas, *
 - Un fallo (CLI, clone, timeout) deja el plan en `Falló` con el motivo y permite reintentar; un reinicio no deja planes en
   `Generando` para siempre.
 - Lint, tests y build de ambos proyectos pasan, y no se pierde ninguna función de la revisión de PRs.
+
+## 13. Estado de la implementación
+
+Todo lo del plan está hecho. Diferencias y detalles:
+
+- **Agentes por módulo:** `module` en el agente, uno por defecto por módulo, herramientas por módulo (`MODULE_TOOLS`), migración `AgentModules` con el agente `default-planner`. En el front, el formulario tiene selector de **Módulo** (no se cambia al editar) y la lista agrupa por módulo.
+- **Etiquetas con repo:** `Label.repoUrl` (solo github.com o bitbucket.org, normalizado, validado en el dominio). El diálogo de etiquetas tiene el campo **Repositorio**.
+- **Módulo `planner`** (`src/planner`, alias `@planner/*`): entidad Plan, cola con reclamo atómico, `PLANNER_CONCURRENCY`, recuperación al arrancar, API `POST/GET /issues/:id/plans`, `GET/DELETE /plans/:id`. Los tickets de Plane citados se leen sin bloquear el plan.
+- **Repos:** clone superficial de `main` y, si no existe, `master` (probado con `octocat/Hello-World`, que usa `master`); máximo 3 repos; los que fallan quedan anotados en el plan y no lo bloquean.
+- **Código compartido:** el helper de git (`core/git/run-git.ts`) lo usan la revisión de PRs y el planificador; `html-to-text` y `ticket-keys` pasaron de `pr-review` a `tasks`.
+- **Front:** panel «Plan de ejecución» solo en el detalle de la tarea (generar, seguimiento en vivo, ver, copiar, descargar `.md`, historial). Las horas registradas no se envían al planificador (no estaba en el contexto mínimo; se puede sumar).
