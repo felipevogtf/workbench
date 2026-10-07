@@ -14,7 +14,12 @@ FROM node:22-alpine
 # git: clona los repos de las PRs. bash: la herramienta Bash de Claude exige una shell POSIX.
 # libgcc, libstdc++ y ripgrep son requisitos del CLI de Claude en Alpine.
 RUN apk add --no-cache bash git libgcc libstdc++ ripgrep \
-  && npm install -g @anthropic-ai/claude-code
+  && npm install -g @anthropic-ai/claude-code @github/copilot
+# Antigravity CLI (agy): instalador oficial, por usuario. Es opcional: si no corre en Alpine (musl),
+# el build sigue y el proveedor responde que no encuentra el binario.
+RUN apk add --no-cache curl \
+  && (su node -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" || echo "agy no se pudo instalar")
+ENV PATH=/home/node/.local/bin:$PATH
 
 ENV NODE_ENV=production \
     USE_BUILTIN_RIPGREP=0 \
@@ -26,7 +31,8 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json tsconfig.json ./
 
 # Carpeta de las revisiones (.md); se monta como volumen.
-RUN mkdir -p /data/reviews && chown node:node /data/reviews
+RUN mkdir -p /data/reviews /home/node/.gemini /home/node/.copilot \
+  && chown -R node:node /data/reviews /home/node
 
 # El agente lee código ajeno: se ejecuta sin privilegios.
 USER node

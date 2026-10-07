@@ -1,7 +1,18 @@
+export type AgentProvider = 'claude' | 'copilot' | 'antigravity';
+
+/** CLI de IA con el que corre un agente, con los modelos que ofrece y si está habilitado. */
+export interface ProviderStatus {
+  id: AgentProvider;
+  label: string;
+  models: string[];
+  enabled: boolean;
+}
+
 export interface Agent {
   id: string;
   name: string;
   systemPrompt: string;
+  provider: AgentProvider;
   model: string;
   allowedTools: string[];
   isDefault: boolean;
@@ -12,6 +23,7 @@ export interface Agent {
 export interface AgentInput {
   name: string;
   systemPrompt: string;
+  provider: AgentProvider;
   model: string;
   allowedTools: string[];
 }
@@ -28,11 +40,4 @@ export const ALLOWED_AGENT_TOOLS = [
   'Bash(git diff:*)',
   'Bash(git log:*)',
   'Bash(git show:*)',
-] as const;
-
-/** Sugerencias de modelo; el campo acepta cualquier id. */
-export const MODEL_SUGGESTIONS = [
-  'claude-sonnet-5-5',
-  'claude-opus-5-5',
-  'claude-haiku-4-5-20251001',
 ] as const;

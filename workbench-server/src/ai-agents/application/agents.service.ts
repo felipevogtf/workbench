@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AgentProvidersService } from '@ai-agents/application/agent-providers.service';
+import { AgentProvider, DEFAULT_PROVIDER } from '@ai-agents/domain/providers';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
 import {
   AGENT_REPOSITORY_PORT,
@@ -18,12 +20,16 @@ interface CreateAgentData {
   name: string;
   systemPrompt: string;
   model: string;
+  provider?: AgentProvider;
   allowedTools?: string[];
   isDefault?: boolean;
 }
 
 type UpdateAgentData = Partial<
-  Pick<CreateAgentData, 'name' | 'systemPrompt' | 'model' | 'allowedTools'>
+  Pick<
+    CreateAgentData,
+    'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+  >
 >;
 
 interface RunAgentData {
@@ -47,10 +53,12 @@ export class AgentsService {
     private readonly repo: AgentRepositoryPort,
     @Inject(AGENT_RUNNER_PORT)
     private readonly runner: AgentRunnerPort,
+    private readonly providers: AgentProvidersService,
   ) {}
 
   async create(data: CreateAgentData): Promise<Agent> {
     await this.assertNameAvailable(data.name);
+    await this.providers.assertEnabled(data.provider ?? DEFAULT_PROVIDER);
 
     const agent = Agent.create(data);
     if (agent.isDefault) {
@@ -65,6 +73,10 @@ export class AgentsService {
 
     if (data.name !== undefined && data.name !== agent.name) {
       await this.assertNameAvailable(data.name);
+    }
+
+    if (data.provider !== undefined && data.provider !== agent.provider) {
+      await this.providers.assertEnabled(data.provider);
     }
 
     agent.update(data);
@@ -115,6 +127,7 @@ export class AgentsService {
     const agent = data.agentId
       ? await this.findById(data.agentId)
       : await this.getDefault();
+    await this.providers.assertEnabled(agent.provider);
     const model = data.model?.trim() || agent.model;
 
     const output = await this.runner.run({

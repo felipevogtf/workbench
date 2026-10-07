@@ -1,5 +1,11 @@
 import { DomainError } from '@core/domain/domain.error';
 import { AgentProps } from './agent.props';
+import {
+  AGENT_PROVIDERS,
+  AgentProvider,
+  DEFAULT_PROVIDER,
+  isAgentProvider,
+} from '@ai-agents/domain/providers';
 
 /**
  * Herramientas que un agente puede usar. Es una lista cerrada y de solo lectura:
@@ -25,6 +31,7 @@ export class Agent {
     name: string;
     systemPrompt: string;
     model: string;
+    provider?: AgentProvider;
     allowedTools?: string[];
     isDefault?: boolean;
   }): Agent {
@@ -33,6 +40,7 @@ export class Agent {
       id: crypto.randomUUID(),
       name: data.name,
       systemPrompt: data.systemPrompt,
+      provider: data.provider ?? DEFAULT_PROVIDER,
       model: data.model,
       allowedTools: data.allowedTools ?? [...ALLOWED_AGENT_TOOLS],
       isDefault: data.isDefault ?? false,
@@ -47,13 +55,17 @@ export class Agent {
 
   update(
     data: Partial<
-      Pick<AgentProps, 'name' | 'systemPrompt' | 'model' | 'allowedTools'>
+      Pick<
+        AgentProps,
+        'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+      >
     >,
   ): void {
     const next = { ...this.props };
     if (data.name !== undefined) next.name = data.name;
     if (data.systemPrompt !== undefined) next.systemPrompt = data.systemPrompt;
     if (data.model !== undefined) next.model = data.model;
+    if (data.provider !== undefined) next.provider = data.provider;
     if (data.allowedTools !== undefined) next.allowedTools = data.allowedTools;
     next.updatedAt = new Date();
 
@@ -81,6 +93,12 @@ export class Agent {
       throw new DomainError('Agent model cannot be empty');
     }
 
+    if (!isAgentProvider(props.provider)) {
+      throw new DomainError(
+        'Agent provider must be one of: ' + AGENT_PROVIDERS.join(', '),
+      );
+    }
+
     const forbidden = props.allowedTools.filter(
       (tool) => !(ALLOWED_AGENT_TOOLS as readonly string[]).includes(tool),
     );
@@ -102,6 +120,10 @@ export class Agent {
 
   get systemPrompt(): string {
     return this.props.systemPrompt;
+  }
+
+  get provider(): AgentProvider {
+    return this.props.provider;
   }
 
   get model(): string {

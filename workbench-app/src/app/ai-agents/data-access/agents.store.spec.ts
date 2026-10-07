@@ -10,6 +10,7 @@ function agent(id: string, isDefault = false): Agent {
     id,
     name: `agent-${id}`,
     systemPrompt: 'Revisa',
+    provider: 'claude',
     model: 'claude-sonnet-5-5',
     allowedTools: ['Read'],
     isDefault,
@@ -89,7 +90,13 @@ describe('AgentsStore', () => {
     api.create.mockReturnValue(of(agent('c')));
     api.remove.mockReturnValue(of(undefined));
 
-    await store.create({ name: 'c', systemPrompt: 'p', model: 'm', allowedTools: [] });
+    await store.create({
+      name: 'c',
+      systemPrompt: 'p',
+      provider: 'claude',
+      model: 'm',
+      allowedTools: [],
+    });
     expect(store.agents()).toHaveLength(3);
 
     await store.remove('c');

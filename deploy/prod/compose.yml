@@ -15,6 +15,9 @@ services:
       - ./server.env
     volumes:
       - reviews:/data/reviews
+      # Sesión de los CLIs que se inician con login (agy, copilot): sobrevive a los reinicios.
+      - cli_home:/home/node/.gemini
+      - copilot_home:/home/node/.copilot
     networks:
       - default
       - db
@@ -40,3 +43,5 @@ networks:
 
 volumes:
   reviews:
+  cli_home:
+  copilot_home:

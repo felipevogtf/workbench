@@ -20,34 +20,48 @@
         <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
       }
 
-      <div class="form__row">
-        <app-form-field label="Nombre" for="agent-name" required [error]="fieldError('name')">
-          <app-text-input
-            inputId="agent-name"
-            formControlName="name"
-            placeholder="reviewer-estricto"
-            [invalid]="!!fieldError('name')"
-            [describedBy]="fieldError('name') ? 'agent-name-msg' : null"
-          />
-        </app-form-field>
+      <app-form-field label="Nombre" for="agent-name" required [error]="fieldError('name')">
+        <app-text-input
+          inputId="agent-name"
+          formControlName="name"
+          placeholder="reviewer-estricto"
+          [invalid]="!!fieldError('name')"
+          [describedBy]="fieldError('name') ? 'agent-name-msg' : null"
+        />
+      </app-form-field>
 
-        <app-form-field
-          label="Modelo"
-          for="agent-model"
-          required
-          hint="Puedes escribir cualquier id de modelo."
-          [error]="fieldError('model')"
-        >
-          <app-text-input
-            inputId="agent-model"
-            formControlName="model"
-            placeholder="claude-sonnet-5-5"
-            [suggestions]="modelSuggestions"
-            [invalid]="!!fieldError('model')"
-            [describedBy]="'agent-model-msg'"
-          />
-        </app-form-field>
-      </div>
+      <app-form-field
+        label="Proveedor"
+        for="agent-provider"
+        required
+        hint="El CLI de IA que ejecuta al agente. Se habilitan y deshabilitan en la lista de agentes."
+        [error]="fieldError('provider')"
+      >
+        <app-select
+          inputId="agent-provider"
+          formControlName="provider"
+          [options]="providerOptions()"
+          [describedBy]="'agent-provider-msg'"
+          (change)="onProviderChange()"
+        />
+      </app-form-field>
+
+      <app-form-field
+        label="Modelo"
+        for="agent-model"
+        required
+        hint="Los modelos disponibles dependen del proveedor."
+        [error]="fieldError('model')"
+      >
+        <app-select
+          inputId="agent-model"
+          formControlName="model"
+          placeholder="Elige un modelo"
+          [options]="modelOptions()"
+          [invalid]="!!fieldError('model')"
+          [describedBy]="'agent-model-msg'"
+        />
+      </app-form-field>
 
       <app-form-field
         label="Prompt del agente"

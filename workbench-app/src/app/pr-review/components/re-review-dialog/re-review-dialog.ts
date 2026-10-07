@@ -11,7 +11,8 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import type { Agent } from '@ai-agents/index';
-import { MODEL_SUGGESTIONS } from '@ai-agents/index';
+import { ProvidersStore } from '@ai-agents/index';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Button } from '@shared/ui/button/button';
 import { Dialog } from '@shared/ui/dialog/dialog';
 import { FormField } from '@shared/ui/form-field/form-field';
@@ -46,7 +47,7 @@ import { ReReviewRequest } from '../../models/pull-request';
             inputId="rr-model"
             formControlName="model"
             placeholder="claude-opus-5-5"
-            [suggestions]="modelSuggestions"
+            [suggestions]="modelSuggestions()"
             describedBy="rr-model-msg"
           />
         </app-form-field>
@@ -79,8 +80,20 @@ export class ReReviewDialog {
 
   readonly confirmed = output<ReReviewRequest>();
 
-  protected readonly modelSuggestions = MODEL_SUGGESTIONS;
+  private readonly providers = inject(ProvidersStore);
   protected readonly form = inject(NonNullableFormBuilder).group({ agentId: [''], model: [''] });
+  private readonly selectedAgentId = toSignal(this.form.controls.agentId.valueChanges, {
+    initialValue: '',
+  });
+
+  /** Modelos del proveedor del agente elegido (o del agente por defecto). */
+  protected readonly modelSuggestions = computed(() => {
+    const agents = this.agents();
+    const agent =
+      agents.find((candidate) => candidate.id === this.selectedAgentId()) ??
+      agents.find((candidate) => candidate.isDefault);
+    return this.providers.modelsOf(agent?.provider);
+  });
 
   protected readonly agentOptions = computed<SelectOption[]>(() =>
     this.agents().map((agent) => ({
@@ -95,6 +108,7 @@ export class ReReviewDialog {
   });
 
   constructor() {
+    void this.providers.load();
     // Cada vez que se abre, el formulario parte limpio.
     effect(() => {
       if (this.open()) untracked(() => this.form.reset());

@@ -44,6 +44,7 @@ export class AgentsController {
         name: dto.name,
         systemPrompt: dto.systemPrompt,
         model: dto.model,
+        provider: dto.provider,
         allowedTools: dto.allowedTools,
       }),
     );
@@ -66,6 +67,7 @@ export class AgentsController {
       id: agent.id,
       name: agent.name,
       systemPrompt: agent.systemPrompt,
+      provider: agent.provider,
       model: agent.model,
       allowedTools: agent.allowedTools,
       isDefault: agent.isDefault,

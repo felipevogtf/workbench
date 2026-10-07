@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
+import { DEFAULT_PROVIDER, isAgentProvider } from '@ai-agents/domain/providers';
 import { AgentRepositoryPort } from '@ai-agents/domain/ports/agent-repository.port';
 import { AgentOrmEntity } from '@ai-agents/infrastructure/persistence/agent.orm-entity';
 
@@ -39,6 +40,7 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       id: agent.id,
       name: agent.name,
       system_prompt: agent.systemPrompt,
+      provider: agent.provider,
       model: agent.model,
       allowed_tools: agent.allowedTools,
       is_default: agent.isDefault,
@@ -64,6 +66,7 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       id: orm.id,
       name: orm.name,
       systemPrompt: orm.system_prompt,
+      provider: isAgentProvider(orm.provider) ? orm.provider : DEFAULT_PROVIDER,
       model: orm.model,
       allowedTools: orm.allowed_tools,
       isDefault: orm.is_default,

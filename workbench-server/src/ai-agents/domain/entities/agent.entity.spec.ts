@@ -50,4 +50,23 @@ describe('Agent', () => {
     expect(agent.model).toBe('claude-opus-5-5');
     expect(agent.name).toBe('reviewer');
   });
+
+  it('uses claude as the default provider and accepts the others', () => {
+    expect(Agent.create(valid).provider).toBe('claude');
+    expect(Agent.create({ ...valid, provider: 'copilot' }).provider).toBe(
+      'copilot',
+    );
+  });
+
+  it('rejects an unknown provider', () => {
+    expect(() =>
+      Agent.create({ ...valid, provider: 'gpt' as unknown as 'claude' }),
+    ).toThrow(DomainError);
+  });
+
+  it('changes the provider on update', () => {
+    const agent = Agent.create(valid);
+    agent.update({ provider: 'antigravity', model: 'gemini-3.8-flash-medium' });
+    expect(agent.provider).toBe('antigravity');
+  });
 });

@@ -6,6 +6,26 @@
     <a actions app-button routerLink="new"><app-icon name="plus" size="1em" /> Nuevo agente</a>
   </app-page-header>
 
+  @if (providers.providers().length > 0) {
+    <section class="providers" aria-labelledby="providers-title">
+      <h4 id="providers-title">Proveedores de IA</h4>
+      <p>
+        Cada agente corre con el CLI de un proveedor. Deshabilita los que no uses: no se podrán
+        elegir para agentes nuevos ni ejecutar.
+      </p>
+      <div class="providers__list">
+        @for (provider of providers.providers(); track provider.id) {
+          <app-checkbox
+            [value]="provider.enabled"
+            (valueChange)="setProviderEnabled(provider, $event)"
+          >
+            {{ provider.label }}
+          </app-checkbox>
+        }
+      </div>
+    </section>
+  }
+
   @if (store.error(); as error) {
     <app-alert tone="danger" heading="No se pudieron cargar los agentes">
       {{ error }}
