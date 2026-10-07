@@ -1,0 +1,78 @@
+<div class="page">
+  <app-page-header
+    heading="Kanban"
+    subtitle="Tableros con una columna por estado para mover tus tareas."
+  >
+    <button actions app-button type="button" (click)="openCreate()">
+      <app-icon name="plus" size="1em" /> Nuevo tablero
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los tableros">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="grid" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="160px" />
+      }
+    </div>
+  } @else if (store.boards().length === 0) {
+    <app-empty-state icon="kanban" heading="Todavía no hay tableros">
+      Crea un tablero y agrega las tareas que quieras ver como columnas.
+      <button empty-action app-button type="button" (click)="openCreate()">Nuevo tablero</button>
+    </app-empty-state>
+  } @else {
+    <ul class="grid">
+      @for (board of store.boards(); track board.id) {
+        <li>
+          <app-card interactive>
+            <ng-container card-header>
+              <app-icon name="kanban" />
+              <span class="meta">
+                {{ taskCount(board) }} {{ taskCount(board) === 1 ? 'tarea' : 'tareas' }}
+              </span>
+            </ng-container>
+
+            <a class="board-link break-anywhere" [routerLink]="['/kanban', board.id]">{{
+              board.name
+            }}</a>
+            @if (board.description) {
+              <p class="description">{{ board.description }}</p>
+            }
+            <p class="meta">Creado {{ board.createdAt | timeAgo }}</p>
+
+            <ng-container card-footer>
+              <a app-button size="sm" variant="secondary" [routerLink]="['/kanban', board.id]"
+                >Abrir</a
+              >
+              <app-menu
+                [label]="'Acciones de ' + board.name"
+                [items]="menu"
+                (selected)="onMenu(board, $event)"
+              />
+            </ng-container>
+          </app-card>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-board-form-dialog
+    [(open)]="formOpen"
+    [heading]="editing() ? 'Editar tablero' : 'Nuevo tablero'"
+    [initial]="editing()"
+    [save]="save"
+  />
+</div>

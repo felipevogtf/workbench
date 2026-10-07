@@ -13,7 +13,7 @@
   border-radius: var(--radius-sm);
 
   li {
-    padding: 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
     border-bottom: 1px solid var(--border);
 
     &:last-child {

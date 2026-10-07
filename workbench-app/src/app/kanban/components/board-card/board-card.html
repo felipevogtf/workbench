@@ -1,8 +1,11 @@
 <article class="card">
   <div class="card__top">
-    <a class="card__title break-anywhere" [routerLink]="['/tasks/issues', issue().id]">{{
-      issue().name
-    }}</a>
+    <a
+      class="card__title break-anywhere"
+      [routerLink]="['/tasks/issues', issue().id]"
+      [queryParams]="{ volver: backTo }"
+      >{{ issue().name }}</a
+    >
     <app-menu
       [label]="'Acciones de ' + issue().name"
       [items]="menu()"

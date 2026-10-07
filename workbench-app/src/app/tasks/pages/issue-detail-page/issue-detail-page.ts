@@ -76,6 +76,8 @@ import { Issue, issueCode } from '../../models/issue';
 export class IssueDetailPage {
   /** Viene de la ruta (`withComponentInputBinding`). */
   readonly id = input.required<string>();
+  /** Ruta de origen (`?volver=/kanban/<id>`): a dónde lleva el botón de volver. Solo se aceptan tableros. */
+  readonly volver = input<string>();
 
   protected readonly store = inject(IssuesStore);
   protected readonly hours = inject(TimeEntriesStore);
@@ -86,6 +88,14 @@ export class IssueDetailPage {
   private readonly labelsStore = inject(LabelsStore);
   private readonly confirm = inject(ConfirmDialog);
   private readonly router = inject(Router);
+
+  /** Dónde vuelve el botón «volver» y cómo se llama ese lugar. */
+  protected readonly back = computed(() => {
+    const from = this.volver();
+    return from && /^\/kanban\/[\w-]+$/.test(from)
+      ? { path: from, label: 'Tablero' }
+      : { path: '/tasks/issues', label: 'Tareas' };
+  });
 
   protected readonly formatDay = formatDay;
   protected readonly formatHours = formatHours;
@@ -202,7 +212,7 @@ export class IssueDetailPage {
       tone: 'danger',
     });
     if (confirmed && (await this.store.remove(issue.id))) {
-      await this.router.navigate(['/tasks/issues']);
+      await this.router.navigateByUrl(this.back().path);
     }
   }
 

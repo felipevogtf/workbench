@@ -15,7 +15,7 @@
   [class.is-active]="drawerOpen()"
   (click)="closeDrawer()"
 ></button>
-<app-sidebar [open]="drawerOpen()" (closed)="closeDrawer()" />
+<app-sidebar [open]="drawerOpen()" [drawer]="immersive()" (closed)="closeDrawer()" />
 
 <main id="main" tabindex="-1">
   <router-outlet />

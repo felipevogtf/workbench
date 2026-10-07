@@ -69,14 +69,18 @@ main {
   }
 }
 
+// Escritorio: menú fijo a la izquierda. En pantallas inmersivas se queda la barra superior y
+// el menú sale como panel sobre el contenido.
 @media (min-width: 768px) {
-  .topbar,
-  .overlay {
-    display: none;
-  }
+  :host(:not(.is-immersive)) {
+    .topbar,
+    .overlay {
+      display: none;
+    }
 
-  main {
-    padding-top: 0;
-    margin-left: var(--sidebar-width);
+    main {
+      padding-top: 0;
+      margin-left: var(--sidebar-width);
+    }
   }
 }

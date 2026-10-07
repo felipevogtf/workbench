@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { formatDay, formatHours } from '@shared/util/date';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Tag } from '@shared/ui/tag/tag';
@@ -25,6 +25,8 @@ export class BoardCardItem {
   readonly moveTo = output<string>();
   readonly remove = output<void>();
 
+  /** Ruta del tablero abierto: el detalle de la tarea la usa para su botón «volver». */
+  protected readonly backTo = inject(Router).url.split(/[?#]/)[0];
   private readonly projects = inject(ProjectsStore).projectById;
   private readonly labelsById = inject(LabelsStore).labelById;
 

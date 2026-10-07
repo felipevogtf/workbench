@@ -15,11 +15,14 @@ export class BoardsStore {
   private readonly loadingState = signal(false);
   private readonly loadedState = signal(false);
   private readonly errorState = signal<string | null>(null);
+  private readonly countsState = signal<ReadonlyMap<string, number>>(new Map());
 
   readonly boards = this.items.asReadonly();
   readonly loading = this.loadingState.asReadonly();
   readonly loaded = this.loadedState.asReadonly();
   readonly error = this.errorState.asReadonly();
+  /** Tareas por tablero (id del tablero → cantidad). */
+  readonly counts = this.countsState.asReadonly();
 
   /** Carga la lista; si ya está cargada no vuelve a pedirla salvo con `force`. */
   async load(force = false): Promise<void> {
@@ -34,6 +37,18 @@ export class BoardsStore {
       this.errorState.set(errorMessage(error));
     } finally {
       this.loadingState.set(false);
+    }
+  }
+
+  /** Cuenta las tareas de cada tablero (para la lista). Un fallo no impide ver los tableros. */
+  async loadCounts(): Promise<void> {
+    try {
+      const cards = await firstValueFrom(this.api.assignments());
+      const counts = new Map<string, number>();
+      for (const card of cards) counts.set(card.boardId, (counts.get(card.boardId) ?? 0) + 1);
+      this.countsState.set(counts);
+    } catch {
+      this.countsState.set(new Map());
     }
   }
 

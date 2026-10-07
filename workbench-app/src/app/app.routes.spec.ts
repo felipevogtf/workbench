@@ -33,7 +33,7 @@ describe('app routes', () => {
     ['/tasks/projects', 'app-project-list-page'],
     ['/tasks/states', 'app-state-list-page'],
     ['/tasks/labels', 'app-label-list-page'],
-    ['/kanban', 'app-board-page'],
+    ['/kanban', 'app-board-list-page'],
     ['/kanban/abc', 'app-board-page'],
   ])('lazy loads %s', async (url, tag) => {
     expect(await open(url)).toBe(tag);

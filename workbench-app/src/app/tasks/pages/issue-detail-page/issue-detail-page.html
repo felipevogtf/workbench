@@ -1,8 +1,8 @@
 <div class="page">
   @if (issue(); as issue) {
     <app-page-header [heading]="issue.name" [subtitle]="(project()?.name ?? '—') + ' · ' + code()">
-      <a back app-button variant="ghost" size="sm" routerLink="/tasks/issues">
-        <app-icon name="arrow-left" size="1em" /> Tareas
+      <a back app-button variant="ghost" size="sm" [routerLink]="back().path">
+        <app-icon name="arrow-left" size="1em" /> {{ back().label }}
       </a>
       <button
         actions

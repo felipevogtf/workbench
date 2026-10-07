@@ -1,4 +1,4 @@
-<div class="page">
+<div class="board">
   @if (boards.error(); as error) {
     <app-alert tone="danger" heading="No se pudieron cargar los tableros">
       {{ error }}
@@ -18,42 +18,28 @@
       <app-skeleton height="48px" />
       <app-skeleton height="320px" />
     </div>
-  } @else if (boards.boards().length === 0) {
-    <app-page-header
-      heading="Kanban"
-      subtitle="Tableros con una columna por estado para mover tus tareas."
-    />
-    <app-empty-state icon="kanban" heading="Todavía no hay tableros">
-      Crea un tablero y agrega las tareas que quieras ver como columnas.
-      <button empty-action app-button type="button" (click)="openCreate()">Nuevo tablero</button>
-    </app-empty-state>
   } @else if (board(); as board) {
-    <app-page-header [heading]="board.name" [subtitle]="board.description ?? undefined">
-      <button actions app-button type="button" (click)="addOpen.set(true)">
-        <app-icon name="plus" size="1em" /> Agregar tareas
-      </button>
-      <button actions app-button variant="secondary" type="button" (click)="openCreate()">
-        Nuevo tablero
-      </button>
-      <app-menu
-        actions
-        label="Acciones del tablero"
-        [items]="boardMenu"
-        (selected)="onBoardMenu($event)"
-      />
-    </app-page-header>
-
-    @if (boards.boards().length > 1) {
-      <label class="switcher" for="board-switcher">
-        <span>Tablero</span>
-        <app-select
-          inputId="board-switcher"
-          [options]="boardOptions()"
-          [formControl]="boardControl"
-          (change)="openBoard(boardControl.value)"
+    <header class="board__header">
+      <div class="board__title">
+        <a class="board__back" routerLink="/kanban">
+          <app-icon name="arrow-left" size="1em" /> Tableros
+        </a>
+        <h3>{{ board.name }}</h3>
+        @if (board.description) {
+          <h4>{{ board.description }}</h4>
+        }
+      </div>
+      <div class="board__actions">
+        <button app-button type="button" (click)="addOpen.set(true)">
+          <app-icon name="plus" size="1em" /> Agregar tareas
+        </button>
+        <app-menu
+          label="Acciones del tablero"
+          [items]="boardMenu"
+          (selected)="onBoardMenu($event)"
         />
-      </label>
-    }
+      </div>
+    </header>
 
     @if (view.error(); as error) {
       <app-alert tone="danger" heading="No se pudo cargar el tablero">{{ error }}</app-alert>
@@ -93,6 +79,12 @@
       [boardName]="board.name"
       (confirmed)="addIssues($event)"
     />
+    <app-board-form-dialog
+      [(open)]="formOpen"
+      heading="Editar tablero"
+      [initial]="board"
+      [save]="save"
+    />
   } @else {
     <app-alert tone="warning" heading="No existe ese tablero">
       <a alert-action app-button variant="secondary" size="sm" routerLink="/kanban">
@@ -100,11 +92,4 @@
       </a>
     </app-alert>
   }
-
-  <app-board-form-dialog
-    [(open)]="formOpen"
-    [heading]="editing() ? 'Editar tablero' : 'Nuevo tablero'"
-    [initial]="editing()"
-    [save]="save"
-  />
 </div>

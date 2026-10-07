@@ -23,12 +23,14 @@ const STORAGE_KEY = 'workbench.sidebar.open-groups';
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive, Icon, IconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.is-open]': 'open()' },
+  host: { '[class.is-open]': 'open()', '[class.is-drawer]': 'drawer()' },
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.scss',
 })
 export class Sidebar {
   readonly open = input(false);
+  /** Siempre como panel flotante (con overlay), también en pantallas anchas. */
+  readonly drawer = input(false);
   /** Se emite al elegir un módulo o cerrar el drawer. */
   readonly closed = output<void>();
 

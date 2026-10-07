@@ -121,8 +121,8 @@ li {
 }
 
 @media (min-width: 768px) {
-  :host,
-  :host(.is-open) {
+  :host(:not(.is-drawer)),
+  :host(:not(.is-drawer).is-open) {
     transform: none;
     visibility: visible;
     box-shadow: none;
@@ -131,7 +131,7 @@ li {
     padding-top: var(--space-5);
   }
 
-  .sidebar__close {
+  :host(:not(.is-drawer)) .sidebar__close {
     display: none;
   }
 }
