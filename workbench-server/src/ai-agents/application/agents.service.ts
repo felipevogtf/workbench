@@ -58,7 +58,7 @@ export class AgentsService {
 
   async create(data: CreateAgentData): Promise<Agent> {
     await this.assertNameAvailable(data.name);
-    await this.providers.assertEnabled(data.provider ?? DEFAULT_PROVIDER);
+    this.providers.assertEnabled(data.provider ?? DEFAULT_PROVIDER);
 
     const agent = Agent.create(data);
     if (agent.isDefault) {
@@ -76,7 +76,7 @@ export class AgentsService {
     }
 
     if (data.provider !== undefined && data.provider !== agent.provider) {
-      await this.providers.assertEnabled(data.provider);
+      this.providers.assertEnabled(data.provider);
     }
 
     agent.update(data);
@@ -127,7 +127,7 @@ export class AgentsService {
     const agent = data.agentId
       ? await this.findById(data.agentId)
       : await this.getDefault();
-    await this.providers.assertEnabled(agent.provider);
+    this.providers.assertEnabled(agent.provider);
     const model = data.model?.trim() || agent.model;
 
     const output = await this.runner.run({

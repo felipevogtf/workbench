@@ -23,7 +23,7 @@ const DEFAULTS: Record<AgentProvider, { label: string; models: string[] }> = {
 };
 
 /**
- * Catálogo fijo de proveedores. Los modelos de cada uno se pueden reemplazar con una lista separada
+ * Catálogo fijo de proveedores; `AGENT_PROVIDERS` elige cuáles están habilitados. Los modelos de cada uno se pueden reemplazar con una lista separada
  * por comas en `CLAUDE_MODELS`, `COPILOT_MODELS` o `ANTIGRAVITY_MODELS`, porque cada CLI cambia
  * los suyos con frecuencia.
  */
@@ -32,6 +32,15 @@ export class EnvProviderCatalogAdapter implements ProviderCatalogPort {
   constructor(private readonly config: ConfigService) {}
 
   list(): ProviderInfo[] {
+    // AGENT_PROVIDERS=claude,copilot habilita solo esos; vacío o sin definir los habilita todos.
+    const configured = this.config
+      .get<string>('AGENT_PROVIDERS')
+      ?.split(',')
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean);
+    const enabled = (id: AgentProvider) =>
+      !configured?.length || configured.includes(id);
+
     return (Object.keys(DEFAULTS) as AgentProvider[]).map((id) => {
       const override = this.config
         .get<string>(`${id.toUpperCase()}_MODELS`)
@@ -41,6 +50,7 @@ export class EnvProviderCatalogAdapter implements ProviderCatalogPort {
       return {
         id,
         label: DEFAULTS[id].label,
+        enabled: enabled(id),
         models: override?.length ? override : DEFAULTS[id].models,
       };
     });

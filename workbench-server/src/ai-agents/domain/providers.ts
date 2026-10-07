@@ -14,4 +14,6 @@ export interface ProviderInfo {
   label: string;
   /** Modelos que se ofrecen al elegir este proveedor. */
   models: readonly string[];
+  /** Se controla con la variable de entorno `AGENT_PROVIDERS`. */
+  enabled: boolean;
 }

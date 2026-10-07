@@ -34,10 +34,6 @@ export class AgentsApi {
     return this.http.get<ProviderStatus[]>(`${this.base}/agent-providers`);
   }
 
-  setProviderEnabled(id: string, enabled: boolean): Observable<ProviderStatus[]> {
-    return this.http.patch<ProviderStatus[]>(`${this.base}/agent-providers/${id}`, { enabled });
-  }
-
   setDefault(id: string): Observable<Agent> {
     return this.http.post<Agent>(`${this.url}/${id}/default`, {});
   }

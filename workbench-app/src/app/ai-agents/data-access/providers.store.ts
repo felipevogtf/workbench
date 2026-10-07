@@ -5,7 +5,7 @@ import { Toast } from '@shared/ui/toast/toast';
 import { AgentProvider, ProviderStatus } from '../models/agent';
 import { AgentsApi } from './agents.api';
 
-/** Proveedores de IA (Claude, Copilot, Antigravity): cuáles están habilitados y sus modelos. */
+/** Proveedores de IA (Claude, Copilot, Antigravity) y sus modelos. Cuáles están habilitados lo decide el servidor (AGENT_PROVIDERS). */
 @Injectable({ providedIn: 'root' })
 export class ProvidersStore {
   private readonly api = inject(AgentsApi);
@@ -30,15 +30,6 @@ export class ProvidersStore {
       this.toast.error(errorMessage(error));
     } finally {
       this.loadingState.set(false);
-    }
-  }
-
-  /** Habilita o deshabilita un proveedor; el servidor exige que quede al menos uno habilitado. */
-  async setEnabled(id: AgentProvider, enabled: boolean): Promise<void> {
-    try {
-      this.items.set(await firstValueFrom(this.api.setProviderEnabled(id, enabled)));
-    } catch (error) {
-      this.toast.error(errorMessage(error));
     }
   }
 
