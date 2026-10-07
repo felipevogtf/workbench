@@ -1,6 +1,7 @@
 export interface RemoteProjectData {
   externalId: string;
   name: string;
+  identifier: string | null;
 }
 
 export interface ProjectSourcePort {

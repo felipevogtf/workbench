@@ -9,7 +9,7 @@
       (selected)="onMenu($event)"
     />
   </div>
-  <p class="card__meta break-anywhere">{{ project() }} #{{ number() }}</p>
+  <p class="card__meta break-anywhere">{{ project() }} · {{ code() }}</p>
 
   @if (issue().priority && issue().priority !== 'none') {
     <app-priority-badge [priority]="issue().priority" />

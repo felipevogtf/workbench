@@ -8,7 +8,7 @@ import { Tag } from '@shared/ui/tag/tag';
 import { LabelsStore } from '../../data-access/labels.store';
 import { ProjectsStore } from '../../data-access/projects.store';
 import { StatesStore } from '../../data-access/states.store';
-import { Issue, issueNumber } from '../../models/issue';
+import { Issue, issueCode } from '../../models/issue';
 import { PriorityBadge } from '../priority-badge/priority-badge';
 
 /** Tabla desde 768px; lista de cards por debajo. */
@@ -31,13 +31,12 @@ export class IssueTable {
 
   protected readonly formatDay = formatDay;
   protected readonly formatHours = formatHours;
-  protected readonly issueNumber = issueNumber;
 
   /** Datos de cada fila ya resueltos (proyecto, estado y etiquetas por id). */
   protected readonly rows = computed(() =>
     this.items().map((issue) => ({
       issue,
-      project: this.projects().get(issue.projectId)?.name ?? '—',
+      code: issueCode(issue, this.projects().get(issue.projectId)?.identifier),
       state: issue.stateId ? (this.states().get(issue.stateId) ?? null) : null,
       labels: issue.labelIds.flatMap((id) => this.labels().get(id) ?? []),
       menu: menuFor(issue),

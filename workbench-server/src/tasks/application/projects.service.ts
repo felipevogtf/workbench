@@ -51,7 +51,7 @@ export class ProjectsService {
       );
 
       if (existing) {
-        existing.syncFromRemote(raw.name);
+        existing.syncFromRemote(raw.name, raw.identifier);
         await this.projectRepository.save(existing);
         updated++;
       } else {
@@ -63,6 +63,7 @@ export class ProjectsService {
           name: raw.name,
           externalId: raw.externalId,
           source: 'plane',
+          identifier: raw.identifier,
         });
         await this.projectRepository.save(project);
         created++;

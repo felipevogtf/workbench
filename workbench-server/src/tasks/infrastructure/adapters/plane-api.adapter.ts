@@ -34,7 +34,11 @@ export class PlaneApiAdapter
     const myProjects: RemoteProjectData[] = [];
     for (const rawProject of projectList) {
       if (await this.isMember(rawProject.id, userId)) {
-        myProjects.push({ externalId: rawProject.id, name: rawProject.name });
+        myProjects.push({
+          externalId: rawProject.id,
+          name: rawProject.name,
+          identifier: rawProject.identifier ?? null,
+        });
       }
     }
 
@@ -114,6 +118,14 @@ export class PlaneApiAdapter
       priority: raw.priority,
       startDate: raw.start_date,
       dueDate: raw.target_date,
+      estimatePoint: toEstimate(raw.estimate_point),
     };
   }
+}
+
+/** El estimado de Plane llega como texto (`"2"`); solo sirve si es un número válido. */
+function toEstimate(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
 }

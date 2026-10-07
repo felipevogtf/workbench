@@ -149,6 +149,7 @@ export class IssuesService {
           remoteSequence: raw.sequenceNumber,
           startDate: raw.startDate,
           dueDate: raw.dueDate,
+          estimatedHours: raw.estimatePoint,
         });
         await this.issueRepository.save(existing);
         updated++;
@@ -166,7 +167,7 @@ export class IssuesService {
           externalState: raw.externalState,
           description: raw.description,
           priority: raw.priority,
-          estimatedHours: null,
+          estimatedHours: raw.estimatePoint,
           stateId: null,
           projectId: project.id,
           labelIds: [],

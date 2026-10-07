@@ -35,6 +35,7 @@ export class TypeOrmProjectRepository implements ProjectRepositoryPort {
       name: project.name,
       external_id: project.externalId,
       source: project.source,
+      identifier: project.identifier,
       synced_at: project.syncedAt,
     });
   }
@@ -49,6 +50,7 @@ export class TypeOrmProjectRepository implements ProjectRepositoryPort {
       name: orm.name,
       externalId: orm.external_id,
       source: orm.source,
+      identifier: orm.identifier,
       syncedAt: orm.synced_at,
       createdAt: orm.created_at,
     });

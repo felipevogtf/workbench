@@ -96,4 +96,29 @@ describe('Issue', () => {
       expect(issue.estimatedHours).toBe(2);
     });
   });
+
+  describe('Plane estimate', () => {
+    const remote = {
+      name: 'Ticket',
+      description: null,
+      externalState: 'Todo',
+      priority: 'high',
+      remoteSequence: 7,
+      startDate: null,
+      dueDate: null,
+    };
+
+    it('fills the estimated hours with the estimate that Plane sends', () => {
+      const issue = fromPlane();
+      issue.syncFromRemote({ ...remote, estimatedHours: 3 });
+      expect(issue.estimatedHours).toBe(3);
+    });
+
+    it('keeps the local estimated hours when Plane has no estimate', () => {
+      const issue = fromPlane();
+      issue.setEstimatedHours(5);
+      issue.syncFromRemote({ ...remote, estimatedHours: null });
+      expect(issue.estimatedHours).toBe(5);
+    });
+  });
 });

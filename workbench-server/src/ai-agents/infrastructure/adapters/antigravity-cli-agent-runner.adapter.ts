@@ -7,7 +7,10 @@ import {
   AgentRunInput,
   AgentRunnerPort,
 } from '@ai-agents/domain/ports/agent-runner.port';
-import { extractAntigravityAnswer } from './antigravity-output';
+import {
+  AntigravityDeniedError,
+  extractAntigravityAnswer,
+} from './antigravity-output';
 import { redact, timeoutMs } from './cli-config';
 import { runCli } from './cli-process';
 
@@ -28,6 +31,19 @@ const COMMAND_RULES: Record<string, string[]> = {
     'command(cut)',
     'command(file)',
     'command(stat)',
+    'command(cd)',
+    'command(sed)',
+    'command(tr)',
+    'command(diff)',
+    'command(basename)',
+    'command(dirname)',
+    'command(tree)',
+    'command(nl)',
+    'command(printf)',
+    'command(jq)',
+    'command(readlink)',
+    'command(realpath)',
+    'command(test)',
   ],
   Grep: ['command(grep)', 'command(rg)'],
   Glob: ['command(ls)', 'command(find)'],
@@ -49,7 +65,30 @@ const GIT_READ_ONLY = [
   'command(git cat-file)',
   'command(git describe)',
   'command(git shortlog)',
+  'command(git grep)',
+  'command(git diff-tree)',
+  'command(git name-rev)',
+  'command(git show-ref)',
+  'command(git for-each-ref)',
+  'command(git rev-list)',
+  'command(git reflog)',
+  'command(git range-diff)',
+  'command(git whatchanged)',
 ];
+
+// En modo headless, una sola herramienta no permitida (ejecutar tests, buscar en la web…) termina la
+// ejecución sin respuesta. Por eso el modelo sabe de antemano qué puede hacer.
+const SANDBOX_NOTICE = [
+  'RESTRICCIONES DEL ENTORNO: eres de solo lectura y no hay internet.',
+  'Solo puedes leer archivos y usar comandos de lectura: git diff, git log, git show, git grep, git status, git ls-files,',
+  'git blame; cat, head, tail, ls, find, grep, rg, wc, sed -n.',
+  'NO puedes ejecutar tests, compiladores, instaladores ni scripts (por ejemplo phpunit, composer, npm), ni escribir archivos,',
+  'ni buscar en la web, leer URLs o usar el navegador. Si lo intentas, la revisión falla sin respuesta:',
+  'basa tu trabajo solo en lo que puedas leer en el repositorio.',
+].join('\n');
+
+const RETRY_NOTICE =
+  'IMPORTANTE: en el intento anterior usaste una herramienta no permitida y no se pudo completar. No ejecutes tests ni nada que no sea leer código y git de solo lectura; no uses la web.';
 // Las reglas regex se evalúan sobre el texto del comando. Se bloquean las rutas absolutas del
 // servidor (precedidas de un espacio, para no tocar rutas del repo como `src/app/`) y las carpetas
 // donde guardan sus credenciales los CLI. No se bloquea `.env` a secas: aparece en código normal
@@ -65,6 +104,8 @@ const DENY_RULES = [
   'command(regex:curl .*)',
   'command(regex:find .*-exec.*)',
   'command(regex:find .*-delete.*)',
+  'command(regex:sed .*-i.*)',
+  'command(regex:sed .*--in-place.*)',
   'command(regex:.* /app.*)',
   'command(regex:.* /home.*)',
   'command(regex:.* /root.*)',
@@ -101,7 +142,18 @@ export class AntigravityCliAgentRunnerAdapter implements AgentRunnerPort {
   async run(input: AgentRunInput): Promise<string> {
     await this.ensureSettings(input.agent.allowedTools);
 
-    const prompt = `${input.agent.systemPrompt}\n\n---\n\n${input.prompt}`;
+    const prompt = `${input.agent.systemPrompt}\n\n${SANDBOX_NOTICE}\n\n---\n\n${input.prompt}`;
+
+    try {
+      return await this.attempt(input, prompt);
+    } catch (error) {
+      if (!(error instanceof AntigravityDeniedError)) throw error;
+      // Una segunda oportunidad, recordándole lo que no puede hacer.
+      return this.attempt(input, `${prompt}\n\n${RETRY_NOTICE}`);
+    }
+  }
+
+  private async attempt(input: AgentRunInput, prompt: string): Promise<string> {
     const stdout = await runCli({
       label: 'Antigravity CLI',
       bin: this.config.get<string>('ANTIGRAVITY_BIN') || 'agy',

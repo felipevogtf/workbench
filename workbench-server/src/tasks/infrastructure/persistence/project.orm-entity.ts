@@ -19,6 +19,9 @@ export class ProjectOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   source!: ExternalSource | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  identifier!: string | null;
+
   @Column()
   name!: string;
 

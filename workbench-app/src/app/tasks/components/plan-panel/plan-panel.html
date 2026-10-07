@@ -1,47 +1,7 @@
-<app-card>
+<app-card id="plan-panel">
   <h4 card-header>Plan de ejecución</h4>
 
   <div class="plan">
-    <p class="plan__repos" aria-live="polite">
-      @if (repos().length > 0) {
-        <app-icon name="code" size="1em" />
-        Leerá el código de:
-        @for (repo of repos(); track repo) {
-          <a class="plan__repo" [href]="repo" target="_blank" rel="noopener noreferrer">{{
-            repoName(repo)
-          }}</a>
-        }
-        (rama <code>main</code> o <code>master</code>)
-      } @else {
-        Sin repositorio: planificará solo con los datos de la tarea. Para que lea código, agrega un
-        repositorio a una etiqueta de la tarea en
-        <a routerLink="/tasks/labels">Etiquetas</a>.
-      }
-    </p>
-
-    <div class="plan__actions">
-      @if (agentOptions().length > 1) {
-        <app-form-field class="plan__agent" label="Agente" for="plan-agent">
-          <app-select
-            inputId="plan-agent"
-            [options]="agentOptions()"
-            [placeholder]="defaultLabel()"
-            [formControl]="agentControl"
-          />
-        </app-form-field>
-      }
-      <button
-        app-button
-        type="button"
-        [loading]="store.requesting() || !!store.active()"
-        [disabled]="!!store.active()"
-        (click)="generate()"
-      >
-        <app-icon name="play" size="1em" />
-        {{ store.plans().length > 0 ? 'Volver a generar' : 'Generar plan' }}
-      </button>
-    </div>
-
     @if (store.active(); as active) {
       <p class="plan__progress" role="status">
         <app-spinner size="1em" />
@@ -56,7 +16,7 @@
 
     @if (store.latestFailed(); as failed) {
       <app-alert tone="danger" heading="El último plan falló">
-        {{ failed.error }}
+        {{ failed.error }} Puedes volver a intentarlo con el botón de IA del encabezado.
       </app-alert>
     }
 
@@ -92,6 +52,7 @@
         <ul class="plan__used" aria-label="Repositorios del plan">
           @for (repo of plan.repos; track repo.url) {
             <li [class.is-skipped]="!repo.used">
+              <app-icon name="code" size="1em" />
               {{ repoName(repo.url) }}
               @if (!repo.used) {
                 <span class="plan__muted">— no se pudo leer: {{ repo.note }}</span>
@@ -100,7 +61,9 @@
           }
         </ul>
       } @else {
-        <p class="plan__muted">Este plan se hizo sin código (sin repositorio).</p>
+        <p class="plan__muted">
+          Este plan se hizo sin código: la tarea no tiene una etiqueta con repositorio.
+        </p>
       }
 
       @if (store.viewedContent(); as content) {
@@ -108,11 +71,6 @@
       } @else {
         <p class="plan__muted"><app-spinner size="1em" /> Cargando el plan…</p>
       }
-    } @else if (!store.active() && !store.loading() && !store.latestFailed()) {
-      <p class="plan__muted">
-        Todavía no hay un plan para esta tarea. Pulsa «Generar plan»: un agente leerá la tarea (y el
-        código, si hay repositorio) y escribirá los pasos, riesgos y una estimación.
-      </p>
     }
 
     @if (history().length > 0) {

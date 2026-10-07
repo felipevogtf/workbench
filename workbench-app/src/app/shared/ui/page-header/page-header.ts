@@ -61,6 +61,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         justify-content: space-between;
       }
 
+      // Las acciones van en una sola fila, a la derecha del título (que es el que se acorta).
+      .header__actions {
+        flex: none;
+        flex-wrap: nowrap;
+        align-items: center;
+      }
+
       .header__actions ::ng-deep > * {
         flex: 0 0 auto;
       }

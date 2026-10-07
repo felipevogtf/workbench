@@ -48,7 +48,7 @@ export class Issue {
       | 'remoteSequence'
       | 'startDate'
       | 'dueDate'
-    >,
+    > & { estimatedHours?: number | null },
   ): void {
     this.props.name = data.name;
     this.props.description = data.description;
@@ -57,6 +57,10 @@ export class Issue {
     this.props.remoteSequence = data.remoteSequence;
     this.props.startDate = data.startDate;
     this.props.dueDate = data.dueDate;
+    // Plane manda cuando tiene estimado; si no, se conserva el que se haya puesto aquí.
+    if (data.estimatedHours !== undefined && data.estimatedHours !== null) {
+      this.props.estimatedHours = data.estimatedHours;
+    }
     this.props.syncedAt = new Date();
 
     const prevStart = this.props.startDate;

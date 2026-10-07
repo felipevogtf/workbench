@@ -8,6 +8,7 @@ import {
   Issue,
   IssueFilters,
   IssueInput,
+  issueCode,
   issueNumber,
 } from '../models/issue';
 import { ProjectsStore } from './projects.store';
@@ -15,7 +16,12 @@ import { ResourceStore } from './resource-store';
 import { TasksApi } from './tasks.api';
 
 /** `true` si la tarea cumple todos los filtros activos. */
-export function matchesFilters(issue: Issue, filters: IssueFilters, projectName: string): boolean {
+export function matchesFilters(
+  issue: Issue,
+  filters: IssueFilters,
+  projectName: string,
+  code = '',
+): boolean {
   if (filters.projectId !== 'all' && issue.projectId !== filters.projectId) return false;
   if (
     filters.stateId === 'none'
@@ -29,7 +35,9 @@ export function matchesFilters(issue: Issue, filters: IssueFilters, projectName:
 
   const search = filters.search.trim().toLowerCase();
   if (!search) return true;
-  return `${issue.name} ${projectName} #${issueNumber(issue)}`.toLowerCase().includes(search);
+  return `${issue.name} ${projectName} ${code} #${issueNumber(issue)}`
+    .toLowerCase()
+    .includes(search);
 }
 
 /** Tareas del workbench (locales y traídas de Plane) y sus filtros. */
@@ -54,7 +62,14 @@ export class IssuesStore extends ResourceStore<Issue> {
     const nameOf = (issue: Issue) => projects.get(issue.projectId)?.name ?? '';
 
     return this.items()
-      .filter((issue) => matchesFilters(issue, filters, nameOf(issue)))
+      .filter((issue) =>
+        matchesFilters(
+          issue,
+          filters,
+          nameOf(issue),
+          issueCode(issue, projects.get(issue.projectId)?.identifier),
+        ),
+      )
       .sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'es') || issueNumber(b) - issueNumber(a));
   });
 

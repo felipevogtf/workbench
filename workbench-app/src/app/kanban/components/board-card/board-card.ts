@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { formatDay, formatHours } from '@shared/util/date';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Tag } from '@shared/ui/tag/tag';
-import { Issue, LabelsStore, PriorityBadge, ProjectsStore, issueNumber } from '@tasks/index';
+import { Issue, LabelsStore, PriorityBadge, ProjectsStore, issueCode } from '@tasks/index';
 import { Column } from '../../domain/board-columns';
 
 const MAX_LABELS = 2;
@@ -34,7 +34,9 @@ export class BoardCardItem {
   protected readonly project = computed(
     () => this.projects().get(this.issue().projectId)?.name ?? '—',
   );
-  protected readonly number = computed(() => issueNumber(this.issue()));
+  protected readonly code = computed(() =>
+    issueCode(this.issue(), this.projects().get(this.issue().projectId)?.identifier),
+  );
   protected readonly labels = computed(() =>
     this.issue().labelIds.flatMap((id) => this.labelsById().get(id) ?? []),
   );

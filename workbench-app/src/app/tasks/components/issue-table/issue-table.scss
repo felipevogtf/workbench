@@ -18,6 +18,11 @@
   color: var(--text-color);
 }
 
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
 .nowrap,
 .state {
   white-space: nowrap;
@@ -84,7 +89,7 @@
   }
 
   td {
-    padding: var(--space-3) var(--space-4);
+    padding: calc(var(--space-3) + 4px) var(--space-4);
     vertical-align: middle;
     border-bottom: 1px solid var(--border);
   }

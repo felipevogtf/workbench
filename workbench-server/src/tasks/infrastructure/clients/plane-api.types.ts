@@ -34,6 +34,8 @@ export interface PlaneIssue {
   start_date: string | null;
   target_date: string | null;
   assignees?: string[];
+  /** Estimado del ticket (texto numérico) cuando el proyecto tiene estimaciones. */
+  estimate_point?: string | number | null;
 }
 
 /** Work item pedido con `?expand=state,labels`: estado y etiquetas llegan como objetos. */

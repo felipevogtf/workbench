@@ -23,24 +23,24 @@
       <app-text-input
         inputId="filter-search"
         type="search"
-        placeholder="Nombre, proyecto o número"
+        placeholder="Nombre, código (MEL-123) o proyecto"
         formControlName="search"
       />
     </app-form-field>
-    <app-form-field label="Proyecto" for="filter-project">
+    <app-form-field class="filters__project" label="Proyecto" for="filter-project">
       <app-select
         inputId="filter-project"
         [options]="projectOptions()"
         formControlName="projectId"
       />
     </app-form-field>
-    <app-form-field label="Estado" for="filter-state">
+    <app-form-field class="filters__state" label="Estado" for="filter-state">
       <app-select inputId="filter-state" [options]="stateOptions()" formControlName="stateId" />
     </app-form-field>
-    <app-form-field label="Etiqueta" for="filter-label">
+    <app-form-field class="filters__label" label="Etiqueta" for="filter-label">
       <app-select inputId="filter-label" [options]="labelOptions()" formControlName="labelId" />
     </app-form-field>
-    <app-form-field label="Origen" for="filter-origin">
+    <app-form-field class="filters__origin" label="Origen" for="filter-origin">
       <app-select inputId="filter-origin" [options]="originOptions" formControlName="origin" />
     </app-form-field>
   </form>

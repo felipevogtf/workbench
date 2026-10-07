@@ -8,6 +8,7 @@ const planeProject = (name: string) =>
     name,
     externalId: `ext-${name}`,
     source: 'plane',
+    identifier: name.slice(0, 3).toUpperCase(),
   });
 
 describe('TasksSyncService', () => {

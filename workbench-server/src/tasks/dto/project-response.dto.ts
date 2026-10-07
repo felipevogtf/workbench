@@ -5,6 +5,7 @@ export class ProjectResponseDto {
   name!: string;
   externalId!: string | null;
   source!: ExternalSource | null;
+  identifier!: string | null;
   syncedAt!: string | null;
   createdAt!: string;
 }

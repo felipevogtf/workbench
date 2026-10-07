@@ -5,6 +5,14 @@ interface AntigravityResult {
   denied_actions?: { action?: string; display_name?: string }[];
 }
 
+/** El modelo intentó usar una herramienta no permitida y el CLI terminó sin respuesta. */
+export class AntigravityDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AntigravityDeniedError';
+  }
+}
+
 /**
  * Lee la salida `--output-format json` de Antigravity. Una respuesta vacía casi siempre significa
  * que el modelo quiso usar una herramienta no permitida: se informa cuál, para poder agregar la
@@ -31,7 +39,7 @@ export function extractAntigravityAnswer(stdout: string): string {
   const denied = (result.denied_actions ?? [])
     .map((action) => action.display_name ?? action.action)
     .filter(Boolean);
-  throw new Error(
+  throw new AntigravityDeniedError(
     denied.length > 0
       ? `Antigravity CLI returned an empty response: it was denied ${[...new Set(denied)].join(', ')} (permissions in settings.json)`
       : 'Antigravity CLI returned an empty response',

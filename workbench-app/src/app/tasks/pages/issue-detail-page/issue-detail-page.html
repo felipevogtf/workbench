@@ -1,9 +1,23 @@
 <div class="page">
   @if (issue(); as issue) {
-    <app-page-header [heading]="issue.name" [subtitle]="(project()?.name ?? '—') + ' #' + number()">
+    <app-page-header [heading]="issue.name" [subtitle]="(project()?.name ?? '—') + ' · ' + code()">
       <a back app-button variant="ghost" size="sm" routerLink="/tasks/issues">
         <app-icon name="arrow-left" size="1em" /> Tareas
       </a>
+      <button
+        actions
+        app-icon-button
+        type="button"
+        label="Generar plan de ejecución con IA (lee el código de las etiquetas con repositorio)"
+        [disabled]="generating()"
+        (click)="generatePlan()"
+      >
+        @if (generating()) {
+          <app-spinner size="1.1rem" />
+        } @else {
+          <app-icon name="sparkles" />
+        }
+      </button>
       <button actions app-button variant="secondary" type="button" (click)="editOpen.set(true)">
         <app-icon name="edit" size="1em" /> Editar
       </button>
@@ -24,8 +38,6 @@
             <p class="muted">Sin descripción.</p>
           }
         </app-card>
-
-        <app-plan-panel [issue]="issue" />
 
         <app-card>
           <h4 card-header>Horas registradas</h4>
@@ -60,7 +72,7 @@
                 [describedBy]="'hours-amount-msg'"
               />
             </app-form-field>
-            <button app-button type="submit" [loading]="addingHours()">
+            <button class="hours-form__submit" app-button type="submit" [loading]="addingHours()">
               <app-icon name="plus" size="1em" /> Agregar
             </button>
           </form>
@@ -114,6 +126,10 @@
             }
           </p>
         </app-card>
+
+        @if (plansStore.plans().length > 0 || plansStore.requesting()) {
+          <app-plan-panel [issue]="issue" />
+        }
       </div>
 
       <aside class="layout__side">

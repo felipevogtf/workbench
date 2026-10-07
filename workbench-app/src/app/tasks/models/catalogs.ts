@@ -4,6 +4,8 @@ export interface Project {
   externalId: string | null;
   /** `null` = proyecto local; `plane` = viene de Plane y solo se actualiza con el sync. */
   source: 'plane' | 'jira' | null;
+  /** Prefijo de las claves de Plane (`MEL`); null en los proyectos locales. */
+  identifier: string | null;
   syncedAt: string | null;
   createdAt: string;
 }

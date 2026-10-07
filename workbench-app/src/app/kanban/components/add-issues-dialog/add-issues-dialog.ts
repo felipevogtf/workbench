@@ -19,7 +19,7 @@ import { Dialog } from '@shared/ui/dialog/dialog';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { TextInput } from '@shared/ui/text-input/text-input';
-import { IssuesStore, ProjectsStore, issueNumber } from '@tasks/index';
+import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
 import { BoardsApi } from '../../data-access/boards.api';
 
 /** Elige tareas que todavía no están en ningún tablero (una tarea solo puede estar en uno). */
@@ -55,7 +55,7 @@ export class AddIssuesDialog {
       .filter((issue) => !this.assigned().has(issue.id))
       .map((issue) => ({
         issue,
-        label: `${projects.get(issue.projectId)?.name ?? '—'} #${issueNumber(issue)}`,
+        label: `${projects.get(issue.projectId)?.name ?? '—'} · ${issueCode(issue, projects.get(issue.projectId)?.identifier)}`,
       }))
       .filter(
         ({ issue, label }) => !search || `${issue.name} ${label}`.toLowerCase().includes(search),

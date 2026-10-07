@@ -59,6 +59,7 @@ export class ProjectsController {
       name: project.name,
       externalId: project.externalId,
       source: project.source,
+      identifier: project.identifier,
       syncedAt: project.syncedAt ? project.syncedAt.toISOString() : null,
       createdAt: project.createdAt.toISOString(),
     };

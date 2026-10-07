@@ -1,4 +1,7 @@
-import { extractAntigravityAnswer } from './antigravity-output';
+import {
+  AntigravityDeniedError,
+  extractAntigravityAnswer,
+} from './antigravity-output';
 
 describe('extractAntigravityAnswer', () => {
   it('returns the response of a successful run', () => {
@@ -16,6 +19,7 @@ describe('extractAntigravityAnswer', () => {
       denied_actions: [{ action: 'command', display_name: 'RunCommand' }],
     });
     expect(() => extractAntigravityAnswer(out)).toThrow(/denied RunCommand/);
+    expect(() => extractAntigravityAnswer(out)).toThrow(AntigravityDeniedError);
   });
 
   it('fails on an error status', () => {

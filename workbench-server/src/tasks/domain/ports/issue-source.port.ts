@@ -7,6 +7,8 @@ export interface RemoteIssueData {
   priority: string | null;
   startDate: string | null;
   dueDate: string | null;
+  /** Estimado de Plane (horas o puntos, según cómo lo use el proyecto); null si no tiene. */
+  estimatePoint: number | null;
 }
 
 export interface IssueSourcePort {

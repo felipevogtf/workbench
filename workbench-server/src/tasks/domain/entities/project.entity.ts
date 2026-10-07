@@ -13,13 +13,14 @@ export class Project {
       id: crypto.randomUUID(),
       externalId: null,
       source: null,
+      identifier: null,
       syncedAt: null,
       createdAt: new Date(),
     });
   }
 
   static createFromExternal(
-    data: Pick<ProjectProps, 'name' | 'externalId' | 'source'>,
+    data: Pick<ProjectProps, 'name' | 'externalId' | 'source' | 'identifier'>,
   ): Project {
     return new Project({
       ...data,
@@ -62,6 +63,10 @@ export class Project {
     return this.props.externalId;
   }
 
+  get identifier() {
+    return this.props.identifier;
+  }
+
   get source() {
     return this.props.source;
   }
@@ -88,8 +93,9 @@ export class Project {
     this.assertLocal('deleted');
   }
 
-  syncFromRemote(name: string) {
+  syncFromRemote(name: string, identifier: string | null) {
     this.applyName(name);
+    this.props.identifier = identifier;
     this.props.syncedAt = new Date();
   }
 

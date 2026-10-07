@@ -30,6 +30,7 @@ import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Select, SelectOption } from '@shared/ui/select/select';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
+import { Spinner } from '@shared/ui/spinner/spinner';
 import { Tag } from '@shared/ui/tag/tag';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { PriorityBadge } from '../../components/priority-badge/priority-badge';
@@ -41,7 +42,7 @@ import { LabelsStore } from '../../data-access/labels.store';
 import { ProjectsStore } from '../../data-access/projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { TimeEntriesStore } from '../../data-access/time-entries.store';
-import { Issue, issueNumber } from '../../models/issue';
+import { Issue, issueCode } from '../../models/issue';
 
 /** Detalle de una tarea (`/tasks/issues/:id`): datos, estado, etiquetas y horas registradas. */
 @Component({
@@ -65,6 +66,7 @@ import { Issue, issueNumber } from '../../models/issue';
     PriorityBadge,
     IssueFormDialog,
     PlanPanel,
+    Spinner,
   ],
   providers: [TimeEntriesStore, PlansStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -77,7 +79,7 @@ export class IssueDetailPage {
 
   protected readonly store = inject(IssuesStore);
   protected readonly hours = inject(TimeEntriesStore);
-  private readonly plansStore = inject(PlansStore);
+  protected readonly plansStore = inject(PlansStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly projectsStore = inject(ProjectsStore);
   private readonly statesStore = inject(StatesStore);
@@ -104,9 +106,9 @@ export class IssueDetailPage {
   protected readonly labels = computed(() =>
     (this.issue()?.labelIds ?? []).flatMap((id) => this.labelsStore.labelById().get(id) ?? []),
   );
-  protected readonly number = computed(() => {
+  protected readonly code = computed(() => {
     const issue = this.issue();
-    return issue ? issueNumber(issue) : 0;
+    return issue ? issueCode(issue, this.project()?.identifier) : '';
   });
 
   protected readonly stateOptions = computed<SelectOption[]>(() =>
@@ -136,6 +138,21 @@ export class IssueDetailPage {
       const stateId = this.issue()?.stateId ?? '';
       untracked(() => this.stateControl.setValue(stateId, { emitEvent: false }));
     });
+  }
+
+  /** Pidiendo o generando un plan: el botón de IA espera. */
+  protected readonly generating = computed(
+    () => this.plansStore.requesting() || !!this.plansStore.active(),
+  );
+
+  /** Pide un plan con el agente por defecto del planificador y lleva la vista hasta él. */
+  protected async generatePlan(): Promise<void> {
+    await this.plansStore.generate();
+    // El panel aparece al final en cuanto hay un plan; se espera a que se pinte para llegar a él.
+    setTimeout(
+      () => document.getElementById('plan-panel')?.scrollIntoView({ behavior: 'smooth' }),
+      50,
+    );
   }
 
   protected hoursInvalid(name: 'date' | 'hours'): boolean {

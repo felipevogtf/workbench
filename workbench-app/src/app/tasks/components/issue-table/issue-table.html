@@ -23,7 +23,7 @@
               row.issue.name
             }}</a>
             <span class="meta">
-              <span class="break-anywhere">{{ row.project }} #{{ issueNumber(row.issue) }}</span>
+              <span class="code">{{ row.code }}</span>
               @if (!row.issue.isLocal) {
                 <app-badge title="Viene de Plane">Plane</app-badge>
               }
@@ -65,7 +65,7 @@
     <li>
       <app-card interactive>
         <ng-container card-header>
-          <span class="break-anywhere">{{ row.project }} #{{ issueNumber(row.issue) }}</span>
+          <span class="code">{{ row.code }}</span>
           @if (!row.issue.isLocal) {
             <app-badge title="Viene de Plane">Plane</app-badge>
           }
