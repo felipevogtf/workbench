@@ -4,6 +4,18 @@
       <a back app-button variant="ghost" size="sm" [routerLink]="back().path">
         <app-icon name="arrow-left" size="1em" /> {{ back().label }}
       </a>
+      @if (planeUrl(); as url) {
+        <a
+          actions
+          app-button
+          variant="secondary"
+          [href]="url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Abrir en Plane <app-icon name="arrow-outward" size="1em" />
+        </a>
+      }
       <button
         actions
         app-icon-button

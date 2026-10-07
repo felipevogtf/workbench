@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ProjectsService } from '@tasks/application/projects.service';
 import { Project } from '@tasks/domain/entities/project.entity';
 import { CreateProjectDto } from '@tasks/dto/create-project.dto';
@@ -15,7 +16,10 @@ import { ProjectResponseDto } from '@tasks/dto/project-response.dto';
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectService: ProjectsService) {}
+  constructor(
+    private readonly projectService: ProjectsService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post()
   async create(
@@ -53,6 +57,16 @@ export class ProjectsController {
     await this.projectService.deleteProject(id);
   }
 
+  /** `<PLANE_API_URL>/<workspace>/browse/`: con la clave de la tarea (MEL-253/) forma su enlace. */
+  private planeBrowseUrl(): string | null {
+    const base = (this.config.get<string>('PLANE_API_URL') ?? '').replace(
+      /\/+$/,
+      '',
+    );
+    const workspace = this.config.get<string>('PLANE_WORKSPACE_SLUG');
+    return base && workspace ? `${base}/${workspace}/browse/` : null;
+  }
+
   private toResponseDto(project: Project): ProjectResponseDto {
     return {
       id: project.id,
@@ -60,6 +74,7 @@ export class ProjectsController {
       externalId: project.externalId,
       source: project.source,
       identifier: project.identifier,
+      ticketBaseUrl: project.source === 'plane' ? this.planeBrowseUrl() : null,
       syncedAt: project.syncedAt ? project.syncedAt.toISOString() : null,
       createdAt: project.createdAt.toISOString(),
     };

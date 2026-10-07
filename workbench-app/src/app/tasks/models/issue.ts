@@ -80,6 +80,19 @@ export function issueCode(
   return identifier ? `${identifier}-${number}` : `#${number}`;
 }
 
+/**
+ * Enlace a la tarea en Plane (`<base>/MEL-253/`). Solo existe para tareas que vienen de Plane, cuyo
+ * proyecto tiene identificador y base de enlaces.
+ */
+export function issuePlaneUrl(
+  issue: Pick<Issue, 'isLocal' | 'remoteSequence'>,
+  project: { identifier: string | null; ticketBaseUrl: string | null } | null | undefined,
+): string | null {
+  if (issue.isLocal || issue.remoteSequence === null) return null;
+  if (!project?.identifier || !project.ticketBaseUrl) return null;
+  return `${project.ticketBaseUrl}${project.identifier}-${issue.remoteSequence}/`;
+}
+
 /** Número visible de la tarea dentro de su proyecto (`#12`). */
 export function issueNumber(issue: Pick<Issue, 'remoteSequence' | 'localSequence'>): number {
   return issue.remoteSequence ?? issue.localSequence;

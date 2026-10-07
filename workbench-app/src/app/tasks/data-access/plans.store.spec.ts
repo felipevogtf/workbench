@@ -123,4 +123,15 @@ describe('PlansStore', () => {
     expect(store.plans().map((p) => p.id)).toEqual(['a']);
     expect(store.viewed()?.id).toBe('a');
   });
+
+  it('can delete the only plan, leaving the panel without plans', async () => {
+    api.listPlans.mockReturnValue(of([plan('a', 'ready')]));
+    await store.load('i1');
+    expect(store.viewed()?.id).toBe('a');
+
+    await store.remove('a');
+
+    expect(store.plans()).toHaveLength(0);
+    expect(store.viewed()).toBeNull();
+  });
 });

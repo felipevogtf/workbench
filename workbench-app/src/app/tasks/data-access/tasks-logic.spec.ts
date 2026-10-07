@@ -1,4 +1,4 @@
-import { Issue, DEFAULT_ISSUE_FILTERS, IssueFilters } from '../models/issue';
+import { Issue, DEFAULT_ISSUE_FILTERS, IssueFilters, issuePlaneUrl } from '../models/issue';
 import { TimeEntry } from '../models/catalogs';
 import { matchesFilters } from './issues.store';
 import { reordered } from './states.store';
@@ -131,5 +131,21 @@ describe('groupByDay', () => {
   it('lists the most recent day first', () => {
     const days = groupByDay([entry('a', '2026-10-01', 1), entry('b', '2026-10-06', 1)]);
     expect(days.map((day) => day.date)).toEqual(['2026-10-06', '2026-10-01']);
+  });
+
+  describe('issuePlaneUrl', () => {
+    const project = { identifier: 'MEL', ticketBaseUrl: 'https://plane.x.cl/ws/browse/' };
+
+    it('builds the link of a Plane issue from its project and sequence', () => {
+      const plane = issue({ isLocal: false, remoteSequence: 253 });
+      expect(issuePlaneUrl(plane, project)).toBe('https://plane.x.cl/ws/browse/MEL-253/');
+    });
+
+    it('has no link for local issues or projects without Plane data', () => {
+      expect(issuePlaneUrl(issue(), project)).toBeNull();
+      const plane = issue({ isLocal: false, remoteSequence: 1 });
+      expect(issuePlaneUrl(plane, { identifier: null, ticketBaseUrl: null })).toBeNull();
+      expect(issuePlaneUrl(plane, undefined)).toBeNull();
+    });
   });
 });

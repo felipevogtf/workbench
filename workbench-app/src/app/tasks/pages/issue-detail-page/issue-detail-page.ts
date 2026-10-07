@@ -42,7 +42,7 @@ import { LabelsStore } from '../../data-access/labels.store';
 import { ProjectsStore } from '../../data-access/projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { TimeEntriesStore } from '../../data-access/time-entries.store';
-import { Issue, issueCode } from '../../models/issue';
+import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
 
 /** Detalle de una tarea (`/tasks/issues/:id`): datos, estado, etiquetas y horas registradas. */
 @Component({
@@ -95,6 +95,12 @@ export class IssueDetailPage {
     return from && /^\/kanban\/[\w-]+$/.test(from)
       ? { path: from, label: 'Tablero' }
       : { path: '/tasks/issues', label: 'Tareas' };
+  });
+
+  /** Enlace a la misma tarea en Plane (solo las que vienen de Plane). */
+  protected readonly planeUrl = computed(() => {
+    const issue = this.issue();
+    return issue ? issuePlaneUrl(issue, this.project()) : null;
   });
 
   protected readonly formatDay = formatDay;

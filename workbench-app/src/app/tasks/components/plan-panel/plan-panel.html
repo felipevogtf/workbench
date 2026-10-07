@@ -45,6 +45,17 @@
           >
             <app-icon name="download" size="1.1rem" />
           </button>
+          @if (plan.status === 'ready' || plan.status === 'failed') {
+            <button
+              app-icon-button
+              type="button"
+              tone="danger"
+              label="Eliminar este plan"
+              (click)="remove(plan)"
+            >
+              <app-icon name="trash" size="1.1rem" />
+            </button>
+          }
         </span>
       </div>
 

@@ -50,17 +50,20 @@ export class AddIssuesDialog {
   protected readonly available = computed(() => {
     const search = this.search().trim().toLowerCase();
     const projects = this.projectsStore.projectById();
-    return this.issuesStore
-      .issues()
-      .filter((issue) => !this.assigned().has(issue.id))
-      .map((issue) => ({
-        issue,
-        label: `${projects.get(issue.projectId)?.name ?? '—'} · ${issueCode(issue, projects.get(issue.projectId)?.identifier)}`,
-      }))
-      .filter(
-        ({ issue, label }) => !search || `${issue.name} ${label}`.toLowerCase().includes(search),
-      )
-      .slice(0, 100);
+    return (
+      this.issuesStore
+        .issues()
+        // Las cerradas son historial: no se ofrecen para agregar al tablero.
+        .filter((issue) => !issue.closedAt && !this.assigned().has(issue.id))
+        .map((issue) => ({
+          issue,
+          label: `${projects.get(issue.projectId)?.name ?? '—'} · ${issueCode(issue, projects.get(issue.projectId)?.identifier)}`,
+        }))
+        .filter(
+          ({ issue, label }) => !search || `${issue.name} ${label}`.toLowerCase().includes(search),
+        )
+        .slice(0, 100)
+    );
   });
 
   constructor() {

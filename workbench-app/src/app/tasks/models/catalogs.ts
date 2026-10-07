@@ -6,6 +6,8 @@ export interface Project {
   source: 'plane' | 'jira' | null;
   /** Prefijo de las claves de Plane (`MEL`); null en los proyectos locales. */
   identifier: string | null;
+  /** Base de los enlaces a Plane (`…/browse/`); null en los proyectos locales. */
+  ticketBaseUrl: string | null;
   syncedAt: string | null;
   createdAt: string;
 }
