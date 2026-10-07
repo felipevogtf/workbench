@@ -17,7 +17,7 @@ import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { Icon } from '@shared/ui/icon/icon';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
-import { IssuesStore } from '@tasks/index';
+import { Issue, IssueFormDialog, IssuesStore } from '@tasks/index';
 import { AddIssuesDialog } from '../../components/add-issues-dialog/add-issues-dialog';
 import { BoardColumn, ColumnMove } from '../../components/board-column/board-column';
 import { BoardFormDialog } from '../../components/board-form-dialog/board-form-dialog';
@@ -48,6 +48,7 @@ const BOARD_MENU: MenuItem[] = [
     BoardColumn,
     BoardFormDialog,
     AddIssuesDialog,
+    IssueFormDialog,
   ],
   providers: [BoardViewStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,6 +76,7 @@ export class BoardPage {
 
   protected readonly formOpen = signal(false);
   protected readonly addOpen = signal(false);
+  protected readonly newOpen = signal(false);
 
   protected readonly save = async (value: BoardInput): Promise<void> => {
     const board = this.board();
@@ -126,6 +128,11 @@ export class BoardPage {
 
   protected onRemove(issueId: string): void {
     void this.view.removeIssue(issueId);
+  }
+
+  /** La tarea recién creada se agrega sola al tablero (queda en la columna de su estado). */
+  protected onCreated(issue: Issue): void {
+    void this.view.addIssues([issue.id]);
   }
 
   protected addIssues(ids: string[]): void {

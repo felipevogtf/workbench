@@ -30,8 +30,11 @@
         }
       </div>
       <div class="board__actions">
-        <button app-button type="button" (click)="addOpen.set(true)">
-          <app-icon name="plus" size="1em" /> Agregar tareas
+        <button app-button type="button" (click)="newOpen.set(true)">
+          <app-icon name="plus" size="1em" /> Nueva tarea
+        </button>
+        <button app-button variant="secondary" type="button" (click)="addOpen.set(true)">
+          Agregar tareas
         </button>
         <app-menu
           label="Acciones del tablero"
@@ -74,6 +77,7 @@
       </div>
     }
 
+    <app-issue-form-dialog [(open)]="newOpen" (saved)="onCreated($event)" />
     <app-add-issues-dialog
       [(open)]="addOpen"
       [boardName]="board.name"

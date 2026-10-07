@@ -7,3 +7,4 @@ export { LabelsStore } from './data-access/labels.store';
 export { ProjectsStore } from './data-access/projects.store';
 export { StatesStore } from './data-access/states.store';
 export { PriorityBadge } from './components/priority-badge/priority-badge';
+export { IssueFormDialog } from './components/issue-form-dialog/issue-form-dialog';
