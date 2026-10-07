@@ -33,7 +33,7 @@ describe('App', () => {
       (fixture.nativeElement as HTMLElement).querySelectorAll('nav .nav-link'),
     ).map((link) => link.textContent?.trim());
 
-    expect(links).toEqual(['Tareas', 'Kanban', 'Pull requests', 'Agentes de IA']);
+    expect(links).toEqual(['Gestión', 'Kanban', 'Pull requests', 'Agentes de IA']);
   });
 
   it('renders the shell around the routed content', async () => {
