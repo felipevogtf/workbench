@@ -5,6 +5,7 @@ import {
   AgentRunnerPort,
 } from '@ai-agents/domain/ports/agent-runner.port';
 import { redact, timeoutMs } from './cli-config';
+import { extractCopilotAnswer } from './copilot-output';
 import { runCli } from './cli-process';
 
 // Equivalencia de las herramientas de solo lectura del agente en los permisos de Copilot CLI.
@@ -25,12 +26,14 @@ const SHELL_PERMISSIONS: Record<string, string> = {
 export class CopilotCliAgentRunnerAdapter implements AgentRunnerPort {
   constructor(private readonly config: ConfigService) {}
 
-  run(input: AgentRunInput): Promise<string> {
+  async run(input: AgentRunInput): Promise<string> {
     const prompt = `${input.agent.systemPrompt}\n\n---\n\n${input.prompt}`;
     const args = [
       '-p',
       prompt,
-      '--silent',
+      '--output-format',
+      'json',
+      '--disable-builtin-mcps',
       '--model',
       input.model || input.agent.model,
     ];
@@ -52,7 +55,7 @@ export class CopilotCliAgentRunnerAdapter implements AgentRunnerPort {
     delete env.GH_TOKEN;
     delete env.BITBUCKET_TOKEN;
 
-    return runCli({
+    const stdout = await runCli({
       label: 'Copilot CLI',
       bin: this.config.get<string>('COPILOT_BIN') || 'copilot',
       args,
@@ -62,5 +65,11 @@ export class CopilotCliAgentRunnerAdapter implements AgentRunnerPort {
       sanitize: (text) => redact(this.config, text),
       notFoundHint: 'Install @github/copilot or set COPILOT_BIN',
     });
+
+    const answer = extractCopilotAnswer(stdout);
+    if (!answer) {
+      throw new Error('Copilot CLI returned no final answer');
+    }
+    return answer;
   }
 }

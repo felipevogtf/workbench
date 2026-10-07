@@ -458,7 +458,7 @@ export class ReviewsService {
       : '';
 
     return (
-      '**Revisión automática generada por Claude** ' +
+      '**Revisión automática generada por IA** ' +
       '(borrador, puede contener errores)' +
       (info ? `\n_${info}_` : '') +
       reviewedCommit +
