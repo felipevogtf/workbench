@@ -1,5 +1,6 @@
 import { DomainError } from '@core/domain/domain.error';
 import { LabelProps } from './label.props';
+import { randomLabelColor } from '@tasks/domain/label-colors';
 import { normalizeRepoUrl } from '@tasks/domain/repo-url';
 
 export class Label {
@@ -15,7 +16,8 @@ export class Label {
     return new Label({
       id: crypto.randomUUID(),
       name: data.name,
-      color: data.color ?? null,
+      // Sin color se elige uno al azar de la paleta, para que ninguna etiqueta quede sin distinguirse.
+      color: data.color ?? randomLabelColor(),
       repoUrl: data.repoUrl ? normalizeRepoUrl(data.repoUrl) : null,
     });
   }

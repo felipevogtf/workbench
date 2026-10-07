@@ -68,7 +68,13 @@ export interface NamedItemValue {
           </app-form-field>
         }
         @if (withColor()) {
-          <app-form-field label="Color" for="named-item-color">
+          <app-form-field
+            label="Color"
+            for="named-item-color"
+            [hint]="
+              withRepo() && !initial() ? 'Si no eliges uno, se asigna un color al azar.' : undefined
+            "
+          >
             <app-color-input inputId="named-item-color" formControlName="color" />
           </app-form-field>
         }

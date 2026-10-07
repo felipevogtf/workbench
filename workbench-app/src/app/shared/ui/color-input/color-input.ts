@@ -3,13 +3,21 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 export const COLOR_PRESETS: readonly string[] = [
   '#9ca3af',
+  '#64748b',
   '#3b82f6',
+  '#0ea5e9',
   '#06b6d4',
+  '#14b8a6',
   '#06d6a0',
+  '#84cc16',
   '#ffc43d',
   '#f97316',
+  '#ef4444',
   '#ef476f',
+  '#ec4899',
   '#a855f7',
+  '#6366f1',
+  '#8b5e3c',
 ];
 
 /**
