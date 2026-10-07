@@ -107,3 +107,20 @@ h4[card-header] {
     order: 0;
   }
 }
+
+// Enlace a la tarea en Plane, en la fila de origen de los detalles.
+.plane-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--primary);
+}
+
+// Cerrar / reabrir va debajo del card de detalles, separado de él.
+.layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

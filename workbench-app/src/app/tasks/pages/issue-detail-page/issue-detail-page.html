@@ -4,18 +4,6 @@
       <a back app-button variant="ghost" size="sm" [routerLink]="back().path">
         <app-icon name="arrow-left" size="1em" /> {{ back().label }}
       </a>
-      @if (planeUrl(); as url) {
-        <a
-          actions
-          app-button
-          variant="secondary"
-          [href]="url"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Abrir en Plane <app-icon name="arrow-outward" size="1em" />
-        </a>
-      }
       <button
         actions
         app-icon-button
@@ -29,9 +17,6 @@
         } @else {
           <app-icon name="sparkles" />
         }
-      </button>
-      <button actions app-button variant="secondary" type="button" (click)="toggleClosed()">
-        {{ issue.closedAt ? 'Reabrir' : 'Cerrar' }}
       </button>
       <button actions app-button variant="secondary" type="button" (click)="editOpen.set(true)">
         <app-icon name="edit" size="1em" /> Editar
@@ -208,11 +193,27 @@
                   <app-badge tone="success">Local</app-badge>
                 } @else {
                   <app-badge>Plane</app-badge>
+                  @if (planeUrl(); as url) {
+                    <a class="plane-link" [href]="url" target="_blank" rel="noopener noreferrer">
+                      Abrir en Plane <app-icon name="arrow-outward" size="0.9em" />
+                    </a>
+                  }
                 }
               </dd>
             </div>
           </dl>
         </app-card>
+
+        <button
+          class="close-button"
+          app-button
+          block
+          type="button"
+          [variant]="issue.closedAt ? 'secondary' : 'danger'"
+          (click)="toggleClosed()"
+        >
+          {{ issue.closedAt ? 'Reabrir tarea' : 'Cerrar tarea' }}
+        </button>
       </aside>
     </div>
 
