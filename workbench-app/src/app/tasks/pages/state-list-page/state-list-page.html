@@ -41,6 +41,11 @@
           <span class="swatch" [style.background]="state.color ?? 'var(--text-color)'"></span>
           <div class="list__main">
             <span class="list__name">{{ state.name }}</span>
+            @if (state.isFinal) {
+              <app-badge tone="success" title="Sale de la lista de pendientes"
+                >Finalizado</app-badge
+              >
+            }
           </div>
           <div class="list__actions">
             <button
@@ -76,6 +81,7 @@
     [(open)]="dialogOpen"
     [heading]="editing() ? 'Editar estado' : 'Nuevo estado'"
     [initial]="editing()"
+    withFinal
     [save]="save"
   />
 </div>

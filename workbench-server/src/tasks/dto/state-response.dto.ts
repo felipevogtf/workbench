@@ -3,4 +3,5 @@ export class StateResponseDto {
   name!: string;
   color!: string | null;
   position!: number;
+  isFinal!: boolean;
 }

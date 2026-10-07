@@ -75,6 +75,23 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     await this.issueRepository.delete(id);
   }
 
+  async setClosed(ids: string[], closedAt: Date | null): Promise<number> {
+    if (ids.length === 0) return 0;
+
+    // Una sola sentencia (cerrar ~500 tareas no debe ser 500 guardados). Solo toca las que
+    // cambian de estado, y no mueve `synced_at`: cerrar no es un cambio del dato de Plane.
+    const [, affected] = await this.issueRepository.manager.query<
+      [unknown, number]
+    >(
+      `UPDATE issues SET closed_at = $2
+        WHERE id = ANY($1::uuid[])
+          AND closed_at IS ${closedAt ? '' : 'NOT '}NULL
+        `,
+      [ids, closedAt],
+    );
+    return affected;
+  }
+
   async nextLocalSequence(projectId: string): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       // Advisory lock por proyecto: serializa dos inserts concurrentes en el
@@ -115,6 +132,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       labelIds: issueOrmEntity.labels?.map((label) => label.id) || [],
       startDate: issueOrmEntity.start_date,
       dueDate: issueOrmEntity.due_date,
+      closedAt: issueOrmEntity.closed_at,
       syncedAt: issueOrmEntity.synced_at,
       createdAt: issueOrmEntity.created_at,
     };
@@ -131,6 +149,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       remote_sequence: issue.remoteSequence,
       local_sequence: issue.localSequence,
       estimated_hours: issue.estimatedHours,
+      closed_at: issue.closedAt,
       external_state: issue.externalState,
       description: issue.description,
       priority: issue.priority,

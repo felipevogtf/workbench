@@ -202,6 +202,13 @@ export class IssueDetailPage {
     void this.hours.remove(id);
   }
 
+  protected toggleClosed(): void {
+    const issue = this.issue();
+    if (!issue) return;
+    if (issue.closedAt) void this.store.reopen([issue.id]);
+    else void this.store.close([issue.id]);
+  }
+
   protected async remove(): Promise<void> {
     const issue = this.issue();
     if (!issue) return;

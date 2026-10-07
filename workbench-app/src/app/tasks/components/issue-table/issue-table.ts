@@ -24,6 +24,7 @@ export class IssueTable {
 
   readonly edit = output<Issue>();
   readonly remove = output<Issue>();
+  readonly toggleClosed = output<Issue>();
 
   private readonly projects = inject(ProjectsStore).projectById;
   private readonly states = inject(StatesStore).stateById;
@@ -46,11 +47,17 @@ export class IssueTable {
   protected onMenu(issue: Issue, action: string): void {
     if (action === 'edit') this.edit.emit(issue);
     if (action === 'remove') this.remove.emit(issue);
+    if (action === 'toggle-closed') this.toggleClosed.emit(issue);
   }
 }
 
 function menuFor(issue: Issue): MenuItem[] {
-  const items: MenuItem[] = [{ id: 'edit', label: 'Editar', icon: 'edit' }];
+  const items: MenuItem[] = [
+    { id: 'edit', label: 'Editar', icon: 'edit' },
+    issue.closedAt
+      ? { id: 'toggle-closed', label: 'Reabrir', icon: 'refresh' }
+      : { id: 'toggle-closed', label: 'Cerrar', icon: 'check' },
+  ];
   // Las de Plane no se borran aquí: volverían en el próximo sync.
   if (issue.isLocal) {
     items.push({ id: 'remove', label: 'Eliminar', icon: 'trash', tone: 'danger', separated: true });

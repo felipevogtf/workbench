@@ -42,6 +42,15 @@ export class TasksApi {
     return this.http.delete<void>(`${this.base}/issues/${id}`);
   }
 
+  /** Cierra tareas (historial). Devuelve cuántas cambiaron. */
+  closeIssues(ids: string[]): Observable<{ updated: number }> {
+    return this.http.post<{ updated: number }>(`${this.base}/issues/close`, { ids });
+  }
+
+  reopenIssues(ids: string[]): Observable<{ updated: number }> {
+    return this.http.post<{ updated: number }>(`${this.base}/issues/reopen`, { ids });
+  }
+
   /** Proyectos y tareas de Plane, en un solo paso. */
   sync(): Observable<SyncResult> {
     return this.http.post<SyncResult>(`${this.base}/sync`, {});

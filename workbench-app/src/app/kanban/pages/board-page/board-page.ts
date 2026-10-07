@@ -17,6 +17,7 @@ import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { Icon } from '@shared/ui/icon/icon';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
+import { Toast } from '@shared/ui/toast/toast';
 import { Issue, IssueFormDialog, IssuesStore } from '@tasks/index';
 import { AddIssuesDialog } from '../../components/add-issues-dialog/add-issues-dialog';
 import { BoardColumn, ColumnMove } from '../../components/board-column/board-column';
@@ -27,6 +28,7 @@ import { Board, BoardInput } from '../../models/board';
 
 const BOARD_MENU: MenuItem[] = [
   { id: 'edit', label: 'Editar tablero', icon: 'edit' },
+  { id: 'close-finished', label: 'Cerrar tareas finalizadas', icon: 'check' },
   { id: 'remove', label: 'Eliminar tablero', icon: 'trash', tone: 'danger', separated: true },
 ];
 
@@ -64,6 +66,7 @@ export class BoardPage {
   protected readonly issues = inject(IssuesStore);
   private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmDialog);
+  private readonly toast = inject(Toast);
 
   protected readonly boardMenu = BOARD_MENU;
 
@@ -103,6 +106,8 @@ export class BoardPage {
 
     if (action === 'edit') {
       this.formOpen.set(true);
+    } else if (action === 'close-finished') {
+      await this.closeFinished();
     } else if (action === 'remove') {
       const confirmed = await this.confirm.ask({
         title: 'Eliminar tablero',
@@ -114,6 +119,21 @@ export class BoardPage {
         await this.router.navigate(['/kanban']);
       }
     }
+  }
+
+  /** Pasa al historial las tareas del tablero que están en un estado finalizado. */
+  private async closeFinished(): Promise<void> {
+    const ids = this.view.finishedIds();
+    if (ids.length === 0) {
+      this.toast.info('No hay tareas finalizadas en este tablero');
+      return;
+    }
+    const confirmed = await this.confirm.ask({
+      title: 'Cerrar tareas finalizadas',
+      message: `Se cerrarán ${ids.length} ${ids.length === 1 ? 'tarea finalizada' : 'tareas finalizadas'} de este tablero (pasan al historial y dejan de verse aquí).`,
+      confirmLabel: 'Cerrar',
+    });
+    if (confirmed) await this.issues.close(ids);
   }
 
   protected onDrop(event: CdkDragDrop<string, string, string>): void {

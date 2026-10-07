@@ -37,4 +37,13 @@ describe('StatesService', () => {
     const service = build([make('A', 0)]);
     await expect(service.reorder(['nope'])).rejects.toThrow(NotFoundException);
   });
+
+  it('creates states as not final by default and lets them be marked final', async () => {
+    const created = await build([]).create({ name: 'Hecho' });
+    expect(created.isFinal).toBe(false);
+
+    const service = build([created]);
+    const updated = await service.update(created.id, { isFinal: true });
+    expect(updated.isFinal).toBe(true);
+  });
 });

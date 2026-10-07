@@ -3,8 +3,8 @@ import { BoardCard } from '../models/board';
 import { NO_STATE_KEY, applyMove, buildColumns, columnOf, positionAt } from './board-columns';
 
 const states: State[] = [
-  { id: 'doing', name: 'En curso', color: '#3b82f6', position: 1 },
-  { id: 'todo', name: 'Por hacer', color: null, position: 0 },
+  { id: 'doing', name: 'En curso', color: '#3b82f6', position: 1, isFinal: false },
+  { id: 'todo', name: 'Por hacer', color: null, position: 0, isFinal: false },
 ];
 
 function card(issueId: string, position: number): BoardCard {

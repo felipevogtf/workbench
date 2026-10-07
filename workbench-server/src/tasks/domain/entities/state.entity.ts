@@ -11,12 +11,14 @@ export class State {
     name: string;
     color?: string | null;
     position: number;
+    isFinal?: boolean;
   }): State {
     return new State({
       id: crypto.randomUUID(),
       name: data.name,
       color: data.color ?? null,
       position: data.position,
+      isFinal: data.isFinal ?? false,
     });
   }
 
@@ -42,6 +44,9 @@ export class State {
   get position(): number {
     return this.props.position;
   }
+  get isFinal(): boolean {
+    return this.props.isFinal;
+  }
 
   rename(name: string): void {
     const previous = this.props.name;
@@ -57,6 +62,10 @@ export class State {
   moveTo(position: number): void {
     if (position < 0) throw new DomainError('Position cannot be negative');
     this.props.position = position;
+  }
+
+  markFinal(isFinal: boolean): void {
+    this.props.isFinal = isFinal;
   }
 
   recolor(color: string | null): void {

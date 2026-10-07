@@ -10,6 +10,7 @@ export interface CreateStateData {
   color?: string | null;
   // Sin posición, el estado queda al final.
   position?: number;
+  isFinal?: boolean;
 }
 
 export type UpdateStateData = Partial<CreateStateData>;
@@ -47,6 +48,9 @@ export class StatesService {
     }
     if (data.position !== undefined) {
       existingState.moveTo(data.position);
+    }
+    if (data.isFinal !== undefined) {
+      existingState.markFinal(data.isFinal);
     }
 
     await this.stateRepository.save(existingState);

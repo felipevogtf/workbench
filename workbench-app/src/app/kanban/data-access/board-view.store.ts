@@ -29,10 +29,23 @@ export class BoardViewStore {
   readonly loading = this.loadingState.asReadonly();
   readonly loaded = this.loadedState.asReadonly();
   readonly error = this.errorState.asReadonly();
-  readonly cardCount = computed(() => this.cards().length);
+  /** Tareas del tablero sin las cerradas (el historial no se muestra). */
+  private readonly openIssues = computed(
+    () => new Map([...this.issues.issueById()].filter(([, issue]) => issue.closedAt === null)),
+  );
+  readonly cardCount = computed(() =>
+    this.columns().reduce((total, column) => total + column.issueIds.length, 0),
+  );
+
+  /** Tareas del tablero que están en un estado finalizado. */
+  readonly finishedIds = computed(() =>
+    this.columns()
+      .filter((column) => column.isFinal)
+      .flatMap((column) => column.issueIds),
+  );
 
   readonly columns = computed<Column[]>(() =>
-    buildColumns(this.cards(), this.issues.issueById(), this.states.states()),
+    buildColumns(this.cards(), this.openIssues(), this.states.states()),
   );
 
   /** Abre un tablero: pide sus tarjetas y asegura que tareas, estados, proyectos y etiquetas estén cargados. */

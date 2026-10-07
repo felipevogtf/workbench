@@ -34,9 +34,6 @@
         formControlName="projectId"
       />
     </app-form-field>
-    <app-form-field class="filters__state" label="Estado" for="filter-state">
-      <app-select inputId="filter-state" [options]="stateOptions()" formControlName="stateId" />
-    </app-form-field>
     <app-form-field class="filters__label" label="Etiqueta" for="filter-label">
       <app-select inputId="filter-label" [options]="labelOptions()" formControlName="labelId" />
     </app-form-field>
@@ -44,6 +41,23 @@
       <app-select inputId="filter-origin" [options]="originOptions" formControlName="origin" />
     </app-form-field>
   </form>
+
+  <div class="statebar">
+    <app-segmented-control
+      label="Ver tareas abiertas o cerradas"
+      [options]="viewOptions"
+      [value]="store.filters().view"
+      (valueChange)="setView($event)"
+    />
+    @if (store.filters().view === 'open') {
+      <app-chip-picker
+        label="Estados que se muestran"
+        [options]="stateChips()"
+        [selected]="[...store.activeStateKeys()]"
+        (selectedChange)="setStateKeys($event)"
+      />
+    }
+  </div>
 
   @if (store.error(); as error) {
     <app-alert tone="danger" heading="No se pudieron cargar las tareas">
@@ -74,17 +88,32 @@
         </button>
       </app-empty-state>
     } @else {
-      <app-empty-state icon="list-checks" heading="Todavía no hay tareas">
+      <app-empty-state icon="list-checks" heading="No hay tareas aquí">
         Crea una tarea o sincroniza para traer las que tienes asignadas en Plane.
         <button empty-action app-button type="button" (click)="openCreate()">Nueva tarea</button>
       </app-empty-state>
     }
   } @else {
-    <p class="count" aria-live="polite">
-      {{ store.filtered().length }}
-      {{ store.filtered().length === 1 ? 'tarea' : 'tareas' }}
-    </p>
-    <app-issue-table [items]="visible()" (edit)="openEdit($event)" (remove)="remove($event)" />
+    <div class="count-row">
+      <p class="count" aria-live="polite">
+        {{ store.filtered().length }}
+        {{ store.filtered().length === 1 ? 'tarea' : 'tareas' }}
+        {{ store.filters().view === 'closed' ? 'cerradas' : '' }}
+      </p>
+      <button app-button variant="secondary" size="sm" type="button" (click)="bulkToggle()">
+        {{
+          store.filters().view === 'open'
+            ? 'Cerrar las ' + store.filtered().length + ' tareas'
+            : 'Reabrir las ' + store.filtered().length + ' tareas'
+        }}
+      </button>
+    </div>
+    <app-issue-table
+      [items]="visible()"
+      (edit)="openEdit($event)"
+      (remove)="remove($event)"
+      (toggleClosed)="toggleClosed($event)"
+    />
     @if (hiddenCount() > 0) {
       <div class="more">
         <button app-button variant="secondary" type="button" (click)="showMore()">

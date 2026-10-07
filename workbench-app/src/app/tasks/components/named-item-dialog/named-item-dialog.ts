@@ -13,6 +13,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { errorMessage } from '@core/api/api-error';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
+import { Checkbox } from '@shared/ui/checkbox/checkbox';
 import { ColorInput } from '@shared/ui/color-input/color-input';
 import { Dialog } from '@shared/ui/dialog/dialog';
 import { FormField } from '@shared/ui/form-field/form-field';
@@ -23,6 +24,8 @@ export interface NamedItemValue {
   color: string | null;
   /** Solo en las etiquetas (`withRepo`). */
   repoUrl?: string | null;
+  /** Solo en los estados (`withFinal`). */
+  isFinal?: boolean;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface NamedItemValue {
  */
 @Component({
   selector: 'app-named-item-dialog',
-  imports: [ReactiveFormsModule, Dialog, FormField, TextInput, ColorInput, Button, Alert],
+  imports: [ReactiveFormsModule, Dialog, FormField, TextInput, ColorInput, Checkbox, Button, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-dialog [heading]="heading()" [(open)]="open">
@@ -52,6 +55,14 @@ export interface NamedItemValue {
             [describedBy]="'named-item-name-msg'"
           />
         </app-form-field>
+        @if (withFinal()) {
+          <app-checkbox formControlName="isFinal">
+            Cuenta como finalizado
+            <span class="hint"
+              >Sale de la lista de pendientes, pero puedes verlo cuando quieras.</span
+            >
+          </app-checkbox>
+        }
         @if (withRepo()) {
           <app-form-field
             label="Repositorio (opcional)"
@@ -90,6 +101,13 @@ export interface NamedItemValue {
       </ng-container>
     </app-dialog>
   `,
+  styles: `
+    .hint {
+      display: block;
+      font-size: 0.8125rem;
+      color: var(--text-color);
+    }
+  `,
 })
 export class NamedItemDialog {
   readonly open = model(false);
@@ -99,16 +117,20 @@ export class NamedItemDialog {
     name: string;
     color?: string | null;
     repoUrl?: string | null;
+    isFinal?: boolean;
   } | null>(null);
   readonly withColor = input(true, { transform: booleanAttribute });
   /** Campo opcional de repositorio (etiquetas). */
   readonly withRepo = input(false, { transform: booleanAttribute });
+  /** Casilla «cuenta como finalizado» (estados). */
+  readonly withFinal = input(false, { transform: booleanAttribute });
   readonly save = input.required<(value: NamedItemValue) => Promise<unknown>>();
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     color: [null as string | null],
     repoUrl: [''],
+    isFinal: [false],
   });
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -123,6 +145,7 @@ export class NamedItemDialog {
           name: initial?.name ?? '',
           color: initial?.color ?? null,
           repoUrl: initial?.repoUrl ?? '',
+          isFinal: initial?.isFinal ?? false,
         });
         this.error.set(null);
       });
@@ -140,7 +163,7 @@ export class NamedItemDialog {
       return;
     }
 
-    const { name, color, repoUrl } = this.form.getRawValue();
+    const { name, color, repoUrl, isFinal } = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
     try {
@@ -148,6 +171,7 @@ export class NamedItemDialog {
         name: name.trim(),
         color: this.withColor() ? color : null,
         ...(this.withRepo() ? { repoUrl: repoUrl.trim() || null } : {}),
+        ...(this.withFinal() ? { isFinal } : {}),
       });
       this.open.set(false);
     } catch (error) {

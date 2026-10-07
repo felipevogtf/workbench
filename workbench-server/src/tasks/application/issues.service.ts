@@ -115,6 +115,16 @@ export class IssuesService {
     return existingIssue;
   }
 
+  /** Cierra tareas (pasan al historial). Devuelve cuántas cambiaron: las que ya estaban cerradas no cuentan. */
+  closeIssues(ids: string[]): Promise<number> {
+    return this.issueRepository.setClosed(ids, new Date());
+  }
+
+  /** Reabre tareas cerradas; vuelven con el estado que tenían. */
+  reopenIssues(ids: string[]): Promise<number> {
+    return this.issueRepository.setClosed(ids, null);
+  }
+
   async syncByProject(
     projectId: string,
   ): Promise<{ created: number; updated: number }> {
@@ -168,6 +178,7 @@ export class IssuesService {
           description: raw.description,
           priority: raw.priority,
           estimatedHours: raw.estimatePoint,
+          closedAt: null,
           stateId: null,
           projectId: project.id,
           labelIds: [],

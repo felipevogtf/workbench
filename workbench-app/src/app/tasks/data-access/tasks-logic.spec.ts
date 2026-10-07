@@ -21,6 +21,7 @@ function issue(patch: Partial<Issue> = {}): Issue {
     labelIds: ['l1'],
     startDate: null,
     dueDate: null,
+    closedAt: null,
     ...patch,
   };
 }
@@ -30,41 +31,72 @@ const filters = (patch: Partial<IssueFilters>): IssueFilters => ({
   ...patch,
 });
 
+/** Estados activos por defecto: s1 (pendiente) y los sin estado; s9 es finalizado. */
+const ACTIVE = new Set(['s1', 'none']);
+const match = (i: Issue, f: IssueFilters, project = '', code = '') =>
+  matchesFilters(i, f, project, code, ACTIVE);
+
 describe('matchesFilters', () => {
   it('accepts everything with the default filters', () => {
-    expect(matchesFilters(issue(), DEFAULT_ISSUE_FILTERS, 'Melón')).toBe(true);
+    expect(match(issue(), DEFAULT_ISSUE_FILTERS, 'Melón')).toBe(true);
   });
 
-  it('filters by project, state and label', () => {
-    expect(matchesFilters(issue(), filters({ projectId: 'p2' }), '')).toBe(false);
-    expect(matchesFilters(issue(), filters({ stateId: 's2' }), '')).toBe(false);
-    expect(matchesFilters(issue(), filters({ labelId: 'l2' }), '')).toBe(false);
+  it('filters by project and label', () => {
+    expect(match(issue(), filters({ projectId: 'p2' }), '')).toBe(false);
+    expect(match(issue(), filters({ labelId: 'l2' }), '')).toBe(false);
+    expect(match(issue(), filters({ projectId: 'p1', labelId: 'l1' }), '')).toBe(true);
+  });
+
+  it('hides the issues whose state is not among the active ones (the finished by default)', () => {
+    expect(match(issue({ stateId: 's9' }), DEFAULT_ISSUE_FILTERS)).toBe(false);
+    expect(match(issue({ stateId: 's1' }), DEFAULT_ISSUE_FILTERS)).toBe(true);
+  });
+
+  it('shows the issues without a state when the «none» state is active', () => {
+    expect(match(issue({ stateId: null }), DEFAULT_ISSUE_FILTERS)).toBe(true);
     expect(
-      matchesFilters(issue(), filters({ projectId: 'p1', stateId: 's1', labelId: 'l1' }), ''),
+      matchesFilters(issue({ stateId: null }), DEFAULT_ISSUE_FILTERS, '', '', new Set(['s1'])),
+    ).toBe(false);
+  });
+
+  it('shows a finished issue when its state is activated', () => {
+    expect(
+      matchesFilters(issue({ stateId: 's9' }), DEFAULT_ISSUE_FILTERS, '', '', new Set(['s9'])),
     ).toBe(true);
   });
 
-  it('filters the issues without a state', () => {
-    expect(matchesFilters(issue({ stateId: null }), filters({ stateId: 'none' }), '')).toBe(true);
-    expect(matchesFilters(issue(), filters({ stateId: 'none' }), '')).toBe(false);
+  it('keeps closed issues out of the open view, whatever their state', () => {
+    const closed = issue({ closedAt: '2026-10-06T12:00:00Z' });
+    expect(match(closed, DEFAULT_ISSUE_FILTERS)).toBe(false);
+  });
+
+  it('shows only the closed issues in the closed view, ignoring the state', () => {
+    const closed = issue({ stateId: 's9', closedAt: '2026-10-06T12:00:00Z' });
+    expect(match(closed, filters({ view: 'closed' }))).toBe(true);
+    expect(match(issue(), filters({ view: 'closed' }))).toBe(false);
+  });
+
+  it('still applies the other filters in the closed view', () => {
+    const closed = issue({ closedAt: '2026-10-06T12:00:00Z' });
+    expect(match(closed, filters({ view: 'closed', projectId: 'p2' }))).toBe(false);
   });
 
   it('filters by origin', () => {
-    expect(matchesFilters(issue(), filters({ origin: 'plane' }), '')).toBe(false);
-    expect(matchesFilters(issue({ isLocal: false }), filters({ origin: 'plane' }), '')).toBe(true);
-    expect(matchesFilters(issue({ isLocal: false }), filters({ origin: 'local' }), '')).toBe(false);
+    expect(match(issue(), filters({ origin: 'plane' }), '')).toBe(false);
+    expect(match(issue({ isLocal: false }), filters({ origin: 'plane' }), '')).toBe(true);
+    expect(match(issue({ isLocal: false }), filters({ origin: 'local' }), '')).toBe(false);
   });
 
   it('searches the name, the project and the number, ignoring case', () => {
-    expect(matchesFilters(issue(), filters({ search: 'LOGIN' }), 'Melón')).toBe(true);
-    expect(matchesFilters(issue(), filters({ search: 'melón' }), 'Melón')).toBe(true);
-    expect(matchesFilters(issue(), filters({ search: '#12' }), 'Melón')).toBe(true);
-    expect(matchesFilters(issue(), filters({ search: 'otra cosa' }), 'Melón')).toBe(false);
+    expect(match(issue(), filters({ search: 'LOGIN' }), 'Melón')).toBe(true);
+    expect(match(issue(), filters({ search: 'melón' }), 'Melón')).toBe(true);
+    expect(match(issue(), filters({ search: '#12' }), 'Melón')).toBe(true);
+    expect(match(issue(), filters({ search: 'otra cosa' }), 'Melón')).toBe(false);
   });
 
   it('uses the Plane sequence as the number when there is one', () => {
     const fromPlane = issue({ isLocal: false, remoteSequence: 253 });
-    expect(matchesFilters(fromPlane, filters({ search: '#253' }), '')).toBe(true);
+    expect(match(fromPlane, filters({ search: '#253' }), '')).toBe(true);
   });
 });
 

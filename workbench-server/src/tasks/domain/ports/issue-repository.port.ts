@@ -8,6 +8,11 @@ export interface IssueRepositoryPort {
   findAll(): Promise<Issue[]>;
   save(issue: Issue): Promise<void>;
   delete(id: string): Promise<void>;
+  /**
+   * Cierra (con la fecha dada) o reabre (`null`) varias tareas en una sola operación. Devuelve
+   * cuántas cambiaron de verdad.
+   */
+  setClosed(ids: string[], closedAt: Date | null): Promise<number>;
   // Asigna el siguiente número visible dentro de un proyecto (empieza en 1 por
   // proyecto). A diferencia del id (uuid, autogenerado por la entidad sin
   // tocar la base), este valor depende de leer el estado actual de la tabla

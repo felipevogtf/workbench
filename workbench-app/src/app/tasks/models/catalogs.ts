@@ -16,11 +16,14 @@ export interface State {
   name: string;
   color: string | null;
   position: number;
+  /** Una tarea en este estado está finalizada: sale de los pendientes (pero se puede ver). */
+  isFinal: boolean;
 }
 
 export interface StateInput {
   name: string;
   color: string | null;
+  isFinal?: boolean;
 }
 
 export interface Label {

@@ -28,6 +28,7 @@ export class TypeOrmStateRepository implements StateRepositoryPort {
       name: state.name,
       color: state.color,
       position: state.position,
+      is_final: state.isFinal,
     });
 
     return this.toDomain(savedState);
@@ -43,6 +44,7 @@ export class TypeOrmStateRepository implements StateRepositoryPort {
       name: orm.name,
       color: orm.color,
       position: orm.position,
+      isFinal: orm.is_final,
     });
   }
 }

@@ -3,4 +3,6 @@ export class CreateStateDto {
   color?: string | null;
   // Opcional: sin posición, el estado queda al final.
   position?: number;
+  /** Las tareas en este estado cuentan como finalizadas. */
+  isFinal?: boolean;
 }

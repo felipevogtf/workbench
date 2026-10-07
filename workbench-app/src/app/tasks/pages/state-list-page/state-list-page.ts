@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Alert } from '@shared/ui/alert/alert';
+import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { EmptyState } from '@shared/ui/empty-state/empty-state';
@@ -24,6 +25,7 @@ const MENU: MenuItem[] = [
   selector: 'app-state-list-page',
   imports: [
     PageHeader,
+    Badge,
     Button,
     Icon,
     IconButton,

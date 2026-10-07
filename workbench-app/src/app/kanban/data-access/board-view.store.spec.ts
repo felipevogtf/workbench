@@ -8,8 +8,8 @@ import { BoardViewStore } from './board-view.store';
 import { BoardsApi } from './boards.api';
 
 const states: State[] = [
-  { id: 'todo', name: 'Por hacer', color: null, position: 0 },
-  { id: 'doing', name: 'En curso', color: null, position: 1 },
+  { id: 'todo', name: 'Por hacer', color: null, position: 0, isFinal: false },
+  { id: 'doing', name: 'En curso', color: null, position: 1, isFinal: false },
 ];
 
 function makeIssue(id: string, stateId: string | null): Issue {
@@ -29,6 +29,7 @@ function makeIssue(id: string, stateId: string | null): Issue {
     labelIds: [],
     startDate: null,
     dueDate: null,
+    closedAt: null,
   };
 }
 

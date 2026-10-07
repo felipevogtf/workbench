@@ -10,26 +10,31 @@ import {
   IssueInput,
   issueCode,
   issueNumber,
+  stateKey,
 } from '../models/issue';
 import { ProjectsStore } from './projects.store';
+import { StatesStore } from './states.store';
 import { ResourceStore } from './resource-store';
 import { TasksApi } from './tasks.api';
 
-/** `true` si la tarea cumple todos los filtros activos. */
+/**
+ * `true` si la tarea cumple todos los filtros activos. En la vista `open` se ocultan las cerradas y
+ * se aplican los estados elegidos; en `closed` solo se ven las cerradas (los estados no aplican).
+ */
 export function matchesFilters(
   issue: Issue,
   filters: IssueFilters,
   projectName: string,
   code = '',
+  activeStates: ReadonlySet<string> = new Set(),
 ): boolean {
-  if (filters.projectId !== 'all' && issue.projectId !== filters.projectId) return false;
-  if (
-    filters.stateId === 'none'
-      ? issue.stateId !== null
-      : filters.stateId !== 'all' && issue.stateId !== filters.stateId
-  ) {
+  if (filters.view === 'closed') {
+    if (issue.closedAt === null) return false;
+  } else if (issue.closedAt !== null || !activeStates.has(stateKey(issue))) {
     return false;
   }
+
+  if (filters.projectId !== 'all' && issue.projectId !== filters.projectId) return false;
   if (filters.labelId !== 'all' && !issue.labelIds.includes(filters.labelId)) return false;
   if (filters.origin !== 'all' && issue.isLocal !== (filters.origin === 'local')) return false;
 
@@ -46,6 +51,7 @@ export class IssuesStore extends ResourceStore<Issue> {
   private readonly api = inject(TasksApi);
   private readonly toast = inject(Toast);
   private readonly projectsStore = inject(ProjectsStore);
+  private readonly statesStore = inject(StatesStore);
 
   private readonly filtersState = signal<IssueFilters>(DEFAULT_ISSUE_FILTERS);
   private readonly syncingState = signal(false);
@@ -55,9 +61,23 @@ export class IssuesStore extends ResourceStore<Issue> {
   readonly issues = this.items.asReadonly();
   readonly issueById = computed(() => new Map(this.items().map((issue) => [issue.id, issue])));
 
+  /** Estados que se muestran: los elegidos o, por defecto, todos menos los finalizados. */
+  readonly activeStateKeys = computed<ReadonlySet<string>>(() => {
+    const chosen = this.filtersState().stateKeys;
+    if (chosen) return new Set(chosen);
+    return new Set([
+      'none',
+      ...this.statesStore
+        .states()
+        .filter((state) => !state.isFinal)
+        .map((state) => state.id),
+    ]);
+  });
+
   /** Las que cumplen los filtros, por proyecto y de la más nueva a la más antigua. */
   readonly filtered = computed(() => {
     const filters = this.filtersState();
+    const active = this.activeStateKeys();
     const projects = this.projectsStore.projectById();
     const nameOf = (issue: Issue) => projects.get(issue.projectId)?.name ?? '';
 
@@ -68,6 +88,7 @@ export class IssuesStore extends ResourceStore<Issue> {
           filters,
           nameOf(issue),
           issueCode(issue, projects.get(issue.projectId)?.identifier),
+          active,
         ),
       )
       .sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'es') || issueNumber(b) - issueNumber(a));
@@ -86,6 +107,41 @@ export class IssuesStore extends ResourceStore<Issue> {
 
   setFilters(patch: Partial<IssueFilters>): void {
     this.filtersState.update((filters) => ({ ...filters, ...patch }));
+  }
+
+  setStateKeys(keys: string[]): void {
+    this.setFilters({ stateKeys: keys });
+  }
+
+  /** Cierra tareas (pasan al historial) y refleja el cambio en la lista. */
+  async close(ids: string[]): Promise<number> {
+    return this.changeClosed(ids, true);
+  }
+
+  /** Reabre tareas cerradas; vuelven con el estado que tenían. */
+  async reopen(ids: string[]): Promise<number> {
+    return this.changeClosed(ids, false);
+  }
+
+  private async changeClosed(ids: string[], closed: boolean): Promise<number> {
+    if (ids.length === 0) return 0;
+    try {
+      const { updated } = await firstValueFrom(
+        closed ? this.api.closeIssues(ids) : this.api.reopenIssues(ids),
+      );
+      const closedAt = closed ? new Date().toISOString() : null;
+      const changed = new Set(ids);
+      this.items.update((list) =>
+        list.map((issue) => (changed.has(issue.id) ? { ...issue, closedAt } : issue)),
+      );
+      this.toast.success(
+        `${updated} ${updated === 1 ? 'tarea' : 'tareas'} ${closed ? 'cerrada' : 'reabierta'}${updated === 1 ? '' : 's'}`,
+      );
+      return updated;
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+      return 0;
+    }
   }
 
   clearFilters(): void {

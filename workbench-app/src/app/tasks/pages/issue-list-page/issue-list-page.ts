@@ -8,6 +8,8 @@ import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { Icon } from '@shared/ui/icon/icon';
 import { PageHeader } from '@shared/ui/page-header/page-header';
+import { ChipOption, ChipPicker } from '@shared/ui/chip-picker/chip-picker';
+import { SegmentedControl, SegmentOption } from '@shared/ui/segmented-control/segmented-control';
 import { Select, SelectOption } from '@shared/ui/select/select';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
@@ -40,6 +42,8 @@ const ORIGIN_OPTIONS: SelectOption[] = [
     FormField,
     TextInput,
     Select,
+    ChipPicker,
+    SegmentedControl,
     IssueTable,
     IssueFormDialog,
   ],
@@ -59,11 +63,17 @@ export class IssueListPage {
     { value: 'all', label: 'Todos los proyectos' },
     ...this.projectsStore.projects().map((project) => ({ value: project.id, label: project.name })),
   ]);
-  protected readonly stateOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'Todos los estados' },
-    { value: 'none', label: 'Sin estado' },
-    ...this.statesStore.states().map((state) => ({ value: state.id, label: state.name })),
+  /** Un botón por estado (más «Sin estado»), con el color del estado. */
+  protected readonly stateChips = computed<ChipOption[]>(() => [
+    ...this.statesStore
+      .states()
+      .map((state) => ({ value: state.id, label: state.name, color: state.color })),
+    { value: 'none', label: 'Sin estado', color: null },
   ]);
+  protected readonly viewOptions: SegmentOption[] = [
+    { value: 'open', label: 'Abiertas' },
+    { value: 'closed', label: 'Cerradas' },
+  ];
   protected readonly labelOptions = computed<SelectOption[]>(() => [
     { value: 'all', label: 'Todas las etiquetas' },
     ...this.labelsStore.labels().map((label) => ({ value: label.id, label: label.name })),
@@ -72,7 +82,6 @@ export class IssueListPage {
   protected readonly filterForm = inject(NonNullableFormBuilder).group({
     search: this.store.filters().search,
     projectId: this.store.filters().projectId,
-    stateId: this.store.filters().stateId,
     labelId: this.store.filters().labelId,
     origin: this.store.filters().origin,
   });
@@ -96,6 +105,39 @@ export class IssueListPage {
       this.store.setFilters(value as Partial<IssueFilters>);
       this.limit.set(PAGE_SIZE);
     });
+  }
+
+  protected setView(view: string): void {
+    this.store.setFilters({ view: view as 'open' | 'closed' });
+    this.limit.set(PAGE_SIZE);
+  }
+
+  protected setStateKeys(keys: string[]): void {
+    this.store.setStateKeys(keys);
+    this.limit.set(PAGE_SIZE);
+  }
+
+  /** Cierra (o reabre, en el historial) todas las tareas que se ven con los filtros actuales. */
+  protected async bulkToggle(): Promise<void> {
+    const issues = this.store.filtered();
+    const closing = this.store.filters().view === 'open';
+    const count = issues.length;
+    const confirmed = await this.confirm.ask({
+      title: closing ? 'Cerrar tareas' : 'Reabrir tareas',
+      message: closing
+        ? `Se cerrarán las ${count} tareas que ves ahora (pasan al historial; puedes reabrirlas desde «Cerradas»).`
+        : `Se reabrirán las ${count} tareas que ves ahora, con el estado que tenían.`,
+      confirmLabel: closing ? 'Cerrar' : 'Reabrir',
+    });
+    if (!confirmed) return;
+    const ids = issues.map((issue) => issue.id);
+    if (closing) await this.store.close(ids);
+    else await this.store.reopen(ids);
+  }
+
+  protected toggleClosed(issue: Issue): void {
+    if (issue.closedAt) void this.store.reopen([issue.id]);
+    else void this.store.close([issue.id]);
   }
 
   protected clearFilters(): void {

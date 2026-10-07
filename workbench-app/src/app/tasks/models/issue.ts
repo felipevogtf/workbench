@@ -26,6 +26,8 @@ export interface Issue {
   /** `YYYY-MM-DD`. */
   startDate: string | null;
   dueDate: string | null;
+  /** ISO si la tarea está cerrada (historial); null si está abierta. */
+  closedAt: string | null;
 }
 
 /** Campos editables. `undefined` = sin cambios; `null` = limpiar el valor. */
@@ -44,19 +46,30 @@ export interface IssueInput {
 export interface IssueFilters {
   search: string;
   projectId: string;
-  /** `all`, `none` (sin estado) o el id de un estado. */
-  stateId: string;
+  /**
+   * Estados que se muestran: ids de estado y `none` (sin estado). `null` = los de siempre: todos
+   * menos los finalizados.
+   */
+  stateKeys: string[] | null;
   labelId: string;
   origin: 'all' | 'plane' | 'local';
+  /** `open`: pendientes y finalizadas. `closed`: el historial. */
+  view: 'open' | 'closed';
 }
 
 export const DEFAULT_ISSUE_FILTERS: IssueFilters = {
   search: '',
   projectId: 'all',
-  stateId: 'all',
+  stateKeys: null,
   labelId: 'all',
   origin: 'all',
+  view: 'open',
 };
+
+/** Clave del estado de una tarea para el filtro (`none` si no tiene). */
+export function stateKey(issue: Pick<Issue, 'stateId'>): string {
+  return issue.stateId ?? 'none';
+}
 
 /** Código de la tarea: `MEL-123` si el proyecto tiene identificador de Plane; si no, `#12`. */
 export function issueCode(

@@ -16,9 +16,36 @@
   }
 
   .filters__project,
-  .filters__state,
   .filters__label,
   .filters__origin {
     grid-column: span 2;
+  }
+}
+
+.statebar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+
+  .count {
+    margin: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .statebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
   }
 }

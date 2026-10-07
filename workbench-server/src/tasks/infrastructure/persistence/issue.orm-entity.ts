@@ -76,6 +76,9 @@ export class IssueOrmEntity {
   // @OneToMany(() => BoardIssueOrmEntity, (bi) => bi.issue)
   // board_issues: BoardIssueOrmEntity[];
 
+  @Column({ type: 'timestamp', nullable: true })
+  closed_at!: Date | null;
+
   @UpdateDateColumn()
   synced_at!: Date;
 

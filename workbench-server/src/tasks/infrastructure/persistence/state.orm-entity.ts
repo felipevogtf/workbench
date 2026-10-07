@@ -15,6 +15,9 @@ export class StateOrmEntity {
   @Column({ default: 0 })
   position!: number;
 
+  @Column({ type: 'boolean', default: false })
+  is_final!: boolean;
+
   @OneToMany(() => IssueOrmEntity, (issue) => issue.state)
   issues!: IssueOrmEntity[];
 }

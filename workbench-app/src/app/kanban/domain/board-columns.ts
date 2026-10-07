@@ -13,6 +13,8 @@ export interface Column {
   stateId: string | null;
   name: string;
   color: string | null;
+  /** Las tareas de esta columna están finalizadas. */
+  isFinal: boolean;
   /** Ids de las tareas, en el orden en que se muestran. */
   issueIds: string[];
 }
@@ -54,6 +56,7 @@ export function buildColumns(
       stateId: state.id,
       name: state.name,
       color: state.color,
+      isFinal: state.isFinal,
       issueIds: toIds(state.id),
     }));
 
@@ -64,6 +67,7 @@ export function buildColumns(
       stateId: null,
       name: 'Sin estado',
       color: null,
+      isFinal: false,
       issueIds: unassigned,
     });
   }

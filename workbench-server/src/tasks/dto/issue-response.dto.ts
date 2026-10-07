@@ -14,4 +14,6 @@ export class IssueResponseDto {
   startDate!: string | null;
   dueDate!: string | null;
   estimatedHours!: number | null;
+  /** ISO si la tarea está cerrada (historial); null si está abierta. */
+  closedAt!: string | null;
 }

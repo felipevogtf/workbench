@@ -18,6 +18,9 @@
           <app-icon name="sparkles" />
         }
       </button>
+      <button actions app-button variant="secondary" type="button" (click)="toggleClosed()">
+        {{ issue.closedAt ? 'Reabrir' : 'Cerrar' }}
+      </button>
       <button actions app-button variant="secondary" type="button" (click)="editOpen.set(true)">
         <app-icon name="edit" size="1em" /> Editar
       </button>
@@ -180,6 +183,12 @@
               <dt>Horas estimadas</dt>
               <dd>{{ formatHours(issue.estimatedHours) }}</dd>
             </div>
+            @if (issue.closedAt) {
+              <div>
+                <dt>Cierre</dt>
+                <dd>Cerrada el {{ formatDay(issue.closedAt) }}</dd>
+              </div>
+            }
             <div>
               <dt>Origen</dt>
               <dd>

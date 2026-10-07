@@ -58,6 +58,7 @@ export class StatesController {
       name: state.name,
       color: state.color,
       position: state.position,
+      isFinal: state.isFinal,
     };
   }
 }
