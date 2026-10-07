@@ -77,11 +77,10 @@
     </ol>
   }
 
-  <app-named-item-dialog
+  <app-state-form-dialog
     [(open)]="dialogOpen"
     [heading]="editing() ? 'Editar estado' : 'Nuevo estado'"
     [initial]="editing()"
-    withFinal
     [save]="save"
   />
 </div>

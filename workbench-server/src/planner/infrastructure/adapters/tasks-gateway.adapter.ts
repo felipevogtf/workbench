@@ -1,21 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { htmlToText } from '@tasks/domain/html-to-text';
-import {
-  ISSUE_REPOSITORY_PORT,
-  type IssueRepositoryPort,
-} from '@tasks/domain/ports/issue-repository.port';
-import {
-  LABEL_REPOSITORY_PORT,
-  type LabelRepositoryPort,
-} from '@tasks/domain/ports/label-repository.port';
-import {
-  PROJECT_REPOSITORY_PORT,
-  type ProjectRepositoryPort,
-} from '@tasks/domain/ports/project-repository.port';
-import {
-  STATE_REPOSITORY_PORT,
-  type StateRepositoryPort,
-} from '@tasks/domain/ports/state-repository.port';
+import { Injectable } from '@nestjs/common';
+import { htmlToText } from '@core/text/html-to-text';
+import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import {
   TaskContext,
   TasksGatewayPort,
@@ -26,25 +11,16 @@ const MAX_TEXT_CHARS = 20_000;
 /** Único punto del planificador que conoce al módulo tasks. */
 @Injectable()
 export class TasksGatewayAdapter implements TasksGatewayPort {
-  constructor(
-    @Inject(ISSUE_REPOSITORY_PORT)
-    private readonly issues: IssueRepositoryPort,
-    @Inject(PROJECT_REPOSITORY_PORT)
-    private readonly projects: ProjectRepositoryPort,
-    @Inject(STATE_REPOSITORY_PORT)
-    private readonly states: StateRepositoryPort,
-    @Inject(LABEL_REPOSITORY_PORT)
-    private readonly labels: LabelRepositoryPort,
-  ) {}
+  constructor(private readonly tasks: TasksFacade) {}
 
   async getTask(issueId: string): Promise<TaskContext | null> {
-    const issue = await this.issues.findById(issueId);
+    const issue = await this.tasks.findIssue(issueId);
     if (!issue) return null;
 
     const [project, state, labels] = await Promise.all([
-      this.projects.findById(issue.projectId),
-      issue.stateId ? this.states.findById(issue.stateId) : null,
-      this.labels.findByIds(issue.labelIds),
+      this.tasks.findProject(issue.projectId),
+      issue.stateId ? this.tasks.findState(issue.stateId) : null,
+      this.tasks.findLabels(issue.labelIds),
     ]);
 
     return {

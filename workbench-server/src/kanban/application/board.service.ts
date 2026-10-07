@@ -1,3 +1,4 @@
+import { DomainError } from '@core/domain/domain.error';
 import { Board } from '@kanban/domain/entities/board.entity';
 import {
   BOARD_REPOSITORY_PORT,
@@ -7,7 +8,7 @@ import {
   BOARD_ISSUE_REPOSITORY_PORT,
   type BoardIssueRepositoryPort,
 } from '@kanban/domain/ports/board-issue-repository.port';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 interface CreateBoardData {
   name: string;
@@ -40,7 +41,7 @@ export class BoardService {
     const board = await this.boardRepository.findById(id);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${id} not found`);
+      throw DomainError.notFound(`Board with id ${id} not found`);
     }
 
     if (data.name !== undefined) {
@@ -59,7 +60,7 @@ export class BoardService {
     const board = await this.boardRepository.findById(id);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${id} not found`);
+      throw DomainError.notFound(`Board with id ${id} not found`);
     }
 
     // Sin esto las tarjetas quedarían huérfanas y, como una tarea solo puede
@@ -72,7 +73,7 @@ export class BoardService {
     const board = await this.boardRepository.findById(id);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${id} not found`);
+      throw DomainError.notFound(`Board with id ${id} not found`);
     }
 
     return board;

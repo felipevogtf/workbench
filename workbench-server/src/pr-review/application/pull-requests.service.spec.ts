@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import {
   PullRequestSourcePort,
@@ -184,9 +184,7 @@ describe('PullRequestsService.findById', () => {
   it('throws NotFound when it does not exist', async () => {
     const { service } = build([]);
 
-    await expect(service.findById('nope')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(service.findById('nope')).rejects.toBeInstanceOf(DomainError);
   });
 });
 

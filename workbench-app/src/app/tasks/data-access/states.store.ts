@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
 import { State, StateInput } from '../models/catalogs';
-import { ResourceStore } from './resource-store';
+import { ResourceStore } from '@shared/util/resource-store';
 import { TasksApi } from './tasks.api';
 
 /** Estados de las tareas. Su orden (`position`) es el de las columnas del kanban. */

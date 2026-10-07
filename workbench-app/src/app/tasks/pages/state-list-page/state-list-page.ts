@@ -10,9 +10,9 @@ import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import {
-  NamedItemDialog,
-  NamedItemValue,
-} from '../../components/named-item-dialog/named-item-dialog';
+  StateFormDialog,
+  StateFormValue,
+} from '../../components/state-form-dialog/state-form-dialog';
 import { StatesStore } from '../../data-access/states.store';
 import { State } from '../../models/catalogs';
 
@@ -33,7 +33,7 @@ const MENU: MenuItem[] = [
     Alert,
     EmptyState,
     Skeleton,
-    NamedItemDialog,
+    StateFormDialog,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './state-list-page.html',
@@ -48,7 +48,7 @@ export class StateListPage {
   protected readonly editing = signal<State | null>(null);
 
   /** Función estable que el diálogo llama al guardar (crea o edita según corresponda). */
-  protected readonly save = async (value: NamedItemValue): Promise<void> => {
+  protected readonly save = async (value: StateFormValue): Promise<void> => {
     const editing = this.editing();
     if (editing) await this.store.update(editing.id, value);
     else await this.store.create(value);

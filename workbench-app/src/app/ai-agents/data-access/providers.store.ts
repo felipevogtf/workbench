@@ -1,36 +1,27 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { errorMessage } from '@core/api/api-error';
+import { Injectable, computed, inject } from '@angular/core';
 import { Toast } from '@shared/ui/toast/toast';
+import { ResourceStore } from '@shared/util/resource-store';
 import { AgentProvider, ProviderStatus } from '../models/agent';
 import { AgentsApi } from './agents.api';
 
 /** Proveedores de IA (Claude, Copilot, Antigravity) y sus modelos. Cuáles están habilitados lo decide el servidor (AGENT_PROVIDERS). */
 @Injectable({ providedIn: 'root' })
-export class ProvidersStore {
+export class ProvidersStore extends ResourceStore<ProviderStatus> {
   private readonly api = inject(AgentsApi);
   private readonly toast = inject(Toast);
 
-  private readonly items = signal<ProviderStatus[]>([]);
-  private readonly loadedState = signal(false);
-  private readonly loadingState = signal(false);
-
-  readonly providers = this.items.asReadonly();
-  readonly loaded = this.loadedState.asReadonly();
+  readonly providers = computed(() => this.items());
   readonly enabled = computed(() => this.items().filter((provider) => provider.enabled));
 
-  async load(force = false): Promise<void> {
-    if (this.loadingState() || (this.loadedState() && !force)) return;
+  protected fetchAll() {
+    return this.api.providers();
+  }
 
-    this.loadingState.set(true);
-    try {
-      this.items.set(await firstValueFrom(this.api.providers()));
-      this.loadedState.set(true);
-    } catch (error) {
-      this.toast.error(errorMessage(error));
-    } finally {
-      this.loadingState.set(false);
-    }
+  /** Un fallo no bloquea la pantalla: se avisa y los selectores quedan sin modelos. */
+  override async load(force = false): Promise<void> {
+    await super.load(force);
+    const message = this.error();
+    if (message) this.toast.error(message);
   }
 
   modelsOf(id: AgentProvider | string | null | undefined): string[] {

@@ -1,4 +1,5 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { Review } from '@pr-review/domain/entities/review.entity';
 import { GitProvider } from '@pr-review/domain/entities/pull-request.props';
@@ -19,7 +20,7 @@ import {
   TICKETS_GATEWAY_PORT,
   type TicketsGatewayPort,
 } from '@pr-review/domain/ports/tickets-gateway.port';
-import { extractTicketKeys } from '@tasks/domain/ticket-keys';
+import { extractTicketKeys } from '@core/text/ticket-keys';
 import { ReviewsService } from '@pr-review/application/reviews.service';
 
 export interface SyncResult {
@@ -70,7 +71,7 @@ export class PullRequestsService {
   async findById(id: string): Promise<PullRequest> {
     const pullRequest = await this.pullRequests.findById(id);
     if (!pullRequest) {
-      throw new NotFoundException(`Pull request with id ${id} not found`);
+      throw DomainError.notFound(`Pull request with id ${id} not found`);
     }
     return pullRequest;
   }

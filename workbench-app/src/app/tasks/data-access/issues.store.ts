@@ -14,7 +14,7 @@ import {
 } from '../models/issue';
 import { ProjectsStore } from './projects.store';
 import { StatesStore } from './states.store';
-import { ResourceStore } from './resource-store';
+import { ResourceStore } from '@shared/util/resource-store';
 import { TasksApi } from './tasks.api';
 
 /**

@@ -9,10 +9,7 @@ import { Icon } from '@shared/ui/icon/icon';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
-import {
-  NamedItemDialog,
-  NamedItemValue,
-} from '../../components/named-item-dialog/named-item-dialog';
+import { ProjectNameDialog } from '../../components/project-name-dialog/project-name-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
 import { ProjectsStore } from '../../data-access/projects.store';
 import { ProjectSettingsDialog } from '../../components/project-settings-dialog/project-settings-dialog';
@@ -40,7 +37,7 @@ const LOCAL_MENU: MenuItem[] = [
     Alert,
     EmptyState,
     Skeleton,
-    NamedItemDialog,
+    ProjectNameDialog,
     ProjectSettingsDialog,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,10 +56,10 @@ export class ProjectListPage {
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<Project | null>(null);
 
-  protected readonly save = async (value: NamedItemValue): Promise<void> => {
+  protected readonly save = async (name: string): Promise<void> => {
     const editing = this.editing();
-    if (editing) await this.store.rename(editing.id, value.name);
-    else await this.store.create(value.name);
+    if (editing) await this.store.rename(editing.id, name);
+    else await this.store.create(name);
   };
 
   constructor() {

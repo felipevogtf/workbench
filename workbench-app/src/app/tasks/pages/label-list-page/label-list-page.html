@@ -60,11 +60,10 @@
     </ul>
   }
 
-  <app-named-item-dialog
+  <app-label-form-dialog
     [(open)]="dialogOpen"
     [heading]="editing() ? 'Editar etiqueta' : 'Nueva etiqueta'"
     [initial]="editing()"
-    withRepo
     [save]="save"
   />
 </div>

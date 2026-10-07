@@ -44,6 +44,10 @@ export class PlanPanel {
   protected readonly repoName = repoShortName;
   protected readonly historyOpen = signal(false);
 
+  protected onHistoryToggle(event: Event): void {
+    this.historyOpen.set((event.target as HTMLDetailsElement).open);
+  }
+
   protected readonly history = computed(() => {
     const viewedId = this.store.viewed()?.id;
     return this.store.plans().filter((plan) => plan.id !== viewedId);

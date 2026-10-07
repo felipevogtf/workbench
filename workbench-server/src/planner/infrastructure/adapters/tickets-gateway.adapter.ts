@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TicketLookupService } from '@tasks/application/ticket-lookup.service';
-import { htmlToText } from '@tasks/domain/html-to-text';
+import { htmlToText } from '@core/text/html-to-text';
 import {
   TicketData,
   TicketsGatewayPort,

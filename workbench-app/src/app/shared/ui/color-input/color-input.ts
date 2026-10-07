@@ -50,7 +50,7 @@ export const COLOR_PRESETS: readonly string[] = [
           [value]="value() ?? '#9ca3af'"
           [disabled]="disabled()"
           [attr.aria-label]="'Otro color'"
-          (input)="pick($any($event.target).value)"
+          (input)="pickFrom($event)"
           (blur)="onTouched()"
         />
         <span>Otro</span>
@@ -152,6 +152,10 @@ export class ColorInput implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled.set(isDisabled);
+  }
+
+  protected pickFrom(event: Event): void {
+    this.pick((event.target as HTMLInputElement).value);
   }
 
   protected pick(color: string | null): void {

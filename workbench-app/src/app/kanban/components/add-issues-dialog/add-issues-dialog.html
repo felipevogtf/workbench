@@ -5,7 +5,7 @@
         inputId="add-issues-search"
         type="search"
         placeholder="Nombre, proyecto o número"
-        (input)="search.set($any($event.target).value)"
+        (input)="onSearch($event)"
       />
     </app-form-field>
 

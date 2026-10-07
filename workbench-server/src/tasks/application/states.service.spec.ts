@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
 import { State } from '@tasks/domain/entities/state.entity';
 import { StateRepositoryPort } from '@tasks/domain/ports/state-repository.port';
 import { StatesService } from './states.service';
@@ -35,7 +35,7 @@ describe('StatesService', () => {
 
   it('rejects an unknown state when reordering', async () => {
     const service = build([make('A', 0)]);
-    await expect(service.reorder(['nope'])).rejects.toThrow(NotFoundException);
+    await expect(service.reorder(['nope'])).rejects.toThrow(DomainError);
   });
 
   it('creates states as not final by default and lets them be marked final', async () => {

@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DomainError } from '@core/domain/domain.error';
 import { AgentProvidersService } from '@ai-agents/application/agent-providers.service';
 import { AgentModule } from '@ai-agents/domain/modules';
@@ -95,7 +90,7 @@ export class AgentsService {
   async findById(id: string): Promise<Agent> {
     const agent = await this.repo.findById(id);
     if (!agent) {
-      throw new NotFoundException(`Agent with id ${id} not found`);
+      throw DomainError.notFound(`Agent with id ${id} not found`);
     }
     return agent;
   }
@@ -103,7 +98,7 @@ export class AgentsService {
   async getDefault(module: AgentModule): Promise<Agent> {
     const agent = await this.repo.findDefault(module);
     if (!agent) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `There is no default agent configured for the ${module} module`,
       );
     }
@@ -122,7 +117,7 @@ export class AgentsService {
     const agent = await this.findById(id);
 
     if (agent.isDefault) {
-      throw new ConflictException(
+      throw DomainError.conflict(
         'Cannot delete the default agent; mark another agent as default first',
       );
     }
@@ -154,7 +149,7 @@ export class AgentsService {
 
   private async assertNameAvailable(name: string): Promise<void> {
     if (await this.repo.findByName(name)) {
-      throw new ConflictException(`An agent named "${name}" already exists`);
+      throw DomainError.conflict(`An agent named "${name}" already exists`);
     }
   }
 }

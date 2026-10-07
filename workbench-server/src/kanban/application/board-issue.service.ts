@@ -13,12 +13,7 @@ import {
   TASKS_GATEWAY_PORT,
   type TasksGatewayPort,
 } from '@kanban/domain/ports/tasks-gateway.port';
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 export interface AddIssueToBoardData {
   boardId: string;
@@ -46,13 +41,13 @@ class BoardIssueService {
     const board = await this.boardRepository.findById(data.boardId);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${data.boardId} not found`);
+      throw DomainError.notFound(`Board with id ${data.boardId} not found`);
     }
 
     const issue = await this.tasksGateway.issueExists(data.issueId);
 
     if (!issue) {
-      throw new NotFoundException(`Issue with id ${data.issueId} not found`);
+      throw DomainError.notFound(`Issue with id ${data.issueId} not found`);
     }
 
     const issueInBoard = await this.boardIssueRepository.findByIssueId(
@@ -60,7 +55,7 @@ class BoardIssueService {
     );
 
     if (issueInBoard) {
-      throw new ConflictException(
+      throw DomainError.conflict(
         `Issue with id ${data.issueId} is already in board with id ${issueInBoard.boardId}`,
       );
     }
@@ -88,7 +83,7 @@ class BoardIssueService {
     const board = await this.boardRepository.findById(boardId);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${boardId} not found`);
+      throw DomainError.notFound(`Board with id ${boardId} not found`);
     }
 
     return this.boardIssueRepository.findByBoardId(boardId);
@@ -98,7 +93,7 @@ class BoardIssueService {
     const board = await this.boardRepository.findById(data.boardId);
 
     if (!board) {
-      throw new NotFoundException(`Board with id ${data.boardId} not found`);
+      throw DomainError.notFound(`Board with id ${data.boardId} not found`);
     }
 
     const issueInBoard = await this.boardIssueRepository.findByIssueId(
@@ -106,7 +101,7 @@ class BoardIssueService {
     );
 
     if (!issueInBoard) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `Issue with id ${data.issueId} is not in board with id ${data.boardId}`,
       );
     }
@@ -128,7 +123,7 @@ class BoardIssueService {
     const boardIssue = await this.boardIssueRepository.findByIssueId(issueId);
 
     if (!boardIssue || boardIssue.boardId !== boardId) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `Issue with id ${issueId} is not in board with id ${boardId}`,
       );
     }
@@ -139,7 +134,7 @@ class BoardIssueService {
     );
     const currentState = refs.find((ref) => ref.id === issueId);
     if (!currentState) {
-      throw new NotFoundException(`Issue with id ${issueId} not found`);
+      throw DomainError.notFound(`Issue with id ${issueId} not found`);
     }
 
     const targetState = stateId === undefined ? currentState.stateId : stateId;
@@ -147,7 +142,7 @@ class BoardIssueService {
       if (targetState !== null) {
         const stateExists = await this.tasksGateway.stateExists(targetState);
         if (!stateExists) {
-          throw new NotFoundException(`State with id ${targetState} not found`);
+          throw DomainError.notFound(`State with id ${targetState} not found`);
         }
       }
       await this.tasksGateway.setIssueState(issueId, targetState);

@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
-import { errorMessage } from '@core/api/api-error';
+import { errorMessage } from '@shared/util/error-message';
 
 /**
  * Base de los stores de listas del módulo (proyectos, estados, etiquetas, tareas): carga una vez,

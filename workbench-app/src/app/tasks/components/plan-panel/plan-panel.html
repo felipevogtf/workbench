@@ -85,11 +85,7 @@
     }
 
     @if (history().length > 0) {
-      <details
-        class="plan__history"
-        [open]="historyOpen()"
-        (toggle)="historyOpen.set($any($event.target).open)"
-      >
+      <details class="plan__history" [open]="historyOpen()" (toggle)="onHistoryToggle($event)">
         <summary>Historial ({{ history().length }})</summary>
         <ul>
           @for (plan of history(); track plan.id) {

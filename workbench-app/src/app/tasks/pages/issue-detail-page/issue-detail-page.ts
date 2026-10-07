@@ -9,21 +9,15 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import {
-  FormControl,
-  NonNullableFormBuilder,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { errorMessage } from '@core/api/api-error';
-import { formatDay, formatHours, todayIso } from '@shared/util/date';
+import { formatDay, formatHours } from '@shared/util/date';
 import { Alert } from '@shared/ui/alert/alert';
 import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
-import { FormField } from '@shared/ui/form-field/form-field';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
@@ -32,8 +26,8 @@ import { Select, SelectOption } from '@shared/ui/select/select';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { Tag } from '@shared/ui/tag/tag';
-import { TextInput } from '@shared/ui/text-input/text-input';
 import { PriorityBadge } from '../../components/priority-badge/priority-badge';
+import { HoursPanel } from '../../components/hours-panel/hours-panel';
 import { PlanPanel } from '../../components/plan-panel/plan-panel';
 import { PlansStore } from '../../data-access/plans.store';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
@@ -59,13 +53,12 @@ import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
     Card,
     Tag,
     Select,
-    FormField,
-    TextInput,
     Skeleton,
     MarkdownViewer,
     PriorityBadge,
     IssueFormDialog,
     PlanPanel,
+    HoursPanel,
     Spinner,
   ],
   providers: [TimeEntriesStore, PlansStore],
@@ -132,13 +125,6 @@ export class IssueDetailPage {
   );
   protected readonly stateControl = new FormControl('', { nonNullable: true });
 
-  protected readonly hoursForm = inject(NonNullableFormBuilder).group({
-    date: [todayIso(), Validators.required],
-    hours: ['', [Validators.required, Validators.min(0.25), Validators.max(24)]],
-  });
-  protected readonly addingHours = signal(false);
-  protected readonly hoursError = signal<string | null>(null);
-
   constructor() {
     void this.projectsStore.load();
     void this.statesStore.load();
@@ -171,41 +157,12 @@ export class IssueDetailPage {
     );
   }
 
-  protected hoursInvalid(name: 'date' | 'hours'): boolean {
-    const control = this.hoursForm.controls[name];
-    return control.touched && control.invalid;
-  }
-
   protected async changeState(stateId: string): Promise<void> {
     const issue = this.issue();
     if (!issue) return;
     const ok = await this.store.setState(issue.id, stateId || null);
     // Si falló, el selector vuelve al estado real de la tarea.
     if (!ok) this.stateControl.setValue(issue.stateId ?? '', { emitEvent: false });
-  }
-
-  protected async addHours(): Promise<void> {
-    this.hoursError.set(null);
-    if (this.hoursForm.invalid) {
-      this.hoursForm.markAllAsTouched();
-      return;
-    }
-
-    const { date, hours } = this.hoursForm.getRawValue();
-    this.addingHours.set(true);
-    try {
-      await this.hours.add(Number(hours), date);
-      this.hoursForm.patchValue({ hours: '' });
-      this.hoursForm.controls.hours.markAsUntouched();
-    } catch (error) {
-      this.hoursError.set(errorMessage(error));
-    } finally {
-      this.addingHours.set(false);
-    }
-  }
-
-  protected removeHours(id: string): void {
-    void this.hours.remove(id);
   }
 
   protected toggleClosed(): void {

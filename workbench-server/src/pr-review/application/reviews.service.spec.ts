@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { PullRequestCommentPort } from '@pr-review/domain/ports/pull-request-comment.port';
 import { AgentsGatewayPort } from '@pr-review/domain/ports/agents-gateway.port';
@@ -259,7 +259,7 @@ describe('ReviewsService queue', () => {
     const h = build();
 
     await expect(h.service.reReview('nope')).rejects.toBeInstanceOf(
-      NotFoundException,
+      DomainError,
     );
   });
 });

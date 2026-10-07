@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable } from '@nestjs/common';
 import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 import {
   TIME_ENTRY_REPOSITORY_PORT,
@@ -26,7 +27,7 @@ export class TimeEntriesService {
 
   async addTimeEntry(data: AddTimeEntryData) {
     if (!(await this.issueExists.exists(data.issueId))) {
-      throw new NotFoundException(`Issue with id ${data.issueId} not found`);
+      throw DomainError.notFound(`Issue with id ${data.issueId} not found`);
     }
 
     const timeEntry = TimeEntry.create({
@@ -51,7 +52,7 @@ export class TimeEntriesService {
     const timeEntry = await this.repo.findById(id);
 
     if (!timeEntry) {
-      throw new NotFoundException(`Time entry with id ${id} not found`);
+      throw DomainError.notFound(`Time entry with id ${id} not found`);
     }
 
     await this.repo.delete(id);

@@ -48,6 +48,8 @@ export class IssueLocalSequence1790106901057 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "issues" RENAME COLUMN "remote_sequence" TO "sequence_number"`,
     );
-    await queryRunner.query(`ALTER TABLE "issues" ADD COLUMN "local_id" integer`);
+    await queryRunner.query(
+      `ALTER TABLE "issues" ADD COLUMN "local_id" integer`,
+    );
   }
 }

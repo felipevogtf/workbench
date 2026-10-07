@@ -1,9 +1,5 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PROJECT_REPOSITORY_PORT,
   type ProjectRepositoryPort,
@@ -94,11 +90,11 @@ export class IssuesService {
   async deleteIssue(id: string): Promise<void> {
     const existingIssue = await this.issueRepository.findById(id);
     if (!existingIssue) {
-      throw new NotFoundException(`Issue with id ${id} not found`);
+      throw DomainError.notFound(`Issue with id ${id} not found`);
     }
 
     if (!existingIssue.isLocal) {
-      throw new BadRequestException(
+      throw new DomainError(
         `Cannot delete issue with id ${id} because it is not a local issue`,
       );
     }
@@ -130,10 +126,10 @@ export class IssuesService {
   ): Promise<{ created: number; updated: number }> {
     const project = await this.projectRepository.findById(projectId);
     if (!project) {
-      throw new NotFoundException(`Project ${projectId} not found`);
+      throw DomainError.notFound(`Project ${projectId} not found`);
     }
     if (!project.externalId) {
-      throw new BadRequestException(
+      throw new DomainError(
         `Project ${projectId} is not linked to an external source`,
       );
     }
@@ -198,7 +194,7 @@ export class IssuesService {
   async getIssueById(id: string): Promise<Issue> {
     const issue = await this.issueRepository.findById(id);
     if (!issue) {
-      throw new NotFoundException(`Issue with id ${id} not found`);
+      throw DomainError.notFound(`Issue with id ${id} not found`);
     }
     return issue;
   }
@@ -234,7 +230,7 @@ export class IssuesService {
       const ids = [...new Set(data.labelIds)];
       const labels = await this.labelRepository.findByIds(ids);
       if (labels.length !== ids.length) {
-        throw new NotFoundException('One or more labels were not found');
+        throw DomainError.notFound('One or more labels were not found');
       }
       issue.setLabels(ids);
     }
@@ -242,13 +238,13 @@ export class IssuesService {
 
   private async ensureProject(projectId: string): Promise<void> {
     if (!(await this.projectRepository.findById(projectId))) {
-      throw new NotFoundException(`Project with id ${projectId} not found`);
+      throw DomainError.notFound(`Project with id ${projectId} not found`);
     }
   }
 
   private async ensureState(stateId: string | null): Promise<void> {
     if (stateId !== null && !(await this.stateRepository.findById(stateId))) {
-      throw new NotFoundException(`State with id ${stateId} not found`);
+      throw DomainError.notFound(`State with id ${stateId} not found`);
     }
   }
 }

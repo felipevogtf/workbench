@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PROJECT_REPOSITORY_PORT,
   type ProjectRepositoryPort,
@@ -87,7 +88,7 @@ export class ProjectsService {
   private async getProject(id: string): Promise<Project> {
     const project = await this.projectRepository.findById(id);
     if (!project) {
-      throw new NotFoundException(`Project with id ${id} not found`);
+      throw DomainError.notFound(`Project with id ${id} not found`);
     }
     return project;
   }

@@ -1,18 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
-import {
-  ISSUE_REPOSITORY_PORT,
-  type IssueRepositoryPort,
-} from '@tasks/domain/ports/issue-repository.port';
+import { Injectable } from '@nestjs/common';
+import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import { IssueExistsPort } from '@time-tracking/domain/ports/issue-exists.port';
 
 @Injectable()
 export class TasksIssueExistsAdapter implements IssueExistsPort {
-  constructor(
-    @Inject(ISSUE_REPOSITORY_PORT)
-    private readonly issueRepository: IssueRepositoryPort,
-  ) {}
+  constructor(private readonly tasks: TasksFacade) {}
 
   async exists(issueId: string): Promise<boolean> {
-    return (await this.issueRepository.findById(issueId)) !== null;
+    return (await this.tasks.findIssue(issueId)) !== null;
   }
 }

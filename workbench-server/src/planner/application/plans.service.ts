@@ -1,11 +1,8 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { extractTicketKeys } from '@tasks/domain/ticket-keys';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { withTimeout } from '@core/async/with-timeout';
+import { WorkQueue } from '@core/queue/work-queue';
+import { extractTicketKeys } from '@core/text/ticket-keys';
 import { Plan } from '@planner/domain/entities/plan.entity';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 import { buildPlanPrompt } from '@planner/domain/plan-prompt';
@@ -44,8 +41,7 @@ const TICKET_TIMEOUT_MS = 10_000;
 @Injectable()
 export class PlansService {
   private readonly logger = new Logger(PlansService.name);
-  private activeWorkers = 0;
-  private rekick = false;
+  private readonly queue: WorkQueue<Plan>;
 
   constructor(
     @Inject(PLAN_REPOSITORY_PORT)
@@ -59,8 +55,15 @@ export class PlansService {
     @Inject(TICKETS_GATEWAY_PORT)
     private readonly tickets: TicketsGatewayPort,
     @Inject(PLANNER_CONCURRENCY)
-    private readonly concurrency: number,
-  ) {}
+    concurrency: number,
+  ) {
+    this.queue = new WorkQueue<Plan>({
+      name: 'PlansService',
+      concurrency,
+      claim: () => this.plans.claimNextPending(),
+      process: (plan) => this.execute(plan),
+    });
+  }
 
   /** Deja un plan en cola. Quien encola nunca genera: solo despierta a los workers. */
   async create(
@@ -68,10 +71,10 @@ export class PlansService {
     override: { agentId?: string; model?: string } = {},
   ): Promise<Plan> {
     if (!(await this.tasks.getTask(issueId))) {
-      throw new NotFoundException(`Issue with id ${issueId} not found`);
+      throw DomainError.notFound(`Issue with id ${issueId} not found`);
     }
     if (await this.plans.findActiveByIssueId(issueId)) {
-      throw new ConflictException(
+      throw DomainError.conflict(
         'This task already has a plan being generated',
       );
     }
@@ -87,14 +90,14 @@ export class PlansService {
 
   async get(id: string): Promise<Plan> {
     const plan = await this.plans.findById(id);
-    if (!plan) throw new NotFoundException(`Plan with id ${id} not found`);
+    if (!plan) throw DomainError.notFound(`Plan with id ${id} not found`);
     return plan;
   }
 
   async delete(id: string): Promise<void> {
     const plan = await this.get(id);
     if (plan.isActive) {
-      throw new ConflictException(
+      throw DomainError.conflict(
         'A plan that is queued or being generated cannot be deleted',
       );
     }
@@ -102,16 +105,7 @@ export class PlansService {
   }
 
   kick(): void {
-    if (this.activeWorkers >= this.concurrency) {
-      // Todos los workers están ocupados; que revisen la cola otra vez al terminar.
-      this.rekick = true;
-      return;
-    }
-
-    while (this.activeWorkers < this.concurrency) {
-      this.activeWorkers++;
-      void this.runWorker();
-    }
+    this.queue.kick();
   }
 
   /**
@@ -127,27 +121,6 @@ export class PlansService {
 
     this.kick();
     return interrupted.length;
-  }
-
-  private async runWorker(): Promise<void> {
-    try {
-      for (;;) {
-        this.rekick = false;
-        const plan = await this.plans.claimNextPending();
-
-        if (!plan) {
-          // Si alguien encoló mientras consultábamos, damos otra vuelta.
-          if (this.rekick) continue;
-          return;
-        }
-
-        await this.execute(plan);
-      }
-    } catch (error) {
-      this.logger.error(`Plan worker crashed: ${this.errorMessage(error)}`);
-    } finally {
-      this.activeWorkers--;
-    }
   }
 
   /** Recibe un plan ya reclamado (`generating`). Nunca lanza: registra el fallo en el plan. */
@@ -204,8 +177,9 @@ export class PlansService {
   /** Tickets de Plane citados en el título o la descripción. Nunca bloquea el plan. */
   private async loadTickets(task: TaskContext): Promise<TicketData[]> {
     try {
-      const identifiers = await this.withTimeout(
+      const identifiers = await withTimeout(
         this.tickets.getProjectIdentifiers(),
+        TICKET_TIMEOUT_MS,
       );
       const keys = extractTicketKeys(
         [task.name, task.description],
@@ -216,7 +190,10 @@ export class PlansService {
       const found = await Promise.all(
         keys.map(async (key) => {
           try {
-            return await this.withTimeout(this.tickets.getTicket(key));
+            return await withTimeout(
+              this.tickets.getTicket(key),
+              TICKET_TIMEOUT_MS,
+            );
           } catch (error) {
             this.logger.warn(
               `Could not read ticket ${key}: ${this.errorMessage(error)}`,
@@ -232,25 +209,6 @@ export class PlansService {
       );
       return [];
     }
-  }
-
-  private withTimeout<T>(promise: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`Timed out after ${TICKET_TIMEOUT_MS} ms`)),
-        TICKET_TIMEOUT_MS,
-      );
-      promise.then(
-        (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error: unknown) => {
-          clearTimeout(timer);
-          reject(error instanceof Error ? error : new Error(String(error)));
-        },
-      );
-    });
   }
 
   private errorMessage(error: unknown): string {

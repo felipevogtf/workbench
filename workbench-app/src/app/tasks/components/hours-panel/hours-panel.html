@@ -1,0 +1,79 @@
+<app-card>
+  <h4 card-header>Horas registradas</h4>
+
+  <form class="hours-form" [formGroup]="form" (ngSubmit)="add()" novalidate>
+    <app-form-field label="Día" for="hours-date" [error]="invalid('date') ? 'Elige un día' : null">
+      <app-text-input
+        inputId="hours-date"
+        type="date"
+        formControlName="date"
+        [invalid]="invalid('date')"
+        [describedBy]="'hours-date-msg'"
+      />
+    </app-form-field>
+    <app-form-field
+      label="Horas"
+      for="hours-amount"
+      [error]="invalid('hours') ? 'Entre 0,25 y 24 horas' : null"
+    >
+      <app-text-input
+        inputId="hours-amount"
+        type="number"
+        min="0.25"
+        step="0.25"
+        placeholder="1,5"
+        formControlName="hours"
+        [invalid]="invalid('hours')"
+        [describedBy]="'hours-amount-msg'"
+      />
+    </app-form-field>
+    <button class="hours-form__submit" app-button type="submit" [loading]="adding()">
+      <app-icon name="plus" size="1em" /> Agregar
+    </button>
+  </form>
+  @if (addError(); as message) {
+    <app-alert tone="danger" heading="No se pudo registrar">{{ message }}</app-alert>
+  }
+
+  @if (hours.error(); as message) {
+    <app-alert tone="danger" heading="No se pudieron cargar las horas">{{ message }}</app-alert>
+  } @else if (hours.days().length === 0) {
+    <p class="muted">
+      Todavía no registras horas en esta tarea. Puedes agregar varias el mismo día.
+    </p>
+  } @else {
+    <ul class="days">
+      @for (day of hours.days(); track day.date) {
+        <li>
+          <div class="day__head">
+            <strong>{{ formatDay(day.date) }}</strong>
+            <span class="muted">{{ formatHours(day.hours) }}</span>
+          </div>
+          <ul class="entries">
+            @for (entry of day.entries; track entry.id) {
+              <li>
+                <span>{{ formatHours(entry.hours) }}</span>
+                <button
+                  app-icon-button
+                  type="button"
+                  tone="danger"
+                  [label]="'Eliminar ' + formatHours(entry.hours) + ' del ' + formatDay(day.date)"
+                  (click)="remove(entry.id)"
+                >
+                  <app-icon name="trash" size="1.1rem" />
+                </button>
+              </li>
+            }
+          </ul>
+        </li>
+      }
+    </ul>
+  }
+
+  <p class="total">
+    Total: <strong>{{ formatHours(hours.totalHours()) }}</strong>
+    @if (estimatedHours() !== null) {
+      de {{ formatHours(estimatedHours() ?? 0) }} estimadas
+    }
+  </p>
+</app-card>

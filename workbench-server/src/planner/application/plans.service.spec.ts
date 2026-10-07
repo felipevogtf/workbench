@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
 import { Plan } from '@planner/domain/entities/plan.entity';
 import { PlanStatus } from '@planner/domain/entities/plan.props';
 import { PlanRepositoryPort } from '@planner/domain/ports/plan-repository.port';
@@ -179,14 +179,14 @@ describe('PlansService', () => {
 
   it('rejects an unknown task', async () => {
     const { service } = build({ task: null });
-    await expect(service.create('nope')).rejects.toThrow(NotFoundException);
+    await expect(service.create('nope')).rejects.toThrow(DomainError);
   });
 
   it('refuses a second plan while one is being generated, but allows it afterwards', async () => {
     const { service, store } = build();
     store.push(Plan.create({ issueId: 'i1' }));
 
-    await expect(service.create('i1')).rejects.toThrow(ConflictException);
+    await expect(service.create('i1')).rejects.toThrow(DomainError);
 
     service.kick();
     await settle(store);
@@ -197,7 +197,7 @@ describe('PlansService', () => {
     const { service, store } = build();
     const active = Plan.create({ issueId: 'i1' });
     store.push(active);
-    await expect(service.delete(active.id)).rejects.toThrow(ConflictException);
+    await expect(service.delete(active.id)).rejects.toThrow(DomainError);
 
     service.kick();
     await settle(store);

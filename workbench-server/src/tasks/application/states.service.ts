@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable } from '@nestjs/common';
 import { State } from '@tasks/domain/entities/state.entity';
 import {
   STATE_REPOSITORY_PORT,
@@ -37,7 +38,7 @@ export class StatesService {
   async update(id: string, data: UpdateStateData): Promise<State> {
     const existingState = await this.stateRepository.findById(id);
     if (!existingState) {
-      throw new NotFoundException(`State with id ${id} not found`);
+      throw DomainError.notFound(`State with id ${id} not found`);
     }
 
     if (data.name !== undefined) {
@@ -65,7 +66,7 @@ export class StatesService {
     const byId = new Map(states.map((state) => [state.id, state]));
     const unknown = ids.find((id) => !byId.has(id));
     if (unknown) {
-      throw new NotFoundException(`State with id ${unknown} not found`);
+      throw DomainError.notFound(`State with id ${unknown} not found`);
     }
 
     const requested = [...new Set(ids)].map((id) => byId.get(id) as State);
@@ -84,7 +85,7 @@ export class StatesService {
   async delete(id: string): Promise<void> {
     const state = await this.stateRepository.findById(id);
     if (!state) {
-      throw new NotFoundException(`State with id ${id} not found`);
+      throw DomainError.notFound(`State with id ${id} not found`);
     }
     return this.stateRepository.delete(id);
   }

@@ -8,9 +8,9 @@ import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import {
-  NamedItemDialog,
-  NamedItemValue,
-} from '../../components/named-item-dialog/named-item-dialog';
+  LabelFormDialog,
+  LabelFormValue,
+} from '../../components/label-form-dialog/label-form-dialog';
 import { LabelsStore } from '../../data-access/labels.store';
 import { Label } from '../../models/catalogs';
 
@@ -21,7 +21,7 @@ const MENU: MenuItem[] = [
 
 @Component({
   selector: 'app-label-list-page',
-  imports: [PageHeader, Button, Icon, Menu, Alert, EmptyState, Skeleton, NamedItemDialog],
+  imports: [PageHeader, Button, Icon, Menu, Alert, EmptyState, Skeleton, LabelFormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './label-list-page.html',
   styleUrl: '../catalog-page.scss',
@@ -34,7 +34,7 @@ export class LabelListPage {
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<Label | null>(null);
 
-  protected readonly save = async (value: NamedItemValue): Promise<void> => {
+  protected readonly save = async (value: LabelFormValue): Promise<void> => {
     const editing = this.editing();
     if (editing) await this.store.update(editing.id, value);
     else await this.store.create(value);

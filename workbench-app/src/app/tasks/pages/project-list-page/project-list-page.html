@@ -82,11 +82,10 @@
 
   <app-project-settings-dialog [(open)]="settingsOpen" [project]="configuring()" />
 
-  <app-named-item-dialog
+  <app-project-name-dialog
     [(open)]="dialogOpen"
     [heading]="editing() ? 'Renombrar proyecto' : 'Nuevo proyecto'"
     [initial]="editing()"
-    [withColor]="false"
     [save]="save"
   />
 </div>

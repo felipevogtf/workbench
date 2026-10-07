@@ -29,6 +29,7 @@ import { TICKET_SOURCE_PORT } from './domain/ports/ticket-source.port';
 import { TasksSyncService } from './application/tasks-sync.service';
 import { SyncController } from './infrastructure/http/sync.controller';
 import { TasksSyncScheduler } from './infrastructure/scheduling/tasks-sync.scheduler';
+import { TasksFacade } from './application/tasks-facade.service';
 import { TicketLookupService } from './application/ticket-lookup.service';
 
 @Module({
@@ -56,16 +57,12 @@ import { TicketLookupService } from './application/ticket-lookup.service';
     StatesService,
     LabelsService,
     TicketLookupService,
+    TasksFacade,
     TasksSyncService,
     TasksSyncScheduler,
   ],
-  exports: [
-    ISSUE_REPOSITORY_PORT,
-    PROJECT_REPOSITORY_PORT,
-    STATE_REPOSITORY_PORT,
-    LABEL_REPOSITORY_PORT,
-    TicketLookupService,
-  ],
+  // Lo único que ven los demás módulos: la fachada y la consulta de tickets de Plane.
+  exports: [TasksFacade, TicketLookupService],
   controllers: [
     ProjectsController,
     IssuesController,

@@ -41,6 +41,10 @@ export class AddIssuesDialog {
   private readonly projectsStore = inject(ProjectsStore);
 
   protected readonly search = signal('');
+
+  protected onSearch(event: Event): void {
+    this.search.set((event.target as HTMLInputElement).value);
+  }
   protected readonly selected = signal<ReadonlySet<string>>(new Set());
   protected readonly assigned = signal<ReadonlySet<string>>(new Set());
   protected readonly loading = signal(false);

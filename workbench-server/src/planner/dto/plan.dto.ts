@@ -1,8 +1,14 @@
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 
 export class CreatePlanDto {
   /** Opcional: un agente del módulo `planner` distinto del que está por defecto. */
+  @IsOptional()
+  @IsUUID()
   agentId?: string;
+
+  @IsOptional()
+  @IsString()
   model?: string;
 }
 

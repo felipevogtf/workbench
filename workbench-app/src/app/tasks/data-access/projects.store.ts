@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
 import { Project } from '../models/catalogs';
-import { ResourceStore } from './resource-store';
+import { ResourceStore } from '@shared/util/resource-store';
 import { TasksApi } from './tasks.api';
 
 @Injectable({ providedIn: 'root' })

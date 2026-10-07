@@ -1,3 +1,8 @@
+import { ArrayMaxSize, IsArray, IsUUID } from 'class-validator';
+
 export class CloseIssuesDto {
-  ids?: string[];
+  @IsArray()
+  @ArrayMaxSize(5000)
+  @IsUUID('all', { each: true })
+  ids!: string[];
 }

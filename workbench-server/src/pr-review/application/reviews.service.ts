@@ -1,10 +1,7 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { withTimeout } from '@core/async/with-timeout';
+import { WorkQueue } from '@core/queue/work-queue';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { Review } from '@pr-review/domain/entities/review.entity';
 import {
@@ -41,7 +38,8 @@ import {
   PULL_REQUEST_SOURCE_PORTS,
   type PullRequestSourcePort,
 } from '@pr-review/domain/ports/pull-request-source.port';
-import { extractTicketKeys } from '@tasks/domain/ticket-keys';
+import { buildCommentBody } from '@pr-review/application/review-comment';
+import { extractTicketKeys } from '@core/text/ticket-keys';
 import {
   buildReviewPrompt,
   type TicketContext,
@@ -63,8 +61,7 @@ export interface ReviewQueueSnapshot {
 @Injectable()
 export class ReviewsService {
   private readonly logger = new Logger(ReviewsService.name);
-  private activeWorkers = 0;
-  private rekick = false;
+  private readonly queue: WorkQueue<PullRequest>;
 
   constructor(
     @Inject(PULL_REQUEST_REPOSITORY_PORT)
@@ -85,23 +82,25 @@ export class ReviewsService {
     private readonly tickets: TicketsGatewayPort,
     @Inject(REVIEW_CONCURRENCY)
     private readonly concurrency: number,
-  ) {}
+  ) {
+    this.queue = new WorkQueue<PullRequest>({
+      name: 'ReviewsService',
+      concurrency,
+      claim: () => this.pullRequests.claimNextPending(),
+      process: (pullRequest) => this.executeReview(pullRequest),
+    });
+  }
+
+  private get activeWorkers(): number {
+    return this.queue.activeWorkers;
+  }
 
   /**
    * Despierta a los workers de la cola. Quien encola (sync, re-review, cron)
    * nunca revisa directamente: solo deja la PR en `pending` y llama a kick().
    */
   kick(): void {
-    if (this.activeWorkers >= this.concurrency) {
-      // Todos los workers están ocupados; que revisen la cola otra vez al terminar.
-      this.rekick = true;
-      return;
-    }
-
-    while (this.activeWorkers < this.concurrency) {
-      this.activeWorkers++;
-      void this.runWorker();
-    }
+    this.queue.kick();
   }
 
   async reReview(
@@ -127,12 +126,12 @@ export class ReviewsService {
       pullRequest.id,
     );
     if (!review || !review.docPath) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `Pull request ${pullRequestId} has no completed review`,
       );
     }
     if (review.commentStatus === 'posted') {
-      throw new ConflictException('The comment was already posted');
+      throw DomainError.conflict('The comment was already posted');
     }
 
     const markdown = await this.storage.read(review.docPath);
@@ -146,7 +145,7 @@ export class ReviewsService {
       pullRequest.id,
     );
     if (!review || !review.docPath) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `Pull request ${pullRequestId} has no completed review`,
       );
     }
@@ -156,7 +155,7 @@ export class ReviewsService {
   async readReview(pullRequestId: string, reviewId: string): Promise<string> {
     const review = await this.reviews.findById(reviewId);
     if (!review || review.pullRequestId !== pullRequestId || !review.docPath) {
-      throw new NotFoundException(
+      throw DomainError.notFound(
         `Review ${reviewId} not found for pull request ${pullRequestId}`,
       );
     }
@@ -189,27 +188,6 @@ export class ReviewsService {
 
     this.kick();
     return interrupted.length;
-  }
-
-  private async runWorker(): Promise<void> {
-    try {
-      for (;;) {
-        this.rekick = false;
-        const pullRequest = await this.pullRequests.claimNextPending();
-
-        if (!pullRequest) {
-          // Si alguien encoló mientras consultábamos, damos otra vuelta.
-          if (this.rekick) continue;
-          return;
-        }
-
-        await this.executeReview(pullRequest);
-      }
-    } catch (error) {
-      this.logger.error(`Review worker crashed: ${this.errorMessage(error)}`);
-    } finally {
-      this.activeWorkers--;
-    }
   }
 
   /** Recibe una PR ya reclamada (`reviewing`). Nunca lanza: registra el fallo. */
@@ -329,7 +307,7 @@ export class ReviewsService {
       const url = await port.postComment(
         pullRequest.repo,
         pullRequest.externalId,
-        this.buildCommentBody(review, markdown),
+        buildCommentBody(review, markdown),
       );
       review.markCommentPosted(url);
     } catch (error) {
@@ -350,8 +328,9 @@ export class ReviewsService {
       );
       if (!source) return;
 
-      const remote = await this.withTimeout(
+      const remote = await withTimeout(
         source.getPullRequest(pullRequest.repo, pullRequest.externalId),
+        TICKET_TIMEOUT_MS,
       );
       if (!remote) return;
 
@@ -380,7 +359,10 @@ export class ReviewsService {
           try {
             return {
               key,
-              ticket: await this.withTimeout(this.tickets.getTicket(key)),
+              ticket: await withTimeout(
+                this.tickets.getTicket(key),
+                TICKET_TIMEOUT_MS,
+              ),
             };
           } catch (error) {
             this.logger.warn(
@@ -409,8 +391,9 @@ export class ReviewsService {
 
   private async detectTicketKeys(pullRequest: PullRequest): Promise<string[]> {
     try {
-      const identifiers = await this.withTimeout(
+      const identifiers = await withTimeout(
         this.tickets.getProjectIdentifiers(),
+        TICKET_TIMEOUT_MS,
       );
       return extractTicketKeys(
         [pullRequest.sourceBranch, pullRequest.description],
@@ -425,51 +408,10 @@ export class ReviewsService {
     }
   }
 
-  private withTimeout<T>(promise: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`Timed out after ${TICKET_TIMEOUT_MS} ms`)),
-        TICKET_TIMEOUT_MS,
-      );
-      promise.then(
-        (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error: unknown) => {
-          clearTimeout(timer);
-          reject(error instanceof Error ? error : new Error(String(error)));
-        },
-      );
-    });
-  }
-
-  private buildCommentBody(review: Review, markdown: string): string {
-    const info = [
-      review.agentName ? `agente: ${review.agentName}` : null,
-      review.model ? `modelo: ${review.model}` : null,
-    ]
-      .filter(Boolean)
-      .join(' · ');
-
-    // Hasta qué commit llegó la revisión: lo que se suba después no está cubierto.
-    const reviewedCommit = review.commit
-      ? `\n**Último commit revisado:** \`${review.commit.slice(0, 8)}\``
-      : '';
-
-    return (
-      '**Revisión automática generada por IA** ' +
-      '(borrador, puede contener errores)' +
-      (info ? `\n_${info}_` : '') +
-      reviewedCommit +
-      `\n\n${markdown}`
-    );
-  }
-
   private async getPullRequest(id: string): Promise<PullRequest> {
     const pullRequest = await this.pullRequests.findById(id);
     if (!pullRequest) {
-      throw new NotFoundException(`Pull request with id ${id} not found`);
+      throw DomainError.notFound(`Pull request with id ${id} not found`);
     }
     return pullRequest;
   }

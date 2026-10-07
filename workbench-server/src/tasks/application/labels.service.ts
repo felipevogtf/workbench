@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import { Inject, Injectable } from '@nestjs/common';
 import { Label } from '@tasks/domain/entities/label.entity';
 import {
   LABEL_REPOSITORY_PORT,
@@ -33,7 +34,7 @@ export class LabelsService {
   async update(id: string, data: UpdateLabelData): Promise<Label> {
     const existingLabel = await this.labelRepository.findById(id);
     if (!existingLabel) {
-      throw new NotFoundException(`Label with id ${id} not found`);
+      throw DomainError.notFound(`Label with id ${id} not found`);
     }
 
     if (data.name !== undefined) {
