@@ -57,7 +57,11 @@ export class TypeOrmPullRequestRepository implements PullRequestRepositoryPort {
       );
     }
 
-    const rows = await query.orderBy('pr.updated_at', 'DESC').getMany();
+    // Sin revisar primero (las más recientes arriba), luego las revisadas de la más reciente a la más antigua.
+    const rows = await query
+      .orderBy('pr.last_reviewed_at', 'DESC', 'NULLS FIRST')
+      .addOrderBy('pr.updated_at', 'DESC')
+      .getMany();
     return rows.map((orm) => this.toDomain(orm));
   }
 
