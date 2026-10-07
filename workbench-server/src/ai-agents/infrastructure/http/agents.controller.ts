@@ -7,7 +7,9 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
+import { isAgentModule } from '@ai-agents/domain/modules';
 import { AgentsService } from '@ai-agents/application/agents.service';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
 import { CreateAgentDto } from '@ai-agents/dto/create-agent.dto';
@@ -19,8 +21,10 @@ export class AgentsController {
   constructor(private readonly agentsService: AgentsService) {}
 
   @Get()
-  async findAll(): Promise<AgentResponseDto[]> {
-    const agents = await this.agentsService.findAll();
+  async findAll(@Query('module') module?: string): Promise<AgentResponseDto[]> {
+    const agents = await this.agentsService.findAll(
+      module && isAgentModule(module) ? module : undefined,
+    );
     return agents.map((agent) => this.toDto(agent));
   }
 
@@ -67,6 +71,7 @@ export class AgentsController {
       id: agent.id,
       name: agent.name,
       systemPrompt: agent.systemPrompt,
+      module: agent.module,
       provider: agent.provider,
       model: agent.model,
       allowedTools: agent.allowedTools,

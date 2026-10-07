@@ -69,4 +69,25 @@ describe('Agent', () => {
     agent.update({ provider: 'antigravity', model: 'gemini-3.8-flash-medium' });
     expect(agent.provider).toBe('antigravity');
   });
+
+  it('uses the tools of its module by default', () => {
+    expect(Agent.create(valid).module).toBe('pr-review');
+    expect(Agent.create({ ...valid, module: 'planner' }).allowedTools).toEqual([
+      'Read',
+      'Grep',
+      'Glob',
+      'Bash(git log:*)',
+      'Bash(git show:*)',
+    ]);
+  });
+
+  it('rejects a tool that its module does not allow', () => {
+    expect(() =>
+      Agent.create({
+        ...valid,
+        module: 'planner',
+        allowedTools: ['Bash(git diff:*)'],
+      }),
+    ).toThrow(DomainError);
+  });
 });

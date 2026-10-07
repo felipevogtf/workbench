@@ -25,9 +25,9 @@ import { Toast } from '@shared/ui/toast/toast';
 import { ToolsPicker } from '../../components/tools-picker/tools-picker';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { ALLOWED_AGENT_TOOLS, AgentProvider } from '../../models/agent';
+import { AgentModule, AgentProvider, MODULE_OPTIONS, MODULE_TOOLS } from '../../models/agent';
 
-type RequiredField = 'name' | 'provider' | 'model' | 'systemPrompt';
+type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
 
 /** Crea (`/agents/new`) o edita (`/agents/:id/edit`) un agente. */
 @Component({
@@ -59,20 +59,27 @@ export class AgentFormPage {
   private readonly router = inject(Router);
   private readonly toast = inject(Toast);
 
-  protected readonly toolOptions = ALLOWED_AGENT_TOOLS;
+  protected readonly moduleOptions: SelectOption[] = [...MODULE_OPTIONS];
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
+    module: ['pr-review', Validators.required],
     provider: ['claude', Validators.required],
     model: ['', Validators.required],
     systemPrompt: ['', Validators.required],
   });
-  protected readonly tools = signal<string[]>([...ALLOWED_AGENT_TOOLS]);
+  protected readonly tools = signal<string[]>([...MODULE_TOOLS['pr-review']]);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly isEdit = computed(() => !!this.id());
+
+  private readonly module = toSignal(this.form.controls.module.valueChanges, {
+    initialValue: this.form.controls.module.value,
+  });
+  /** Herramientas que ofrece el módulo elegido (cada módulo tiene su lista de solo lectura). */
+  protected readonly toolOptions = computed(() => MODULE_TOOLS[this.module() as AgentModule]);
 
   private readonly provider = toSignal(this.form.controls.provider.valueChanges, {
     initialValue: this.form.controls.provider.value,
@@ -126,6 +133,11 @@ export class AgentFormPage {
     return control.touched && control.invalid ? 'Este campo es obligatorio' : null;
   }
 
+  /** Cambiar de módulo (solo al crear) deja las herramientas de ese módulo. */
+  protected onModuleChange(): void {
+    this.tools.set([...MODULE_TOOLS[this.form.controls.module.value as AgentModule]]);
+  }
+
   /** Cambiar de proveedor deja el modelo en el primero de ese proveedor. */
   protected onProviderChange(): void {
     const models = this.providersStore.modelsOf(this.form.controls.provider.value);
@@ -141,6 +153,7 @@ export class AgentFormPage {
 
     const value = {
       ...this.form.getRawValue(),
+      module: this.form.controls.module.value as AgentModule,
       provider: this.form.controls.provider.value as AgentProvider,
       allowedTools: this.tools(),
     };
@@ -168,8 +181,11 @@ export class AgentFormPage {
     try {
       const agent = await this.store.find(id);
       this.savedProvider.set(agent.provider);
+      // El módulo no se cambia después de crear el agente.
+      this.form.controls.module.disable();
       this.form.patchValue({
         name: agent.name,
+        module: agent.module,
         provider: agent.provider,
         model: agent.model,
         systemPrompt: agent.systemPrompt,

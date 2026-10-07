@@ -10,7 +10,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { AgentCard } from '../../components/agent-card/agent-card';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { Agent } from '../../models/agent';
+import { Agent, MODULE_OPTIONS } from '../../models/agent';
 
 @Component({
   selector: 'app-agent-list-page',
@@ -21,6 +21,7 @@ import { Agent } from '../../models/agent';
 })
 export class AgentListPage {
   protected readonly store = inject(AgentsStore);
+  protected readonly groups = MODULE_OPTIONS;
   // Carga los proveedores para que las tarjetas muestren su nombre.
   private readonly providers = inject(ProvidersStore);
   private readonly confirm = inject(ConfirmDialog);

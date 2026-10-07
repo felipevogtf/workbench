@@ -1,7 +1,7 @@
 <div class="page">
   <app-page-header
     heading="Agentes de IA"
-    subtitle="Definen el prompt, el modelo y las herramientas con que se revisan las PRs."
+    subtitle="Definen el prompt, el proveedor, el modelo y las herramientas de cada módulo (revisión de PRs, planificador…)."
   >
     <a actions app-button routerLink="new"><app-icon name="plus" size="1em" /> Nuevo agente</a>
   </app-page-header>
@@ -32,14 +32,23 @@
       <a empty-action app-button routerLink="new">Nuevo agente</a>
     </app-empty-state>
   } @else {
-    <div class="grid">
-      @for (agent of store.agents(); track agent.id) {
-        <app-agent-card
-          [agent]="agent"
-          (setDefault)="setDefault($event)"
-          (remove)="remove($event)"
-        />
+    @for (group of groups; track group.value) {
+      @if (store.agentsOf(group.value); as agents) {
+        @if (agents.length > 0) {
+          <section class="group" [attr.aria-label]="group.label">
+            <h4 class="group__title">{{ group.label }}</h4>
+            <div class="grid">
+              @for (agent of agents; track agent.id) {
+                <app-agent-card
+                  [agent]="agent"
+                  (setDefault)="setDefault($event)"
+                  (remove)="remove($event)"
+                />
+              }
+            </div>
+          </section>
+        }
       }
-    </div>
+    }
   }
 </div>

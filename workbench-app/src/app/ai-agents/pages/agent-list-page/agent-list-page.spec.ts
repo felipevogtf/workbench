@@ -10,6 +10,7 @@ function agent(id: string, isDefault = false): Agent {
     id,
     name: `agent-${id}`,
     systemPrompt: 'Revisa',
+    module: 'pr-review',
     provider: 'claude',
     model: 'claude-sonnet-5-5',
     allowedTools: ['Read'],

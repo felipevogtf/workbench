@@ -10,6 +10,7 @@ function agent(id: string, isDefault = false): Agent {
     id,
     name: `agent-${id}`,
     systemPrompt: 'Revisa',
+    module: 'pr-review',
     provider: 'claude',
     model: 'claude-sonnet-5-5',
     allowedTools: ['Read'],
@@ -47,7 +48,7 @@ describe('AgentsStore', () => {
 
     expect(api.list).toHaveBeenCalledTimes(1);
     expect(store.agents()).toHaveLength(2);
-    expect(store.defaultAgent()?.id).toBe('a');
+    expect(store.defaultAgentOf('pr-review')?.id).toBe('a');
   });
 
   it('reloads when forced', async () => {
@@ -93,6 +94,7 @@ describe('AgentsStore', () => {
     await store.create({
       name: 'c',
       systemPrompt: 'p',
+      module: 'pr-review',
       provider: 'claude',
       model: 'm',
       allowedTools: [],
@@ -101,5 +103,18 @@ describe('AgentsStore', () => {
 
     await store.remove('c');
     expect(store.agents()).toHaveLength(2);
+  });
+
+  it('keeps one default per module', async () => {
+    api.list.mockReturnValue(
+      of([agent('a', true), { ...agent('p', true), module: 'planner' as const }, agent('b')]),
+    );
+    api.setDefault.mockReturnValue(of(agent('b', true)));
+    await store.load();
+
+    await store.setDefault('b');
+
+    expect(store.defaultAgentOf('pr-review')?.id).toBe('b');
+    expect(store.defaultAgentOf('planner')?.id).toBe('p');
   });
 });

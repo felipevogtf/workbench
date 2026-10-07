@@ -17,6 +17,9 @@ export class AgentOrmEntity {
   @Column({ type: 'text' })
   system_prompt!: string;
 
+  @Column({ type: 'varchar', default: 'pr-review' })
+  module!: string;
+
   @Column({ type: 'varchar', default: 'claude' })
   provider!: string;
 

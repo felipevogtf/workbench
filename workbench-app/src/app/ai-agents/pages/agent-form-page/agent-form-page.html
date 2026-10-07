@@ -31,6 +31,21 @@
       </app-form-field>
 
       <app-form-field
+        label="Módulo"
+        for="agent-module"
+        required
+        hint="Dónde se usa el agente. Cada módulo tiene su propio agente por defecto y sus herramientas."
+      >
+        <app-select
+          inputId="agent-module"
+          formControlName="module"
+          [options]="moduleOptions"
+          [describedBy]="'agent-module-msg'"
+          (change)="onModuleChange()"
+        />
+      </app-form-field>
+
+      <app-form-field
         label="Proveedor"
         for="agent-provider"
         required
@@ -82,7 +97,7 @@
 
       <section class="form__tools">
         <h4>Herramientas permitidas</h4>
-        <app-tools-picker [options]="toolOptions" [(selected)]="tools" />
+        <app-tools-picker [options]="toolOptions()" [(selected)]="tools" />
       </section>
 
       <div class="form__actions">

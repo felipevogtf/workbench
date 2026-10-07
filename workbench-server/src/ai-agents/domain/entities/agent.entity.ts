@@ -1,26 +1,21 @@
 import { DomainError } from '@core/domain/domain.error';
 import { AgentProps } from './agent.props';
 import {
+  AGENT_MODULES,
+  AgentModule,
+  DEFAULT_MODULE,
+  MODULE_TOOLS,
+  isAgentModule,
+} from '@ai-agents/domain/modules';
+import {
   AGENT_PROVIDERS,
   AgentProvider,
   DEFAULT_PROVIDER,
   isAgentProvider,
 } from '@ai-agents/domain/providers';
 
-/**
- * Herramientas que un agente puede usar. Es una lista cerrada y de solo lectura:
- * el agente corre sobre código y descripciones de PRs que pueden contener
- * instrucciones maliciosas (prompt injection), así que no puede escribir ni
- * ejecutar comandos arbitrarios.
- */
-export const ALLOWED_AGENT_TOOLS = [
-  'Read',
-  'Grep',
-  'Glob',
-  'Bash(git diff:*)',
-  'Bash(git log:*)',
-  'Bash(git show:*)',
-] as const;
+/** Herramientas del módulo de revisión de PRs (compatibilidad); ver MODULE_TOOLS. */
+export const ALLOWED_AGENT_TOOLS = MODULE_TOOLS['pr-review'];
 
 export class Agent {
   private constructor(private props: AgentProps) {
@@ -31,18 +26,21 @@ export class Agent {
     name: string;
     systemPrompt: string;
     model: string;
+    module?: AgentModule;
     provider?: AgentProvider;
     allowedTools?: string[];
     isDefault?: boolean;
   }): Agent {
     const now = new Date();
+    const module = data.module ?? DEFAULT_MODULE;
     return new Agent({
       id: crypto.randomUUID(),
       name: data.name,
       systemPrompt: data.systemPrompt,
+      module,
       provider: data.provider ?? DEFAULT_PROVIDER,
       model: data.model,
-      allowedTools: data.allowedTools ?? [...ALLOWED_AGENT_TOOLS],
+      allowedTools: data.allowedTools ?? [...MODULE_TOOLS[module]],
       isDefault: data.isDefault ?? false,
       createdAt: now,
       updatedAt: now,
@@ -99,13 +97,20 @@ export class Agent {
       );
     }
 
+    if (!isAgentModule(props.module)) {
+      throw new DomainError(
+        'Agent module must be one of: ' + AGENT_MODULES.join(', '),
+      );
+    }
+
+    const allowed = MODULE_TOOLS[props.module];
     const forbidden = props.allowedTools.filter(
-      (tool) => !(ALLOWED_AGENT_TOOLS as readonly string[]).includes(tool),
+      (tool) => !allowed.includes(tool),
     );
     if (forbidden.length > 0) {
       throw new DomainError(
         `Tools not allowed for an agent: ${forbidden.join(', ')}. ` +
-          `Allowed tools: ${ALLOWED_AGENT_TOOLS.join(', ')}`,
+          `Allowed tools for ${props.module}: ${allowed.join(', ')}`,
       );
     }
   }
@@ -120,6 +125,10 @@ export class Agent {
 
   get systemPrompt(): string {
     return this.props.systemPrompt;
+  }
+
+  get module(): AgentModule {
+    return this.props.module;
   }
 
   get provider(): AgentProvider {

@@ -4,7 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
 import { AgentProvidersService } from '@ai-agents/application/agent-providers.service';
+import { AgentModule } from '@ai-agents/domain/modules';
 import { AgentProvider, DEFAULT_PROVIDER } from '@ai-agents/domain/providers';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
 import {
@@ -20,6 +22,7 @@ interface CreateAgentData {
   name: string;
   systemPrompt: string;
   model: string;
+  module?: AgentModule;
   provider?: AgentProvider;
   allowedTools?: string[];
   isDefault?: boolean;
@@ -33,6 +36,8 @@ type UpdateAgentData = Partial<
 >;
 
 interface RunAgentData {
+  /** Módulo que llama: elige el agente por defecto y exige que un agente indicado sea suyo. */
+  module: AgentModule;
   agentId?: string;
   model?: string;
   prompt: string;
@@ -62,7 +67,7 @@ export class AgentsService {
 
     const agent = Agent.create(data);
     if (agent.isDefault) {
-      await this.repo.clearDefault();
+      await this.repo.clearDefault(agent.module);
     }
 
     return this.repo.save(agent);
@@ -83,8 +88,8 @@ export class AgentsService {
     return this.repo.save(agent);
   }
 
-  findAll(): Promise<Agent[]> {
-    return this.repo.findAll();
+  findAll(module?: AgentModule): Promise<Agent[]> {
+    return this.repo.findAll(module);
   }
 
   async findById(id: string): Promise<Agent> {
@@ -95,10 +100,12 @@ export class AgentsService {
     return agent;
   }
 
-  async getDefault(): Promise<Agent> {
-    const agent = await this.repo.findDefault();
+  async getDefault(module: AgentModule): Promise<Agent> {
+    const agent = await this.repo.findDefault(module);
     if (!agent) {
-      throw new NotFoundException('There is no default agent configured');
+      throw new NotFoundException(
+        `There is no default agent configured for the ${module} module`,
+      );
     }
     return agent;
   }
@@ -106,7 +113,7 @@ export class AgentsService {
   async setDefault(id: string): Promise<Agent> {
     const agent = await this.findById(id);
 
-    await this.repo.clearDefault();
+    await this.repo.clearDefault(agent.module);
     agent.markAsDefault();
     return this.repo.save(agent);
   }
@@ -126,7 +133,12 @@ export class AgentsService {
   async run(data: RunAgentData): Promise<AgentRunResult> {
     const agent = data.agentId
       ? await this.findById(data.agentId)
-      : await this.getDefault();
+      : await this.getDefault(data.module);
+    if (agent.module !== data.module) {
+      throw new DomainError(
+        `The agent "${agent.name}" belongs to the ${agent.module} module, not to ${data.module}`,
+      );
+    }
     this.providers.assertEnabled(agent.provider);
     const model = data.model?.trim() || agent.model;
 

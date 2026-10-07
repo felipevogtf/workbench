@@ -177,7 +177,7 @@
     <app-re-review-dialog
       [(open)]="dialogOpen"
       [title]="pr.title"
-      [agents]="agentsStore.agents()"
+      [agents]="agentsStore.agentsOf('pr-review')"
       (confirmed)="reReview($event)"
     />
   } @else {

@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
+import {
+  AgentModule,
+  DEFAULT_MODULE,
+  isAgentModule,
+} from '@ai-agents/domain/modules';
 import { DEFAULT_PROVIDER, isAgentProvider } from '@ai-agents/domain/providers';
 import { AgentRepositoryPort } from '@ai-agents/domain/ports/agent-repository.port';
 import { AgentOrmEntity } from '@ai-agents/infrastructure/persistence/agent.orm-entity';
@@ -23,15 +28,18 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
     return orm ? this.toDomain(orm) : null;
   }
 
-  async findDefault(): Promise<Agent | null> {
+  async findDefault(module: AgentModule): Promise<Agent | null> {
     const orm = await this.agentRepository.findOne({
-      where: { is_default: true },
+      where: { is_default: true, module },
     });
     return orm ? this.toDomain(orm) : null;
   }
 
-  async findAll(): Promise<Agent[]> {
-    const rows = await this.agentRepository.find({ order: { name: 'ASC' } });
+  async findAll(module?: AgentModule): Promise<Agent[]> {
+    const rows = await this.agentRepository.find({
+      where: module ? { module } : {},
+      order: { name: 'ASC' },
+    });
     return rows.map((orm) => this.toDomain(orm));
   }
 
@@ -40,6 +48,7 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       id: agent.id,
       name: agent.name,
       system_prompt: agent.systemPrompt,
+      module: agent.module,
       provider: agent.provider,
       model: agent.model,
       allowed_tools: agent.allowedTools,
@@ -54,9 +63,9 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
     await this.agentRepository.delete(id);
   }
 
-  async clearDefault(): Promise<void> {
+  async clearDefault(module: AgentModule): Promise<void> {
     await this.agentRepository.update(
-      { is_default: true },
+      { is_default: true, module },
       { is_default: false },
     );
   }
@@ -66,6 +75,7 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       id: orm.id,
       name: orm.name,
       systemPrompt: orm.system_prompt,
+      module: isAgentModule(orm.module) ? orm.module : DEFAULT_MODULE,
       provider: isAgentProvider(orm.provider) ? orm.provider : DEFAULT_PROVIDER,
       model: orm.model,
       allowedTools: orm.allowed_tools,

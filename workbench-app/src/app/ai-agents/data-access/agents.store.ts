@@ -1,8 +1,8 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
-import { Agent, AgentInput } from '../models/agent';
+import { Agent, AgentInput, AgentModule } from '../models/agent';
 import { AgentsApi } from './agents.api';
 
 @Injectable({ providedIn: 'root' })
@@ -19,7 +19,16 @@ export class AgentsStore {
   readonly loading = this.loadingState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly loaded = this.loadedState.asReadonly();
-  readonly defaultAgent = computed(() => this.items().find((agent) => agent.isDefault) ?? null);
+
+  /** Los agentes de un módulo. */
+  agentsOf(module: AgentModule): Agent[] {
+    return this.items().filter((agent) => agent.module === module);
+  }
+
+  /** El agente por defecto de un módulo (hay uno por módulo). */
+  defaultAgentOf(module: AgentModule): Agent | null {
+    return this.agentsOf(module).find((agent) => agent.isDefault) ?? null;
+  }
 
   /** Carga la lista; si ya está cargada no vuelve a pedirla salvo con `force`. */
   async load(force = false): Promise<void> {
@@ -70,7 +79,11 @@ export class AgentsStore {
     try {
       const updated = await firstValueFrom(this.api.setDefault(id));
       this.items.update((list) =>
-        list.map((agent) => ({ ...agent, isDefault: agent.id === updated.id })),
+        list.map((agent) =>
+          agent.module === updated.module
+            ? { ...agent, isDefault: agent.id === updated.id }
+            : agent,
+        ),
       );
       this.toast.success(`«${updated.name}» es ahora el agente por defecto`);
     } catch (error) {

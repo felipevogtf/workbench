@@ -13,6 +13,7 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
 
   async runReview(request: ReviewRunRequest): Promise<ReviewRunResult> {
     const result = await this.agentsService.run({
+      module: 'pr-review',
       agentId: request.agentId,
       model: request.model,
       prompt: request.prompt,

@@ -7,17 +7,44 @@ import {
   AgentRunInput,
   AgentRunnerPort,
 } from '@ai-agents/domain/ports/agent-runner.port';
+import { extractAntigravityAnswer } from './antigravity-output';
 import { redact, timeoutMs } from './cli-config';
 import { runCli } from './cli-process';
 
-// En modo headless, Antigravity deniega todo lo que no esté permitido en su settings.json. Estas son
-// las reglas de solo lectura que necesita un agente de revisión; las de escritura se deniegan.
-const COMMAND_RULES: Record<string, string> = {
-  'Bash(git diff:*)': 'command(git diff)',
-  'Bash(git log:*)': 'command(git log)',
-  'Bash(git show:*)': 'command(git show)',
+// En modo headless, Antigravity deniega todo lo que no esté permitido en su settings.json. Sus
+// herramientas de lectura y búsqueda corren como comandos de shell, así que cada herramienta del
+// agente se traduce a los comandos de solo lectura equivalentes. Lo que escribe o sale del
+// directorio de trabajo se deniega (la denegación gana a cualquier permiso).
+const COMMAND_RULES: Record<string, string[]> = {
+  Read: ['command(cat)', 'command(head)', 'command(tail)', 'command(wc)'],
+  Grep: ['command(grep)', 'command(rg)'],
+  Glob: ['command(ls)', 'command(find)'],
+  'Bash(git diff:*)': ['command(git diff)'],
+  'Bash(git log:*)': ['command(git log)'],
+  'Bash(git show:*)': ['command(git show)'],
 };
-const DENY_RULES = ['write_file(*)', 'command(rm)', 'command(regex:curl .*)'];
+const DENY_RULES = [
+  'write_file(*)',
+  'command(rm)',
+  'command(regex:curl .*)',
+  'command(regex:find .*-exec.*)',
+  'command(regex:find .*-delete.*)',
+  // Fuera del checkout hay credenciales (el servidor guarda tokens en su entorno y en su home). Se
+  // deniega tanto la herramienta de lectura como los comandos que nombren esas rutas. Las reglas
+  // regex evitan `\.` (con el CLI deniega todo): se usa `[.]`. Verificado contra agy 1.3.
+  'read_file(/app)',
+  'read_file(/home)',
+  'read_file(/root)',
+  'read_file(/etc)',
+  'read_file(/proc)',
+  'command(regex:.*/app.*)',
+  'command(regex:.*/home.*)',
+  'command(regex:.*/etc.*)',
+  'command(regex:.*/proc.*)',
+  'command(regex:.*[.]env.*)',
+  'command(regex:.*[.]ssh.*)',
+  'command(regex:.*[.][.].*)',
+];
 
 interface AntigravitySettings {
   modelProvider?: string;
@@ -42,16 +69,25 @@ export class AntigravityCliAgentRunnerAdapter implements AgentRunnerPort {
     await this.ensureSettings(input.agent.allowedTools);
 
     const prompt = `${input.agent.systemPrompt}\n\n---\n\n${input.prompt}`;
-    return runCli({
+    const stdout = await runCli({
       label: 'Antigravity CLI',
       bin: this.config.get<string>('ANTIGRAVITY_BIN') || 'agy',
-      args: ['-p', prompt, '--model', input.model || input.agent.model],
+      args: [
+        '-p',
+        prompt,
+        '--model',
+        input.model || input.agent.model,
+        '--output-format',
+        'json',
+      ],
       cwd: input.workdir,
       env: this.cliEnv(),
       timeoutMs: timeoutMs(this.config),
       sanitize: (text) => redact(this.config, text),
       notFoundHint: 'Install agy or set ANTIGRAVITY_BIN',
     });
+
+    return extractAntigravityAnswer(stdout);
   }
 
   private cliEnv(): NodeJS.ProcessEnv {
