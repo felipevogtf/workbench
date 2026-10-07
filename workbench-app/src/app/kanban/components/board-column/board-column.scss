@@ -65,8 +65,9 @@ header {
 
 @media (min-width: 768px) {
   :host {
-    // Reparten todo el ancho; si no caben a 280px, el tablero se desliza.
-    flex: 1 1 280px;
+    // Ancho acotado: no crecen con la pantalla; si no caben, el tablero se desliza.
+    flex: 0 0 320px;
     min-width: 280px;
+    max-width: 360px;
   }
 }
