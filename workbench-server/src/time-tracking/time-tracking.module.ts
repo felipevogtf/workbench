@@ -8,6 +8,8 @@ import { TIME_ENTRY_REPOSITORY_PORT } from './domain/ports/time-entry-repository
 import { TypeOrmTimeEntryRepository } from './infrastructure/repositories/typeorm-time-entry.repository';
 import { ISSUE_EXISTS_PORT } from './domain/ports/issue-exists.port';
 import { TasksIssueExistsAdapter } from './infrastructure/adapters/tasks-issue-exists.adapter';
+import { ISSUE_ORIGIN_PORT } from './domain/ports/issue-origin.port';
+import { TasksIssueOriginAdapter } from './infrastructure/adapters/tasks-issue-origin.adapter';
 
 @Module({
   imports: [TasksModule, TypeOrmModule.forFeature([TimeEntryOrmEntity])],
@@ -19,6 +21,7 @@ import { TasksIssueExistsAdapter } from './infrastructure/adapters/tasks-issue-e
       useClass: TypeOrmTimeEntryRepository,
     },
     { provide: ISSUE_EXISTS_PORT, useClass: TasksIssueExistsAdapter },
+    { provide: ISSUE_ORIGIN_PORT, useClass: TasksIssueOriginAdapter },
   ],
   exports: [TIME_ENTRY_REPOSITORY_PORT, TimeEntriesService],
 })

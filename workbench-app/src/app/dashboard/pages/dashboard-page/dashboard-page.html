@@ -45,6 +45,8 @@
         </button>
       </div>
     }
+
+    <app-checkbox [(value)]="store.includeLocal">Incluir tareas locales</app-checkbox>
   </div>
 
   @if (!store.rangeValid()) {

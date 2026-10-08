@@ -4,6 +4,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
+import { Checkbox } from '@shared/ui/checkbox/checkbox';
 import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { Icon } from '@shared/ui/icon/icon';
@@ -37,6 +38,7 @@ const MODE_OPTIONS: SegmentOption[] = [
     IconButton,
     Icon,
     Card,
+    Checkbox,
     Alert,
     EmptyState,
     Skeleton,

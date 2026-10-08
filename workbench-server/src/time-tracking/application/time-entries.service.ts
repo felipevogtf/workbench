@@ -14,6 +14,10 @@ import {
   ISSUE_EXISTS_PORT,
   type IssueExistsPort,
 } from '@time-tracking/domain/ports/issue-exists.port';
+import {
+  ISSUE_ORIGIN_PORT,
+  type IssueOriginPort,
+} from '@time-tracking/domain/ports/issue-origin.port';
 
 interface AddTimeEntryData {
   issueId: string;
@@ -28,6 +32,8 @@ export class TimeEntriesService {
     private readonly repo: TimeEntryRepositoryPort,
     @Inject(ISSUE_EXISTS_PORT)
     private readonly issueExists: IssueExistsPort,
+    @Inject(ISSUE_ORIGIN_PORT)
+    private readonly issueOrigin: IssueOriginPort,
   ) {}
 
   async addTimeEntry(data: AddTimeEntryData) {
@@ -53,14 +59,25 @@ export class TimeEntriesService {
     return this.repo.sumHoursByIssueId(issueId);
   }
 
-  /** Horas registradas entre dos fechas (incluidas), por día y por tarea. */
-  async getReport(from: string, to: string): Promise<TimeReport> {
+  /**
+   * Horas registradas entre dos fechas (incluidas), por día y por tarea. Con `includeLocal: false`
+   * no cuentan las horas de las tareas locales (solo las de tareas que vienen de Plane).
+   */
+  async getReport(
+    from: string,
+    to: string,
+    { includeLocal = true }: { includeLocal?: boolean } = {},
+  ): Promise<TimeReport> {
     validateReportRange(from, to);
-    return buildTimeReport(
-      from,
-      to,
-      await this.repo.findBetweenDates(from, to),
-    );
+
+    let entries = await this.repo.findBetweenDates(from, to);
+    if (!includeLocal) {
+      const local = await this.issueOrigin.findLocalIds([
+        ...new Set(entries.map((entry) => entry.issueId)),
+      ]);
+      entries = entries.filter((entry) => !local.has(entry.issueId));
+    }
+    return buildTimeReport(from, to, entries);
   }
 
   /** Horas registradas por tarea (id → horas); las tareas sin horas no aparecen. */

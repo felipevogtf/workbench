@@ -35,6 +35,8 @@ export class DashboardStore {
   private readonly projects = inject(ProjectsStore);
 
   readonly mode = signal<PeriodMode>('week');
+  /** Si cuentan las horas de las tareas locales; activo por defecto. */
+  readonly includeLocal = signal(true);
   /** Un día cualquiera dentro de la semana o el mes que se está viendo. */
   private readonly anchor = signal(todayIso());
   /** El rango libre arranca en el mes en curso. */
@@ -88,11 +90,12 @@ export class DashboardStore {
     void this.issues.load();
     void this.projects.load();
 
-    // Cada cambio de período vuelve a pedir el reporte; un rango inválido no se pide.
+    // Cada cambio de período o de filtro vuelve a pedir el reporte; un rango inválido no se pide.
     effect(() => {
       const range = this.range();
+      const includeLocal = this.includeLocal();
       if (!this.rangeValid()) return;
-      untracked(() => void this.load(range));
+      untracked(() => void this.load(range, includeLocal));
     });
   }
 
@@ -117,15 +120,15 @@ export class DashboardStore {
   }
 
   reload(): void {
-    if (this.rangeValid()) void this.load(this.range());
+    if (this.rangeValid()) void this.load(this.range(), this.includeLocal());
   }
 
-  private async load(range: DateRange): Promise<void> {
+  private async load(range: DateRange, includeLocal: boolean): Promise<void> {
     const id = ++this.requestId;
     this.loadingState.set(true);
     this.errorState.set(null);
     try {
-      const report = await firstValueFrom(this.api.timeReport(range.from, range.to));
+      const report = await firstValueFrom(this.api.timeReport(range.from, range.to, includeLocal));
       // Si mientras tanto se cambió de período, esta respuesta ya no corresponde.
       if (id === this.requestId) this.reportState.set(report);
     } catch (error) {

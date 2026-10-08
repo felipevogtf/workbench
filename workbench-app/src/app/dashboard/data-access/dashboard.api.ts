@@ -9,10 +9,13 @@ export class DashboardApi {
   private readonly http = inject(HttpClient);
   private readonly base = inject(API_BASE_URL);
 
-  /** Horas registradas entre dos fechas (`YYYY-MM-DD`, ambas incluidas). */
-  timeReport(from: string, to: string): Observable<TimeReport> {
+  /**
+   * Horas registradas entre dos fechas (`YYYY-MM-DD`, ambas incluidas). Con `includeLocal: false`
+   * no cuentan las de tareas locales.
+   */
+  timeReport(from: string, to: string, includeLocal = true): Observable<TimeReport> {
     return this.http.get<TimeReport>(`${this.base}/time-entries/report`, {
-      params: { from, to },
+      params: { from, to, includeLocal },
     });
   }
 }

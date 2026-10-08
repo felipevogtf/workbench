@@ -3,7 +3,7 @@ import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 import { TimeEntryRepositoryPort } from '@time-tracking/domain/ports/time-entry-repository.port';
 import { TimeEntriesService } from './time-entries.service';
 
-function build(existingIssues: string[] = ['i1']) {
+function build(existingIssues: string[] = ['i1'], localIssues: string[] = []) {
   const entries: TimeEntry[] = [];
   const repo: TimeEntryRepositoryPort = {
     findById: (id) => Promise.resolve(entries.find((e) => e.id === id) ?? null),
@@ -54,9 +54,14 @@ function build(existingIssues: string[] = ['i1']) {
           .reduce((sum, e) => sum + e.hours, 0),
       ),
   };
-  const service = new TimeEntriesService(repo, {
-    exists: (id) => Promise.resolve(existingIssues.includes(id)),
-  });
+  const service = new TimeEntriesService(
+    repo,
+    { exists: (id) => Promise.resolve(existingIssues.includes(id)) },
+    {
+      findLocalIds: (ids) =>
+        Promise.resolve(new Set(ids.filter((id) => localIssues.includes(id)))),
+    },
+  );
   return { service, entries };
 }
 
@@ -119,6 +124,36 @@ describe('TimeEntriesService', () => {
       { date: '2026-10-07', hours: 3 },
     ]);
     expect(report.byIssue.map((i) => i.issueId)).toEqual(['i2', 'i1']);
+  });
+
+  it('counts local issues by default and leaves them out when asked', async () => {
+    const { service } = build(['plane', 'local'], ['local']);
+    await service.addTimeEntry({
+      issueId: 'plane',
+      hours: 2,
+      date: '2026-10-05',
+    });
+    await service.addTimeEntry({
+      issueId: 'local',
+      hours: 3,
+      date: '2026-10-05',
+    });
+    await service.addTimeEntry({
+      issueId: 'local',
+      hours: 1,
+      date: '2026-10-06',
+    });
+
+    const all = await service.getReport('2026-10-05', '2026-10-11');
+    expect(all.totalHours).toBe(6);
+    expect(all.byIssue.map((i) => i.issueId)).toEqual(['local', 'plane']);
+
+    const withoutLocal = await service.getReport('2026-10-05', '2026-10-11', {
+      includeLocal: false,
+    });
+    expect(withoutLocal.totalHours).toBe(2);
+    expect(withoutLocal.byDay).toEqual([{ date: '2026-10-05', hours: 2 }]);
+    expect(withoutLocal.byIssue).toEqual([{ issueId: 'plane', hours: 2 }]);
   });
 
   it('rejects an invalid report range', async () => {

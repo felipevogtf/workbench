@@ -62,7 +62,21 @@ describe('DashboardStore', () => {
     const { from, to } = store.range();
     expect(new Date(`${from}T12:00:00`).getDay()).toBe(1);
     expect(new Date(`${to}T12:00:00`).getDay()).toBe(0);
-    expect(api.timeReport).toHaveBeenCalledWith(from, to);
+    expect(api.timeReport).toHaveBeenCalledWith(from, to, true);
+  });
+
+  it('counts the local tasks by default and asks again without them when unchecked', async () => {
+    const store = create();
+    await settle();
+    expect(store.includeLocal()).toBe(true);
+    api.timeReport.mockClear();
+
+    store.includeLocal.set(false);
+    await settle();
+
+    const { from, to } = store.range();
+    expect(api.timeReport).toHaveBeenCalledTimes(1);
+    expect(api.timeReport).toHaveBeenCalledWith(from, to, false);
   });
 
   it('asks again when the period changes', async () => {
@@ -78,7 +92,7 @@ describe('DashboardStore', () => {
     await settle();
     const { from, to } = store.range();
     expect(from.endsWith('-01')).toBe(true);
-    expect(api.timeReport).toHaveBeenLastCalledWith(from, to);
+    expect(api.timeReport).toHaveBeenLastCalledWith(from, to, true);
   });
 
   it('uses the dates of the free range and does not ask for an invalid one', async () => {
@@ -86,7 +100,7 @@ describe('DashboardStore', () => {
     store.setMode('range');
     store.setCustomRange({ from: '2026-10-01', to: '2026-10-15' });
     await settle();
-    expect(api.timeReport).toHaveBeenLastCalledWith('2026-10-01', '2026-10-15');
+    expect(api.timeReport).toHaveBeenLastCalledWith('2026-10-01', '2026-10-15', true);
 
     api.timeReport.mockClear();
     store.setCustomRange({ from: '2026-10-20' });

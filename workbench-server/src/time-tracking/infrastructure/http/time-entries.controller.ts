@@ -32,7 +32,10 @@ export class TimeEntriesController {
   async getReport(
     @Query() query: TimeReportQueryDto,
   ): Promise<TimeReportResponseDto> {
-    return this.timeEntriesService.getReport(query.from, query.to);
+    return this.timeEntriesService.getReport(query.from, query.to, {
+      // Por defecto cuentan todas; solo `includeLocal=false` excluye las tareas locales.
+      includeLocal: query.includeLocal !== 'false',
+    });
   }
 
   /** Horas registradas por tarea, para mostrarlas en listas (p. ej. el tablero). */
