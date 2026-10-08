@@ -33,6 +33,10 @@ import {
   TICKETS_GATEWAY_PORT,
   type TicketsGatewayPort,
 } from '@pr-review/domain/ports/tickets-gateway.port';
+import {
+  REVIEW_NOTIFIER_PORT,
+  type ReviewNotifierPort,
+} from '@pr-review/domain/ports/review-notifier.port';
 import type { ReviewTicket } from '@pr-review/domain/entities/review.props';
 import {
   PULL_REQUEST_SOURCE_PORTS,
@@ -80,6 +84,8 @@ export class ReviewsService {
     private readonly sources: PullRequestSourcePort[],
     @Inject(TICKETS_GATEWAY_PORT)
     private readonly tickets: TicketsGatewayPort,
+    @Inject(REVIEW_NOTIFIER_PORT)
+    private readonly notifier: ReviewNotifierPort,
     @Inject(REVIEW_CONCURRENCY)
     private readonly concurrency: number,
   ) {
@@ -238,6 +244,8 @@ export class ReviewsService {
 
       pullRequest.markReviewed({ commit: checkout.commit, docPath });
       await this.pullRequests.save(pullRequest);
+      // Opcional y al final: nada de lo que pase aquí afecta a la revisión.
+      void this.notifyAuthor(pullRequest, run.markdown);
     } catch (error) {
       const message = this.errorMessage(error);
       this.logger.warn(
@@ -257,6 +265,23 @@ export class ReviewsService {
           `Could not clean checkout: ${this.errorMessage(error)}`,
         );
       });
+    }
+  }
+
+  /**
+   * Avisa al autor por mensaje directo. Opcional: no se espera (no retrasa la cola de revisiones)
+   * y nunca lanza; un fallo solo queda en el log.
+   */
+  private async notifyAuthor(
+    pullRequest: PullRequest,
+    markdown: string,
+  ): Promise<void> {
+    try {
+      await this.notifier.notifyAuthor(pullRequest, markdown);
+    } catch (error) {
+      this.logger.warn(
+        `Could not notify the author of ${pullRequest.repo}#${pullRequest.externalId}: ${this.errorMessage(error)}`,
+      );
     }
   }
 

@@ -10,6 +10,8 @@ const SECRET_ENV_VARS = [
   'CLAUDE_CODE_OAUTH_TOKEN',
   'COPILOT_TOKEN',
   'GEMINI_API_KEY',
+  'SLACK_XOXC_TOKEN',
+  'SLACK_XOXD_COOKIE',
 ] as const;
 
 export function timeoutMs(config: ConfigService): number {

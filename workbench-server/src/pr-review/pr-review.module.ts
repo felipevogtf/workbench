@@ -14,6 +14,8 @@ import { REPOSITORY_CHECKOUT_PORT } from './domain/ports/repository-checkout.por
 import { REVIEW_STORAGE_PORT } from './domain/ports/review-storage.port';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
 import { TICKETS_GATEWAY_PORT } from './domain/ports/tickets-gateway.port';
+import { REVIEW_NOTIFIER_PORT } from './domain/ports/review-notifier.port';
+import { SlackReviewNotifierAdapter } from './infrastructure/adapters/slack-review-notifier.adapter';
 import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.adapter';
 import { TypeOrmPullRequestRepository } from './infrastructure/repositories/typeorm-pull-request.repository';
 import { TypeOrmReviewRepository } from './infrastructure/repositories/typeorm-review.repository';
@@ -81,6 +83,7 @@ function enabledProviders(
     { provide: REVIEW_STORAGE_PORT, useClass: LocalFileReviewStorageAdapter },
     { provide: AGENTS_GATEWAY_PORT, useClass: AgentsGatewayAdapter },
     { provide: TICKETS_GATEWAY_PORT, useClass: TasksGatewayAdapter },
+    { provide: REVIEW_NOTIFIER_PORT, useClass: SlackReviewNotifierAdapter },
     {
       provide: REVIEW_CONCURRENCY,
       useFactory: (config: ConfigService) =>

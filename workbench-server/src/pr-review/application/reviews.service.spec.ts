@@ -29,6 +29,7 @@ interface Harness {
   comments: string[];
   agents: { runReview: jest.Mock };
   commentPort: { postComment: jest.Mock };
+  notifier: { notifyAuthor: jest.Mock };
 }
 
 function build(
@@ -102,6 +103,8 @@ function build(
     postComment,
   } as PullRequestCommentPort & { postComment: jest.Mock };
 
+  const notifier = { notifyAuthor: jest.fn().mockResolvedValue(undefined) };
+
   const service = new ReviewsService(
     prs,
     reviews,
@@ -111,6 +114,7 @@ function build(
     [commentPort],
     [source],
     tickets,
+    notifier,
     options.concurrency ?? 1,
   );
 
@@ -127,6 +131,7 @@ function build(
     comments,
     agents,
     commentPort,
+    notifier,
   };
 }
 
@@ -283,6 +288,39 @@ describe('ReviewsService execution', () => {
       agentName: 'default-reviewer',
     });
     expect(h.disposed).toEqual(['1']);
+  });
+
+  it('sends the review to the author once it is saved', async () => {
+    const h = build();
+    const pr = await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.notifier.notifyAuthor).toHaveBeenCalledWith(pr, '## Resumen');
+  });
+
+  it('does not fail the review when notifying the author fails', async () => {
+    const h = build();
+    h.notifier.notifyAuthor.mockRejectedValue(new Error('slack down'));
+    const pr = await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(pr.status).toBe('reviewed');
+    expect(h.reviews.items[0]).toMatchObject({ status: 'ok' });
+  });
+
+  it('does not wait for a notification that never answers', async () => {
+    const h = build();
+    h.notifier.notifyAuthor.mockReturnValue(new Promise(() => undefined));
+    const pr = await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(pr.status).toBe('reviewed');
   });
 
   it('keeps the review when the comment fails and allows retrying it', async () => {
