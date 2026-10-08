@@ -5,46 +5,54 @@
   />
 
   <div class="filters">
-    <app-segmented-control
-      label="Período"
-      [options]="modeOptions"
-      [value]="store.mode()"
-      (valueChange)="setMode($event)"
-    />
+    <div class="filters__period">
+      <app-segmented-control
+        label="Período"
+        [options]="modeOptions"
+        [value]="store.mode()"
+        (valueChange)="setMode($event)"
+      />
 
-    @if (store.mode() === 'range') {
-      <div class="range">
-        <app-form-field label="Desde" for="dashboard-from">
-          <app-text-input inputId="dashboard-from" type="date" [formControl]="fromControl" />
-        </app-form-field>
-        <app-form-field label="Hasta" for="dashboard-to">
-          <app-text-input inputId="dashboard-to" type="date" [formControl]="toControl" />
-        </app-form-field>
-      </div>
-    } @else {
-      <div class="stepper">
-        <button
-          app-icon-button
-          type="button"
-          [label]="store.mode() === 'week' ? 'Semana anterior' : 'Mes anterior'"
-          (click)="store.shift(-1)"
-        >
-          <app-icon name="chevron-left" />
-        </button>
-        <span class="stepper__label" aria-live="polite">{{ label() }}</span>
-        <button
-          app-icon-button
-          type="button"
-          [label]="store.mode() === 'week' ? 'Semana siguiente' : 'Mes siguiente'"
-          (click)="store.shift(1)"
-        >
-          <app-icon name="chevron-right" />
-        </button>
-        <button app-button variant="secondary" size="sm" type="button" (click)="store.goToToday()">
-          Hoy
-        </button>
-      </div>
-    }
+      @if (store.mode() === 'range') {
+        <div class="range">
+          <app-form-field label="Desde" for="dashboard-from">
+            <app-text-input inputId="dashboard-from" type="date" [formControl]="fromControl" />
+          </app-form-field>
+          <app-form-field label="Hasta" for="dashboard-to">
+            <app-text-input inputId="dashboard-to" type="date" [formControl]="toControl" />
+          </app-form-field>
+        </div>
+      } @else {
+        <div class="stepper">
+          <button
+            app-icon-button
+            type="button"
+            [label]="store.mode() === 'week' ? 'Semana anterior' : 'Mes anterior'"
+            (click)="store.shift(-1)"
+          >
+            <app-icon name="chevron-left" />
+          </button>
+          <span class="stepper__label" aria-live="polite">{{ label() }}</span>
+          <button
+            app-icon-button
+            type="button"
+            [label]="store.mode() === 'week' ? 'Semana siguiente' : 'Mes siguiente'"
+            (click)="store.shift(1)"
+          >
+            <app-icon name="chevron-right" />
+          </button>
+          <button
+            app-button
+            variant="secondary"
+            size="sm"
+            type="button"
+            (click)="store.goToToday()"
+          >
+            Hoy
+          </button>
+        </div>
+      }
+    </div>
 
     <app-checkbox [(value)]="store.includeLocal">Incluir tareas locales</app-checkbox>
   </div>

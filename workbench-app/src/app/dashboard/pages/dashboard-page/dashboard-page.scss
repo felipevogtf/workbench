@@ -5,6 +5,13 @@
   margin-bottom: var(--space-5);
 }
 
+// Primera fila: el período; el check de tareas locales va solo en la de abajo.
+.filters__period {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .stepper {
   display: flex;
   flex-wrap: wrap;
@@ -79,7 +86,7 @@ h4[card-header] {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .filters {
+  .filters__period {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-end;
