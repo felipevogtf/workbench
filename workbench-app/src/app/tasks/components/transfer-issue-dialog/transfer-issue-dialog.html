@@ -1,0 +1,48 @@
+<app-dialog [heading]="'Transferir «' + issue().name + '»'" [(open)]="open">
+  <div class="stack">
+    <p class="muted">
+      Elige la tarea de Plane que la reemplaza. Sus horas registradas y su estado pasan a ella, y
+      esta tarea local se elimina.
+    </p>
+    <app-form-field label="Buscar" for="transfer-search">
+      <app-text-input
+        inputId="transfer-search"
+        type="search"
+        placeholder="Nombre o número"
+        (input)="onSearch($event)"
+      />
+    </app-form-field>
+
+    @if (loading()) {
+      <p class="muted"><app-spinner size="1em" /> Cargando…</p>
+    } @else if (available().length === 0) {
+      <p class="muted">No hay tareas de Plane{{ search() ? ' que coincidan' : '' }}.</p>
+    } @else {
+      <ul class="options" role="radiogroup" aria-label="Tarea de destino">
+        @for (option of available(); track option.issue.id) {
+          <li>
+            <label class="option">
+              <input
+                type="radio"
+                name="transfer-target"
+                [checked]="selectedId() === option.issue.id"
+                (change)="selectedId.set(option.issue.id)"
+              />
+              <span>
+                <span class="option__name break-anywhere">{{ option.issue.name }}</span>
+                <span class="option__meta">{{ option.code }}</span>
+              </span>
+            </label>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <ng-container dialog-footer>
+    <button app-button variant="secondary" type="button" (click)="open.set(false)">Cancelar</button>
+    <button app-button type="button" [disabled]="!selectedId()" (click)="submit()">
+      Transferir
+    </button>
+  </ng-container>
+</app-dialog>

@@ -5,6 +5,8 @@ export interface TimeEntryRepositoryPort {
   findByIssueId(issueId: string): Promise<TimeEntry[]>;
   save(timeEntry: TimeEntry): Promise<TimeEntry>;
   delete(id: string): Promise<void>;
+  /** Reasigna todas las horas de una tarea a otra. Devuelve cuántos registros se movieron. */
+  moveToIssue(fromIssueId: string, toIssueId: string): Promise<number>;
   sumHoursByIssueId(issueId: string): Promise<number>;
 }
 

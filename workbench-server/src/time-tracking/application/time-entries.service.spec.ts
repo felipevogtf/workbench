@@ -20,6 +20,25 @@ function build(existingIssues: string[] = ['i1']) {
       );
       return Promise.resolve();
     },
+    moveToIssue: (from, to) => {
+      const moving = entries.filter((e) => e.issueId === from);
+      entries.splice(
+        0,
+        entries.length,
+        ...entries.map((e) =>
+          e.issueId === from
+            ? TimeEntry.reconstruct({
+                id: e.id,
+                issueId: to,
+                hours: e.hours,
+                date: e.date,
+                createdAt: e.createdAt,
+              })
+            : e,
+        ),
+      );
+      return Promise.resolve(moving.length);
+    },
     sumHoursByIssueId: (issueId) =>
       Promise.resolve(
         entries
@@ -46,6 +65,23 @@ describe('TimeEntriesService', () => {
 
     expect(await service.findByIssue('i1')).toHaveLength(2);
     expect(await service.getTotalHoursByIssue('i1')).toBe(3.5);
+  });
+
+  it('moves the hours of one issue to another', async () => {
+    const { service } = build(['i1', 'i2']);
+    await service.addTimeEntry({
+      issueId: 'i1',
+      hours: 1.5,
+      date: '2026-10-07',
+    });
+    await service.addTimeEntry({ issueId: 'i1', hours: 2, date: '2026-10-08' });
+
+    expect(await service.moveEntries('i1', 'i2')).toBe(2);
+    expect(await service.getTotalHoursByIssue('i1')).toBe(0);
+    expect(await service.getTotalHoursByIssue('i2')).toBe(3.5);
+    await expect(service.moveEntries('i1', 'nope')).rejects.toMatchObject({
+      kind: 'not-found',
+    });
   });
 
   it('refuses to register hours on an issue that does not exist', async () => {

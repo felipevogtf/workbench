@@ -31,6 +31,7 @@ import { HoursPanel } from '../../components/hours-panel/hours-panel';
 import { PlanPanel } from '../../components/plan-panel/plan-panel';
 import { PlansStore } from '../../data-access/plans.store';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
+import { TransferIssueDialog } from '../../components/transfer-issue-dialog/transfer-issue-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
 import { ProjectsStore } from '../../data-access/projects.store';
@@ -57,6 +58,7 @@ import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
     MarkdownViewer,
     PriorityBadge,
     IssueFormDialog,
+    TransferIssueDialog,
     PlanPanel,
     HoursPanel,
     Spinner,
@@ -102,6 +104,7 @@ export class IssueDetailPage {
   private readonly fetched = signal<Issue | null>(null);
   protected readonly loadError = signal<string | null>(null);
   protected readonly editOpen = signal(false);
+  protected readonly transferOpen = signal(false);
 
   protected readonly issue = computed(
     () => this.store.issueById().get(this.id()) ?? this.fetched(),
@@ -170,6 +173,13 @@ export class IssueDetailPage {
     if (!issue) return;
     if (issue.closedAt) void this.store.reopen([issue.id]);
     else void this.store.close([issue.id]);
+  }
+
+  protected async transfer(targetId: string): Promise<void> {
+    const issue = this.issue();
+    if (!issue) return;
+    const target = await this.store.transfer(issue.id, targetId);
+    if (target) await this.router.navigate(['/tasks/issues', target.id]);
   }
 
   protected async remove(): Promise<void> {

@@ -48,6 +48,14 @@ export class TimeEntriesService {
     return this.repo.sumHoursByIssueId(issueId);
   }
 
+  /** Pasa todas las horas de una tarea a otra (la de destino debe existir). */
+  async moveEntries(fromIssueId: string, toIssueId: string): Promise<number> {
+    if (!(await this.issueExists.exists(toIssueId))) {
+      throw DomainError.notFound(`Issue with id ${toIssueId} not found`);
+    }
+    return this.repo.moveToIssue(fromIssueId, toIssueId);
+  }
+
   async deleteTimeEntry(id: string): Promise<void> {
     const timeEntry = await this.repo.findById(id);
 

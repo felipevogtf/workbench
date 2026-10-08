@@ -50,6 +50,7 @@ describe('IssueDetailPage', () => {
           provide: IssuesStore,
           useValue: stub({
             issueById: signal(new Map([[current.id, current]])),
+            issues: signal([]),
             close,
             reopen,
           }),
@@ -106,5 +107,14 @@ describe('IssueDetailPage', () => {
     const { root } = await render({ ...issue, closedAt: '2026-10-05T12:00:00Z' });
 
     expect(root.textContent).toContain('Reabrir');
+  });
+
+  it('offers to transfer only local tasks', async () => {
+    const local = await render();
+    expect(local.root.textContent).toContain('Transferir');
+
+    TestBed.resetTestingModule();
+    const remote = await render({ ...issue, isLocal: false, externalId: 'x', remoteSequence: 3 });
+    expect(remote.root.textContent).not.toContain('Transferir');
   });
 });

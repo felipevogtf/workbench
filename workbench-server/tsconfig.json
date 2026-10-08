@@ -18,6 +18,7 @@
       "@time-tracking/*": ["./src/time-tracking/*"],
       "@kanban/*": ["./src/kanban/*"],
       "@planner/*": ["./src/planner/*"],
+      "@issue-transfer/*": ["./src/issue-transfer/*"],
       "@ai-agents/*": ["./src/ai-agents/*"],
       "@pr-review/*": ["./src/pr-review/*"],
       "@core/*": ["./src/core/*"],

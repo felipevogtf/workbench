@@ -44,6 +44,14 @@ export class TypeOrmTimeEntryRepository implements TimeEntryRepositoryPort {
     await this.timeEntryRepository.delete(id);
   }
 
+  async moveToIssue(fromIssueId: string, toIssueId: string): Promise<number> {
+    const result = await this.timeEntryRepository.update(
+      { issue_id: fromIssueId },
+      { issue_id: toIssueId },
+    );
+    return result.affected ?? 0;
+  }
+
   async sumHoursByIssueId(issueId: string): Promise<number> {
     const result = await this.timeEntryRepository
       .createQueryBuilder('time_entry')

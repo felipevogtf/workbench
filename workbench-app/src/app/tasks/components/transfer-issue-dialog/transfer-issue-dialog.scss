@@ -1,0 +1,45 @@
+.muted {
+  margin: 0;
+  color: var(--text-color);
+}
+
+.options {
+  max-height: 45dvh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+
+  li {
+    border-bottom: 1px solid var(--border);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+
+  input {
+    margin-top: var(--space-1);
+  }
+}
+
+.option__name {
+  display: block;
+  color: var(--primary);
+}
+
+.option__meta {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text-color);
+}

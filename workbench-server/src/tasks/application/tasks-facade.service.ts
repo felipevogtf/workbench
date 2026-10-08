@@ -64,4 +64,9 @@ export class TasksFacade {
   async setIssueState(issueId: string, stateId: string | null): Promise<void> {
     await this.issuesService.setState(issueId, stateId);
   }
+
+  /** Elimina una tarea local (las de Plane no se pueden borrar). */
+  deleteIssue(issueId: string): Promise<void> {
+    return this.issuesService.deleteIssue(issueId);
+  }
 }

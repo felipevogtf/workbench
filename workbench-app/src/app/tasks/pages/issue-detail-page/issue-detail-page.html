@@ -22,6 +22,17 @@
         <app-icon name="edit" size="1em" /> Editar
       </button>
       @if (issue.isLocal) {
+        <button
+          actions
+          app-button
+          variant="secondary"
+          type="button"
+          (click)="transferOpen.set(true)"
+        >
+          <app-icon name="arrow-outward" size="1em" /> Transferir
+        </button>
+      }
+      @if (issue.isLocal) {
         <button actions app-button variant="danger" type="button" (click)="remove()">
           <app-icon name="trash" size="1em" /> Eliminar
         </button>
@@ -132,6 +143,13 @@
     </div>
 
     <app-issue-form-dialog [(open)]="editOpen" [issue]="issue" />
+    @if (issue.isLocal) {
+      <app-transfer-issue-dialog
+        [(open)]="transferOpen"
+        [issue]="issue"
+        (confirmed)="transfer($event)"
+      />
+    }
   } @else if (loadError(); as message) {
     <app-alert tone="danger" heading="No se pudo cargar la tarea">
       {{ message }}

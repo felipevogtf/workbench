@@ -38,6 +38,17 @@ export class TasksApi {
     return this.http.patch<Issue>(`${this.base}/issues/${id}`, patch);
   }
 
+  /** Traspasa horas y estado de una tarea local a otra de Plane y elimina la local. */
+  transferIssue(
+    id: string,
+    targetId: string,
+  ): Observable<{ targetId: string; movedEntries: number }> {
+    return this.http.post<{ targetId: string; movedEntries: number }>(
+      `${this.base}/issues/${id}/transfer`,
+      { targetId },
+    );
+  }
+
   deleteIssue(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/issues/${id}`);
   }

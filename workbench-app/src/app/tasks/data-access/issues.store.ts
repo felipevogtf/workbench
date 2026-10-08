@@ -188,6 +188,25 @@ export class IssuesStore extends ResourceStore<Issue> {
     }
   }
 
+  /**
+   * Traspasa horas y estado de una tarea local a una de Plane (la local desaparece). Devuelve la
+   * tarea de destino o `null` si falló; avisa con un toast.
+   */
+  async transfer(id: string, targetId: string): Promise<Issue | null> {
+    try {
+      await firstValueFrom(this.api.transferIssue(id, targetId));
+      this.drop(id);
+      // El estado de la de destino cambió en el servidor: se vuelve a pedir esa tarea.
+      const target = await firstValueFrom(this.api.getIssue(targetId));
+      this.replaceOrAdd(target);
+      this.toast.success('Tarea transferida');
+      return target;
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+      return null;
+    }
+  }
+
   /** Cambia el estado desde una lista o el detalle; avisa si falla. */
   async setState(id: string, stateId: string | null): Promise<boolean> {
     try {

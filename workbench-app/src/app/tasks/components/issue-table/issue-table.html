@@ -24,7 +24,9 @@
             }}</a>
             <span class="meta">
               <span class="code">{{ row.code }}</span>
-              @if (!row.issue.isLocal) {
+              @if (row.issue.isLocal) {
+                <app-badge tone="success" title="Tarea local">Local</app-badge>
+              } @else {
                 <app-badge title="Viene de Plane">Plane</app-badge>
               }
             </span>
@@ -66,7 +68,9 @@
       <app-card interactive>
         <ng-container card-header>
           <span class="code">{{ row.code }}</span>
-          @if (!row.issue.isLocal) {
+          @if (row.issue.isLocal) {
+            <app-badge tone="success" title="Tarea local">Local</app-badge>
+          } @else {
             <app-badge title="Viene de Plane">Plane</app-badge>
           }
         </ng-container>
