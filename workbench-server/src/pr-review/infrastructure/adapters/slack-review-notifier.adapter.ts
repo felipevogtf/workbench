@@ -83,17 +83,66 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
     const opened = await this.call('conversations.open', { users: userId });
     const channel = (opened.channel as { id: string }).id;
 
-    const header =
-      `*Revisión automática de tu PR, generada por IA (borrador, puede contener errores)*\n` +
+    const message = this.buildMessage(pullRequest);
+    try {
+      await this.sendAsFile(channel, pullRequest, markdown, message);
+    } catch (error) {
+      // Si Slack no deja adjuntar, la revisión igual llega: como texto, en el hilo del aviso.
+      this.logger.warn(
+        `Could not attach the review file (${error instanceof Error ? error.message : String(error)}); sending it as text`,
+      );
+      await this.sendAsText(channel, message, markdown);
+    }
+  }
+
+  private buildMessage(pullRequest: ReviewedPullRequest): string {
+    const provider = pullRequest.provider === 'github' ? 'GitHub' : 'Bitbucket';
+    return (
+      `:mag: *Revisión de tu pull request*\n` +
       `<${pullRequest.url}|${slackText(pullRequest.title)}>\n` +
-      `${slackText(pullRequest.repo)} · ${pullRequest.provider} #${pullRequest.externalId}`;
+      `\`${slackText(pullRequest.repo)}\` · ${provider} · #${pullRequest.externalId}\n\n` +
+      `_Revisión automática generada por IA. Es un borrador y puede contener errores; ` +
+      `el detalle va en el archivo adjunto._`
+    );
+  }
+
+  /** Sube la revisión como archivo `.md` y lo comparte en el mismo mensaje, con el aviso como texto. */
+  private async sendAsFile(
+    channel: string,
+    pullRequest: ReviewedPullRequest,
+    markdown: string,
+    message: string,
+  ): Promise<void> {
+    const bytes = Buffer.from(markdown, 'utf8');
+    const name = `revision-${pullRequest.repo.replace(/[^\w.-]+/g, '-')}-pr${pullRequest.externalId}.md`;
+
+    const slot = await this.call('files.getUploadURLExternal', {
+      filename: name,
+      length: String(bytes.length),
+    });
+    await firstValueFrom(
+      this.http.post(slot.upload_url as string, bytes, {
+        timeout: REQUEST_TIMEOUT_MS,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    );
+    await this.call('files.completeUploadExternal', {
+      files: JSON.stringify([{ id: slot.file_id, title: name }]),
+      channel_id: channel,
+      initial_comment: message,
+    });
+  }
+
+  private async sendAsText(
+    channel: string,
+    message: string,
+    markdown: string,
+  ): Promise<void> {
     const posted = await this.call('chat.postMessage', {
       channel,
-      text: header,
+      text: message,
       unfurl_links: 'false',
     });
-
-    // La revisión va en el hilo del aviso para no inundar el mensaje directo.
     for (const chunk of splitForSlack(toSlackMrkdwn(markdown))) {
       await this.call('chat.postMessage', {
         channel,

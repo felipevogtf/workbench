@@ -25,6 +25,10 @@ function build(env: Record<string, string>, users: unknown[] = []) {
     if (method === 'conversations.open') data.channel = { id: 'D1' };
     if (method === 'chat.postMessage') data.ts = '1.1';
     if (method === 'users.lookupByEmail') data.user = { id: 'U9' };
+    if (method === 'files.getUploadURLExternal') {
+      data.upload_url = 'https://files.slack.test/up';
+      data.file_id = 'F1';
+    }
     return of({ data });
   });
   const adapter = new SlackReviewNotifierAdapter(
@@ -60,7 +64,7 @@ describe('SlackReviewNotifierAdapter', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('finds the author by exact name and posts the link and the review in a thread', async () => {
+  it('finds the author by exact name and sends the PR link with the review attached as a .md file', async () => {
     const { adapter, post } = build(CREDENTIALS, [
       { id: 'U1', profile: { real_name: 'Jose Perez' } },
       { id: 'U2', profile: { real_name: 'Otra Persona' } },
@@ -71,17 +75,45 @@ describe('SlackReviewNotifierAdapter', () => {
     expect(methods(post)).toEqual([
       'users.list',
       'conversations.open',
+      'files.getUploadURLExternal',
+      'https://files.slack.test/up',
+      'files.completeUploadExternal',
+    ]);
+    const slot = new URLSearchParams(post.mock.calls[2][1]);
+    expect(slot.get('filename')).toBe('revision-ws-app-pr7.md');
+    expect(post.mock.calls[3][1]).toEqual(Buffer.from('## Resumen'));
+    const done = new URLSearchParams(post.mock.calls[4][1]);
+    expect(done.get('channel_id')).toBe('D1');
+    expect(JSON.parse(done.get('files') ?? '[]')).toEqual([
+      { id: 'F1', title: 'revision-ws-app-pr7.md' },
+    ]);
+    expect(done.get('initial_comment')).toContain(
+      '<https://bitbucket.org/ws/app/pull-requests/7|Arreglar login>',
+    );
+    expect(post.mock.calls[0][2].headers.Cookie).toBe('d=xoxd-1');
+  });
+
+  it('sends the review as text in a thread when the file cannot be attached', async () => {
+    const { adapter, post } = build(CREDENTIALS, [
+      { id: 'U1', profile: { real_name: 'Jose Perez' } },
+    ]);
+    const original = post.getMockImplementation()!;
+    post.mockImplementation((url, body, options) =>
+      url.endsWith('files.getUploadURLExternal')
+        ? of({ data: { ok: false, error: 'missing_scope' } })
+        : original(url, body, options),
+    );
+
+    await adapter.notifyAuthor(pullRequest, '## Resumen');
+
+    expect(methods(post).slice(2)).toEqual([
+      'files.getUploadURLExternal',
       'chat.postMessage',
       'chat.postMessage',
     ]);
-    const header = new URLSearchParams(post.mock.calls[2][1]);
-    expect(header.get('text')).toContain(
-      '<https://bitbucket.org/ws/app/pull-requests/7|Arreglar login>',
-    );
-    const reply = new URLSearchParams(post.mock.calls[3][1]);
+    const reply = new URLSearchParams(post.mock.calls[4][1]);
     expect(reply.get('thread_ts')).toBe('1.1');
     expect(reply.get('text')).toBe('*Resumen*');
-    expect(post.mock.calls[0][2].headers.Cookie).toBe('d=xoxd-1');
   });
 
   it('does not guess when two people match the name', async () => {
