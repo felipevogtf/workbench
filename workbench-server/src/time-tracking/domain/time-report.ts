@@ -4,8 +4,8 @@ import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Máximo de días que abarca un reporte (un año). */
-export const MAX_REPORT_DAYS = 366;
+/** Máximo de días que abarca un reporte (diez años). */
+export const MAX_REPORT_DAYS = 3660;
 
 export interface DayHours {
   date: string;

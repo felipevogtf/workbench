@@ -1,4 +1,4 @@
-.days {
+.bars {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -7,44 +7,43 @@
   list-style: none;
 }
 
-.day {
+.bar-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr) 4.5rem;
+  grid-template-columns: 6.5rem minmax(0, 1fr) 4.5rem;
   align-items: center;
   gap: var(--space-3);
   font-size: 0.875rem;
 }
 
-.day__label {
+.bar-row__label {
   color: var(--primary);
   white-space: nowrap;
 }
 
-.day__track {
+.bar-row__track {
   height: 10px;
   border-radius: var(--radius-pill);
   background: var(--tone-neutral-bg);
   overflow: hidden;
 }
 
-.day__bar {
+.bar-row__bar {
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
   background: var(--primary);
 }
 
-.day__hours {
+.bar-row__hours {
   text-align: right;
   font-weight: 600;
   color: var(--primary);
   white-space: nowrap;
 }
 
-// Los días sin horas y los fines de semana quedan en segundo plano.
-.day--empty .day__label,
-.day--empty .day__hours,
-.day--weekend .day__label {
+// Los grupos sin horas quedan en segundo plano.
+.bar-row--empty .bar-row__label,
+.bar-row--empty .bar-row__hours {
   font-weight: 400;
   color: var(--text-color);
 }

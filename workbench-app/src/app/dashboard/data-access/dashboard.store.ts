@@ -4,10 +4,10 @@ import { errorMessage } from '@core/api/api-error';
 import { IssuesStore, ProjectsStore } from '@tasks/index';
 import { todayIso } from '@shared/util/date';
 import { WorkedProject, groupByProject } from '../domain/group-by-project';
+import { BucketedHours, bucketHours } from '../domain/buckets';
 import {
   DateRange,
   PeriodMode,
-  eachDay,
   isValidRange,
   monthRange,
   periodRange,
@@ -15,14 +15,6 @@ import {
 } from '../domain/period';
 import { TimeReport } from '../models/time-report';
 import { DashboardApi } from './dashboard.api';
-
-/** Hasta este número de días se muestran todos en «Horas por día», también los que no tienen horas. */
-const MAX_DAYS_WITH_GAPS = 62;
-
-export interface DayBar {
-  date: string;
-  hours: number;
-}
 
 /**
  * Estado del dashboard: el período elegido, el reporte de horas de ese período y lo que resulta de
@@ -64,17 +56,13 @@ export class DashboardStore {
   readonly activeDays = computed(() => this.reportState()?.byDay.length ?? 0);
   readonly issueCount = computed(() => this.reportState()?.byIssue.length ?? 0);
 
-  /** Horas de cada día del período, con los días sin horas en cero si el rango no es muy largo. */
-  readonly days = computed<DayBar[]>(() => {
+  /**
+   * Las horas del período agrupadas para el gráfico: por día, semana, mes o año según lo largo que
+   * sea el período, de modo que el gráfico no crece con el rango.
+   */
+  readonly chart = computed<BucketedHours | null>(() => {
     const report = this.reportState();
-    if (!report) return [];
-    if (report.byDay.length === 0) return [];
-
-    const hoursByDay = new Map(report.byDay.map((day) => [day.date, day.hours]));
-    const range = { from: report.from, to: report.to };
-    const dates = eachDay(range);
-    if (dates.length > MAX_DAYS_WITH_GAPS) return report.byDay;
-    return dates.map((date) => ({ date, hours: hoursByDay.get(date) ?? 0 }));
+    return report ? bucketHours({ from: report.from, to: report.to }, report.byDay) : null;
   });
 
   /** Las tareas con horas, agrupadas por proyecto. */

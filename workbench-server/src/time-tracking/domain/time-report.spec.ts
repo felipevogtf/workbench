@@ -55,9 +55,10 @@ describe('buildTimeReport', () => {
 });
 
 describe('validateReportRange', () => {
-  it('accepts a single day and a full year', () => {
+  it('accepts a single day and up to ten years', () => {
     expect(() => validateReportRange('2026-10-05', '2026-10-05')).not.toThrow();
     expect(() => validateReportRange('2026-01-01', '2026-12-31')).not.toThrow();
+    expect(() => validateReportRange('2016-01-01', '2025-12-31')).not.toThrow();
   });
 
   it('rejects dates that are not real', () => {
@@ -75,8 +76,8 @@ describe('validateReportRange', () => {
     );
   });
 
-  it('rejects a range longer than a year', () => {
-    expect(() => validateReportRange('2026-01-01', '2027-01-02')).toThrow(
+  it('rejects a range longer than ten years', () => {
+    expect(() => validateReportRange('2000-01-01', '2026-01-01')).toThrow(
       `${MAX_REPORT_DAYS} days`,
     );
   });

@@ -110,7 +110,7 @@ describe('DashboardStore', () => {
     expect(api.timeReport).not.toHaveBeenCalled();
   });
 
-  it('groups the worked issues by project and fills the days without hours', async () => {
+  it('groups the worked issues by project and charts every day of a short range', async () => {
     const store = create();
     store.setMode('range');
     api.timeReport.mockImplementation((from: string, to: string) =>
@@ -128,14 +128,23 @@ describe('DashboardStore', () => {
     expect(store.totalHours()).toBe(5);
     expect(store.issueCount()).toBe(1);
     expect(store.activeDays()).toBe(1);
-    expect(store.days()).toEqual([
-      { date: '2026-10-01', hours: 0 },
-      { date: '2026-10-02', hours: 5 },
-      { date: '2026-10-03', hours: 0 },
-    ]);
+    expect(store.chart()?.unit).toBe('day');
+    expect(store.chart()?.buckets.map((b) => b.hours)).toEqual([0, 5, 0]);
     expect(store.workedProjects()).toMatchObject([
       { name: 'Melón', totalHours: 5, issues: [{ code: 'MEL-7', hours: 5 }] },
     ]);
+  });
+
+  it('charts by week in the monthly view, so the chart does not grow with the range', async () => {
+    const store = create();
+    api.timeReport.mockImplementation((from: string, to: string) =>
+      of(report(from, to, { totalHours: 1, byDay: [{ date: from, hours: 1 }] })),
+    );
+    store.setMode('month');
+    await settle();
+
+    expect(store.chart()?.unit).toBe('week');
+    expect(store.chart()?.buckets.length).toBeLessThanOrEqual(6);
   });
 
   it('shows the error when the report cannot be loaded', async () => {

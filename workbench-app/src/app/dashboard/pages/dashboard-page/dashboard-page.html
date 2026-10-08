@@ -51,7 +51,7 @@
 
   @if (!store.rangeValid()) {
     <app-alert tone="warning" heading="El rango no es válido">
-      Elige fechas reales, con «Desde» igual o anterior a «Hasta», y de no más de un año.
+      Elige fechas reales, con «Desde» igual o anterior a «Hasta», y de no más de 10 años.
     </app-alert>
   } @else if (store.error(); as error) {
     <app-alert tone="danger" heading="No se pudo cargar el dashboard">
@@ -100,12 +100,14 @@
             <app-tickets-by-project [projects]="store.workedProjects()" />
           </section>
 
-          <section class="layout__side">
-            <app-card>
-              <h4 card-header>Horas por día</h4>
-              <app-hours-by-day [days]="store.days()" />
-            </app-card>
-          </section>
+          @if (store.chart(); as chart) {
+            <section class="layout__side">
+              <app-card>
+                <h4 card-header>{{ title(chart.unit) }}</h4>
+                <app-hours-by-day [buckets]="chart.buckets" />
+              </app-card>
+            </section>
+          }
         </div>
       </div>
     }

@@ -17,6 +17,7 @@ import { formatDay, formatHours } from '@shared/util/date';
 import { HoursByDay } from '../../components/hours-by-day/hours-by-day';
 import { TicketsByProject } from '../../components/tickets-by-project/tickets-by-project';
 import { DashboardStore } from '../../data-access/dashboard.store';
+import { bucketTitle } from '../../domain/buckets';
 import { PeriodMode, periodLabel } from '../../domain/period';
 
 const MODE_OPTIONS: SegmentOption[] = [
@@ -56,6 +57,7 @@ export class DashboardPage {
   protected readonly modeOptions = MODE_OPTIONS;
   protected readonly formatHours = formatHours;
   protected readonly formatDay = formatDay;
+  protected readonly title = bucketTitle;
 
   protected readonly fromControl = new FormControl(this.store.customRange().from, {
     nonNullable: true,

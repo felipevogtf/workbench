@@ -1,11 +1,11 @@
-<ul class="days">
-  @for (day of days(); track day.date) {
-    <li class="day" [class.day--empty]="day.hours === 0" [class.day--weekend]="isWeekend(day.date)">
-      <span class="day__label">{{ label(day.date) }}</span>
-      <span class="day__track" aria-hidden="true">
-        <span class="day__bar" [style.width.%]="width(day.hours)"></span>
+<ul class="bars">
+  @for (bucket of buckets(); track bucket.key) {
+    <li class="bar-row" [class.bar-row--empty]="bucket.hours === 0">
+      <span class="bar-row__label">{{ bucket.label }}</span>
+      <span class="bar-row__track" aria-hidden="true">
+        <span class="bar-row__bar" [style.width.%]="width(bucket.hours)"></span>
       </span>
-      <span class="day__hours">{{ hoursLabel(day.hours) }}</span>
+      <span class="bar-row__hours">{{ hoursLabel(bucket.hours) }}</span>
     </li>
   }
 </ul>

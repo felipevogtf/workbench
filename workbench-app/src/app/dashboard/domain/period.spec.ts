@@ -65,16 +65,17 @@ describe('addDays', () => {
 });
 
 describe('isValidRange', () => {
-  it('accepts a day and a full year', () => {
+  it('accepts a day and up to ten years', () => {
     expect(isValidRange({ from: '2026-10-05', to: '2026-10-05' })).toBe(true);
     expect(isValidRange({ from: '2026-01-01', to: '2026-12-31' })).toBe(true);
+    expect(isValidRange({ from: '2016-01-01', to: '2025-12-31' })).toBe(true);
   });
 
   it('rejects empty, unreal, reversed and too long ranges', () => {
     expect(isValidRange({ from: '', to: '2026-10-05' })).toBe(false);
     expect(isValidRange({ from: '2026-02-30', to: '2026-03-01' })).toBe(false);
     expect(isValidRange({ from: '2026-10-06', to: '2026-10-05' })).toBe(false);
-    expect(isValidRange({ from: '2026-01-01', to: '2027-01-02' })).toBe(false);
+    expect(isValidRange({ from: '2000-01-01', to: '2026-01-01' })).toBe(false);
   });
 });
 

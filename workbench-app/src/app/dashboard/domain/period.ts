@@ -9,8 +9,8 @@ export interface DateRange {
   to: string;
 }
 
-/** Lo mismo que acepta el servidor: un rango no puede abarcar más de un año. */
-export const MAX_RANGE_DAYS = 366;
+/** Lo mismo que acepta el servidor: un rango no puede abarcar más de 10 años. */
+export const MAX_RANGE_DAYS = 3660;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const pad = (n: number) => String(n).padStart(2, '0');
