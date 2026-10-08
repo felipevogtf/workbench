@@ -1,3 +1,4 @@
+import { copyText } from '@shared/util/copy-text';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { downloadText } from '@shared/util/download-text';
@@ -61,7 +62,7 @@ export class PlanPanel {
     const content = this.store.viewedContent();
     if (!content) return;
     try {
-      await navigator.clipboard.writeText(content);
+      await copyText(content);
       this.toast.success('Plan copiado');
     } catch {
       this.toast.error('No se pudo copiar; usa «Descargar .md»');

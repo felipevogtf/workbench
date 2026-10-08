@@ -1,3 +1,4 @@
+import { copyText } from '@shared/util/copy-text';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -91,7 +92,7 @@ export class PullRequestDetailPage {
 
   protected async copy(markdown: string): Promise<void> {
     try {
-      await navigator.clipboard.writeText(markdown);
+      await copyText(markdown);
       this.toast.success('Revisión copiada');
     } catch {
       this.toast.error('No se pudo copiar al portapapeles');

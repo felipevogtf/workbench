@@ -12,7 +12,12 @@
       (selected)="onMenu($event)"
     />
   </div>
-  <p class="card__meta break-anywhere">{{ project() }} · {{ code() }}</p>
+  <p class="card__meta break-anywhere">
+    {{ code() }}
+    @if (issue().isLocal) {
+      <app-badge tone="success">Local</app-badge>
+    }
+  </p>
 
   @if (issue().priority && issue().priority !== 'none') {
     <app-priority-badge [priority]="issue().priority" />
