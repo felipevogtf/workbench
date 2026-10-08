@@ -32,13 +32,13 @@
       }
     </div>
   }
-  @if (issue().dueDate || issue().estimatedHours !== null) {
+  @if (issue().dueDate || loggedHours() > 0) {
     <p class="card__foot">
       @if (issue().dueDate) {
         <span>Vence {{ formatDay(issue().dueDate) }}</span>
       }
-      @if (issue().estimatedHours !== null) {
-        <span>{{ formatHours(issue().estimatedHours) }}</span>
+      @if (loggedHours() > 0) {
+        <span title="Horas registradas">{{ formatHours(loggedHours()) }}</span>
       }
     </p>
   }

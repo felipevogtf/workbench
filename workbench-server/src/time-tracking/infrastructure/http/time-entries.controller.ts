@@ -17,6 +17,12 @@ export class TimeEntriesController {
     return this.toDto(timeEntry);
   }
 
+  /** Horas registradas por tarea, para mostrarlas en listas (p. ej. el tablero). */
+  @Get('totals')
+  async getTotals(): Promise<Record<string, number>> {
+    return this.timeEntriesService.getTotalsByIssue();
+  }
+
   @Get('issue/:issueId')
   async findByIssue(
     @Param('issueId') issueId: string,

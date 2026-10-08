@@ -223,6 +223,95 @@ describe('BoardIssueService', () => {
     });
   });
 
+  describe('listAll', () => {
+    it('drops and deletes the cards of issues that no longer exist', async () => {
+      const { service, state, boardId } = build({
+        issues: new Map([
+          ['a', null],
+          ['gone', null],
+        ]),
+      });
+      await service.addIssueToBoard({ boardId, issueId: 'a' });
+      await service.addIssueToBoard({ boardId, issueId: 'gone' });
+      state.issues.delete('gone');
+
+      const cards = await service.listAll();
+
+      expect(cards.map((c) => c.issueId)).toEqual(['a']);
+      expect(state.cards.map((c) => c.issueId)).toEqual(['a']);
+    });
+  });
+
+  describe('reassignIssue', () => {
+    it('puts the target in the same board, at the end of the column of its state', async () => {
+      const { service, state, boardId } = build({
+        issues: new Map([
+          ['local', 'doing'],
+          ['other', 'doing'],
+          ['plane', 'doing'],
+        ]),
+      });
+      await service.addIssueToBoard({ boardId, issueId: 'other' });
+      await service.addIssueToBoard({ boardId, issueId: 'local' });
+
+      await service.reassignIssue('local', 'plane');
+
+      expect(state.cards.some((c) => c.issueId === 'local')).toBe(false);
+      expect(state.cards.find((c) => c.issueId === 'plane')?.boardId).toBe(
+        boardId,
+      );
+      expect(column(state, 'doing')).toEqual(['other', 'plane']);
+    });
+
+    it('does nothing when the source is not in a board', async () => {
+      const { service, state } = build({
+        issues: new Map([
+          ['local', null],
+          ['plane', null],
+        ]),
+      });
+
+      await service.reassignIssue('local', 'plane');
+
+      expect(state.cards).toHaveLength(0);
+    });
+
+    it('keeps the target where it already is and only drops the source card', async () => {
+      const { service, state, boardId } = build({
+        boards: [
+          Board.create({ name: 'A', description: null }),
+          Board.create({ name: 'B', description: null }),
+        ],
+        issues: new Map([
+          ['local', null],
+          ['plane', null],
+        ]),
+      });
+      const [first, second] = state.boards;
+      await service.addIssueToBoard({ boardId: first.id, issueId: 'local' });
+      await service.addIssueToBoard({ boardId: second.id, issueId: 'plane' });
+      void boardId;
+
+      await service.reassignIssue('local', 'plane');
+
+      expect(state.cards.map((c) => [c.issueId, c.boardId])).toEqual([
+        ['plane', second.id],
+      ]);
+    });
+
+    it('rejects an unknown target without touching the source card', async () => {
+      const { service, state, boardId } = build({
+        issues: new Map([['local', null]]),
+      });
+      await service.addIssueToBoard({ boardId, issueId: 'local' });
+
+      await expect(
+        service.reassignIssue('local', 'nope'),
+      ).rejects.toMatchObject({ kind: 'not-found' });
+      expect(state.cards).toHaveLength(1);
+    });
+  });
+
   it('removes a card from the board', async () => {
     const { service, state, boardId } = build({
       issues: new Map([['a', null]]),

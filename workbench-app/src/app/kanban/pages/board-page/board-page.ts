@@ -18,7 +18,7 @@ import { Icon } from '@shared/ui/icon/icon';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
-import { Issue, IssueFormDialog, IssuesStore } from '@tasks/index';
+import { HourTotalsStore, Issue, IssueFormDialog, IssuesStore } from '@tasks/index';
 import { AddIssuesDialog } from '../../components/add-issues-dialog/add-issues-dialog';
 import { BoardColumn, ColumnMove } from '../../components/board-column/board-column';
 import { BoardFormDialog } from '../../components/board-form-dialog/board-form-dialog';
@@ -88,6 +88,8 @@ export class BoardPage {
 
   constructor() {
     void this.boards.load();
+    // Las horas registradas cambian desde el detalle de cada tarea: se piden al abrir el tablero.
+    void inject(HourTotalsStore).load();
 
     effect(() => {
       const board = this.board();

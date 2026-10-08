@@ -144,6 +144,11 @@ export class TasksApi {
   }
 
   // Horas
+  /** Horas registradas por tarea (id → horas); las que no tienen horas no aparecen. */
+  listHourTotals(): Observable<Record<string, number>> {
+    return this.http.get<Record<string, number>>(`${this.base}/time-entries/totals`);
+  }
+
   listTimeEntries(issueId: string): Observable<TimeEntry[]> {
     return this.http.get<TimeEntry[]>(`${this.base}/time-entries/issue/${issueId}`);
   }

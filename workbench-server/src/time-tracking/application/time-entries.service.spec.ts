@@ -39,6 +39,12 @@ function build(existingIssues: string[] = ['i1']) {
       );
       return Promise.resolve(moving.length);
     },
+    sumHoursGroupedByIssue: () => {
+      const totals: Record<string, number> = {};
+      for (const e of entries)
+        totals[e.issueId] = (totals[e.issueId] ?? 0) + e.hours;
+      return Promise.resolve(totals);
+    },
     sumHoursByIssueId: (issueId) =>
       Promise.resolve(
         entries
@@ -82,6 +88,19 @@ describe('TimeEntriesService', () => {
     await expect(service.moveEntries('i1', 'nope')).rejects.toMatchObject({
       kind: 'not-found',
     });
+  });
+
+  it('totals the logged hours of every issue that has some', async () => {
+    const { service } = build(['i1', 'i2', 'i3']);
+    await service.addTimeEntry({
+      issueId: 'i1',
+      hours: 1.5,
+      date: '2026-10-07',
+    });
+    await service.addTimeEntry({ issueId: 'i1', hours: 2, date: '2026-10-08' });
+    await service.addTimeEntry({ issueId: 'i2', hours: 4, date: '2026-10-08' });
+
+    expect(await service.getTotalsByIssue()).toEqual({ i1: 3.5, i2: 4 });
   });
 
   it('refuses to register hours on an issue that does not exist', async () => {

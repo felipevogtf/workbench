@@ -16,11 +16,13 @@ function setup(source: unknown, target: unknown) {
     deleteIssue: jest.fn().mockResolvedValue(undefined),
   };
   const timeEntries = { moveEntries: jest.fn().mockResolvedValue(3) };
+  const boards = { reassignIssue: jest.fn().mockResolvedValue(undefined) };
   const service = new IssueTransferService(
     tasks as never,
     timeEntries as never,
+    boards as never,
   );
-  return { service, tasks, timeEntries };
+  return { service, tasks, timeEntries, boards };
 }
 
 describe('IssueTransferService', () => {
@@ -87,6 +89,43 @@ describe('IssueTransferService', () => {
     await expect(service.transfer('src', 'dst')).rejects.toThrow('boom');
 
     expect(timeEntries.moveEntries).not.toHaveBeenCalled();
+    expect(tasks.deleteIssue).not.toHaveBeenCalled();
+  });
+
+  it('moves the board card to the target before deleting the local issue', async () => {
+    const { service, tasks, boards } = setup(
+      issue({ stateId: 's1' }),
+      issue({ isLocal: false }),
+    );
+    const order: string[] = [];
+    tasks.setIssueState.mockImplementation(() => {
+      order.push('state');
+      return Promise.resolve();
+    });
+    boards.reassignIssue.mockImplementation(() => {
+      order.push('board');
+      return Promise.resolve();
+    });
+    tasks.deleteIssue.mockImplementation(() => {
+      order.push('delete');
+      return Promise.resolve();
+    });
+
+    await service.transfer('src', 'dst');
+
+    expect(boards.reassignIssue).toHaveBeenCalledWith('src', 'dst');
+    expect(order).toEqual(['state', 'board', 'delete']);
+  });
+
+  it('does not delete the local issue when moving the board card fails', async () => {
+    const { service, tasks, boards } = setup(
+      issue({}),
+      issue({ isLocal: false }),
+    );
+    boards.reassignIssue.mockRejectedValue(new Error('boom'));
+
+    await expect(service.transfer('src', 'dst')).rejects.toThrow('boom');
+
     expect(tasks.deleteIssue).not.toHaveBeenCalled();
   });
 

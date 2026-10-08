@@ -22,17 +22,6 @@
         <app-icon name="edit" size="1em" /> Editar
       </button>
       @if (issue.isLocal) {
-        <button
-          actions
-          app-button
-          variant="secondary"
-          type="button"
-          (click)="transferOpen.set(true)"
-        >
-          <app-icon name="arrow-outward" size="1em" /> Transferir
-        </button>
-      }
-      @if (issue.isLocal) {
         <button actions app-button variant="danger" type="button" (click)="remove()">
           <app-icon name="trash" size="1em" /> Eliminar
         </button>
@@ -129,6 +118,17 @@
           </dl>
         </app-card>
 
+        @if (issue.isLocal) {
+          <button
+            app-button
+            block
+            variant="secondary"
+            type="button"
+            (click)="transferOpen.set(true)"
+          >
+            <app-icon name="arrow-outward" size="1em" /> Transferir tarea
+          </button>
+        }
         <button
           class="close-button"
           app-button

@@ -1,17 +1,20 @@
 import { DomainError } from '@core/domain/domain.error';
+import { BoardIssueService } from '@kanban/application/board-issue.service';
 import { Injectable } from '@nestjs/common';
 import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import { TimeEntriesService } from '@time-tracking/application/time-entries.service';
 
 /**
- * Traspasa una tarea local a una tarea de Plane: las horas registradas y el estado pasan a la de
- * destino y la local se elimina. Orquesta `tasks` y `time-tracking` sin que se conozcan entre sí.
+ * Traspasa una tarea local a una tarea de Plane: las horas registradas, el estado y el lugar en el
+ * tablero pasan a la de destino y la local se elimina. Orquesta `tasks`, `time-tracking` y `kanban`
+ * sin que se conozcan entre sí.
  */
 @Injectable()
 export class IssueTransferService {
   constructor(
     private readonly tasks: TasksFacade,
     private readonly timeEntries: TimeEntriesService,
+    private readonly boards: BoardIssueService,
   ) {}
 
   /** Devuelve cuántos registros de horas se movieron. */
@@ -43,6 +46,8 @@ export class IssueTransferService {
       await this.tasks.setIssueState(targetId, source.stateId);
     }
     const moved = await this.timeEntries.moveEntries(sourceId, targetId);
+    // Va después del estado: la tarjeta cae en la columna del estado ya traspasado.
+    await this.boards.reassignIssue(sourceId, targetId);
     await this.tasks.deleteIssue(sourceId);
     return moved;
   }

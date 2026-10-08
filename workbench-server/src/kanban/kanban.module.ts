@@ -28,7 +28,11 @@ import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.ada
     BoardService,
     BoardIssueService,
   ],
-  exports: [BOARD_REPOSITORY_PORT, BOARD_ISSUE_REPOSITORY_PORT],
+  exports: [
+    BOARD_REPOSITORY_PORT,
+    BOARD_ISSUE_REPOSITORY_PORT,
+    BoardIssueService,
+  ],
   controllers: [BoardController],
 })
 export class KanbanModule {}

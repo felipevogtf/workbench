@@ -62,6 +62,19 @@ export class TypeOrmTimeEntryRepository implements TimeEntryRepositoryPort {
     return Number(result?.total ?? 0);
   }
 
+  async sumHoursGroupedByIssue(): Promise<Record<string, number>> {
+    const rows = await this.timeEntryRepository
+      .createQueryBuilder('time_entry')
+      .select('time_entry.issue_id', 'issueId')
+      .addSelect('SUM(time_entry.hours)', 'total')
+      .groupBy('time_entry.issue_id')
+      .getRawMany<{ issueId: string; total: string }>();
+
+    return Object.fromEntries(
+      rows.map((row) => [row.issueId, Number(row.total)]),
+    );
+  }
+
   private toDomain(orm: TimeEntryOrmEntity): TimeEntry {
     return TimeEntry.reconstruct({
       id: orm.id,

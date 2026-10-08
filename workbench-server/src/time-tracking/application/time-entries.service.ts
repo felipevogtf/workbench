@@ -48,6 +48,11 @@ export class TimeEntriesService {
     return this.repo.sumHoursByIssueId(issueId);
   }
 
+  /** Horas registradas por tarea (id → horas); las tareas sin horas no aparecen. */
+  async getTotalsByIssue(): Promise<Record<string, number>> {
+    return this.repo.sumHoursGroupedByIssue();
+  }
+
   /** Pasa todas las horas de una tarea a otra (la de destino debe existir). */
   async moveEntries(fromIssueId: string, toIssueId: string): Promise<number> {
     if (!(await this.issueExists.exists(toIssueId))) {

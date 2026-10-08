@@ -4,7 +4,14 @@ import { formatDay, formatHours } from '@shared/util/date';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Badge } from '@shared/ui/badge/badge';
 import { Tag } from '@shared/ui/tag/tag';
-import { Issue, LabelsStore, PriorityBadge, ProjectsStore, issueCode } from '@tasks/index';
+import {
+  HourTotalsStore,
+  Issue,
+  LabelsStore,
+  PriorityBadge,
+  ProjectsStore,
+  issueCode,
+} from '@tasks/index';
 import { Column } from '../../domain/board-columns';
 
 const MAX_LABELS = 2;
@@ -33,6 +40,11 @@ export class BoardCardItem {
 
   protected readonly formatDay = formatDay;
   protected readonly formatHours = formatHours;
+
+  private readonly hourTotals = inject(HourTotalsStore).totals;
+
+  /** Horas que se han registrado en la tarea (no las estimadas). */
+  protected readonly loggedHours = computed(() => this.hourTotals()[this.issue().id] ?? 0);
 
   protected readonly code = computed(() =>
     issueCode(this.issue(), this.projects().get(this.issue().projectId)?.identifier),

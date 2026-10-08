@@ -109,6 +109,33 @@ class BoardIssueService {
     await this.boardIssueRepository.delete(issueInBoard.id);
   }
 
+  /**
+   * Pasa la tarjeta de una tarea a otra: la de destino queda en el mismo tablero, al final de la
+   * columna de su estado. Si la de origen no está en ningún tablero no hace nada; si la de destino
+   * ya está en uno, se queda donde está y solo se quita la tarjeta de origen.
+   */
+  async reassignIssue(fromIssueId: string, toIssueId: string): Promise<void> {
+    const card = await this.boardIssueRepository.findByIssueId(fromIssueId);
+    if (!card) return;
+
+    const [target] = await this.tasksGateway.findIssueRefsByIds([toIssueId]);
+    if (!target) {
+      throw DomainError.notFound(`Issue with id ${toIssueId} not found`);
+    }
+
+    // Se quita primero para que la tarjeta de origen no cuente al calcular el lugar del destino.
+    await this.boardIssueRepository.delete(card.id);
+    if (await this.boardIssueRepository.findByIssueId(toIssueId)) return;
+
+    await this.boardIssueRepository.save(
+      BoardIssue.create({
+        boardId: card.boardId,
+        issueId: toIssueId,
+        position: await this.nextPositionInColumn(card.boardId, target.stateId),
+      }),
+    );
+  }
+
   // Mueve la tarjeta a una columna (estado) y a un lugar de ella, y renumera
   // la columna de destino para que el orden siempre quede bien definido.
   async moveIssue(
@@ -170,8 +197,23 @@ class BoardIssueService {
     await this.boardIssueRepository.saveMany(changed);
   }
 
+  /**
+   * Todas las tarjetas de todos los tableros. Las de tareas que ya no existen (se eliminaron o se
+   * transfirieron) no cuentan: se descartan y se borran, para que los contadores no las muestren.
+   */
   async listAll(): Promise<BoardIssue[]> {
-    return this.boardIssueRepository.findAll();
+    const cards = await this.boardIssueRepository.findAll();
+    const refs = await this.tasksGateway.findIssueRefsByIds(
+      cards.map((card) => card.issueId),
+    );
+    const existing = new Set(refs.map((ref) => ref.id));
+
+    const alive: BoardIssue[] = [];
+    for (const card of cards) {
+      if (existing.has(card.issueId)) alive.push(card);
+      else await this.boardIssueRepository.delete(card.id);
+    }
+    return alive;
   }
 
   private async nextPositionInColumn(
