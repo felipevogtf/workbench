@@ -2,7 +2,11 @@
   <app-page-header
     heading="Dashboard"
     subtitle="Las horas que has registrado, por día y por ticket de cada proyecto."
-  />
+  >
+    <app-popover-button actions label="Filtros" icon="filter">
+      <app-checkbox [(value)]="store.includeLocal">Incluir tareas locales</app-checkbox>
+    </app-popover-button>
+  </app-page-header>
 
   <div class="filters">
     <div class="filters__period">
@@ -53,8 +57,6 @@
         </div>
       }
     </div>
-
-    <app-checkbox [(value)]="store.includeLocal">Incluir tareas locales</app-checkbox>
   </div>
 
   @if (!store.rangeValid()) {

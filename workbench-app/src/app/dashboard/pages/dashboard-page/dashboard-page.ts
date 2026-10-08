@@ -10,6 +10,7 @@ import { FormField } from '@shared/ui/form-field/form-field';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { PageHeader } from '@shared/ui/page-header/page-header';
+import { PopoverButton } from '@shared/ui/popover-button/popover-button';
 import { SegmentedControl, SegmentOption } from '@shared/ui/segmented-control/segmented-control';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
@@ -32,6 +33,7 @@ const MODE_OPTIONS: SegmentOption[] = [
   imports: [
     ReactiveFormsModule,
     PageHeader,
+    PopoverButton,
     SegmentedControl,
     FormField,
     TextInput,

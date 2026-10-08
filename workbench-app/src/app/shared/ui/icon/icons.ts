@@ -73,6 +73,13 @@ export const ICONS = {
     kind: 'stroke',
     paths: ['M3 3v16a2 2 0 0 0 2 2h16', 'M18 17V9', 'M13 17V5', 'M8 17v-3'],
   },
+  filter: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: [
+      'M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z',
+    ],
+  },
   'arrow-left': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m12 19-7-7 7-7', 'M19 12H5'] },
   'git-pull-request': {
     viewBox: '0 0 24 24',
