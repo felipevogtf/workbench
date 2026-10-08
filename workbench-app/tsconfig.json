@@ -19,7 +19,8 @@
       "@pr-review/*": ["./src/app/pr-review/*"],
       "@ai-agents/*": ["./src/app/ai-agents/*"],
       "@tasks/*": ["./src/app/tasks/*"],
-      "@kanban/*": ["./src/app/kanban/*"]
+      "@kanban/*": ["./src/app/kanban/*"],
+      "@dashboard/*": ["./src/app/dashboard/*"]
     },
     "module": "preserve"
   },

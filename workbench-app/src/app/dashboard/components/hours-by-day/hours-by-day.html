@@ -1,0 +1,11 @@
+<ul class="days">
+  @for (day of days(); track day.date) {
+    <li class="day" [class.day--empty]="day.hours === 0" [class.day--weekend]="isWeekend(day.date)">
+      <span class="day__label">{{ label(day.date) }}</span>
+      <span class="day__track" aria-hidden="true">
+        <span class="day__bar" [style.width.%]="width(day.hours)"></span>
+      </span>
+      <span class="day__hours">{{ hoursLabel(day.hours) }}</span>
+    </li>
+  }
+</ul>

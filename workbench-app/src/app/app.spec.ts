@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { provideNavItem } from '@core/navigation/nav-item';
 import { AI_AGENTS_NAV } from '@ai-agents/ai-agents.nav';
 import { PR_REVIEW_NAV } from '@pr-review/pr-review.nav';
+import { DASHBOARD_NAV } from '@dashboard/dashboard.nav';
 import { KANBAN_NAV } from '@kanban/kanban.nav';
 import { TASKS_NAV } from '@tasks/tasks.nav';
 import { App } from './app';
@@ -21,6 +22,7 @@ describe('App', () => {
         provideNavItem(PR_REVIEW_NAV),
         provideNavItem(KANBAN_NAV),
         provideNavItem(TASKS_NAV),
+        provideNavItem(DASHBOARD_NAV),
       ],
     });
   });
@@ -33,7 +35,7 @@ describe('App', () => {
       (fixture.nativeElement as HTMLElement).querySelectorAll('nav .nav-link'),
     ).map((link) => link.textContent?.trim());
 
-    expect(links).toEqual(['Gestión', 'Kanban', 'Pull requests', 'Agentes de IA']);
+    expect(links).toEqual(['Dashboard', 'Gestión', 'Kanban', 'Pull requests', 'Agentes de IA']);
   });
 
   it('renders the shell around the routed content', async () => {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TimeEntryRepositoryPort } from '@time-tracking/domain/ports/time-entry-repository.port';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 import { TimeEntryOrmEntity } from '@time-tracking/infrastructure/persistence/time-entry.orm-entity';
 
@@ -24,6 +24,15 @@ export class TypeOrmTimeEntryRepository implements TimeEntryRepositoryPort {
     const rows = await this.timeEntryRepository.find({
       where: { issue_id: issueId },
       order: { date: 'DESC' },
+    });
+
+    return rows.map((orm) => this.toDomain(orm));
+  }
+
+  async findBetweenDates(from: string, to: string): Promise<TimeEntry[]> {
+    const rows = await this.timeEntryRepository.find({
+      where: { date: Between(from, to) },
+      order: { date: 'ASC' },
     });
 
     return rows.map((orm) => this.toDomain(orm));

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { TimeReportQueryDto } from '@time-tracking/dto/time-report-query.dto';
+import { TimeReportResponseDto } from '@time-tracking/dto/time-report-response.dto';
 import { TimeEntriesService } from '@time-tracking/application/time-entries.service';
 import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 import { TimeEntryResponseDto } from '@time-tracking/dto/time-entry-response.dto';
@@ -15,6 +25,14 @@ export class TimeEntriesController {
     const timeEntry =
       await this.timeEntriesService.addTimeEntry(createTimeEntryDto);
     return this.toDto(timeEntry);
+  }
+
+  /** Horas de un rango de fechas, por día y por tarea (alimenta el dashboard). */
+  @Get('report')
+  async getReport(
+    @Query() query: TimeReportQueryDto,
+  ): Promise<TimeReportResponseDto> {
+    return this.timeEntriesService.getReport(query.from, query.to);
   }
 
   /** Horas registradas por tarea, para mostrarlas en listas (p. ej. el tablero). */

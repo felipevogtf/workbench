@@ -23,11 +23,12 @@ describe('app routes', () => {
     return (harness.routeNativeElement as HTMLElement).tagName.toLowerCase();
   }
 
-  it('redirects the root to the tasks list', async () => {
-    expect(await open('/')).toBe('app-issue-list-page');
+  it('redirects the root to the dashboard', async () => {
+    expect(await open('/')).toBe('app-dashboard-page');
   });
 
   it.each([
+    ['/dashboard', 'app-dashboard-page'],
     ['/tasks', 'app-issue-list-page'],
     ['/tasks/issues/abc', 'app-issue-detail-page'],
     ['/tasks/projects', 'app-project-list-page'],

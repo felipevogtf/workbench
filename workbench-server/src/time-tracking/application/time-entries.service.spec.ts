@@ -39,6 +39,8 @@ function build(existingIssues: string[] = ['i1']) {
       );
       return Promise.resolve(moving.length);
     },
+    findBetweenDates: (from, to) =>
+      Promise.resolve(entries.filter((e) => e.date >= from && e.date <= to)),
     sumHoursGroupedByIssue: () => {
       const totals: Record<string, number> = {};
       for (const e of entries)
@@ -101,6 +103,29 @@ describe('TimeEntriesService', () => {
     await service.addTimeEntry({ issueId: 'i2', hours: 4, date: '2026-10-08' });
 
     expect(await service.getTotalsByIssue()).toEqual({ i1: 3.5, i2: 4 });
+  });
+
+  it('builds a report with only the entries inside the range', async () => {
+    const { service } = build(['i1', 'i2']);
+    await service.addTimeEntry({ issueId: 'i1', hours: 2, date: '2026-10-05' });
+    await service.addTimeEntry({ issueId: 'i2', hours: 3, date: '2026-10-07' });
+    await service.addTimeEntry({ issueId: 'i1', hours: 8, date: '2026-09-30' });
+
+    const report = await service.getReport('2026-10-05', '2026-10-11');
+
+    expect(report.totalHours).toBe(5);
+    expect(report.byDay).toEqual([
+      { date: '2026-10-05', hours: 2 },
+      { date: '2026-10-07', hours: 3 },
+    ]);
+    expect(report.byIssue.map((i) => i.issueId)).toEqual(['i2', 'i1']);
+  });
+
+  it('rejects an invalid report range', async () => {
+    const { service } = build();
+    await expect(service.getReport('2026-10-06', '2026-10-05')).rejects.toThrow(
+      'from must not be after to',
+    );
   });
 
   it('refuses to register hours on an issue that does not exist', async () => {

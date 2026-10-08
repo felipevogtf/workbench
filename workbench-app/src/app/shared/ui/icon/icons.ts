@@ -67,6 +67,12 @@ export const ICONS = {
   play: { viewBox: '0 0 24 24', kind: 'stroke', paths: ['M5 3l14 9-14 9V3z'] },
   'chevron-down': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m6 9 6 6 6-6'] },
   'chevron-right': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m9 18 6-6-6-6'] },
+  'chevron-left': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m15 18-6-6 6-6'] },
+  'chart-bar': {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: ['M3 3v16a2 2 0 0 0 2 2h16', 'M18 17V9', 'M13 17V5', 'M8 17v-3'],
+  },
   'arrow-left': { viewBox: '0 0 24 24', kind: 'stroke', paths: ['m12 19-7-7 7-7', 'M19 12H5'] },
   'git-pull-request': {
     viewBox: '0 0 24 24',

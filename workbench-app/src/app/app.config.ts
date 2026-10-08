@@ -3,6 +3,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { apiErrorInterceptor } from '@core/api/api-error.interceptor';
 import { provideNavItem } from '@core/navigation/nav-item';
+import { DASHBOARD_NAV } from '@dashboard/dashboard.nav';
 import { TASKS_NAV } from '@tasks/tasks.nav';
 import { KANBAN_NAV } from '@kanban/kanban.nav';
 import { PR_REVIEW_NAV } from '@pr-review/pr-review.nav';
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
     provideHttpClient(withFetch(), withInterceptors([apiErrorInterceptor])),
+    provideNavItem(DASHBOARD_NAV),
     provideNavItem(TASKS_NAV),
     provideNavItem(KANBAN_NAV),
     provideNavItem(PR_REVIEW_NAV),

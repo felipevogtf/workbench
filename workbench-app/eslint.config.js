@@ -47,7 +47,14 @@ module.exports = tseslint.config(
         {
           patterns: [
             {
-              group: ['@core/*', '@pr-review/*', '@ai-agents/*', '@tasks/*', '@kanban/*'],
+              group: [
+                '@core/*',
+                '@pr-review/*',
+                '@ai-agents/*',
+                '@tasks/*',
+                '@kanban/*',
+                '@dashboard/*',
+              ],
               message: stateMessage,
             },
           ],
@@ -100,6 +107,23 @@ module.exports = tseslint.config(
           patterns: [
             { group: ['@kanban/*', '@pr-review/*'], message: stateMessage },
             { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
+            { group: ['@core/layout/*'], message: stateMessage },
+          ],
+        },
+      ],
+    },
+  },
+  // dashboard solo toca a tasks por su API pública (@tasks/index); ningún otro módulo lo conoce.
+  {
+    files: ['src/app/dashboard/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@tasks/*', '!@tasks/index'], message: stateMessage },
+            { group: ['@pr-review/*', '@ai-agents/*', '@kanban/*'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },

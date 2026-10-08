@@ -1,0 +1,24 @@
+<div class="projects">
+  @for (project of projects(); track project.id ?? 'none') {
+    <app-card>
+      <div card-header class="project__head">
+        <h4 class="project__name break-anywhere">{{ project.name }}</h4>
+        <span class="project__total" title="Total del proyecto">
+          {{ formatHours(project.totalHours) }}
+        </span>
+      </div>
+
+      <ul class="issues">
+        @for (issue of project.issues; track issue.id) {
+          <li class="issue">
+            <span class="issue__code">{{ issue.code }}</span>
+            <a class="issue__name break-anywhere" [routerLink]="['/tasks/issues', issue.id]">{{
+              issue.name
+            }}</a>
+            <span class="issue__hours">{{ formatHours(issue.hours) }}</span>
+          </li>
+        }
+      </ul>
+    </app-card>
+  }
+</div>

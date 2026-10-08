@@ -2,6 +2,11 @@ import { DomainError } from '@core/domain/domain.error';
 import { Inject, Injectable } from '@nestjs/common';
 import { TimeEntry } from '@time-tracking/domain/entities/time-entry.entity';
 import {
+  buildTimeReport,
+  validateReportRange,
+  type TimeReport,
+} from '@time-tracking/domain/time-report';
+import {
   TIME_ENTRY_REPOSITORY_PORT,
   type TimeEntryRepositoryPort,
 } from '@time-tracking/domain/ports/time-entry-repository.port';
@@ -46,6 +51,16 @@ export class TimeEntriesService {
 
   async getTotalHoursByIssue(issueId: string): Promise<number> {
     return this.repo.sumHoursByIssueId(issueId);
+  }
+
+  /** Horas registradas entre dos fechas (incluidas), por día y por tarea. */
+  async getReport(from: string, to: string): Promise<TimeReport> {
+    validateReportRange(from, to);
+    return buildTimeReport(
+      from,
+      to,
+      await this.repo.findBetweenDates(from, to),
+    );
   }
 
   /** Horas registradas por tarea (id → horas); las tareas sin horas no aparecen. */
