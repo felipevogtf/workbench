@@ -46,6 +46,7 @@ import { buildCommentBody } from '@pr-review/application/review-comment';
 import { extractTicketKeys } from '@core/text/ticket-keys';
 import {
   buildReviewPrompt,
+  type PreviousReview,
   type TicketContext,
 } from '@pr-review/application/review-prompt';
 
@@ -168,6 +169,26 @@ export class ReviewsService {
     return this.storage.read(review.docPath);
   }
 
+  /** Quita una revisión del historial de la PR y su documento. El comentario ya publicado en el provider no se toca. */
+  async deleteReview(pullRequestId: string, reviewId: string): Promise<void> {
+    const review = await this.reviews.findById(reviewId);
+    if (!review || review.pullRequestId !== pullRequestId) {
+      throw DomainError.notFound(
+        `Review ${reviewId} not found for pull request ${pullRequestId}`,
+      );
+    }
+
+    await this.reviews.delete(review.id);
+    if (review.docPath) {
+      // El registro ya no existe: un archivo que no se pueda borrar solo queda huérfano.
+      await this.storage.remove(review.docPath).catch((error: unknown) => {
+        this.logger.warn(
+          `Could not delete ${review.docPath}: ${this.errorMessage(error)}`,
+        );
+      });
+    }
+  }
+
   async getQueue(): Promise<ReviewQueueSnapshot> {
     const [reviewing, pending] = await Promise.all([
       this.pullRequests.findByStatus('reviewing'),
@@ -213,11 +234,12 @@ export class ReviewsService {
 
     try {
       checkout = await this.checkoutPort.checkout(pullRequest);
+      const previous = await this.loadPreviousReview(pullRequest);
 
       const run = await this.agents.runReview({
         agentId: requestedAgentId,
         model: requestedModel,
-        prompt: buildReviewPrompt(pullRequest, loaded),
+        prompt: buildReviewPrompt(pullRequest, loaded, previous),
         workdir: checkout.path,
       });
 
@@ -265,6 +287,30 @@ export class ReviewsService {
           `Could not clean checkout: ${this.errorMessage(error)}`,
         );
       });
+    }
+  }
+
+  /**
+   * La última revisión correcta que aún exista (una eliminada no cuenta). Nunca lanza: si no se puede
+   * leer, se revisa como si fuera la primera.
+   */
+  private async loadPreviousReview(
+    pullRequest: PullRequest,
+  ): Promise<PreviousReview | null> {
+    try {
+      const review = await this.reviews.findLatestSuccessfulByPullRequestId(
+        pullRequest.id,
+      );
+      if (!review?.docPath || !review.commit) return null;
+      return {
+        commit: review.commit,
+        markdown: await this.storage.read(review.docPath),
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Could not load the previous review of ${pullRequest.repo}#${pullRequest.externalId}: ${this.errorMessage(error)}`,
+      );
+      return null;
     }
   }
 

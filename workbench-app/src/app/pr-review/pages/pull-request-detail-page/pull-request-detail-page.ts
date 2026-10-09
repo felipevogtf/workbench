@@ -15,6 +15,7 @@ import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
+import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { PageHeader } from '@shared/ui/page-header/page-header';
@@ -59,6 +60,7 @@ export class PullRequestDetailPage {
   protected readonly store = inject(PullRequestDetailStore);
   protected readonly agentsStore = inject(AgentsStore);
   private readonly toast = inject(Toast);
+  private readonly confirm = inject(ConfirmDialog);
 
   protected readonly dialogOpen = signal(false);
   protected readonly short = shortCommit;
@@ -80,6 +82,17 @@ export class PullRequestDetailPage {
 
   protected selectReview(review: Review): void {
     void this.store.selectReview(review);
+  }
+
+  protected async deleteReview(review: Review): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Eliminar revisión',
+      message:
+        'Se borra esta revisión del historial. El comentario que ya se publicó en la PR no se toca.',
+      confirmLabel: 'Eliminar',
+      tone: 'danger',
+    });
+    if (confirmed) await this.store.deleteReview(review.id);
   }
 
   protected reReview(request: ReReviewRequest): void {

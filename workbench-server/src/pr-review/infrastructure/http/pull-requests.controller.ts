@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   HttpCode,
@@ -88,6 +89,15 @@ export class PullRequestsController {
     @Param('reviewId') reviewId: string,
   ): Promise<string> {
     return this.reviewsService.readReview(id, reviewId);
+  }
+
+  @Delete(':id/reviews/:reviewId')
+  @HttpCode(204)
+  async deleteReview(
+    @Param('id') id: string,
+    @Param('reviewId') reviewId: string,
+  ): Promise<void> {
+    await this.reviewsService.deleteReview(id, reviewId);
   }
 
   @Post(':id/re-review')

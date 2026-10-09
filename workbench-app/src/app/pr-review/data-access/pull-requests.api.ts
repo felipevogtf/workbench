@@ -56,4 +56,8 @@ export class PullRequestsApi {
   review(id: string, reviewId: string): Observable<string> {
     return this.http.get(`${this.url}/${id}/reviews/${reviewId}`, { responseType: 'text' });
   }
+
+  deleteReview(id: string, reviewId: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}/reviews/${reviewId}`);
+  }
 }

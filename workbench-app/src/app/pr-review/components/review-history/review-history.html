@@ -8,6 +8,16 @@
           <app-badge tone="danger" dot>Fallida</app-badge>
         }
         <span class="item__when">{{ review.createdAt | timeAgo }}</span>
+        <button
+          app-icon-button
+          class="item__delete"
+          type="button"
+          tone="danger"
+          label="Eliminar esta revisión"
+          (click)="reviewDeleted.emit(review)"
+        >
+          <app-icon name="trash" size="1.1rem" />
+        </button>
       </div>
 
       <p class="item__meta break-anywhere">

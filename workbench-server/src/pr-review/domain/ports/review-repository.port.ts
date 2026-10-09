@@ -8,6 +8,7 @@ export interface ReviewRepositoryPort {
     pullRequestId: string,
   ): Promise<Review | null>;
   save(review: Review): Promise<Review>;
+  delete(id: string): Promise<void>;
 }
 
 export const REVIEW_REPOSITORY_PORT = Symbol('REVIEW_REPOSITORY_PORT');

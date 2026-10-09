@@ -59,6 +59,10 @@ export class TypeOrmReviewRepository implements ReviewRepositoryPort {
     return this.toDomain(saved);
   }
 
+  async delete(id: string): Promise<void> {
+    await this.reviewRepository.delete({ id });
+  }
+
   private toDomain(orm: ReviewOrmEntity): Review {
     return Review.reconstruct({
       id: orm.id,

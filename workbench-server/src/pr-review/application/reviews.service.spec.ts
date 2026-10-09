@@ -27,6 +27,7 @@ interface Harness {
   stats: { inFlight: number; maxInFlight: number };
   disposed: string[];
   comments: string[];
+  removedDocs: string[];
   agents: { runReview: jest.Mock };
   commentPort: { postComment: jest.Mock };
   notifier: { notifyAuthor: jest.Mock };
@@ -49,6 +50,7 @@ function build(
   const tickets = fakeTickets(options.tickets);
   const disposed: string[] = [];
   const comments: string[] = [];
+  const removedDocs: string[] = [];
   const stats = { inFlight: 0, maxInFlight: 0 };
 
   const checkout: RepositoryCheckoutPort = {
@@ -66,6 +68,10 @@ function build(
   const storage: ReviewStoragePort = {
     save: (pr, commit) => Promise.resolve(`${pr.externalId}-${commit}.md`),
     read: (docPath) => Promise.resolve(`# contenido de ${docPath}`),
+    remove: (docPath) => {
+      removedDocs.push(docPath);
+      return Promise.resolve();
+    },
   };
 
   const runReview = jest.fn(
@@ -129,6 +135,7 @@ function build(
     stats,
     disposed,
     comments,
+    removedDocs,
     agents,
     commentPort,
     notifier,
@@ -344,6 +351,35 @@ describe('ReviewsService execution', () => {
     );
   });
 
+  it('deletes a review from the history together with its document', async () => {
+    const h = build();
+    const pr = await addPending(h, '1');
+    h.service.kick();
+    await waitFor(() => allDone(h));
+    const [review] = h.reviews.items;
+
+    await h.service.deleteReview(pr.id, review.id);
+
+    expect(h.reviews.items).toHaveLength(0);
+    expect(h.removedDocs).toEqual([review.docPath]);
+  });
+
+  it('does not delete a review through another pull request', async () => {
+    const h = build();
+    const pr = await addPending(h, '1');
+    h.service.kick();
+    await waitFor(() => allDone(h));
+    const [review] = h.reviews.items;
+
+    await expect(
+      h.service.deleteReview('other-pr', review.id),
+    ).rejects.toThrow(DomainError);
+    await expect(h.service.deleteReview(pr.id, 'missing')).rejects.toThrow(
+      DomainError,
+    );
+    expect(h.reviews.items).toHaveLength(1);
+  });
+
   it('marks the pull request failed, records it and keeps going', async () => {
     const h = build();
     h.agents.runReview.mockRejectedValueOnce(new Error('claude exploded'));
@@ -515,6 +551,47 @@ describe('ReviewsService tickets', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('ReviewsService previous review', () => {
+  it('reviews from scratch the first time', async () => {
+    const h = build();
+    await addPending(h, '1');
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.prompts[0]).toContain('primera revisión');
+  });
+
+  it('hands the previous review and its commit to the next one', async () => {
+    const h = build({ checkoutCommit: 'c1' });
+    const pr = await addPending(h, '1');
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    await h.service.reReview(pr.id);
+    await waitFor(() => h.prompts.length === 2 && allDone(h));
+
+    expect(h.prompts[1]).toContain('Commit revisado: c1');
+    expect(h.prompts[1]).toContain('git diff c1..origin/feature/1');
+    expect(h.prompts[1]).toContain('# contenido de 1-c1.md');
+  });
+
+  it('uses the latest review that still exists after deleting the newest', async () => {
+    const h = build({ checkoutCommit: 'c1' });
+    const pr = await addPending(h, '1');
+    h.service.kick();
+    await waitFor(() => allDone(h));
+    await h.service.reReview(pr.id);
+    await waitFor(() => h.prompts.length === 2 && allDone(h));
+    await h.service.deleteReview(pr.id, h.reviews.items[1].id);
+
+    await h.service.reReview(pr.id);
+    await waitFor(() => h.prompts.length === 3 && allDone(h));
+
+    expect(h.prompts[2]).toContain('Commit revisado: c1');
+    expect(h.reviews.items).toHaveLength(2);
   });
 });
 

@@ -8,6 +8,8 @@ export interface ReviewStoragePort {
     markdown: string,
   ): Promise<string>;
   read(docPath: string): Promise<string>;
+  /** Borra el documento; si ya no existe no es un error. */
+  remove(docPath: string): Promise<void>;
 }
 
 export const REVIEW_STORAGE_PORT = Symbol('REVIEW_STORAGE_PORT');

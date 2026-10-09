@@ -98,6 +98,12 @@ export class InMemoryReviewRepository implements ReviewRepositoryPort {
     if (!this.items.includes(review)) this.items.push(review);
     return Promise.resolve(review);
   }
+
+  delete(id: string) {
+    const index = this.items.findIndex((r) => r.id === id);
+    if (index !== -1) this.items.splice(index, 1);
+    return Promise.resolve();
+  }
 }
 
 export function remotePullRequest(

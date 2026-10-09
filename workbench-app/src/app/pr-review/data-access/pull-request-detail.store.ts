@@ -121,6 +121,25 @@ export class PullRequestDetailStore {
     }
   }
 
+  /** Quita una revisión del historial; si era la que se estaba leyendo, pasa a la más reciente que quede. */
+  async deleteReview(reviewId: string): Promise<boolean> {
+    const detail = this.detailState();
+    if (!detail) return false;
+
+    try {
+      await firstValueFrom(this.api.deleteReview(detail.id, reviewId));
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+      return false;
+    }
+
+    const remaining = { ...detail, reviews: detail.reviews.filter((r) => r.id !== reviewId) };
+    this.detailState.set(remaining);
+    if (this.selectedState() === reviewId) await this.selectDefaultReview(remaining);
+    this.toast.success('Revisión eliminada');
+    return true;
+  }
+
   /** Refresco silencioso; si la PR terminó de revisarse, carga la revisión nueva. */
   private async refresh(): Promise<void> {
     const current = this.detailState();

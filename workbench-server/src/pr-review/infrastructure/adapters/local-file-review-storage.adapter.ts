@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -40,6 +40,10 @@ export class LocalFileReviewStorageAdapter implements ReviewStoragePort {
 
   async read(docPath: string): Promise<string> {
     return readFile(this.resolveInside(docPath), 'utf-8');
+  }
+
+  async remove(docPath: string): Promise<void> {
+    await rm(this.resolveInside(docPath), { force: true });
   }
 
   /** Evita salirse de REVIEWS_DIR con rutas tipo "../". */
