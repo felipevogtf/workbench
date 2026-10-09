@@ -116,6 +116,16 @@ describe('PullRequestsService.sync', () => {
     expect(byId.get('2')?.state).toBe('closed');
   });
 
+  it('does not list closed pull requests', async () => {
+    const { service } = build([listing(['1', '2']), listing(['1'])]);
+    await service.sync();
+    await service.sync();
+
+    const listed = await service.findAll();
+
+    expect(listed.map((p) => p.externalId)).toEqual(['1']);
+  });
+
   it('does not close pull requests of repos that could not be queried', async () => {
     const { service, prs } = build([listing(['1']), listing([], ['ws/app'])]);
     await service.sync();

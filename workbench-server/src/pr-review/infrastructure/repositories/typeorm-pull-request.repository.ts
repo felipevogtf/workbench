@@ -37,7 +37,10 @@ export class TypeOrmPullRequestRepository implements PullRequestRepositoryPort {
   }
 
   async findAll(filters: PullRequestFilters): Promise<PullRequest[]> {
-    const query = this.pullRequestRepository.createQueryBuilder('pr');
+    // Las cerradas se conservan con su historial (se abren por su enlace) pero no se listan.
+    const query = this.pullRequestRepository
+      .createQueryBuilder('pr')
+      .where("pr.state = 'open'");
 
     if (filters.status) {
       query.andWhere('pr.status = :status', { status: filters.status });

@@ -35,6 +35,7 @@ export class InMemoryPullRequestRepository implements PullRequestRepositoryPort 
     return Promise.resolve(
       [...this.items.values()].filter(
         (pr) =>
+          pr.state === 'open' &&
           (!filters.status || pr.status === filters.status) &&
           (!filters.provider || pr.provider === filters.provider) &&
           (filters.stale === undefined || pr.isStale === filters.stale),
