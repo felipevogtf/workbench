@@ -10,6 +10,8 @@ import {
   RepositoryCheckoutPort,
 } from '@pr-review/domain/ports/repository-checkout.port';
 
+const RULES_FILE = 'REVIEW_RULES.md';
+
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 
 /**
@@ -51,11 +53,36 @@ export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
         await this.git(['rev-parse', 'HEAD'], { cwd: dest, secret })
       ).trim();
 
-      return { path: dest, commit, dispose };
+      const rules = await this.loadRules(pullRequest, dest, secret);
+
+      return { path: dest, commit, rules, dispose };
     } catch (error) {
       await dispose().catch(() => undefined);
       throw error;
     }
+  }
+
+  /**
+   * Las reglas se leen de la rama destino, para que una PR no pueda cambiar las reglas con que se
+   * la revisa; si esa rama aún no las tiene, se usan las de la rama de la PR. Nunca bloquea la revisión.
+   */
+  private async loadRules(
+    pullRequest: PullRequest,
+    cwd: string,
+    secret: string,
+  ): Promise<string | null> {
+    for (const ref of [`origin/${pullRequest.destBranch}`, 'HEAD']) {
+      try {
+        const text = await this.git(['show', `${ref}:${RULES_FILE}`], {
+          cwd,
+          secret,
+        });
+        if (text.trim()) return text.trim();
+      } catch {
+        // sin archivo en esa rama: se prueba la siguiente
+      }
+    }
+    return null;
   }
 
   private urls(pullRequest: PullRequest) {

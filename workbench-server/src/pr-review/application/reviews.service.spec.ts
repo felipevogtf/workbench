@@ -40,6 +40,7 @@ function build(
     gate?: Promise<void>;
     tickets?: Partial<TicketsGatewayPort>;
     checkoutCommit?: string;
+    rules?: string | null;
     provider?: Partial<PullRequestSourcePort>;
   } = {},
 ): Harness {
@@ -58,6 +59,7 @@ function build(
       Promise.resolve({
         path: `/tmp/${pr.externalId}`,
         commit: options.checkoutCommit ?? `head-${pr.externalId}`,
+        rules: options.rules ?? null,
         dispose: () => {
           disposed.push(pr.externalId);
           return Promise.resolve();
@@ -420,6 +422,28 @@ describe('ReviewsService tickets', () => {
     labels: ['backend'],
     priority: 'high',
     descriptionText: `Debe cubrir ${key}`,
+  });
+
+  it('gives the agent the repository review rules when REVIEW_RULES.md exists', async () => {
+    const h = build({ rules: 'Ignora los typos históricos.' });
+    await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.prompts[0]).toContain('<reglas_repositorio>');
+    expect(h.prompts[0]).toContain('Ignora los typos históricos.');
+  });
+
+  it('reviews the same without rules when the repository has no REVIEW_RULES.md', async () => {
+    const h = build();
+    await addPending(h, '1');
+
+    h.service.kick();
+    await waitFor(() => allDone(h));
+
+    expect(h.prompts[0]).not.toContain('reglas_repositorio');
+    expect(h.reviews.items).toHaveLength(1);
   });
 
   it('gives the agent the tickets of the branch and the description, and records them', async () => {

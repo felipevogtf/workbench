@@ -239,7 +239,12 @@ export class ReviewsService {
       const run = await this.agents.runReview({
         agentId: requestedAgentId,
         model: requestedModel,
-        prompt: buildReviewPrompt(pullRequest, loaded, previous),
+        prompt: buildReviewPrompt(
+          pullRequest,
+          loaded,
+          previous,
+          checkout.rules,
+        ),
         workdir: checkout.path,
       });
 

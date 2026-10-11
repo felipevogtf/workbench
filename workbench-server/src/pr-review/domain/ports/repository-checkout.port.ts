@@ -5,6 +5,8 @@ export interface RepositoryCheckout {
   path: string;
   /** Commit que quedó en checkout (el último de la rama de la PR). */
   commit: string;
+  /** Contenido de REVIEW_RULES.md (raíz del repo), o null si no existe: entonces se revisa sin reglas. */
+  rules: string | null;
   /** Borra el directorio temporal. */
   dispose(): Promise<void>;
 }
