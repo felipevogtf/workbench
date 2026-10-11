@@ -1,9 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, input, model } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Button } from '@shared/ui/button/button';
 import { Checkbox } from '@shared/ui/checkbox/checkbox';
 import { FormField } from '@shared/ui/form-field/form-field';
+import { Icon } from '@shared/ui/icon/icon';
 import { SaveDialog } from '@shared/ui/save-dialog/save-dialog';
 import { TextInput } from '@shared/ui/text-input/text-input';
+import { Toast } from '@shared/ui/toast/toast';
+import { DEFAULT_OPTIONS, generatePassword } from '../../domain/password-generator';
 import { CredentialItem } from '../../models/credential';
 
 export interface ItemFormValue {
@@ -16,7 +20,7 @@ export interface ItemFormValue {
 /** Agrega o edita un campo (clave y valor) de un grupo. */
 @Component({
   selector: 'app-item-form-dialog',
-  imports: [ReactiveFormsModule, SaveDialog, FormField, TextInput, Checkbox],
+  imports: [ReactiveFormsModule, SaveDialog, FormField, TextInput, Checkbox, Button, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-save-dialog
@@ -57,6 +61,11 @@ export interface ItemFormValue {
             [describedBy]="'item-value-msg'"
           />
         </app-form-field>
+        <div>
+          <button app-button variant="secondary" size="sm" type="button" (click)="generate()">
+            <app-icon name="sparkles" size="1em" /> Generar contraseña
+          </button>
+        </div>
         <app-checkbox formControlName="sensitive">
           Sensible (se oculta hasta que lo muestres)
         </app-checkbox>
@@ -65,6 +74,8 @@ export interface ItemFormValue {
   `,
 })
 export class ItemFormDialog {
+  private readonly toast = inject(Toast);
+
   readonly open = model(false);
   readonly heading = input.required<string>();
   /** El campo que se edita; `null` al agregar. */
@@ -86,6 +97,12 @@ export class ItemFormDialog {
   protected keepsCurrentValue(): boolean {
     const initial = this.initial();
     return !!initial && initial.value === null;
+  }
+
+  /** Pone una contraseña nueva en el valor y marca el campo como sensible (queda oculta). */
+  protected generate(): void {
+    this.form.patchValue({ value: generatePassword(DEFAULT_OPTIONS), sensitive: true });
+    this.toast.info(`Contraseña de ${DEFAULT_OPTIONS.length} caracteres generada`);
   }
 
   protected reset(): void {

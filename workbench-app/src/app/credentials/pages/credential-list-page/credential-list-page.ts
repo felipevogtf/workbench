@@ -4,6 +4,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
+import { Dialog } from '@shared/ui/dialog/dialog';
 import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { Icon } from '@shared/ui/icon/icon';
@@ -11,6 +12,7 @@ import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { CredentialGroupCard } from '../../components/credential-group-card/credential-group-card';
+import { PasswordGenerator } from '../../components/password-generator/password-generator';
 import { GroupFormDialog } from '../../components/group-form-dialog/group-form-dialog';
 import { ItemFormDialog, ItemFormValue } from '../../components/item-form-dialog/item-form-dialog';
 import { CredentialsStore } from '../../data-access/credentials.store';
@@ -38,6 +40,8 @@ const normalize = (text: string) =>
     CredentialGroupCard,
     GroupFormDialog,
     ItemFormDialog,
+    Dialog,
+    PasswordGenerator,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './credential-list-page.html',
@@ -52,6 +56,7 @@ export class CredentialListPage {
     initialValue: '',
   });
 
+  protected readonly generatorOpen = signal(false);
   protected readonly groupDialogOpen = signal(false);
   protected readonly editingGroup = signal<CredentialGroup | null>(null);
   protected readonly itemDialogOpen = signal(false);
