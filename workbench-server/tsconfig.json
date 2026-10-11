@@ -21,6 +21,7 @@
       "@issue-transfer/*": ["./src/issue-transfer/*"],
       "@ai-agents/*": ["./src/ai-agents/*"],
       "@pr-review/*": ["./src/pr-review/*"],
+      "@credentials/*": ["./src/credentials/*"],
       "@core/*": ["./src/core/*"],
     },
     "incremental": true,

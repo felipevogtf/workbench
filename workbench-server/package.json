@@ -84,6 +84,7 @@
       "^@issue-transfer/(.*)$": "<rootDir>/issue-transfer/$1",
       "^@ai-agents/(.*)$": "<rootDir>/ai-agents/$1",
       "^@pr-review/(.*)$": "<rootDir>/pr-review/$1",
+      "^@credentials/(.*)$": "<rootDir>/credentials/$1",
       "^@core/(.*)$": "<rootDir>/core/$1"
     },
     "collectCoverageFrom": [

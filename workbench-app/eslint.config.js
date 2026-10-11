@@ -54,6 +54,7 @@ module.exports = tseslint.config(
                 '@tasks/*',
                 '@kanban/*',
                 '@dashboard/*',
+                '@credentials/*',
               ],
               message: stateMessage,
             },
@@ -72,7 +73,7 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
-            { group: ['@tasks/*', '@kanban/*'], message: stateMessage },
+            { group: ['@tasks/*', '@kanban/*', '@credentials/*'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },
@@ -89,7 +90,7 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@pr-review/*', '!@pr-review/index'], message: stateMessage },
-            { group: ['@tasks/*', '@kanban/*'], message: stateMessage },
+            { group: ['@tasks/*', '@kanban/*', '@credentials/*'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },
@@ -105,7 +106,7 @@ module.exports = tseslint.config(
         'error',
         {
           patterns: [
-            { group: ['@kanban/*', '@pr-review/*'], message: stateMessage },
+            { group: ['@kanban/*', '@pr-review/*', '@credentials/*'], message: stateMessage },
             { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
@@ -123,7 +124,10 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@tasks/*', '!@tasks/index'], message: stateMessage },
-            { group: ['@pr-review/*', '@ai-agents/*', '@kanban/*'], message: stateMessage },
+            {
+              group: ['@pr-review/*', '@ai-agents/*', '@kanban/*', '@credentials/*'],
+              message: stateMessage,
+            },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },
@@ -140,7 +144,26 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@tasks/*', '!@tasks/index'], message: stateMessage },
-            { group: ['@pr-review/*', '@ai-agents/*'], message: stateMessage },
+            { group: ['@pr-review/*', '@ai-agents/*', '@credentials/*'], message: stateMessage },
+            { group: ['@core/layout/*'], message: stateMessage },
+          ],
+        },
+      ],
+    },
+  },
+  // credentials no conoce a ningún otro módulo de negocio y ninguno lo conoce a él.
+  {
+    files: ['src/app/credentials/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@tasks/*', '@kanban/*', '@pr-review/*', '@ai-agents/*', '@dashboard/*'],
+              message: stateMessage,
+            },
             { group: ['@core/layout/*'], message: stateMessage },
           ],
         },

@@ -8,6 +8,7 @@ import { KanbanModule } from '@kanban/kanban.module';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
 import { PlannerModule } from '@planner/planner.module';
+import { CredentialsModule } from '@credentials/credentials.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
     PrReviewModule,
     PlannerModule,
     IssueTransferModule,
+    CredentialsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

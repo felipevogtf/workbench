@@ -5,6 +5,7 @@ const REQUIRED_ENV_VARS = [
   'PLANE_WORKSPACE_SLUG',
   'PLANE_USER_ID',
   'REVIEWS_DIR',
+  'ENCRYPTION_KEY',
 ] as const;
 
 // Cada provider de PRs es opcional, pero si se configura debe estar completo.
@@ -32,6 +33,11 @@ export function validateEnv(
         `Incomplete ${provider} configuration, missing: ${absent.join(', ')}`,
       );
     }
+  }
+
+  // Con una clave inválida los valores guardados se cifrarían mal o no se podrían leer.
+  if (!/^[0-9a-fA-F]{64}$/.test(String(config['ENCRYPTION_KEY']))) {
+    throw new Error('ENCRYPTION_KEY must be 32 bytes in hex (64 characters)');
   }
 
   // Una variable vacía cuenta como no definida (se usa el valor por defecto).

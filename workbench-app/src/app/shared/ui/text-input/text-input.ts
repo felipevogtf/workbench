@@ -26,6 +26,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
       [attr.step]="step()"
       [attr.autocomplete]="autocomplete()"
       [attr.list]="suggestions().length ? inputId() + '-list' : null"
+      [attr.aria-label]="ariaLabel()"
       [attr.aria-invalid]="invalid() ? 'true' : null"
       [attr.aria-describedby]="describedBy()"
       (input)="onInput($event)"
@@ -47,7 +48,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 })
 export class TextInput implements ControlValueAccessor {
   readonly inputId = input.required<string>();
-  readonly type = input<'text' | 'search' | 'url' | 'date' | 'number'>('text');
+  readonly type = input<'text' | 'search' | 'url' | 'date' | 'number' | 'password'>('text');
   /** Solo para los tipos `number` y `date`. */
   readonly min = input<string | number | null>(null);
   readonly step = input<string | number | null>(null);
@@ -55,6 +56,8 @@ export class TextInput implements ControlValueAccessor {
   readonly autocomplete = input<string>('off');
   readonly invalid = input(false, { transform: booleanAttribute });
   readonly describedBy = input<string | null>(null);
+  /** Nombre accesible cuando no hay una `<label>` visible junto al control (ej. filas repetidas). */
+  readonly ariaLabel = input<string | null>(null);
   /** Sugerencias de autocompletado (`<datalist>`); el valor sigue siendo libre. */
   readonly suggestions = input<readonly string[]>([]);
 

@@ -40,6 +40,10 @@ describe('app routes', () => {
     expect(await open(url)).toBe(tag);
   });
 
+  it('lazy loads the credentials list at /credentials', async () => {
+    expect(await open('/credentials')).toBe('app-credential-list-page');
+  });
+
   it('lazy loads the agents list at /agents', async () => {
     expect(await open('/agents')).toBe('app-agent-list-page');
   });

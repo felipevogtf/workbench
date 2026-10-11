@@ -7,6 +7,7 @@ const base = {
   PLANE_WORKSPACE_SLUG: 'ws',
   PLANE_USER_ID: 'u',
   REVIEWS_DIR: '/data/reviews',
+  ENCRYPTION_KEY: 'a'.repeat(64),
 };
 
 describe('validateEnv', () => {
@@ -18,6 +19,15 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({ ...base, PLANE_API_KEY: '', REVIEWS_DIR: undefined }),
     ).toThrow(/PLANE_API_KEY, REVIEWS_DIR/);
+  });
+
+  it('wants the encryption key to be 32 bytes in hex', () => {
+    expect(() => validateEnv({ ...base, ENCRYPTION_KEY: 'corta' })).toThrow(
+      /ENCRYPTION_KEY/,
+    );
+    expect(() =>
+      validateEnv({ ...base, ENCRYPTION_KEY: 'z'.repeat(64) }),
+    ).toThrow(/ENCRYPTION_KEY/);
   });
 
   it('wants a PR provider complete or absent', () => {

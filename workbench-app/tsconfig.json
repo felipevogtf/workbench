@@ -20,7 +20,8 @@
       "@ai-agents/*": ["./src/app/ai-agents/*"],
       "@tasks/*": ["./src/app/tasks/*"],
       "@kanban/*": ["./src/app/kanban/*"],
-      "@dashboard/*": ["./src/app/dashboard/*"]
+      "@dashboard/*": ["./src/app/dashboard/*"],
+      "@credentials/*": ["./src/app/credentials/*"]
     },
     "module": "preserve"
   },

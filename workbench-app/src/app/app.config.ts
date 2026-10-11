@@ -8,6 +8,7 @@ import { TASKS_NAV } from '@tasks/tasks.nav';
 import { KANBAN_NAV } from '@kanban/kanban.nav';
 import { PR_REVIEW_NAV } from '@pr-review/pr-review.nav';
 import { AI_AGENTS_NAV } from '@ai-agents/ai-agents.nav';
+import { CREDENTIALS_NAV } from '@credentials/credentials.nav';
 import { routes } from './app.routes';
 
 // Zoneless: en Angular 21 es el comportamiento por defecto (no hay zone.js en el proyecto).
@@ -21,5 +22,6 @@ export const appConfig: ApplicationConfig = {
     provideNavItem(KANBAN_NAV),
     provideNavItem(PR_REVIEW_NAV),
     provideNavItem(AI_AGENTS_NAV),
+    provideNavItem(CREDENTIALS_NAV),
   ],
 };

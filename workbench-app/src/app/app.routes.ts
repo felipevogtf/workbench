@@ -23,6 +23,10 @@ export const routes: Routes = [
     loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.AI_AGENTS_ROUTES),
   },
   {
+    path: 'credentials',
+    loadChildren: () => import('@credentials/credentials.routes').then((m) => m.CREDENTIALS_ROUTES),
+  },
+  {
     path: '**',
     title: 'No encontrado · Workbench',
     loadComponent: () =>
