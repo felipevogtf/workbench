@@ -58,7 +58,10 @@ export class PlaneApiAdapter
 
     const rawIssues = await this.client.getIssues(projectExternalId);
 
-    return rawIssues.map((raw) => this.toRemoteIssueData(raw));
+    // Plane devuelve todos los work items del proyecto; solo interesan los asignados al usuario.
+    return rawIssues
+      .filter((raw) => raw.assignees?.includes(userId))
+      .map((raw) => this.toRemoteIssueData(raw));
   }
 
   async getTicketByKey(key: string): Promise<RemoteTicketData | null> {
