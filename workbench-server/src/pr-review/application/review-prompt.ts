@@ -15,7 +15,7 @@ export interface PreviousReview {
 
 const MAX_DESCRIPTION_CHARS = 4000;
 const MAX_PREVIOUS_REVIEW_CHARS = 6000;
-const MAX_RULES_CHARS = 30000;
+const MAX_RULES_CHARS = 40000;
 
 /** Contexto que recibe el agente: datos de la PR, su descripción y los tickets de Plane que referencia. */
 export function buildReviewPrompt(
