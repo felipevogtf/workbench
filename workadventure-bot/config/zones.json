@@ -1,0 +1,8 @@
+{
+  "tile": 32,
+  "blocked": [
+    { "name": "arriba-centro", "x1": 24, "y1": 2, "x2": 31, "y2": 13 },
+    { "name": "derecha", "x1": 37, "y1": 14, "x2": 42, "y2": 17 },
+    { "name": "abajo-izquierda", "x1": 5, "y1": 25, "x2": 9, "y2": 30 }
+  ]
+}
