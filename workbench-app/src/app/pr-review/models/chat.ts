@@ -64,7 +64,7 @@ export function buildExplainMessage(file: DiffFile, hunk: DiffHunk): string {
 
   return [
     `Explícame qué hace este segmento de código del archivo \`${file.path}\` (${status} en esta PR): ` +
-      'qué cambia, para qué sirve y si ves algo que valga la pena revisar.',
+      'qué cambia y para qué sirve. Sé breve y menciona un problema solo si es real.',
     '',
     `${fence}diff`,
     code,
