@@ -19,9 +19,17 @@ import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { DiffFile } from '../../components/diff-file/diff-file';
+import { PrChat } from '../../components/pr-chat/pr-chat';
 import { SplitHandle } from '../../components/split-handle/split-handle';
+import { PullRequestChatStore } from '../../data-access/pull-request-chat.store';
 import { PullRequestDiffStore } from '../../data-access/pull-request-diff.store';
-import { DIFF_STATUS_LABEL, DiffFileStatus } from '../../models/diff';
+import { buildExplainMessage } from '../../models/chat';
+import {
+  DIFF_STATUS_LABEL,
+  DiffFile as DiffFileData,
+  DiffFileStatus,
+  DiffHunk,
+} from '../../models/diff';
 import { flattenTree } from '../../models/diff-tree';
 import { PROVIDER_LABEL } from '../../models/pull-request';
 
@@ -40,8 +48,19 @@ const HANDLE_PX = 10;
  */
 @Component({
   selector: 'app-pull-request-diff-page',
-  imports: [RouterLink, PageHeader, Button, Card, Icon, Alert, Skeleton, DiffFile, SplitHandle],
-  providers: [PullRequestDiffStore],
+  imports: [
+    RouterLink,
+    PageHeader,
+    Button,
+    Card,
+    Icon,
+    Alert,
+    Skeleton,
+    DiffFile,
+    PrChat,
+    SplitHandle,
+  ],
+  providers: [PullRequestDiffStore, PullRequestChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pull-request-diff-page.html',
   styleUrl: './pull-request-diff-page.scss',
@@ -51,6 +70,7 @@ export class PullRequestDiffPage {
   readonly id = input.required<string>();
 
   protected readonly store = inject(PullRequestDiffStore);
+  private readonly chat = inject(PullRequestChatStore);
   protected readonly providerLabel = PROVIDER_LABEL;
   protected readonly statusLabel = DIFF_STATUS_LABEL;
   /** Añadido lleva «+», eliminado «X» y el resto (modificado, renombrado) el archivo a secas. */
@@ -76,8 +96,16 @@ export class PullRequestDiffPage {
   constructor() {
     effect(() => {
       const id = this.id();
-      untracked(() => void this.store.load(id));
+      untracked(() => {
+        void this.store.load(id);
+        this.chat.bind(id);
+      });
     });
+  }
+
+  /** El botón de IA de un segmento: abre el chat y le pide que lo explique. */
+  protected explainHunk(file: DiffFileData, hunk: DiffHunk): void {
+    void this.chat.ask(buildExplainMessage(file, hunk));
   }
 
   protected toggleFolder(path: string): void {

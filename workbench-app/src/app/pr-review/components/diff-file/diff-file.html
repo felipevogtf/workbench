@@ -28,7 +28,17 @@
 } @else {
   <div class="file__hunks" #hunks>
     @for (hunk of file().hunks; track $index) {
-      <app-diff-hunk [hunk]="hunk" [mode]="mode()" />
+      <app-diff-hunk [hunk]="hunk" [mode]="mode()">
+        <button
+          hunk-actions
+          class="hunk__ai"
+          type="button"
+          title="Pedirle a la IA que explique este segmento"
+          (click)="explain.emit(hunk)"
+        >
+          <app-icon name="sparkles" size="1em" /> Explicar con IA
+        </button>
+      </app-diff-hunk>
     }
     @if (mode() === 'split') {
       <app-split-handle

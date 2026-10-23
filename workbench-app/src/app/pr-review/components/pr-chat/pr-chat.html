@@ -1,0 +1,97 @@
+@if (store.open()) {
+  <section class="panel" role="dialog" aria-label="Chat con la IA" (keydown.escape)="store.close()">
+    <header class="panel__head">
+      <div class="panel__title">
+        <h4>Pregúntale a la IA</h4>
+        <span class="panel__context break-anywhere">{{ context() }}</span>
+      </div>
+      <button
+        app-icon-button
+        type="button"
+        label="Borrar la conversación"
+        [disabled]="store.messages().length === 0"
+        (click)="store.clear()"
+      >
+        <app-icon name="trash" size="1.1rem" />
+      </button>
+      <button app-icon-button type="button" label="Cerrar el chat" (click)="store.close()">
+        <app-icon name="x" size="1.1rem" />
+      </button>
+    </header>
+
+    <div class="panel__messages" #scroller aria-live="polite">
+      @for (message of store.messages(); track $index) {
+        <article class="msg" [attr.data-role]="message.role">
+          <app-markdown-viewer [content]="message.content" />
+        </article>
+      } @empty {
+        <p class="panel__empty">
+          Pregunta lo que quieras sobre esta pull request: la IA tiene el código de la rama a
+          mergear. También puedes usar el botón <app-icon name="sparkles" size="1em" /> de cada
+          segmento del diff para que te explique qué hace.
+        </p>
+      }
+
+      @if (store.sending()) {
+        <div class="panel__pending" role="status">
+          <app-spinner size="1em" label="Pensando" /> Pensando… leer el código puede tardar un rato.
+        </div>
+      }
+
+      @if (store.error(); as error) {
+        <app-alert tone="danger" heading="No se pudo responder">
+          {{ error }}
+          @if (store.canRetry()) {
+            <button
+              alert-action
+              app-button
+              variant="secondary"
+              size="sm"
+              type="button"
+              [disabled]="store.sending()"
+              (click)="store.retry()"
+            >
+              Reintentar
+            </button>
+          }
+        </app-alert>
+      }
+    </div>
+
+    <form class="panel__form" (submit)="$event.preventDefault(); send(box)">
+      <textarea
+        #box
+        class="app-control"
+        rows="2"
+        placeholder="Escribe tu pregunta…"
+        aria-label="Tu pregunta"
+        [disabled]="store.sending()"
+        (input)="draft.set(box.value)"
+        (keydown.enter)="onEnter($event, box)"
+      ></textarea>
+      <button
+        class="panel__send"
+        type="submit"
+        aria-label="Enviar"
+        title="Enviar (Enter)"
+        [disabled]="!draft().trim() || store.sending()"
+      >
+        <app-icon name="send" size="1.1rem" />
+      </button>
+    </form>
+  </section>
+}
+
+<button
+  class="fab"
+  type="button"
+  [attr.aria-expanded]="store.open()"
+  [attr.aria-label]="store.open() ? 'Cerrar el chat' : 'Abrir el chat con la IA'"
+  [title]="store.open() ? 'Cerrar el chat' : 'Preguntarle a la IA'"
+  (click)="store.toggle()"
+>
+  <app-icon [name]="store.open() ? 'x' : 'message-circle'" size="1.5rem" />
+  @if (store.sending() && !store.open()) {
+    <span class="fab__dot" aria-hidden="true"></span>
+  }
+</button>

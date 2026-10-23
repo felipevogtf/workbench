@@ -6,11 +6,19 @@ import {
   input,
   linkedSignal,
   model,
+  output,
   viewChild,
 } from '@angular/core';
 import { Badge, BadgeTone } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
-import { DIFF_STATUS_LABEL, DiffFile as File, DiffFileStatus, countRows } from '../../models/diff';
+import { Icon } from '@shared/ui/icon/icon';
+import {
+  DIFF_STATUS_LABEL,
+  DiffFile as File,
+  DiffFileStatus,
+  DiffHunk as HunkData,
+  countRows,
+} from '../../models/diff';
 import { DiffHunk, DiffHunkMode } from '../diff-hunk/diff-hunk';
 import { SplitHandle } from '../split-handle/split-handle';
 
@@ -40,7 +48,7 @@ export const STATUS_TONE: Record<DiffFileStatus, BadgeTone> = {
  */
 @Component({
   selector: 'app-diff-file',
-  imports: [Badge, Button, DiffHunk, SplitHandle],
+  imports: [Badge, Button, DiffHunk, Icon, SplitHandle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[style.--split]': 'split()' },
   templateUrl: './diff-file.html',
@@ -50,6 +58,8 @@ export class DiffFile {
   readonly file = input.required<File>();
   /** Porcentaje del ancho que se lleva el código de la izquierda (antes). */
   readonly split = model(50);
+  /** Se pidió explicar un segmento con la IA. */
+  readonly explain = output<HunkData>();
 
   private readonly hunksEl = viewChild<ElementRef<HTMLElement>>('hunks');
 

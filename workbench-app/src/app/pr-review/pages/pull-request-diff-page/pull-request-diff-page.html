@@ -94,12 +94,18 @@
         <section class="diff__file" aria-label="Diff del archivo">
           @if (store.selected(); as file) {
             <app-card>
-              <app-diff-file [file]="file" [(split)]="split" />
+              <app-diff-file
+                [file]="file"
+                [(split)]="split"
+                (explain)="explainHunk(file, $event)"
+              />
             </app-card>
           }
         </section>
       </div>
     }
+
+    <app-pr-chat [context]="pr.repo + ' #' + pr.externalId" />
   } @else {
     <div class="stack" aria-busy="true">
       <app-skeleton width="60%" height="2rem" />

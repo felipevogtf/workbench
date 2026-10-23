@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
+import { ChatMessage, ChatReply } from '../models/chat';
 import {
   PullRequest,
   PullRequestDetail,
@@ -50,6 +51,11 @@ export class PullRequestsApi {
   /** Diff unificado de la PR, tal como lo entrega el proveedor. */
   diff(id: string): Observable<string> {
     return this.http.get(`${this.url}/${id}/diff`, { responseType: 'text' });
+  }
+
+  /** Responde al último mensaje de la conversación; el agente lee el repo de la PR. Puede tardar. */
+  chat(id: string, messages: readonly ChatMessage[]): Observable<ChatReply> {
+    return this.http.post<ChatReply>(`${this.url}/${id}/chat`, { messages });
   }
 
   /** Markdown de la última revisión correcta. */
