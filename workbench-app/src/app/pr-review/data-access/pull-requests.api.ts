@@ -2,7 +2,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
-import { ChatFileContext, ChatMessage, ChatReply } from '../models/chat';
+import { ChatMessage } from '@shared/chat/chat.models';
+import { ChatFileContext, ChatReply } from '../models/chat';
 import {
   PullRequest,
   PullRequestDetail,

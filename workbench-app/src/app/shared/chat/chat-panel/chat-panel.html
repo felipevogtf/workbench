@@ -1,0 +1,101 @@
+@let chat = store();
+
+@if (chat.open()) {
+  <section class="panel" role="dialog" aria-label="Chat con la IA" (keydown.escape)="chat.close()">
+    <header class="panel__head">
+      <div class="panel__title">
+        <h4>{{ heading() }}</h4>
+        @if (context()) {
+          <span class="panel__context break-anywhere">{{ context() }}</span>
+        }
+      </div>
+      <button
+        app-icon-button
+        type="button"
+        label="Borrar la conversación"
+        [disabled]="chat.messages().length === 0"
+        (click)="chat.clear()"
+      >
+        <app-icon name="trash" size="1.1rem" />
+      </button>
+      <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
+        <app-icon name="x" size="1.1rem" />
+      </button>
+    </header>
+
+    <ng-content select="[chat-info]" />
+
+    <div class="panel__messages" #scroller aria-live="polite">
+      @for (message of chat.messages(); track $index) {
+        <article class="msg" [attr.data-role]="message.role">
+          <app-markdown-viewer [content]="message.content" />
+        </article>
+      } @empty {
+        <div class="panel__empty"><ng-content select="[chat-empty]" /></div>
+      }
+
+      @if (chat.sending()) {
+        <div class="panel__pending" role="status">
+          <app-spinner size="1em" label="Pensando" /> Pensando… leer el código puede tardar un rato.
+        </div>
+      }
+
+      @if (chat.error(); as error) {
+        <app-alert tone="danger" heading="No se pudo responder">
+          {{ error }}
+          @if (chat.canRetry()) {
+            <button
+              alert-action
+              app-button
+              variant="secondary"
+              size="sm"
+              type="button"
+              [disabled]="chat.sending()"
+              (click)="chat.retry()"
+            >
+              Reintentar
+            </button>
+          }
+        </app-alert>
+      }
+    </div>
+
+    <div class="panel__actions"><ng-content select="[chat-actions]" /></div>
+
+    <form class="panel__form" (submit)="$event.preventDefault(); send(box)">
+      <textarea
+        #box
+        class="app-control"
+        rows="1"
+        aria-label="Tu pregunta"
+        [placeholder]="placeholder()"
+        [disabled]="chat.sending()"
+        (input)="onInput(box)"
+        (keydown.enter)="onEnter($event, box)"
+      ></textarea>
+      <button
+        class="panel__send"
+        type="submit"
+        aria-label="Enviar"
+        title="Enviar (Enter)"
+        [disabled]="!draft().trim() || chat.sending()"
+      >
+        <app-icon name="send" size="1.1rem" />
+      </button>
+    </form>
+  </section>
+}
+
+<button
+  class="fab"
+  type="button"
+  [attr.aria-expanded]="chat.open()"
+  [attr.aria-label]="chat.open() ? 'Cerrar el chat' : 'Abrir el chat con la IA'"
+  [title]="chat.open() ? 'Cerrar el chat' : 'Preguntarle a la IA'"
+  (click)="chat.toggle()"
+>
+  <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
+  @if (chat.sending() && !chat.open()) {
+    <span class="fab__dot" aria-hidden="true"></span>
+  }
+</button>

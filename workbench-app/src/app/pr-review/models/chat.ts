@@ -1,10 +1,5 @@
 import { DIFF_STATUS_LABEL, DiffFile, DiffHunk } from './diff';
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 /** El archivo que el usuario tiene abierto en el diff: se le pasa a la IA para que sepa de qué se habla. */
 export interface ChatFileContext {
   path: string;
@@ -20,9 +15,6 @@ export interface ChatReply {
   /** Commit de la rama de la PR sobre el que contestó el agente. */
   commit: string;
 }
-
-/** Largo máximo de un mensaje que acepta el servidor; lo que pase de ahí se recorta al enviarlo. */
-export const MAX_MESSAGE_CHARS = 30_000;
 
 /** Lo más que se pega de un segmento de código en un mensaje, para dejar espacio a la conversación. */
 const MAX_SNIPPET_CHARS = 20_000;
