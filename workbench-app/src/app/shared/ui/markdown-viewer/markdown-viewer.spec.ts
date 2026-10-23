@@ -16,6 +16,18 @@ describe('MarkdownViewer', () => {
     expect(element.querySelector('code')?.textContent).toBe('código');
   });
 
+  it('joins single line breaks, like Markdown, unless asked to keep them', async () => {
+    const joined = await render('línea uno\nlínea dos');
+    expect(joined.querySelector('br')).toBeNull();
+
+    const fixture = TestBed.createComponent(MarkdownViewer);
+    fixture.componentRef.setInput('content', 'línea uno\nlínea dos');
+    fixture.componentRef.setInput('breaks', true);
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('br')).not.toBeNull();
+  });
+
   it('never lets scripts or event handlers through', async () => {
     const element = await render(
       'Hola <script>window.pwned = true</script> <img src=x onerror="window.pwned = true">',

@@ -21,9 +21,15 @@ import { marked } from 'marked';
 })
 export class MarkdownViewer {
   readonly content = input.required<string>();
+  /** Respeta los saltos de línea simples (lo que escribe una persona); por defecto se juntan, como en Markdown. */
+  readonly breaks = input(false);
 
   protected readonly html = computed(() => {
-    const rendered = marked.parse(this.content(), { async: false, gfm: true });
+    const rendered = marked.parse(this.content(), {
+      async: false,
+      gfm: true,
+      breaks: this.breaks(),
+    });
     // Los enlaces del contenido siempre abren aparte y sin acceso a la ventana de origen.
     return rendered.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
   });

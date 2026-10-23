@@ -126,35 +126,87 @@
   }
 }
 
+// El pie: las acciones de cada pantalla (ej. «Replanificar») y el cuadro para escribir, separados entre sí
+// y de la conversación.
+.panel__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
 .panel__actions {
-  padding: 0 var(--space-3);
+  display: flex;
 
   &:empty {
     display: none;
   }
 }
 
-.panel__form {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-top: 1px solid var(--border);
+// El texto arriba, sin bordes propios, y abajo una barra con el botón de enviar separada por una línea.
+// El borde del conjunto es lo que marca el foco.
+.composer {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--text-color);
+  }
+
+  &:focus-within {
+    border-color: var(--primary);
+  }
 
   textarea {
-    flex: 1;
+    display: block;
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    line-height: 1.4;
     resize: none;
-    // El estilo global de los textarea pide 120px de alto mínimo; aquí debe medir lo mismo que el botón.
-    min-height: var(--touch-target);
+    outline: none;
+
+    &::placeholder {
+      color: var(--text-color);
+      opacity: 0.7;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+    }
   }
+}
+
+.composer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.composer__hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-color);
 }
 
 .panel__send {
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--touch-target);
-  height: var(--touch-target);
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   background: var(--primary);

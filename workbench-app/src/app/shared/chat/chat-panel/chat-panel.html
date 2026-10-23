@@ -28,7 +28,7 @@
     <div class="panel__messages" #scroller aria-live="polite">
       @for (message of chat.messages(); track $index) {
         <article class="msg" [attr.data-role]="message.role">
-          <app-markdown-viewer [content]="message.content" />
+          <app-markdown-viewer [content]="message.content" [breaks]="message.role === 'user'" />
         </article>
       } @empty {
         <div class="panel__empty"><ng-content select="[chat-empty]" /></div>
@@ -60,29 +60,33 @@
       }
     </div>
 
-    <div class="panel__actions"><ng-content select="[chat-actions]" /></div>
+    <footer class="panel__footer">
+      <div class="panel__actions"><ng-content select="[chat-actions]" /></div>
 
-    <form class="panel__form" (submit)="$event.preventDefault(); send(box)">
-      <textarea
-        #box
-        class="app-control"
-        rows="1"
-        aria-label="Tu pregunta"
-        [placeholder]="placeholder()"
-        [disabled]="chat.sending()"
-        (input)="onInput(box)"
-        (keydown.enter)="onEnter($event, box)"
-      ></textarea>
-      <button
-        class="panel__send"
-        type="submit"
-        aria-label="Enviar"
-        title="Enviar (Enter)"
-        [disabled]="!draft().trim() || chat.sending()"
-      >
-        <app-icon name="send" size="1.1rem" />
-      </button>
-    </form>
+      <form class="composer" (submit)="$event.preventDefault(); send(box)">
+        <textarea
+          #box
+          rows="2"
+          aria-label="Tu pregunta"
+          [placeholder]="placeholder()"
+          [disabled]="chat.sending()"
+          (input)="onInput(box)"
+          (keydown.enter)="onEnter($event, box)"
+        ></textarea>
+        <div class="composer__bar">
+          <span class="composer__hint">Enter envía · Mayús+Enter, nueva línea</span>
+          <button
+            class="panel__send"
+            type="submit"
+            aria-label="Enviar"
+            title="Enviar (Enter)"
+            [disabled]="!draft().trim() || chat.sending()"
+          >
+            <app-icon name="send" size="1.1rem" />
+          </button>
+        </div>
+      </form>
+    </footer>
   </section>
 }
 
