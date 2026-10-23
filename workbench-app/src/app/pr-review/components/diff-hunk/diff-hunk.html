@@ -1,0 +1,25 @@
+<div class="hunk__head">
+  <code class="hunk__header">{{ hunk().header }}</code>
+  <div class="hunk__actions"><ng-content select="[hunk-actions]" /></div>
+</div>
+
+<table class="hunk__table">
+  <colgroup>
+    <col class="col-num" />
+    <col />
+    <col class="col-num" />
+    <col />
+  </colgroup>
+  <tbody>
+    @for (row of hunk().rows; track $index) {
+      <tr>
+        <td class="num" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.line }}</td>
+        <td class="code" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.text }}</td>
+        <td class="num num--right" [attr.data-kind]="row.right?.kind ?? 'empty'">
+          {{ row.right?.line }}
+        </td>
+        <td class="code" [attr.data-kind]="row.right?.kind ?? 'empty'">{{ row.right?.text }}</td>
+      </tr>
+    }
+  </tbody>
+</table>

@@ -1,0 +1,34 @@
+<header class="file__head">
+  <div class="file__path">
+    <code class="break-anywhere">{{ file().path }}</code>
+    @if (file().status === 'renamed') {
+      <span class="file__renamed break-anywhere">desde {{ file().oldPath }}</span>
+    }
+  </div>
+  <div class="file__meta">
+    <app-badge [tone]="statusTone[file().status]">{{ statusLabel[file().status] }}</app-badge>
+    <span class="stat stat--add">+{{ file().additions }}</span>
+    <span class="stat stat--del">−{{ file().deletions }}</span>
+  </div>
+</header>
+
+@if (file().binary) {
+  <p class="file__note">Archivo binario: no hay diff para mostrar.</p>
+} @else if (file().hunks.length === 0) {
+  <p class="file__note">
+    Sin cambios de contenido (por ejemplo, solo cambió el nombre o los permisos).
+  </p>
+} @else if (collapsed()) {
+  <div class="file__note">
+    <p>Este archivo tiene {{ rows() }} líneas de diff; mostrarlas todas puede tardar.</p>
+    <button app-button variant="secondary" size="sm" type="button" (click)="show()">
+      Mostrar de todos modos
+    </button>
+  </div>
+} @else {
+  <div class="file__hunks">
+    @for (hunk of file().hunks; track $index) {
+      <app-diff-hunk [hunk]="hunk" />
+    }
+  </div>
+}

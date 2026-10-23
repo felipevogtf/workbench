@@ -47,6 +47,11 @@ export class PullRequestsApi {
     return this.http.post<Review>(`${this.url}/${id}/retry-comment`, {});
   }
 
+  /** Diff unificado de la PR, tal como lo entrega el proveedor. */
+  diff(id: string): Observable<string> {
+    return this.http.get(`${this.url}/${id}/diff`, { responseType: 'text' });
+  }
+
   /** Markdown de la última revisión correcta. */
   latestReview(id: string): Observable<string> {
     return this.http.get(`${this.url}/${id}/review`, { responseType: 'text' });

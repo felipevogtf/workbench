@@ -11,6 +11,9 @@
       </a>
 
       <ng-container actions>
+        <a app-button variant="secondary" [routerLink]="['/pull-requests', pr.id, 'diff']">
+          <app-icon name="diff" size="1em" /> Ver diff
+        </a>
         <a app-button variant="secondary" [href]="pr.url" target="_blank" rel="noopener noreferrer">
           <app-icon name="arrow-outward" size="1em" /> Abrir en {{ providerLabel[pr.provider] }}
         </a>

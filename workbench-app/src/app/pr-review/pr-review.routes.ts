@@ -10,6 +10,14 @@ export const PR_REVIEW_ROUTES: Routes = [
       ),
   },
   {
+    path: ':id/diff',
+    title: 'Cambios · Workbench',
+    loadComponent: () =>
+      import('./pages/pull-request-diff-page/pull-request-diff-page').then(
+        (m) => m.PullRequestDiffPage,
+      ),
+  },
+  {
     path: ':id',
     title: 'Pull request · Workbench',
     loadComponent: () =>

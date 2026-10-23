@@ -1,0 +1,79 @@
+<div class="page">
+  @if (store.error(); as error) {
+    <a app-button variant="ghost" size="sm" routerLink="/pull-requests">
+      <app-icon name="arrow-left" size="1em" /> Pull requests
+    </a>
+    <app-alert tone="danger" heading="No se pudo cargar el diff">{{ error }}</app-alert>
+  } @else if (store.detail(); as pr) {
+    <app-page-header
+      [heading]="pr.title"
+      [subtitle]="pr.repo + ' #' + pr.externalId + ' · Cambios'"
+    >
+      <a back app-button variant="ghost" size="sm" [routerLink]="['/pull-requests', pr.id]">
+        <app-icon name="arrow-left" size="1em" /> Volver a la pull request
+      </a>
+
+      <ng-container actions>
+        <a app-button variant="secondary" [href]="pr.url" target="_blank" rel="noopener noreferrer">
+          <app-icon name="arrow-outward" size="1em" /> Abrir en {{ providerLabel[pr.provider] }}
+        </a>
+      </ng-container>
+    </app-page-header>
+
+    @if (store.files().length === 0) {
+      <app-alert tone="info" heading="Sin cambios">
+        El proveedor no devolvió diferencias para esta pull request.
+      </app-alert>
+    } @else {
+      <div class="diff">
+        <aside class="diff__files" aria-labelledby="files-title">
+          <app-card>
+            <div card-header class="files__head">
+              <h4 id="files-title">Archivos ({{ store.files().length }})</h4>
+              <span class="files__totals">
+                <span class="stat stat--add">+{{ store.additions() }}</span>
+                <span class="stat stat--del">−{{ store.deletions() }}</span>
+              </span>
+            </div>
+
+            <ul class="files">
+              @for (file of store.files(); track file.path) {
+                <li>
+                  <button
+                    type="button"
+                    class="files__item"
+                    [attr.aria-pressed]="file === store.selected()"
+                    (click)="store.select(file.path)"
+                  >
+                    <span class="files__path break-anywhere">{{ file.path }}</span>
+                    <span class="files__meta">
+                      <app-badge [tone]="statusTone[file.status]">{{
+                        statusLabel[file.status]
+                      }}</app-badge>
+                      <span class="stat stat--add">+{{ file.additions }}</span>
+                      <span class="stat stat--del">−{{ file.deletions }}</span>
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </app-card>
+        </aside>
+
+        <section class="diff__file" aria-label="Diff del archivo">
+          @if (store.selected(); as file) {
+            <app-card>
+              <app-diff-file [file]="file" />
+            </app-card>
+          }
+        </section>
+      </div>
+    }
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton width="60%" height="2rem" />
+      <app-skeleton height="120px" />
+      <app-skeleton height="300px" />
+    </div>
+  }
+</div>

@@ -116,6 +116,11 @@ export const ICONS = {
     kind: 'stroke',
     paths: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5', 'M12 15V3'],
   },
+  diff: {
+    viewBox: '0 0 24 24',
+    kind: 'stroke',
+    paths: ['M12 3v14', 'M5 10h14', 'M5 21h14'],
+  },
   alert: {
     viewBox: '0 0 24 24',
     kind: 'stroke',
