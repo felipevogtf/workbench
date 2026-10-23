@@ -47,11 +47,17 @@
   background: var(--warning);
 }
 
+// Todo el panel comparte un mismo margen lateral (`--gutter`): el título, la conversación, las acciones y
+// el cuadro de escritura quedan alineados. Solo hay tres líneas: bajo el encabezado, sobre el pie y la
+// que separa el texto de la barra de abajo.
 .panel {
+  --gutter: 20px;
+
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: min(440px, calc(100vw - 2 * var(--space-4)));
-  height: min(640px, calc(100dvh - 128px));
+  width: min(460px, calc(100vw - 2 * var(--space-4)));
+  height: min(680px, calc(100dvh - 112px));
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   background: var(--background);
@@ -59,18 +65,20 @@
   overflow: hidden;
 }
 
+// ---- Encabezado: título y acciones arriba; lo que sabe la IA, como una etiqueta, debajo.
 .panel__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2) var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--gutter);
   border-bottom: 1px solid var(--border);
 }
 
 .panel__title {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  gap: 2px;
   min-width: 0;
 
   h4 {
@@ -78,33 +86,53 @@
   }
 }
 
+// El subtítulo ocupa una línea; el nombre completo va en el tooltip.
 .panel__context {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
   font-size: 0.8125rem;
   color: var(--text-color);
 }
 
+.panel__tools {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: calc(-1 * var(--space-1));
+}
+
+.panel__info {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--space-3));
+  margin: 0;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--tone-neutral-bg);
+  font-size: 0.75rem;
+  color: var(--text-color);
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// ---- Conversación
 .panel__messages {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-height: 0;
-  padding: var(--space-4);
+  padding: var(--gutter);
   overflow-y: auto;
-}
-
-.panel__empty {
-  margin: auto 0;
-  text-align: center;
-  color: var(--text-color);
-}
-
-.panel__pending {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.875rem;
-  color: var(--text-color);
 }
 
 // El usuario a la derecha con fondo suave; la IA a la izquierda con borde.
@@ -126,8 +154,83 @@
   }
 }
 
-// El pie: las acciones de cada pantalla (ej. «Replanificar») y el cuadro para escribir, separados entre sí
-// y de la conversación.
+.panel__pending {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+// ---- Conversación vacía: qué se puede hacer y preguntas para empezar.
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto 0;
+  text-align: center;
+}
+
+.empty__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--tone-neutral-bg);
+  color: var(--primary);
+}
+
+.empty__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.empty__text {
+  max-width: 40ch;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-color);
+
+  :where(p) {
+    margin: 0;
+  }
+}
+
+.empty__suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    width: 100%;
+    padding: 6px var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--background);
+    font: inherit;
+    font-size: 0.8125rem;
+    text-align: left;
+    color: var(--primary);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--primary);
+    }
+  }
+}
+
+// ---- Pie: acciones de cada pantalla y cuadro de escritura, de borde a borde y sobre el mismo blanco.
 .panel__footer {
   display: flex;
   flex-direction: column;
@@ -136,22 +239,15 @@
 
 .panel__actions {
   display: flex;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--gutter) 0;
 
   &:empty {
     display: none;
   }
 }
 
-// El cuadro de escritura usa todo el ancho del pie, de borde a borde y sobre el mismo fondo blanco del
-// chat: sin recuadro ni relleno. El texto va arriba y abajo una barra con el botón de enviar, separadas por
-// una línea. Si hay acciones encima («Replanificar»), otra línea las separa del cuadro.
 .composer {
   background: transparent;
-
-  .panel__actions:not(:empty) + & {
-    border-top: 1px solid var(--border);
-  }
 
   // Sin recuadro, el foco se nota en la línea que separa el texto de la barra.
   &:focus-within .composer__bar {
@@ -161,7 +257,7 @@
   textarea {
     display: block;
     width: 100%;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3) var(--gutter);
     border: none;
     background: transparent;
     color: var(--primary);
@@ -181,19 +277,61 @@
   }
 }
 
-// Mientras se arrastra un archivo sobre el cuadro, se marca dónde soltarlo.
-.composer.is-dragging {
-  outline: 2px dashed var(--primary);
-  outline-offset: -4px;
+// La barra de abajo: el clip, la ayuda y el botón de enviar, con aire y la línea inset (no llega a los bordes).
+.composer__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 var(--gutter);
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: 1px solid var(--border);
 }
 
-// Los archivos que se van a adjuntar, dentro del bloque y sobre el texto.
+.composer__hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-color);
+}
+
+// El clip: chico, para no agrandar la barra; alineado con el borde izquierdo del texto.
+.composer__clip {
+  flex: none;
+  min-width: 32px;
+  min-height: 32px;
+  margin-left: calc(-1 * var(--space-2));
+  padding: 4px;
+}
+
+.panel__send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--background);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+// ---- Archivos
+// Los que se van a adjuntar, dentro del cuadro y sobre el texto.
 .composer__files {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0;
-  padding: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3) var(--gutter) 0;
   list-style: none;
 }
 
@@ -253,20 +391,12 @@
 
 .composer__error {
   margin: 0;
-  padding: var(--space-2) var(--space-4) 0;
+  padding: var(--space-2) var(--gutter) 0;
   font-size: 0.75rem;
   color: var(--tone-danger-fg);
 }
 
-// El clip: chico, para no agrandar la barra.
-.composer__clip {
-  flex: none;
-  min-width: 28px;
-  min-height: 28px;
-  padding: 2px;
-}
-
-// Los archivos de un mensaje, bajo su texto.
+// Los de un mensaje, bajo su texto.
 .msg__files {
   display: flex;
   flex-wrap: wrap;
@@ -295,39 +425,30 @@
   }
 }
 
-.composer__bar {
+// Mientras se arrastran archivos sobre el panel, una capa dice dónde soltarlos. No recibe eventos: el panel
+// de abajo es el que los atiende.
+.panel__drop {
+  position: absolute;
+  inset: var(--space-2);
+  z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border-top: 1px solid var(--border);
-}
+  border: 2px dashed var(--primary);
+  border-radius: calc(var(--border-radius) - var(--space-2));
+  background: rgba(251, 251, 251, 0.94);
+  text-align: center;
+  color: var(--primary);
+  pointer-events: none;
 
-.composer__hint {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  color: var(--text-color);
-}
+  p {
+    margin: 0;
+    font-weight: 700;
+  }
 
-.panel__send {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--background);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
+  small {
+    color: var(--text-color);
   }
 }

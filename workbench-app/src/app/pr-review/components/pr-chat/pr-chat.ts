@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Icon } from '@shared/ui/icon/icon';
 import { PullRequestChatStore } from '../../data-access/pull-request-chat.store';
@@ -12,7 +12,6 @@ import { PullRequestChatStore } from '../../data-access/pull-request-chat.store'
   imports: [ChatPanel, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pr-chat.html',
-  styleUrl: './pr-chat.scss',
 })
 export class PrChat {
   /** Qué PR es, para el encabezado (ej. `garage-labs/miobra-web #173`). */
@@ -20,8 +19,16 @@ export class PrChat {
 
   protected readonly store = inject(PullRequestChatStore);
 
-  /** Solo el nombre del archivo: la ruta completa va en el tooltip. */
-  protected fileName(path: string): string {
-    return path.slice(path.lastIndexOf('/') + 1);
-  }
+  /** Preguntas para empezar. */
+  protected readonly suggestions = [
+    '¿Qué hace esta pull request, en pocas líneas?',
+    '¿Ves algún riesgo o error en estos cambios?',
+    '¿Qué pruebas faltarían para darla por buena?',
+  ];
+
+  /** Qué archivo sabe la IA que se está mirando: solo su nombre; la ruta completa va en el tooltip. */
+  protected readonly info = computed(() => {
+    const file = this.store.context();
+    return file ? `Hablando de ${file.path.slice(file.path.lastIndexOf('/') + 1)}` : null;
+  });
 }

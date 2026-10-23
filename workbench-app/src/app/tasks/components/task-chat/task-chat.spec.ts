@@ -79,8 +79,8 @@ describe('TaskChat', () => {
     const element = await render();
 
     expect(element.querySelector('.panel__context')?.textContent).toContain('Vista de órdenes');
-    expect(element.querySelector('.info')?.textContent).toContain('Con el plan de');
-    expect(element.querySelector('.panel__empty')?.textContent).toContain('Replanificar');
+    expect(element.querySelector('.panel__info')?.textContent).toContain('Con el plan de');
+    expect(element.querySelector('.empty__text')?.textContent).toContain('Replanificar');
   });
 
   it('says there is no plan yet when the task has none', async () => {
@@ -89,7 +89,7 @@ describe('TaskChat', () => {
 
     const element = await render();
 
-    expect(element.querySelector('.info')?.textContent).toContain('Todavía sin plan');
+    expect(element.querySelector('.panel__info')?.textContent).toContain('Todavía sin plan');
   });
 
   it('cannot replan until the user has said something', async () => {

@@ -50,7 +50,7 @@ describe('PrChat', () => {
 
     expect(element.querySelector('.panel')).not.toBeNull();
     expect(element.querySelector('.panel__context')?.textContent).toContain('ws/app #7');
-    expect(element.querySelector('.panel__empty')).not.toBeNull();
+    expect(element.querySelector('.empty')).not.toBeNull();
   });
 
   it('sends what is typed with Enter and shows the answer as Markdown', async () => {
@@ -78,13 +78,13 @@ describe('PrChat', () => {
   it('shows which file the AI knows the user is looking at, and nothing without one', async () => {
     store.toggle();
     const element = await render();
-    expect(element.querySelector('.panel__file')).toBeNull();
+    expect(element.querySelector('.panel__info')).toBeNull();
 
     store.setContext({ path: 'src/Services/Gps.php', status: 'modified' });
     await settle();
     await settle();
 
-    const chip = element.querySelector('.panel__file')!;
+    const chip = element.querySelector('.panel__info')!;
     expect(chip.textContent).toContain('Gps.php');
     expect(chip.textContent).not.toContain('src/Services');
     expect(chip.getAttribute('title')).toBe('src/Services/Gps.php');

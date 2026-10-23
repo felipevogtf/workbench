@@ -23,13 +23,14 @@ const MAX_INPUT_PX = 144;
 /**
  * Chat flotante con la IA: un botón en la esquina abre el panel con la conversación y el cuadro para
  * escribir. El estado vive en la `ChatConversation` que se le pasa, de modo que otras partes de la
- * pantalla también pueden escribirle. Cada pantalla lo completa con sus propios elementos:
- * - `[chat-info]`: qué contexto tiene la IA (ej. el archivo abierto), bajo el encabezado.
- * - `[chat-empty]`: qué se puede hacer cuando la conversación está vacía.
- * - `[chat-actions]`: acciones junto al cuadro de texto (ej. «Replanificar»).
+ * pantalla también pueden escribirle. Cada pantalla lo completa con:
+ * - `info`: qué contexto tiene la IA (ej. el archivo abierto), como una etiqueta bajo el título.
+ * - `emptyTitle`, `suggestions` y `[chat-empty]`: lo que se ve con la conversación vacía; elegir una
+ *   sugerencia la deja escrita en el cuadro para editarla antes de enviarla.
+ * - `[chat-actions]`: acciones sobre el cuadro de texto (ej. «Replanificar»).
  *
- * También permite adjuntar archivos (PDF, imágenes, texto y CSV) con el clip, arrastrándolos al cuadro o
- * pegando una imagen.
+ * También permite adjuntar archivos (PDF, imágenes, texto y CSV) con el clip, soltándolos en cualquier
+ * parte del panel o pegando una imagen.
  */
 @Component({
   selector: 'app-chat-panel',
@@ -43,11 +44,18 @@ export class ChatPanel {
   readonly heading = input.required<string>();
   /** Sobre qué se conversa, bajo el título (ej. `garage-labs/miobra-web #173`). */
   readonly context = input('');
+  /** Qué contexto tiene la IA ahora (ej. «Hablando de big.ts»); sin valor no se muestra nada. */
+  readonly info = input<string | null>(null);
+  /** El detalle de `info` (ej. la ruta completa), como ayuda al pasar el puntero. */
+  readonly infoTitle = input('');
   readonly placeholder = input('Escribe tu pregunta…');
+  readonly emptyTitle = input('¿En qué te ayudo?');
+  /** Preguntas de ejemplo para empezar. */
+  readonly suggestions = input<readonly string[]>([]);
 
   /** Lo escrito, solo para saber si el botón de enviar tiene algo que enviar. */
   protected readonly draft = signal('');
-  /** Se están arrastrando archivos sobre el cuadro de texto. */
+  /** Se están arrastrando archivos sobre el panel. */
   protected readonly dragging = signal(false);
 
   protected readonly accept = ATTACHMENT_ACCEPT;
@@ -59,6 +67,7 @@ export class ChatPanel {
   };
 
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
+  private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('box');
 
   constructor() {
     // Al llegar un mensaje (o abrirse el panel) se baja hasta el final de la conversación.
@@ -77,6 +86,15 @@ export class ChatPanel {
   protected onInput(box: HTMLTextAreaElement): void {
     this.draft.set(box.value);
     this.fit(box);
+  }
+
+  /** Deja la pregunta sugerida escrita en el cuadro, lista para editarla o enviarla. */
+  protected useSuggestion(text: string): void {
+    const box = this.textarea()?.nativeElement;
+    if (!box) return;
+    box.value = text;
+    this.onInput(box);
+    box.focus();
   }
 
   /** Lee el texto del cuadro y lo vacía ahí mismo, sin esperar a que se repinte la pantalla. */
@@ -112,6 +130,12 @@ export class ChatPanel {
     this.dragging.set(true);
   }
 
+  /** Al pasar el puntero de un elemento del panel a otro también se dispara; solo cuenta salir del panel. */
+  protected onDragLeave(event: DragEvent): void {
+    const panel = event.currentTarget as HTMLElement;
+    if (!panel.contains(event.relatedTarget as Node | null)) this.dragging.set(false);
+  }
+
   protected onDrop(event: DragEvent): void {
     event.preventDefault();
     this.dragging.set(false);
@@ -127,7 +151,7 @@ export class ChatPanel {
     void this.store().attach(files);
   }
 
-  /** El cuadro parte de una línea (como el botón de enviar) y crece con el texto hasta un tope. */
+  /** El cuadro parte de dos líneas y crece con el texto hasta un tope. */
   private fit(box: HTMLTextAreaElement): void {
     box.style.height = 'auto';
     box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_PX)}px`;

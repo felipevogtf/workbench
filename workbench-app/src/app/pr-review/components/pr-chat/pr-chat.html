@@ -1,16 +1,14 @@
-<app-chat-panel [store]="store" heading="Pregúntale a la IA" [context]="context()">
-  @if (store.context(); as file) {
-    <p chat-info class="panel__file" [title]="file.path">
-      <app-icon name="file" size="1em" />
-      <span
-        >Hablando de <code>{{ fileName(file.path) }}</code></span
-      >
-    </p>
-  }
-
+<app-chat-panel
+  [store]="store"
+  heading="Pregúntale a la IA"
+  [context]="context()"
+  [info]="info()"
+  [infoTitle]="store.context()?.path ?? ''"
+  emptyTitle="¿Qué quieres saber de esta PR?"
+  [suggestions]="suggestions"
+>
   <p chat-empty>
-    Pregunta lo que quieras sobre esta pull request: la IA tiene el código de la rama a mergear.
-    También puedes usar el botón <app-icon name="sparkles" size="1em" /> de cada segmento del diff
-    para que te explique qué hace.
+    La IA tiene el código de la rama a mergear. También puedes usar el botón
+    <app-icon name="sparkles" size="1em" /> de cada segmento del diff para que te explique qué hace.
   </p>
 </app-chat-panel>

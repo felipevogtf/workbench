@@ -141,33 +141,54 @@ describe('ChatPanel attachments', () => {
     expect(element.querySelector('.file__name')?.textContent).toBe('informe.pdf');
   });
 
-  it('attaches the files dropped on the box and marks where to drop while dragging', async () => {
+  it('attaches the files dropped anywhere on the panel, and says where to drop while dragging', async () => {
     const element = await render();
-    const composer = element.querySelector('.composer')!;
+    const panel = element.querySelector('.panel')!;
+    const messages = element.querySelector('.panel__messages')!;
 
-    composer.dispatchEvent(dropEvent('dragover', [pdf()]));
+    messages.dispatchEvent(dropEvent('dragover', [pdf()]));
     await settle();
-    expect(composer.classList.contains('is-dragging')).toBe(true);
+    expect(element.querySelector('.panel__drop')?.textContent).toContain('Suelta los archivos');
 
-    composer.dispatchEvent(dropEvent('drop', [pdf('soltado.pdf')]));
+    messages.dispatchEvent(dropEvent('drop', [pdf('soltado.pdf')]));
     await settle();
     await settle();
 
-    expect(composer.classList.contains('is-dragging')).toBe(false);
+    expect(panel.querySelector('.panel__drop')).toBeNull();
     expect(chat.uploads).toHaveBeenCalledTimes(1);
     expect(element.querySelector('.file__name')?.textContent).toBe('soltado.pdf');
   });
 
+  it('keeps showing where to drop while the pointer moves between parts of the panel, and stops when it leaves', async () => {
+    const element = await render();
+    const panel = element.querySelector('.panel')!;
+    const messages = element.querySelector('.panel__messages')!;
+    messages.dispatchEvent(dropEvent('dragover', [pdf()]));
+    await settle();
+
+    // Pasar de la conversación al pie sigue dentro del panel.
+    panel.dispatchEvent(
+      dropEvent('dragleave', [], { relatedTarget: element.querySelector('.composer') }),
+    );
+    await settle();
+    expect(element.querySelector('.panel__drop')).not.toBeNull();
+
+    // Salir del panel quita la capa.
+    panel.dispatchEvent(dropEvent('dragleave', [], { relatedTarget: null }));
+    await settle();
+    expect(element.querySelector('.panel__drop')).toBeNull();
+  });
+
   it('does not react to dragging something that is not a file, like selected text', async () => {
     const element = await render();
-    const composer = element.querySelector('.composer')!;
+    const panel = element.querySelector('.panel')!;
 
     const event = dropEvent('dragover', []);
-    composer.dispatchEvent(event);
+    panel.dispatchEvent(event);
     await settle();
 
     expect(event.defaultPrevented).toBe(false);
-    expect(composer.classList.contains('is-dragging')).toBe(false);
+    expect(element.querySelector('.panel__drop')).toBeNull();
   });
 
   it('attaches a pasted file (a screenshot) instead of pasting it, but pastes text as usual', async () => {
@@ -266,5 +287,79 @@ describe('ChatPanel attachments', () => {
     const bubble = element.querySelector('.msg[data-role="user"]')!;
     expect(bubble.querySelector('.msg__files')?.textContent).toContain('informe.pdf');
     expect(element.querySelector('.composer__files')).toBeNull();
+  });
+});
+
+describe('ChatPanel empty state and context', () => {
+  let chat: FakeConversation;
+
+  beforeEach(() => {
+    localStorage.clear();
+    chat = new FakeConversation();
+    chat.bind('k');
+    chat.toggle();
+  });
+
+  async function render(inputs: Record<string, unknown> = {}): Promise<HTMLElement> {
+    const fixture = TestBed.createComponent(ChatPanel);
+    fixture.componentRef.setInput('store', chat);
+    fixture.componentRef.setInput('heading', 'Chat de prueba');
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+  it('says what the chat is for and offers questions to start with', async () => {
+    const element = await render({
+      emptyTitle: '¿Cómo mejoramos el plan?',
+      suggestions: ['Primera pregunta', 'Segunda pregunta'],
+    });
+
+    expect(element.querySelector('.empty__title')?.textContent).toBe('¿Cómo mejoramos el plan?');
+    expect(
+      Array.from(element.querySelectorAll('.empty__suggestions button')).map((b) =>
+        b.textContent?.trim(),
+      ),
+    ).toEqual(['Primera pregunta', 'Segunda pregunta']);
+  });
+
+  it('leaves the chosen question written in the box, ready to edit, without sending it', async () => {
+    const element = await render({ suggestions: ['¿Qué dudas deja el plan?'] });
+    const box = element.querySelector<HTMLTextAreaElement>('textarea')!;
+
+    element.querySelector<HTMLButtonElement>('.empty__suggestions button')!.click();
+    await settle();
+
+    expect(box.value).toBe('¿Qué dudas deja el plan?');
+    expect(chat.requests()).toEqual([]);
+    expect(element.querySelector<HTMLButtonElement>('.panel__send')!.disabled).toBe(false);
+  });
+
+  it('has no suggestions list when there are none, and stops showing the start once there are messages', async () => {
+    const element = await render();
+    expect(element.querySelector('.empty__suggestions')).toBeNull();
+
+    await chat.send('hola');
+    await settle();
+    await settle();
+
+    expect(element.querySelector('.empty')).toBeNull();
+  });
+
+  it('shows what the AI knows as a label under the title, with the detail as a tooltip', async () => {
+    const element = await render({ info: 'Hablando de big.ts', infoTitle: 'src/big.ts' });
+
+    const label = element.querySelector('.panel__info')!;
+    expect(label.textContent).toContain('Hablando de big.ts');
+    expect(label.getAttribute('title')).toBe('src/big.ts');
+    expect(element.querySelector('.panel__head')!.contains(label)).toBe(true);
+  });
+
+  it('shows no label without context', async () => {
+    const element = await render();
+
+    expect(element.querySelector('.panel__info')).toBeNull();
   });
 });

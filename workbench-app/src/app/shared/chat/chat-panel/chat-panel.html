@@ -1,29 +1,43 @@
 @let chat = store();
 
 @if (chat.open()) {
-  <section class="panel" role="dialog" aria-label="Chat con la IA" (keydown.escape)="chat.close()">
+  <section
+    class="panel"
+    role="dialog"
+    aria-label="Chat con la IA"
+    (keydown.escape)="chat.close()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
     <header class="panel__head">
       <div class="panel__title">
         <h4>{{ heading() }}</h4>
         @if (context()) {
-          <span class="panel__context break-anywhere">{{ context() }}</span>
+          <span class="panel__context" [title]="context()">{{ context() }}</span>
         }
       </div>
-      <button
-        app-icon-button
-        type="button"
-        label="Borrar la conversación"
-        [disabled]="chat.messages().length === 0"
-        (click)="chat.clear()"
-      >
-        <app-icon name="trash" size="1.1rem" />
-      </button>
-      <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
-        <app-icon name="x" size="1.1rem" />
-      </button>
+      <div class="panel__tools">
+        <button
+          app-icon-button
+          type="button"
+          label="Borrar la conversación"
+          [disabled]="chat.messages().length === 0"
+          (click)="chat.clear()"
+        >
+          <app-icon name="trash" size="1.1rem" />
+        </button>
+        <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
+          <app-icon name="x" size="1.1rem" />
+        </button>
+      </div>
+      @if (info()) {
+        <p class="panel__info" [title]="infoTitle() || info()">
+          <app-icon name="file" size="1em" />
+          <span>{{ info() }}</span>
+        </p>
+      }
     </header>
-
-    <ng-content select="[chat-info]" />
 
     <div class="panel__messages" #scroller aria-live="polite">
       @for (message of chat.messages(); track $index) {
@@ -41,7 +55,24 @@
           }
         </article>
       } @empty {
-        <div class="panel__empty"><ng-content select="[chat-empty]" /></div>
+        <div class="empty">
+          <span class="empty__icon" aria-hidden="true">
+            <app-icon name="sparkles" size="1.4rem" />
+          </span>
+          <h5 class="empty__title">{{ emptyTitle() }}</h5>
+          <div class="empty__text"><ng-content select="[chat-empty]" /></div>
+          @if (suggestions().length > 0) {
+            <ul class="empty__suggestions" aria-label="Preguntas sugeridas">
+              @for (suggestion of suggestions(); track suggestion) {
+                <li>
+                  <button type="button" (click)="useSuggestion(suggestion)">
+                    {{ suggestion }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
       }
 
       @if (chat.sending()) {
@@ -73,14 +104,7 @@
     <footer class="panel__footer">
       <div class="panel__actions"><ng-content select="[chat-actions]" /></div>
 
-      <form
-        class="composer"
-        [class.is-dragging]="dragging()"
-        (submit)="$event.preventDefault(); send(box)"
-        (dragover)="onDragOver($event)"
-        (dragleave)="dragging.set(false)"
-        (drop)="onDrop($event)"
-      >
+      <form class="composer" (submit)="$event.preventDefault(); send(box)">
         @if (chat.draftAttachments().length > 0) {
           <ul class="composer__files" aria-label="Archivos para adjuntar">
             @for (file of chat.draftAttachments(); track file.key) {
@@ -156,6 +180,14 @@
         </div>
       </form>
     </footer>
+
+    @if (dragging()) {
+      <div class="panel__drop" aria-hidden="true">
+        <app-icon name="paperclip" size="1.6rem" />
+        <p>Suelta los archivos para adjuntarlos</p>
+        <small>PDF, imágenes, texto o CSV · hasta 10 MB</small>
+      </div>
+    }
   </section>
 }
 

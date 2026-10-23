@@ -25,6 +25,13 @@ export class TaskChat {
   readonly issue = input.required<Issue>();
 
   protected readonly chat = inject(TaskChatStore);
+
+  /** Preguntas para empezar. */
+  protected readonly suggestions = [
+    '¿Qué dudas o supuestos deja el plan?',
+    '¿Falta algún paso o algún riesgo en el plan?',
+    '¿El plan cubre todo lo que pide la descripción?',
+  ];
   protected readonly plans = inject(PlansStore);
   private readonly toast = inject(Toast);
 
