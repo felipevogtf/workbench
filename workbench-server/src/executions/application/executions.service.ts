@@ -179,8 +179,15 @@ export class ExecutionsService {
       this.refreshStages(execution);
       next = await this.buildJob(execution, 'develop', ticket);
     } else {
+      // Se arma de nuevo, no se copia el viejo: así recoge los cambios hechos a los agentes (su prompt y
+      // sus herramientas) desde que falló, que suele ser justo lo que se arregló antes de reintentar.
       this.refreshStages(execution);
-      next = last.retry();
+      next = await this.buildJob(
+        execution,
+        last.kind,
+        ticket ?? undefined,
+        last.attempt + 1,
+      );
     }
     if (next.kind === 'tickets' || next.kind === 'publish') {
       execution.setStage(next.kind, 'running');
@@ -241,8 +248,12 @@ export class ExecutionsService {
         const ticket = execution.ticket(job.ticketId);
         const { headBefore, headAfter } = job.result ?? {};
         if (!headAfter || headAfter === headBefore) {
+          // Casi siempre es porque no pudo hacer algo (un comando sin permiso, por ejemplo): su
+          // explicación es lo que le sirve a quien lee el error.
+          ticket.summary = output.slice(0, MAX_SUMMARY_CHARS) || null;
+          const why = output.replace(/\s+/g, ' ').trim().slice(0, 400);
           throw new DomainError(
-            `The developer made no changes for the ticket "${ticket.title}"`,
+            `The developer made no changes for the ticket "${ticket.title}"${why ? `: ${why}` : ''}`,
           );
         }
         ticket.startSha ??= headBefore ?? null;
@@ -347,6 +358,7 @@ export class ExecutionsService {
     execution: Execution,
     kind: StageKey,
     ticket?: ExecutionTicket,
+    attempt = 1,
   ): Promise<Job> {
     const base = {
       repo: {
@@ -362,6 +374,7 @@ export class ExecutionsService {
         executionId: execution.id,
         kind,
         payload: { ...base, prompt: '', agent: null },
+        attempt,
       });
     }
 
@@ -409,6 +422,7 @@ export class ExecutionsService {
       kind,
       ticketId: ticket?.id ?? null,
       payload,
+      attempt,
     });
   }
 

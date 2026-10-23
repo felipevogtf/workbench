@@ -146,6 +146,10 @@ export class Execution {
     this.props.status = 'failed';
     this.props.error = message.slice(0, 2000);
     this.props.finishedAt = new Date();
+    // Nada sigue en marcha: una etapa que quedara «corriendo» giraría para siempre en la pantalla.
+    for (const stage of this.props.stages) {
+      if (stage.status === 'running') stage.status = 'pending';
+    }
     this.touch();
   }
 

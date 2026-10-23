@@ -67,7 +67,18 @@ Cada agente recibe solo las herramientas que **el servidor pide y esta lista per
 alguien cambiara los agentes en el servidor, no podrían darles más de lo que pone aquí. Por defecto:
 
 - `tickets` y `review`: leer (`Read`, `Grep`, `Glob`) y `git log/show/diff`.
-- `develop`: además editar y crear archivos y correr `npm test`, `npm run test|lint|build`.
+- `develop`: además editar y crear archivos, instalar dependencias (`npm install`, `npm ci`) y correr
+  `npm test`, `npm run test|lint|build`.
+
+  **Ojo con `npm install`:** ejecuta los scripts de instalación de los paquetes que se bajan, es decir, código
+  de terceros en tu PC. Hace falta para que el desarrollador pueda compilar y corregir (sin `node_modules`
+  no puede), pero si prefieres no darle ese permiso, quítalo en tu `runner.config.json`:
+
+  ```json
+  "allowedTools": { "develop": ["Read", "Grep", "Glob", "Edit", "Write", "Bash(npm test:*)"] }
+  ```
+
+  Lo que pongas ahí manda sobre lo que pida el servidor.
 
 Nadie hace `git push` salvo el runner, y solo de la rama de la ejecución. El agente trabaja dentro de un
 `git worktree` propio en `workDir/worktrees/`, y corre sin tus hooks ni servidores MCP de usuario

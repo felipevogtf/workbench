@@ -260,6 +260,61 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('retrying after the agents were fixed', () => {
+    it('uses the agents as they are now, not as they were when the job failed', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      const before = jobs.items.at(-1)!;
+      expect(before.payload.agent?.allowedTools).toEqual(['Read']);
+      await answer({}, false, 'permiso denegado');
+
+      // Se le dio a los agentes lo que faltaba y se reintenta.
+      agents.tools = ['Read', 'Bash(npm install:*)'];
+      await service.retry(execution.id);
+
+      const retried = jobs.items.at(-1)!;
+      expect(retried).toMatchObject({
+        kind: 'develop',
+        status: 'pending',
+        attempt: 2,
+      });
+      expect(retried.id).not.toBe(before.id);
+      expect(retried.payload.agent?.allowedTools).toEqual([
+        'Read',
+        'Bash(npm install:*)',
+      ]);
+      expect(retried.ticketId).toBe(before.ticketId);
+    });
+  });
+
+  describe('when the developer cannot do what the reviewer asked', () => {
+    it('fails with the explanation of the developer, and leaves no stage spinning', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: REJECTED }); // el revisor pide correcciones: otra vuelta de desarrollo
+      await answer({
+        output:
+          'No pude instalar el paquete: el permiso para npm i fue denegado.',
+        headBefore: 'bbb',
+        headAfter: 'bbb',
+      });
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('made no changes');
+      expect(current.error).toContain('No pude instalar el paquete');
+      expect(current.tickets[0].summary).toContain(
+        'No pude instalar el paquete',
+      );
+      // La ejecución ya no está en marcha: ninguna etapa debe seguir «corriendo».
+      expect(current.stages.map((s) => s.status)).not.toContain('running');
+      expect(current.stages.find((s) => s.key === 'develop')!.status).toBe(
+        'failed',
+      );
+    });
+  });
+
   describe('the review loop', () => {
     async function reachFirstReview() {
       const execution = await service.start('issue-1');
@@ -267,6 +322,22 @@ describe('ExecutionsService', () => {
       await answer(developed('aaa', 'bbb'));
       return execution;
     }
+
+    it('tells the reviewer to ask only for what the developer can do', async () => {
+      await reachFirstReview();
+      const review = jobs.items.at(-1)!;
+
+      expect(review.payload.prompt).toContain('comprobaciones manuales');
+    });
+
+    it('tells the developer to install the dependencies and not to stop on a denied command', async () => {
+      await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      const develop = jobs.items.at(-1)!;
+
+      expect(develop.payload.prompt).toContain('npm install');
+      expect(develop.payload.prompt).toContain('no te detengas');
+    });
 
     it('sends the reviewer feedback back to the developer', async () => {
       const execution = await reachFirstReview();

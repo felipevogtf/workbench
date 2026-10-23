@@ -46,17 +46,6 @@ export class Job {
     return new Job(props);
   }
 
-  /** Un trabajo nuevo, igual a este, para reintentarlo tras un fallo. */
-  retry(): Job {
-    return Job.create({
-      executionId: this.props.executionId,
-      kind: this.props.kind,
-      ticketId: this.props.ticketId,
-      payload: this.props.payload,
-      attempt: this.props.attempt + 1,
-    });
-  }
-
   get id(): string {
     return this.props.id;
   }

@@ -136,13 +136,14 @@ export class FakePlans implements PlansGatewayPort {
 
 export class FakeAgents implements AgentsGatewayPort {
   provider = 'claude';
+  tools = ['Read'];
   getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent> {
     return Promise.resolve({
       name: `default-${module}`,
       provider: this.provider,
       model: 'claude-sonnet-5-5',
       systemPrompt: `prompt de ${module}`,
-      allowedTools: ['Read'],
+      allowedTools: [...this.tools],
     });
   }
 }
