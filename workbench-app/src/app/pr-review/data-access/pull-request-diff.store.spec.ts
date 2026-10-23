@@ -42,6 +42,29 @@ describe('PullRequestDiffStore', () => {
     expect(store.deletions()).toBe(1);
   });
 
+  it('selects the first file of the folder tree, not the first of the diff', async () => {
+    api.diff.mockReturnValue(
+      of(`diff --git a/root.ts b/root.ts
+--- a/root.ts
++++ b/root.ts
+@@ -1 +1 @@
+-a
++b
+diff --git a/src/inner.ts b/src/inner.ts
+--- a/src/inner.ts
++++ b/src/inner.ts
+@@ -1 +1 @@
+-a
++b
+`),
+    );
+
+    await store.load('p1');
+
+    expect(store.files()[0].path).toBe('root.ts');
+    expect(store.selected()?.path).toBe('src/inner.ts');
+  });
+
   it('shows the file that was picked', async () => {
     await store.load('p1');
 

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { parseUnifiedDiff } from '../models/diff';
+import { buildFileTree, treeOrder } from '../models/diff-tree';
 import { PullRequestDetail } from '../models/pull-request';
 import { PullRequestsApi } from './pull-requests.api';
 
@@ -24,9 +25,12 @@ export class PullRequestDiffStore {
   readonly additions = computed(() => this.files().reduce((sum, f) => sum + f.additions, 0));
   readonly deletions = computed(() => this.files().reduce((sum, f) => sum + f.deletions, 0));
 
-  /** El archivo elegido; mientras no se elija ninguno (o si desapareció), el primero. */
+  /** Los archivos agrupados por carpeta, como se muestran. */
+  readonly tree = computed(() => buildFileTree(this.files()));
+
+  /** El archivo elegido; mientras no se elija ninguno (o si desapareció), el primero del árbol. */
   readonly selected = computed(() => {
-    const files = this.files();
+    const files = treeOrder(this.tree());
     const path = this.selectedPathState();
     return files.find((file) => file.path === path) ?? files[0] ?? null;
   });

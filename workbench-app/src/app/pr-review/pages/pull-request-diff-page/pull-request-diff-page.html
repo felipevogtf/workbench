@@ -37,29 +37,47 @@
             </div>
 
             <ul class="files">
-              @for (file of store.files(); track file.path) {
-                <li>
-                  <button
-                    type="button"
-                    class="files__item"
-                    [attr.data-status]="file.status"
-                    [attr.aria-pressed]="file === store.selected()"
-                    [attr.aria-label]="file.path + ' (' + statusLabel[file.status] + ')'"
-                    [title]="file.path + ' · ' + statusLabel[file.status]"
-                    (click)="store.select(file.path)"
-                  >
-                    <app-icon class="files__icon" [name]="fileIcon[file.status]" size="1.1rem" />
-                    <span class="files__name break-anywhere">
-                      @if (parts(file.path); as part) {
-                        <span class="files__dir">{{ part.dir }}</span
-                        >{{ part.name }}
-                      }
-                    </span>
-                    <span class="files__counts">
-                      <span class="stat stat--add">+{{ file.additions }}</span>
-                      <span class="stat stat--del">−{{ file.deletions }}</span>
-                    </span>
-                  </button>
+              @for (row of rows(); track row.key) {
+                <li [style.--depth]="row.depth">
+                  @if (row.kind === 'dir') {
+                    <button
+                      type="button"
+                      class="files__item files__item--dir"
+                      [attr.aria-expanded]="row.expanded"
+                      [title]="row.key"
+                      (click)="toggleFolder(row.key)"
+                    >
+                      <app-icon
+                        class="files__chevron"
+                        [name]="row.expanded ? 'chevron-down' : 'chevron-right'"
+                        size="1rem"
+                      />
+                      <app-icon class="files__folder" name="folder" size="1.1rem" />
+                      <span class="files__name break-anywhere">{{ row.name }}</span>
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="files__item"
+                      [attr.data-status]="row.file.status"
+                      [attr.aria-pressed]="row.file === store.selected()"
+                      [attr.aria-label]="row.file.path + ' (' + statusLabel[row.file.status] + ')'"
+                      [title]="row.file.path + ' · ' + statusLabel[row.file.status]"
+                      (click)="store.select(row.file.path)"
+                    >
+                      <span class="files__chevron"></span>
+                      <app-icon
+                        class="files__icon"
+                        [name]="fileIcon[row.file.status]"
+                        size="1.1rem"
+                      />
+                      <span class="files__name break-anywhere">{{ row.name }}</span>
+                      <span class="files__counts">
+                        <span class="stat stat--add">+{{ row.file.additions }}</span>
+                        <span class="stat stat--del">−{{ row.file.deletions }}</span>
+                      </span>
+                    </button>
+                  }
                 </li>
               }
             </ul>

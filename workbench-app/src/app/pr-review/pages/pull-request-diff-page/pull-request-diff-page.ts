@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  computed,
   effect,
   inject,
   input,
@@ -21,6 +22,7 @@ import { DiffFile } from '../../components/diff-file/diff-file';
 import { SplitHandle } from '../../components/split-handle/split-handle';
 import { PullRequestDiffStore } from '../../data-access/pull-request-diff.store';
 import { DIFF_STATUS_LABEL, DiffFileStatus } from '../../models/diff';
+import { flattenTree } from '../../models/diff-tree';
 import { PROVIDER_LABEL } from '../../models/pull-request';
 
 const FILES_DEFAULT_PX = 300;
@@ -64,6 +66,11 @@ export class PullRequestDiffPage {
   /** Porcentaje del código que se lleva el lado de antes; se conserva al cambiar de archivo. */
   protected readonly split = signal(50);
 
+  /** Rutas de las carpetas plegadas; todas parten abiertas. */
+  private readonly collapsed = signal<ReadonlySet<string>>(new Set());
+
+  protected readonly rows = computed(() => flattenTree(this.store.tree(), this.collapsed()));
+
   private readonly layout = viewChild<ElementRef<HTMLElement>>('layout');
 
   constructor() {
@@ -73,10 +80,12 @@ export class PullRequestDiffPage {
     });
   }
 
-  /** La carpeta (con su barra final) y el nombre del archivo, para resaltar el nombre. */
-  protected parts(path: string): { dir: string; name: string } {
-    const slash = path.lastIndexOf('/') + 1;
-    return { dir: path.slice(0, slash), name: path.slice(slash) };
+  protected toggleFolder(path: string): void {
+    this.collapsed.update((current) => {
+      const next = new Set(current);
+      if (!next.delete(path)) next.add(path);
+      return next;
+    });
   }
 
   protected dragFiles(clientX: number): void {
