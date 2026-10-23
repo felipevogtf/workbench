@@ -23,6 +23,11 @@
     @if (store.viewed(); as plan) {
       <div class="plan__meta">
         <app-badge [tone]="tone(plan.status)" dot>{{ statusLabel[plan.status] }}</app-badge>
+        @if (plan.revised) {
+          <app-badge dashed title="Se generó actualizando el plan anterior con una conversación">
+            Replanificado
+          </app-badge>
+        }
         <span class="plan__muted">
           {{ plan.agentName }} · {{ plan.model }} · {{ plan.createdAt | timeAgo }}
         </span>

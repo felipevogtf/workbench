@@ -13,6 +13,7 @@ function plan(id: string, status: PlanStatus, extra: Partial<Plan> = {}): Plan {
     agentName: 'default-planner',
     model: 'm',
     repos: [],
+    revised: false,
     error: null,
     createdAt: '2026-10-06T12:00:00Z',
     updatedAt: '2026-10-06T12:00:00Z',
@@ -99,6 +100,20 @@ describe('PlansStore', () => {
 
     expect(store.latestFailed()?.error).toBe('cli exploded');
     expect(api.listPlans.mock.calls.length).toBe(calls);
+  });
+
+  it('says whether the plan could be requested, and sends the conversation when replanning', async () => {
+    await store.load('i1');
+    api.createPlan.mockReturnValueOnce(of(plan('p9', 'pending', { revised: true })));
+    const messages = [{ role: 'user' as const, content: 'Corrige el paso 2' }];
+
+    await expect(store.generate({ messages })).resolves.toBe(true);
+
+    expect(api.createPlan).toHaveBeenLastCalledWith('i1', { messages });
+    expect(store.plans()[0].revised).toBe(true);
+
+    api.createPlan.mockReturnValueOnce(throwError(() => new Error('boom')));
+    await expect(store.generate({ messages })).resolves.toBe(false);
   });
 
   it('shows the backend message when it cannot create the plan', async () => {

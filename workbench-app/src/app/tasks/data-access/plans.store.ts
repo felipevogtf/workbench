@@ -66,16 +66,18 @@ export class PlansStore {
     destroyRef?.onDestroy(() => this.stopPolling());
   }
 
-  /** Pide un plan nuevo (queda en cola) y empieza a seguirlo. */
-  async generate(request: PlanRequest = {}): Promise<void> {
-    if (!this.issueId) return;
+  /** Pide un plan nuevo (queda en cola) y empieza a seguirlo. Devuelve si se pudo pedir. */
+  async generate(request: PlanRequest = {}): Promise<boolean> {
+    if (!this.issueId) return false;
     this.requestingState.set(true);
     try {
       const created = await firstValueFrom(this.api.createPlan(this.issueId, request));
       this.items.update((list) => [created, ...list]);
       this.syncPolling();
+      return true;
     } catch (error) {
       this.toast.error(errorMessage(error));
+      return false;
     } finally {
       this.requestingState.set(false);
     }

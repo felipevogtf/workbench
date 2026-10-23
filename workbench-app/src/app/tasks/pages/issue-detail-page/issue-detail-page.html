@@ -143,6 +143,7 @@
     </div>
 
     <app-issue-form-dialog [(open)]="editOpen" [issue]="issue" />
+    <app-task-chat [issue]="issue" />
     @if (issue.isLocal) {
       <app-transfer-issue-dialog
         [(open)]="transferOpen"

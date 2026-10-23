@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
 import { Issue, IssueInput } from '../models/issue';
-import { Plan, PlanRequest } from '../models/plan';
+import { ChatMessage } from '@shared/chat/chat.models';
+import { Plan, PlanRequest, TaskChatReply } from '../models/plan';
 import {
   Label,
   LabelInput,
@@ -137,6 +138,11 @@ export class TasksApi {
 
   createPlan(issueId: string, request: PlanRequest): Observable<Plan> {
     return this.http.post<Plan>(`${this.base}/issues/${issueId}/plans`, request);
+  }
+
+  /** Conversa sobre la tarea para mejorar su plan; la IA lee la tarea, sus tickets, su plan y el código. Puede tardar. */
+  chatTask(issueId: string, messages: readonly ChatMessage[]): Observable<TaskChatReply> {
+    return this.http.post<TaskChatReply>(`${this.base}/issues/${issueId}/chat`, { messages });
   }
 
   deletePlan(id: string): Observable<void> {

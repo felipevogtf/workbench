@@ -29,7 +29,9 @@ import { Tag } from '@shared/ui/tag/tag';
 import { PriorityBadge } from '../../components/priority-badge/priority-badge';
 import { HoursPanel } from '../../components/hours-panel/hours-panel';
 import { PlanPanel } from '../../components/plan-panel/plan-panel';
+import { TaskChat } from '../../components/task-chat/task-chat';
 import { PlansStore } from '../../data-access/plans.store';
+import { TaskChatStore } from '../../data-access/task-chat.store';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
 import { TransferIssueDialog } from '../../components/transfer-issue-dialog/transfer-issue-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
@@ -60,10 +62,11 @@ import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
     IssueFormDialog,
     TransferIssueDialog,
     PlanPanel,
+    TaskChat,
     HoursPanel,
     Spinner,
   ],
-  providers: [TimeEntriesStore, PlansStore],
+  providers: [TimeEntriesStore, PlansStore, TaskChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './issue-detail-page.html',
   styleUrl: './issue-detail-page.scss',

@@ -1,0 +1,35 @@
+<app-chat-panel
+  [store]="chat"
+  heading="Mejora el plan con la IA"
+  [context]="issue().name"
+  placeholder="Pregunta, aclara o corrige algo del plan…"
+>
+  <p chat-info class="info">
+    <app-icon name="file" size="1em" />
+    @if (readyPlan(); as plan) {
+      <span>Con el plan de {{ plan.createdAt | timeAgo }}</span>
+    } @else {
+      <span>Todavía sin plan: al replanificar se hará desde cero</span>
+    }
+  </p>
+
+  <p chat-empty>
+    Aclara las dudas que dejó el plan, pásame otros tickets (por ejemplo <code>MEL-123</code>) o
+    corrige lo que haga falta. La IA conoce la tarea, sus tickets, el plan y el código de sus repos.
+    Cuando termines, pulsa «Replanificar» y el plan se actualiza con lo conversado.
+  </p>
+
+  <div chat-actions>
+    <button
+      app-button
+      variant="secondary"
+      size="sm"
+      type="button"
+      [disabled]="!canReplan()"
+      [loading]="plans.requesting()"
+      (click)="replan()"
+    >
+      <app-icon name="sparkles" size="1em" /> Replanificar con esta conversación
+    </button>
+  </div>
+</app-chat-panel>

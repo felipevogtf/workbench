@@ -1,3 +1,5 @@
+import { ChatMessage } from '@shared/chat/chat.models';
+
 export type PlanStatus = 'pending' | 'generating' | 'ready' | 'failed';
 
 /** Un repositorio que se intentó leer para el plan. */
@@ -16,6 +18,8 @@ export interface Plan {
   agentName: string | null;
   model: string | null;
   repos: PlanRepo[];
+  /** Se generó replanificando: actualizando el plan anterior con una conversación. */
+  revised: boolean;
   error: string | null;
   /** Solo viene al pedir un plan por su id (el historial no lo trae). */
   content?: string | null;
@@ -25,6 +29,19 @@ export interface Plan {
 
 export interface PlanRequest {
   agentId?: string;
+  /** Replanificar: la conversación con la que se actualiza el último plan. */
+  messages?: ChatMessage[];
+}
+
+/** La respuesta del chat de una tarea. */
+export interface TaskChatReply {
+  reply: string;
+  agentName: string;
+  model: string;
+  /** Códigos de los tickets de Plane que se leyeron para contestar. */
+  tickets: string[];
+  /** La tarea tenía un plan listo, que la IA tuvo a la vista. */
+  hasPlan: boolean;
 }
 
 /** En cola o generándose: mientras haya uno, el panel se refresca solo. */
