@@ -136,6 +136,8 @@
   textarea {
     flex: 1;
     resize: none;
+    // El estilo global de los textarea pide 120px de alto mínimo; aquí debe medir lo mismo que el botón.
+    min-height: var(--touch-target);
   }
 }
 
