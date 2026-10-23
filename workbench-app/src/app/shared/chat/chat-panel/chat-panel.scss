@@ -310,15 +310,23 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  margin-right: calc(-1 * var(--space-2));
   border: none;
   border-radius: 50%;
-  background: var(--primary);
-  color: var(--background);
+  background: transparent;
+  color: var(--primary);
   cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: var(--tone-neutral-bg);
+  }
 
   &:disabled {
+    color: var(--text-muted, var(--text-color));
     opacity: 0.4;
     cursor: default;
   }
