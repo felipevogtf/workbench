@@ -15,6 +15,8 @@ services:
       - ./server.env
     volumes:
       - reviews:/data/reviews
+      # Copias de los repos de las PRs para el chat: se reutilizan entre preguntas y entre despliegues.
+      - chat_repos:/data/chat-repos
       # Sesión de los CLIs que se inician con login (agy, copilot): sobrevive a los reinicios.
       - cli_home:/home/node/.gemini
       - copilot_home:/home/node/.copilot
@@ -43,5 +45,6 @@ networks:
 
 volumes:
   reviews:
+  chat_repos:
   cli_home:
   copilot_home:

@@ -35,8 +35,10 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json tsconfig.json ./
 
 # Carpeta de las revisiones (.md); se monta como volumen.
-RUN mkdir -p /data/reviews /home/node/.gemini /home/node/.copilot \
-  && chown -R node:node /data/reviews /home/node
+RUN mkdir -p /data/reviews /data/chat-repos /home/node/.gemini /home/node/.copilot \
+  && chown -R node:node /data/reviews /data/chat-repos /home/node
+# Copias de los repos de las PRs para el chat (volumen): sin esto irían a /tmp y se perderían al desplegar.
+ENV CHAT_REPOS_DIR=/data/chat-repos
 
 # El agente lee código ajeno: se ejecuta sin privilegios.
 USER node
