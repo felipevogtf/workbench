@@ -2,7 +2,14 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { DiffHunk as Hunk } from '../../models/diff';
 
 /**
- * Un hunk del diff en dos columnas: el código de antes a la izquierda y el de después a la derecha.
+ * `split`: dos columnas, el código de antes a la izquierda y el de después a la derecha.
+ * `new` / `old`: una sola columna, para archivos añadidos (solo hay código nuevo) o eliminados
+ * (solo hay código viejo), donde no hay nada que comparar.
+ */
+export type DiffHunkMode = 'split' | 'new' | 'old';
+
+/**
+ * Un hunk del diff, normalmente en dos columnas.
  * Slot `[hunk-actions]`: acciones sobre el segmento, junto a su encabezado.
  */
 @Component({
@@ -13,4 +20,5 @@ import { DiffHunk as Hunk } from '../../models/diff';
 })
 export class DiffHunk {
   readonly hunk = input.required<Hunk>();
+  readonly mode = input<DiffHunkMode>('split');
 }

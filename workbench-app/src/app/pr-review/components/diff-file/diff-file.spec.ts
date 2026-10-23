@@ -51,6 +51,20 @@ describe('DiffFile split', () => {
     expect(fixture.componentInstance.split()).toBe(48);
   });
 
+  it('has nothing to compare for an added or a deleted file: one column and no divider', async () => {
+    for (const status of ['added', 'deleted'] as const) {
+      const fixture = TestBed.createComponent(DiffFile);
+      fixture.componentRef.setInput('file', { ...file, status });
+      await fixture.whenStable();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('app-split-handle')).toBeNull();
+      expect(element.querySelector('.rows')?.getAttribute('data-mode')).toBe(
+        status === 'added' ? 'new' : 'old',
+      );
+    }
+  });
+
   it('never lets either side shrink past its limit', async () => {
     const fixture = await render();
     const handle = (fixture.nativeElement as HTMLElement).querySelector('app-split-handle')!;

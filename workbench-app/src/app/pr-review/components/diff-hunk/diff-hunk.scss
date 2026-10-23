@@ -51,6 +51,11 @@
     minmax(0, 1fr);
 }
 
+// Archivo añadido o eliminado: una sola columna de código.
+.rows:not([data-mode='split']) .row {
+  grid-template-columns: var(--num-col, 3.25rem) minmax(0, 1fr);
+}
+
 .num,
 .code {
   padding: 0 var(--space-2);

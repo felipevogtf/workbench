@@ -11,7 +11,7 @@ import {
 import { Badge, BadgeTone } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { DIFF_STATUS_LABEL, DiffFile as File, DiffFileStatus, countRows } from '../../models/diff';
-import { DiffHunk } from '../diff-hunk/diff-hunk';
+import { DiffHunk, DiffHunkMode } from '../diff-hunk/diff-hunk';
 import { SplitHandle } from '../split-handle/split-handle';
 
 /** A partir de este número de filas el diff de un archivo se pide mostrar a mano, para no trabar la página. */
@@ -57,6 +57,12 @@ export class DiffFile {
   protected readonly statusTone = STATUS_TONE;
 
   protected readonly rows = computed(() => countRows(this.file()));
+
+  /** Un archivo añadido o eliminado no tiene con qué compararse: una sola columna y sin divisor. */
+  protected readonly mode = computed<DiffHunkMode>(() => {
+    const status = this.file().status;
+    return status === 'added' ? 'new' : status === 'deleted' ? 'old' : 'split';
+  });
 
   /** Se reinicia al cambiar de archivo: mostrar uno grande no abre los demás. */
   private readonly forceShow = linkedSignal<File, boolean>({

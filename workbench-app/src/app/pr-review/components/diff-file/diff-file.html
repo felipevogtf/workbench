@@ -28,14 +28,16 @@
 } @else {
   <div class="file__hunks" #hunks>
     @for (hunk of file().hunks; track $index) {
-      <app-diff-hunk [hunk]="hunk" />
+      <app-diff-hunk [hunk]="hunk" [mode]="mode()" />
     }
-    <app-split-handle
-      class="file__split"
-      label="Ajustar el ancho del código de antes y de después"
-      [attr.aria-valuenow]="split()"
-      (dragged)="drag($event)"
-      (nudged)="nudge($event)"
-    />
+    @if (mode() === 'split') {
+      <app-split-handle
+        class="file__split"
+        label="Ajustar el ancho del código de antes y de después"
+        [attr.aria-valuenow]="split()"
+        (dragged)="drag($event)"
+        (nudged)="nudge($event)"
+      />
+    }
   </div>
 }

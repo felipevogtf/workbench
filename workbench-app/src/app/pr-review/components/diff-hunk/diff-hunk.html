@@ -3,15 +3,24 @@
   <div class="hunk__actions"><ng-content select="[hunk-actions]" /></div>
 </div>
 
-<div class="rows">
+<div class="rows" [attr.data-mode]="mode()">
   @for (row of hunk().rows; track $index) {
     <div class="row">
-      <span class="num" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.line }}</span>
-      <span class="code" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.text }}</span>
-      <span class="num num--right" [attr.data-kind]="row.right?.kind ?? 'empty'">{{
-        row.right?.line
-      }}</span>
-      <span class="code" [attr.data-kind]="row.right?.kind ?? 'empty'">{{ row.right?.text }}</span>
+      @if (mode() !== 'new') {
+        <span class="num" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.line }}</span>
+        <span class="code" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.text }}</span>
+      }
+      @if (mode() !== 'old') {
+        <span
+          class="num"
+          [class.num--right]="mode() === 'split'"
+          [attr.data-kind]="row.right?.kind ?? 'empty'"
+          >{{ row.right?.line }}</span
+        >
+        <span class="code" [attr.data-kind]="row.right?.kind ?? 'empty'">{{
+          row.right?.text
+        }}</span>
+      }
     </div>
   }
 </div>
