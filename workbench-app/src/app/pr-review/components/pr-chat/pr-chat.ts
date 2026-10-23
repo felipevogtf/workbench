@@ -16,6 +16,9 @@ import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { PullRequestChatStore } from '../../data-access/pull-request-chat.store';
 
+/** Alto máximo del cuadro de texto; pasado esto aparece su propio scroll. */
+const MAX_INPUT_PX = 144;
+
 /**
  * Chat flotante para preguntarle a la IA sobre la PR (el agente lee el repo de la PR). Un botón en la
  * esquina abre el panel; el estado y la conversación viven en `PullRequestChatStore`, de modo que otras
@@ -51,12 +54,18 @@ export class PrChat {
     });
   }
 
+  protected onInput(box: HTMLTextAreaElement): void {
+    this.draft.set(box.value);
+    this.fit(box);
+  }
+
   /** Lee el texto del cuadro y lo vacía ahí mismo, sin esperar a que se repinte la pantalla. */
   protected send(box: HTMLTextAreaElement): void {
     const text = box.value;
     if (!text.trim() || this.store.sending()) return;
     box.value = '';
     this.draft.set('');
+    this.fit(box);
     void this.store.send(text);
   }
 
@@ -66,5 +75,11 @@ export class PrChat {
     if (key.shiftKey || key.isComposing) return;
     key.preventDefault();
     this.send(box);
+  }
+
+  /** El cuadro parte de una línea (como el botón de enviar) y crece con el texto hasta un tope. */
+  private fit(box: HTMLTextAreaElement): void {
+    box.style.height = 'auto';
+    box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_PX)}px`;
   }
 }

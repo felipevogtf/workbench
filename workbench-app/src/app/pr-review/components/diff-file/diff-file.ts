@@ -12,6 +12,7 @@ import {
 import { Badge, BadgeTone } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { Icon } from '@shared/ui/icon/icon';
+import { IconButton } from '@shared/ui/icon-button/icon-button';
 import {
   DIFF_STATUS_LABEL,
   DiffFile as File,
@@ -48,7 +49,7 @@ export const STATUS_TONE: Record<DiffFileStatus, BadgeTone> = {
  */
 @Component({
   selector: 'app-diff-file',
-  imports: [Badge, Button, DiffHunk, Icon, SplitHandle],
+  imports: [Badge, Button, DiffHunk, Icon, IconButton, SplitHandle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[style.--split]': 'split()' },
   templateUrl: './diff-file.html',

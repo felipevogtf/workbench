@@ -62,11 +62,11 @@
       <textarea
         #box
         class="app-control"
-        rows="2"
+        rows="1"
         placeholder="Escribe tu pregunta…"
         aria-label="Tu pregunta"
         [disabled]="store.sending()"
-        (input)="draft.set(box.value)"
+        (input)="onInput(box)"
         (keydown.enter)="onEnter($event, box)"
       ></textarea>
       <button

@@ -90,23 +90,10 @@ code {
   }
 }
 
-// Botón de IA de cada segmento: discreto, pequeño para no agrandar el encabezado del hunk.
+// Botón de IA de cada segmento: solo el ícono y más chico que el estándar, para no agrandar el
+// encabezado del hunk.
 .hunk__ai {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 2px var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--background);
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--primary);
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-
-  &:hover,
-  &:focus-visible {
-    border-color: var(--primary);
-  }
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px;
 }

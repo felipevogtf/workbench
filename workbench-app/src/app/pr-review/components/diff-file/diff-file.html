@@ -31,12 +31,13 @@
       <app-diff-hunk [hunk]="hunk" [mode]="mode()">
         <button
           hunk-actions
+          app-icon-button
           class="hunk__ai"
           type="button"
-          title="Pedirle a la IA que explique este segmento"
+          label="Explicar este segmento con IA"
           (click)="explain.emit(hunk)"
         >
-          <app-icon name="sparkles" size="1em" /> Explicar con IA
+          <app-icon name="sparkles" size="1rem" />
         </button>
       </app-diff-hunk>
     }
