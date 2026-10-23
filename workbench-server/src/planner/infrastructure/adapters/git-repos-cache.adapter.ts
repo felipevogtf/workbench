@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ATTACHMENTS_DIR } from '@core/attachments/attachments';
 import { runGit } from '@core/git/run-git';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 import {
@@ -82,7 +83,8 @@ export class GitReposCacheAdapter implements ReposCachePort {
 
     // Un repo que la tarea ya no tiene no debe quedar al alcance del agente.
     for (const entry of await readdir(base)) {
-      if (!folders.has(entry)) {
+      // La carpeta de adjuntos no es un repo, pero tampoco se borra: la IA puede estar leyéndola.
+      if (!folders.has(entry) && entry !== ATTACHMENTS_DIR) {
         await rm(join(base, entry), { recursive: true, force: true });
       }
     }

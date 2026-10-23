@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
+import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
+import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
 import { TasksModule } from '@tasks/tasks.module';
 import { PullRequestOrmEntity } from './infrastructure/persistence/pull-request.orm-entity';
 import { ReviewOrmEntity } from './infrastructure/persistence/review.orm-entity';
@@ -26,6 +28,7 @@ import { GithubAdapter } from './infrastructure/adapters/github.adapter';
 import { GitCliCheckoutAdapter } from './infrastructure/adapters/git-cli-checkout.adapter';
 import { LocalFileReviewStorageAdapter } from './infrastructure/adapters/local-file-review-storage.adapter';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
+import { ATTACHMENTS_PORT } from './domain/ports/attachments.port';
 import { REPOSITORY_CACHE_PORT } from './domain/ports/repository-cache.port';
 import { GitCliRepositoryCacheAdapter } from './infrastructure/adapters/git-cli-repository-cache.adapter';
 import {
@@ -64,6 +67,7 @@ function enabledProviders(
   imports: [
     HttpModule,
     AiAgentsModule,
+    ChatAttachmentsModule,
     TasksModule,
     TypeOrmModule.forFeature([PullRequestOrmEntity, ReviewOrmEntity]),
   ],
@@ -97,6 +101,7 @@ function enabledProviders(
       inject: [ConfigService],
     },
     { provide: REPOSITORY_CACHE_PORT, useClass: GitCliRepositoryCacheAdapter },
+    { provide: ATTACHMENTS_PORT, useExisting: ChatAttachmentsService },
     {
       provide: CHAT_CONCURRENCY,
       useFactory: (config: ConfigService) =>

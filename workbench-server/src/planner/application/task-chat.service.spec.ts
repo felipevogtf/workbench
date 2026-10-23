@@ -1,3 +1,7 @@
+import type {
+  AttachmentRef,
+  StagedAttachment,
+} from '@core/attachments/attachments';
 import { DomainError } from '@core/domain/domain.error';
 import { Plan } from '@planner/domain/entities/plan.entity';
 import {
@@ -87,6 +91,11 @@ function build(
       }),
   );
 
+  const stage = jest.fn<
+    Promise<ReadonlyMap<string, StagedAttachment>>,
+    [readonly AttachmentRef[], string]
+  >(() => Promise.resolve(new Map<string, StagedAttachment>()));
+
   const service = new TaskChatService(
     { getTask },
     { findByIssueId } as never,
@@ -94,8 +103,9 @@ function build(
     { ensure },
     { runPlan: jest.fn(), runTaskChat },
     options.concurrency ?? 2,
+    { stage },
   );
-  return { service, getTicket, ensure, runTaskChat, findByIssueId };
+  return { service, getTicket, ensure, runTaskChat, findByIssueId, stage };
 }
 
 const ask = (content: string) => [{ role: 'user' as const, content }];
@@ -201,5 +211,35 @@ describe('TaskChatService', () => {
     await Promise.all([1, 2, 3].map(() => service.reply('i1', ask('hola'))));
 
     expect(peak).toBe(1);
+  });
+});
+
+describe('TaskChatService with attachments', () => {
+  it('leaves the attachments of the conversation next to the repos of the task and tells the agent where', async () => {
+    const { service, stage, runTaskChat } = build();
+    const ref = { id: 'a1', name: 'requisitos.pdf' };
+    stage.mockResolvedValueOnce(
+      new Map([
+        [
+          'a1',
+          {
+            id: 'a1',
+            name: 'requisitos.pdf',
+            path: '.attachments/a1-requisitos.pdf',
+            kind: 'pdf' as const,
+            size: 4096,
+          },
+        ],
+      ]),
+    );
+
+    await service.reply('i1', [
+      { role: 'user', content: 'Usa este documento', attachments: [ref] },
+    ]);
+
+    expect(stage).toHaveBeenCalledWith([ref], '/repos/i1');
+    expect(runTaskChat.mock.calls[0][0].prompt).toContain(
+      '`.attachments/a1-requisitos.pdf`',
+    );
   });
 });

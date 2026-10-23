@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
+import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
+import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
 import { TasksModule } from '@tasks/tasks.module';
 import { PLANNER_CONCURRENCY, PlansService } from './application/plans.service';
 import {
@@ -10,6 +12,7 @@ import {
 } from './application/task-chat.service';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
 import { PLAN_REPOSITORY_PORT } from './domain/ports/plan-repository.port';
+import { ATTACHMENTS_PORT } from './domain/ports/attachments.port';
 import { REPOS_CACHE_PORT } from './domain/ports/repos-cache.port';
 import { REPOS_CHECKOUT_PORT } from './domain/ports/repos-checkout.port';
 import { TASKS_GATEWAY_PORT } from './domain/ports/tasks-gateway.port';
@@ -29,6 +32,7 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
     TypeOrmModule.forFeature([PlanOrmEntity]),
     TasksModule,
     AiAgentsModule,
+    ChatAttachmentsModule,
   ],
   controllers: [PlansController],
   providers: [
@@ -44,6 +48,7 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
       inject: [ConfigService],
     },
     { provide: REPOS_CACHE_PORT, useClass: GitReposCacheAdapter },
+    { provide: ATTACHMENTS_PORT, useExisting: ChatAttachmentsService },
     {
       provide: TASK_CHAT_CONCURRENCY,
       useFactory: (config: ConfigService) =>

@@ -124,3 +124,37 @@ describe('buildTaskChatPrompt', () => {
     expect(prompt).toContain(`mensaje-${MAX_CHAT_HISTORY_MESSAGES + 3}`);
   });
 });
+
+describe('buildTaskChatPrompt with attachments', () => {
+  it('tells the agent where the attachments of the conversation are', () => {
+    const prompt = buildTaskChatPrompt({
+      ...base,
+      messages: [
+        {
+          role: 'user',
+          content: 'Mira el informe',
+          attachments: [{ id: 'a1', name: 'informe.pdf' }],
+        },
+      ],
+      staged: new Map([
+        [
+          'a1',
+          {
+            id: 'a1',
+            name: 'informe.pdf',
+            path: '.attachments/a1-informe.pdf',
+            kind: 'pdf' as const,
+            size: 2048,
+          },
+        ],
+      ]),
+    });
+
+    expect(prompt).toContain(
+      '- informe.pdf (PDF, 2 KB): `.attachments/a1-informe.pdf`',
+    );
+    expect(prompt.indexOf('# Conversación')).toBeLessThan(
+      prompt.indexOf('.attachments/a1-informe.pdf'),
+    );
+  });
+});

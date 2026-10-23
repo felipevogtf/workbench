@@ -10,11 +10,17 @@ import {
   type RepositoryCachePort,
 } from '@pr-review/domain/ports/repository-cache.port';
 import { PullRequestsService } from '@pr-review/application/pull-requests.service';
+import { refsOf } from '@core/attachments/attachments';
 import {
   buildChatPrompt,
+  recentMessages,
   type ChatFileContext,
   type ChatMessage,
 } from '@pr-review/application/chat-prompt';
+import {
+  ATTACHMENTS_PORT,
+  type AttachmentsPort,
+} from '@pr-review/domain/ports/attachments.port';
 
 /** Cuántas preguntas del chat se contestan a la vez; las demás esperan su turno. */
 export const CHAT_CONCURRENCY = Symbol('CHAT_CONCURRENCY');
@@ -39,6 +45,8 @@ export class PullRequestChatService {
     @Inject(AGENTS_GATEWAY_PORT)
     private readonly agents: AgentsGatewayPort,
     @Inject(CHAT_CONCURRENCY) concurrency: number,
+    @Inject(ATTACHMENTS_PORT)
+    private readonly attachments: AttachmentsPort,
   ) {
     this.limiter = new Semaphore(concurrency);
   }
@@ -57,8 +65,13 @@ export class PullRequestChatService {
 
     return this.limiter.run(async () => {
       const repository = await this.repositories.ensure(pullRequest);
+      // Los adjuntos que entran al prompt quedan a la vista del agente, dentro del repo de la PR.
+      const staged = await this.attachments.stage(
+        refsOf(recentMessages(messages)),
+        repository.path,
+      );
       const result = await this.agents.runChat({
-        prompt: buildChatPrompt(pullRequest, messages, file),
+        prompt: buildChatPrompt(pullRequest, messages, file, staged),
         workdir: repository.path,
       });
 

@@ -2,6 +2,7 @@ import { DomainError } from '@core/domain/domain.error';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { WorkQueue } from '@core/queue/work-queue';
 import { Plan } from '@planner/domain/entities/plan.entity';
+import { refsOf, type StagedAttachment } from '@core/attachments/attachments';
 import { userTexts } from '@planner/domain/conversation';
 import {
   PlanChatMessage,
@@ -14,6 +15,10 @@ import {
   AGENTS_GATEWAY_PORT,
   type AgentsGatewayPort,
 } from '@planner/domain/ports/agents-gateway.port';
+import {
+  ATTACHMENTS_PORT,
+  type AttachmentsPort,
+} from '@planner/domain/ports/attachments.port';
 import {
   PLAN_REPOSITORY_PORT,
   type PlanRepositoryPort,
@@ -60,6 +65,8 @@ export class PlansService {
     private readonly tickets: TicketsGatewayPort,
     @Inject(PLANNER_CONCURRENCY)
     concurrency: number,
+    @Inject(ATTACHMENTS_PORT)
+    private readonly attachments: AttachmentsPort,
   ) {
     this.queue = new WorkQueue<Plan>({
       name: 'PlansService',
@@ -171,6 +178,11 @@ export class PlansService {
       checkout = await this.checkoutPort.checkout(repoUrlsOf(task));
       repos = checkout.repos;
 
+      // Los adjuntos de la conversación se dejan en el directorio del plan (que se borra al terminar).
+      if (revision) {
+        revision.staged = await this.stageAttachments(revision, checkout.path);
+      }
+
       const result = await this.agents.runPlan({
         agentId: plan.requestedAgentId ?? undefined,
         model: plan.requestedModel ?? undefined,
@@ -197,6 +209,24 @@ export class PlansService {
       await this.plans.save(plan);
     } catch (error) {
       this.logger.error(`Could not save the plan: ${this.errorMessage(error)}`);
+    }
+  }
+
+  /** Deja los adjuntos al alcance del agente. Si no se pueden dejar, el plan sigue sin ellos. */
+  private async stageAttachments(
+    revision: PlanRevision,
+    workdir: string,
+  ): Promise<ReadonlyMap<string, StagedAttachment>> {
+    try {
+      return await this.attachments.stage(
+        refsOf(revision.conversation),
+        workdir,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not stage the attachments: ${this.errorMessage(error)}`,
+      );
+      return new Map();
     }
   }
 

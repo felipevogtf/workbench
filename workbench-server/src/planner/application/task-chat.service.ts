@@ -1,6 +1,7 @@
 import { DomainError } from '@core/domain/domain.error';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Semaphore } from '@core/async/semaphore';
+import { refsOf } from '@core/attachments/attachments';
 import { userTexts } from '@planner/domain/conversation';
 import { PlanChatMessage } from '@planner/domain/entities/plan.props';
 import { repoUrlsOf } from '@planner/domain/task-repos';
@@ -9,6 +10,10 @@ import {
   AGENTS_GATEWAY_PORT,
   type AgentsGatewayPort,
 } from '@planner/domain/ports/agents-gateway.port';
+import {
+  ATTACHMENTS_PORT,
+  type AttachmentsPort,
+} from '@planner/domain/ports/attachments.port';
 import {
   PLAN_REPOSITORY_PORT,
   type PlanRepositoryPort,
@@ -66,6 +71,8 @@ export class TaskChatService {
     @Inject(AGENTS_GATEWAY_PORT)
     private readonly agents: AgentsGatewayPort,
     @Inject(TASK_CHAT_CONCURRENCY) concurrency: number,
+    @Inject(ATTACHMENTS_PORT)
+    private readonly attachments: AttachmentsPort,
   ) {
     this.limiter = new Semaphore(concurrency);
   }
@@ -98,6 +105,11 @@ export class TaskChatService {
 
     return this.limiter.run(async () => {
       const cached = await this.repos.ensure(issueId, repoUrlsOf(task));
+      // Los adjuntos de la conversación quedan a la vista del agente, junto a los repos de la tarea.
+      const staged = await this.attachments.stage(
+        refsOf(messages),
+        cached.path,
+      );
       const result = await this.agents.runTaskChat({
         prompt: buildTaskChatPrompt({
           task,
@@ -106,6 +118,7 @@ export class TaskChatService {
           plan: plan?.content ?? null,
           repos: cached.repos,
           messages,
+          staged,
         }),
         workdir: cached.path,
       });

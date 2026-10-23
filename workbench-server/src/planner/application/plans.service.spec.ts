@@ -1,4 +1,8 @@
 import { DomainError } from '@core/domain/domain.error';
+import type {
+  AttachmentRef,
+  StagedAttachment,
+} from '@core/attachments/attachments';
 import { Plan } from '@planner/domain/entities/plan.entity';
 import { PlanStatus } from '@planner/domain/entities/plan.props';
 import { PlanRepositoryPort } from '@planner/domain/ports/plan-repository.port';
@@ -95,6 +99,11 @@ function build(
     }),
   );
 
+  const stage = jest.fn<
+    Promise<ReadonlyMap<string, StagedAttachment>>,
+    [readonly AttachmentRef[], string]
+  >(() => Promise.resolve(new Map<string, StagedAttachment>()));
+
   const service = new PlansService(
     repo,
     {
@@ -108,8 +117,9 @@ function build(
       getTicket,
     },
     1,
+    { stage },
   );
-  return { service, store, checkout, runPlan, dispose, getTicket };
+  return { service, store, checkout, runPlan, dispose, getTicket, stage };
 }
 
 /** Espera a que el worker en segundo plano deje la cola vacía. */
@@ -379,5 +389,64 @@ describe('PlansService replanning', () => {
     await expect(
       service.create('i1', {}, { messages: conversation }),
     ).rejects.toBeInstanceOf(DomainError);
+  });
+});
+
+describe('PlansService replanning with attachments', () => {
+  const ref = { id: 'a1', name: 'requisitos.pdf' };
+  const conversation = [
+    {
+      role: 'user' as const,
+      content: 'Usa este documento',
+      attachments: [ref],
+    },
+  ];
+  const promptOf = (runPlan: jest.Mock<unknown, [PlanRunRequest]>) =>
+    runPlan.mock.calls[0][0].prompt;
+
+  it('leaves the attachments in the directory of the plan, so the agent can read them', async () => {
+    const { service, store, stage, runPlan } = build();
+    stage.mockResolvedValueOnce(
+      new Map([
+        [
+          'a1',
+          {
+            id: 'a1',
+            name: 'requisitos.pdf',
+            path: '.attachments/a1-requisitos.pdf',
+            kind: 'pdf' as const,
+            size: 4096,
+          },
+        ],
+      ]),
+    );
+
+    await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect(stage).toHaveBeenCalledWith([ref], '/tmp/plan-x');
+    expect(promptOf(runPlan)).toContain('`.attachments/a1-requisitos.pdf`');
+  });
+
+  it('does not stage anything for a normal plan', async () => {
+    const { service, store, stage } = build();
+
+    await service.create('i1');
+    await settle(store);
+
+    expect(stage).not.toHaveBeenCalled();
+  });
+
+  it('still generates the plan, saying the files are gone, when they could not be left in reach', async () => {
+    const { service, store, stage, runPlan } = build();
+    stage.mockRejectedValueOnce(new Error('disk full'));
+
+    const plan = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(plan.id)).status).toBe('ready');
+    expect(promptOf(runPlan)).toContain(
+      'requisitos.pdf: ya no está disponible',
+    );
   });
 });

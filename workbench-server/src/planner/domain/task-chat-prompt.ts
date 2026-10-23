@@ -1,3 +1,4 @@
+import type { StagedAttachment } from '@core/attachments/attachments';
 import { conversationLines } from './conversation';
 import { PlanChatMessage, PlanRepoInfo } from './entities/plan.props';
 import {
@@ -23,6 +24,8 @@ export interface TaskChatPromptInput {
   plan: string | null;
   repos: PlanRepoInfo[];
   messages: readonly PlanChatMessage[];
+  /** Dónde quedó cada adjunto de la conversación, para que el agente los lea. */
+  staged?: ReadonlyMap<string, StagedAttachment>;
 }
 
 /**
@@ -37,6 +40,7 @@ export function buildTaskChatPrompt({
   plan,
   repos,
   messages,
+  staged,
 }: TaskChatPromptInput): string {
   const planText = plan?.trim();
 
@@ -64,10 +68,14 @@ export function buildTaskChatPrompt({
     '',
     '# Conversación',
     '',
-    ...conversationLines(messages, {
-      maxMessages: MAX_CHAT_HISTORY_MESSAGES,
-      maxChars: MAX_CHAT_HISTORY_CHARS,
-    }),
+    ...conversationLines(
+      messages,
+      {
+        maxMessages: MAX_CHAT_HISTORY_MESSAGES,
+        maxChars: MAX_CHAT_HISTORY_CHARS,
+      },
+      staged,
+    ),
     'Responde al último mensaje del usuario. Si lo conversado cambia el plan, di qué cambiarías: el plan solo se actualiza cuando el usuario pulsa «Replanificar».',
   ].join('\n');
 }

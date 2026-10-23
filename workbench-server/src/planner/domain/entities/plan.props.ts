@@ -1,3 +1,5 @@
+import type { AttachmentRef } from '@core/attachments/attachments';
+
 export type PlanStatus = 'pending' | 'generating' | 'ready' | 'failed';
 
 /** Un repositorio que se intentó leer para el plan. */
@@ -15,6 +17,7 @@ export interface PlanRepoInfo {
 export interface PlanChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  attachments?: AttachmentRef[];
 }
 
 export interface PlanProps {

@@ -1,3 +1,8 @@
+import {
+  StagedAttachment,
+  attachmentLines,
+  attachmentsNote,
+} from '@core/attachments/attachments';
 import { PlanChatMessage } from './entities/plan.props';
 
 /** Largo máximo de un mensaje del chat de una tarea (el mismo tope que valida el endpoint). */
@@ -22,6 +27,7 @@ export interface ConversationLimits {
 export function conversationLines(
   messages: readonly PlanChatMessage[],
   { maxMessages, maxChars }: ConversationLimits,
+  staged: ReadonlyMap<string, StagedAttachment> = new Map(),
 ): string[] {
   const kept: string[][] = [];
   let used = 0;
@@ -35,11 +41,20 @@ export function conversationLines(
     // Siempre entra el último mensaje, aunque solo; después, mientras quepa.
     if (kept.length > 0 && used + text.length > maxChars) break;
     used += text.length;
-    kept.unshift([`### ${SPEAKER[role]}`, text, '']);
+    kept.unshift([
+      `### ${SPEAKER[role]}`,
+      text,
+      ...attachmentLines(messages[i].attachments ?? [], staged),
+      '',
+    ]);
   }
 
   const omitted = messages.length - kept.length;
+  const hasAttachments = messages
+    .slice(messages.length - kept.length)
+    .some((message) => (message.attachments?.length ?? 0) > 0);
   return [
+    ...(hasAttachments ? attachmentsNote() : []),
     ...(omitted > 0 ? [`(${omitted} mensajes anteriores omitidos)`, ''] : []),
     ...kept.flat(),
   ];

@@ -174,3 +174,40 @@ describe('buildPlanPrompt', () => {
     });
   });
 });
+
+describe('buildPlanPrompt replanning with attachments', () => {
+  it('puts the attachments of the conversation within reach of the agent', () => {
+    const prompt = buildPlanPrompt({
+      task,
+      tickets: [],
+      repos: [],
+      revision: {
+        previousPlan: null,
+        conversation: [
+          {
+            role: 'user',
+            content: 'Usa este documento',
+            attachments: [{ id: 'a1', name: 'requisitos.pdf' }],
+          },
+        ],
+        staged: new Map([
+          [
+            'a1',
+            {
+              id: 'a1',
+              name: 'requisitos.pdf',
+              path: '.attachments/a1-requisitos.pdf',
+              kind: 'pdf' as const,
+              size: 4096,
+            },
+          ],
+        ]),
+      },
+    });
+
+    expect(prompt).toContain(
+      '- requisitos.pdf (PDF, 4 KB): `.attachments/a1-requisitos.pdf`',
+    );
+    expect(prompt).toContain('herramienta Read');
+  });
+});

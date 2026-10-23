@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TasksModule } from '@tasks/tasks.module';
 import { CoreModule } from './core/core.module';
+import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
 import { TimeTrackingModule } from '@time-tracking/time-tracking.module';
 import { KanbanModule } from '@kanban/kanban.module';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
@@ -14,6 +15,7 @@ import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 @Module({
   imports: [
     CoreModule,
+    ChatAttachmentsModule,
     TasksModule,
     TimeTrackingModule,
     KanbanModule,

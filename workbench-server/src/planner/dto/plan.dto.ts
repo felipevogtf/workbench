@@ -11,6 +11,10 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  AttachmentRefDto,
+  AttachmentRefs,
+} from '@core/attachments/attachment-ref.dto';
 import { MAX_CHAT_MESSAGE_CHARS } from '@planner/domain/conversation';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 
@@ -25,6 +29,9 @@ export class PlanChatMessageDto {
   @IsNotEmpty()
   @MaxLength(MAX_CHAT_MESSAGE_CHARS)
   content!: string;
+
+  @AttachmentRefs()
+  attachments?: AttachmentRefDto[];
 }
 
 export class TaskChatRequestDto {

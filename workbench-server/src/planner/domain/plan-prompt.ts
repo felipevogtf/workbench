@@ -1,3 +1,4 @@
+import type { StagedAttachment } from '@core/attachments/attachments';
 import { conversationLines } from './conversation';
 import { PlanChatMessage, PlanRepoInfo } from './entities/plan.props';
 import { TicketData } from './ports/tickets-gateway.port';
@@ -14,6 +15,8 @@ export interface PlanRevision {
   /** Markdown del plan del que se parte; null si ya no existe o nunca hubo uno. */
   previousPlan: string | null;
   conversation: readonly PlanChatMessage[];
+  /** Dónde quedó cada adjunto de la conversación, para que el agente los lea. */
+  staged?: ReadonlyMap<string, StagedAttachment>;
 }
 
 export interface PlanPromptInput {
@@ -126,10 +129,14 @@ function revisionLines(revision: PlanRevision): string[] {
     '',
     '## Conversación con el usuario sobre el plan',
     '',
-    ...conversationLines(revision.conversation, {
-      maxMessages: revision.conversation.length,
-      maxChars: MAX_REVISION_CONVERSATION_CHARS,
-    }),
+    ...conversationLines(
+      revision.conversation,
+      {
+        maxMessages: revision.conversation.length,
+        maxChars: MAX_REVISION_CONVERSATION_CHARS,
+      },
+      revision.staged,
+    ),
     '## Qué hacer ahora',
     '',
     'Esta es una replanificación. Actualiza el plan anterior incorporando lo conversado: responde las dudas con lo que el usuario aclaró, aplica sus correcciones, ten en cuenta los tickets que mencionó (arriba) y conserva lo que no se discutió.',

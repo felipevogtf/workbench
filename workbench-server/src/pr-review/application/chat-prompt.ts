@@ -1,8 +1,15 @@
+import {
+  AttachmentRef,
+  StagedAttachment,
+  attachmentLines,
+  attachmentsNote,
+} from '@core/attachments/attachments';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  attachments?: AttachmentRef[];
 }
 
 /** El archivo que el usuario tiene abierto en el diff mientras conversa. */
@@ -39,6 +46,7 @@ export function buildChatPrompt(
   pullRequest: PullRequest,
   messages: readonly ChatMessage[],
   file?: ChatFileContext | null,
+  staged: ReadonlyMap<string, StagedAttachment> = new Map(),
 ): string {
   const source = pullRequest.sourceBranch;
   const target = pullRequest.destBranch;
@@ -70,7 +78,7 @@ export function buildChatPrompt(
     ...fileSection(file),
     '',
     '# Conversación',
-    ...conversation(messages),
+    ...conversation(messages, staged),
     '',
     'Responde al último mensaje del usuario.',
   ].join('\n');
@@ -102,18 +110,35 @@ const clean = (text?: string): string =>
     .join('')
     .trim();
 
-function conversation(messages: readonly ChatMessage[]): string[] {
-  const recent = messages.slice(-MAX_HISTORY_MESSAGES);
+/** Los mensajes que entran al prompt: los más recientes. */
+export function recentMessages(
+  messages: readonly ChatMessage[],
+): readonly ChatMessage[] {
+  return messages.slice(-MAX_HISTORY_MESSAGES);
+}
+
+function conversation(
+  messages: readonly ChatMessage[],
+  staged: ReadonlyMap<string, StagedAttachment>,
+): string[] {
+  const recent = recentMessages(messages);
   const omitted = messages.length - recent.length;
+  const hasAttachments = recent.some((m) => (m.attachments?.length ?? 0) > 0);
 
   return [
+    ...(hasAttachments ? attachmentsNote() : []),
     ...(omitted > 0 ? [`(${omitted} mensajes anteriores omitidos)`, ''] : []),
     ...recent.flatMap((message) => {
       const content =
         message.content.length > MAX_MESSAGE_CHARS
           ? `${message.content.slice(0, MAX_MESSAGE_CHARS).trimEnd()}\n…(recortado)`
           : message.content;
-      return [`## ${SPEAKER[message.role]}`, content, ''];
+      return [
+        `## ${SPEAKER[message.role]}`,
+        content,
+        ...attachmentLines(message.attachments ?? [], staged),
+        '',
+      ];
     }),
   ];
 }

@@ -1,6 +1,11 @@
+import type {
+  AttachmentRef,
+  StagedAttachment,
+} from '@core/attachments/attachments';
 import { DomainError } from '@core/domain/domain.error';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { AgentsGatewayPort } from '@pr-review/domain/ports/agents-gateway.port';
+import { MAX_HISTORY_MESSAGES } from './chat-prompt';
 import { PullRequestChatService } from './pull-request-chat.service';
 import { PullRequestsService } from './pull-requests.service';
 import { remotePullRequest, sleep } from './testing/fakes';
@@ -21,13 +26,19 @@ function build(concurrency = 2) {
     model: 'claude-sonnet-5-5',
   });
 
+  const stage = jest.fn<
+    Promise<ReadonlyMap<string, StagedAttachment>>,
+    [readonly AttachmentRef[], string]
+  >(() => Promise.resolve(new Map<string, StagedAttachment>()));
+
   const service = new PullRequestChatService(
     { findById } as unknown as PullRequestsService,
     { ensure },
     { runChat } as unknown as AgentsGatewayPort,
     concurrency,
+    { stage },
   );
-  return { service, pullRequest, ensure, runChat };
+  return { service, pullRequest, ensure, runChat, stage };
 }
 
 describe('PullRequestChatService', () => {
@@ -112,5 +123,51 @@ describe('PullRequestChatService', () => {
     );
 
     expect(peak).toBe(1);
+  });
+});
+
+describe('PullRequestChatService with attachments', () => {
+  const staged = new Map([
+    [
+      'a1',
+      {
+        id: 'a1',
+        name: 'informe.pdf',
+        path: '.attachments/a1-informe.pdf',
+        kind: 'pdf' as const,
+        size: 2048,
+      },
+    ],
+  ]);
+  const ref = { id: 'a1', name: 'informe.pdf' };
+
+  it('leaves the attachments inside the repo of the pull request and tells the agent where', async () => {
+    const { service, pullRequest, stage, runChat } = build();
+    stage.mockResolvedValueOnce(staged);
+
+    await service.reply(pullRequest.id, [
+      { role: 'user', content: 'Revisa este informe', attachments: [ref] },
+    ]);
+
+    expect(stage).toHaveBeenCalledWith([ref], '/repos/pr-1');
+    expect(runChat).toHaveBeenCalledWith({
+      prompt: expect.stringContaining(
+        '`.attachments/a1-informe.pdf`',
+      ) as string,
+      workdir: '/repos/pr-1',
+    });
+  });
+
+  it('only stages the attachments of the messages that go into the prompt', async () => {
+    const { service, pullRequest, stage } = build();
+    const old = { role: 'user' as const, content: 'viejo', attachments: [ref] };
+    const recent = Array.from({ length: MAX_HISTORY_MESSAGES }, (_, i) => ({
+      role: 'user' as const,
+      content: `mensaje-${i}`,
+    }));
+
+    await service.reply(pullRequest.id, [old, ...recent]);
+
+    expect(stage).toHaveBeenCalledWith([], '/repos/pr-1');
   });
 });

@@ -91,3 +91,64 @@ describe('userTexts', () => {
     ).toEqual(['dos', 'uno']);
   });
 });
+
+describe('conversationLines with attachments', () => {
+  const staged = new Map([
+    [
+      'a1',
+      {
+        id: 'a1',
+        name: 'informe.pdf',
+        path: '.attachments/a1-informe.pdf',
+        kind: 'pdf' as const,
+        size: 2048,
+      },
+    ],
+  ]);
+  const withFile = {
+    role: 'user' as const,
+    content: 'Mira el informe',
+    attachments: [{ id: 'a1', name: 'informe.pdf' }],
+  };
+  const limits = { maxMessages: 10, maxChars: 1000 };
+
+  it('lists the attachments under their message and explains how to read them once', () => {
+    const text = conversationLines(
+      [withFile, msg('assistant', 'Lo leo'), withFile],
+      limits,
+      staged,
+    ).join('\n');
+
+    expect(text).toContain(
+      '### Usuario\nMira el informe\nAdjuntos:\n- informe.pdf (PDF, 2 KB): `.attachments/a1-informe.pdf`',
+    );
+    expect(text.split('herramienta Read')).toHaveLength(2);
+    expect(text.indexOf('herramienta Read')).toBeLessThan(
+      text.indexOf('### Usuario'),
+    );
+  });
+
+  it('says so when an attachment is no longer there', () => {
+    const text = conversationLines([withFile], limits, new Map()).join('\n');
+
+    expect(text).toContain('informe.pdf: ya no está disponible');
+  });
+
+  it('does not mention the attachments of the messages it left out', () => {
+    const text = conversationLines(
+      [withFile, msg('user', 'otro'), msg('user', 'último')],
+      { maxMessages: 2, maxChars: 1000 },
+      staged,
+    ).join('\n');
+
+    expect(text).toContain('(1 mensajes anteriores omitidos)');
+    expect(text).not.toContain('informe.pdf');
+    expect(text).not.toContain('herramienta Read');
+  });
+
+  it('is the same as before for a conversation without attachments', () => {
+    const text = conversationLines([msg('user', 'hola')], limits).join('\n');
+
+    expect(text).toBe('### Usuario\nhola\n');
+  });
+});

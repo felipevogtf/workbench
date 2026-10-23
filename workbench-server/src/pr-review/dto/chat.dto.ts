@@ -10,6 +10,10 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  AttachmentRefDto,
+  AttachmentRefs,
+} from '@core/attachments/attachment-ref.dto';
 import { MAX_MESSAGE_CHARS } from '@pr-review/application/chat-prompt';
 
 /** Tope de mensajes que acepta una petición (la conversación completa viaja en cada una). */
@@ -24,6 +28,9 @@ export class ChatMessageDto {
   @IsNotEmpty()
   @MaxLength(MAX_MESSAGE_CHARS)
   content!: string;
+
+  @AttachmentRefs()
+  attachments?: AttachmentRefDto[];
 }
 
 /** El archivo que el usuario tiene abierto en el diff. */

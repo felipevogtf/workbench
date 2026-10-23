@@ -136,3 +136,68 @@ describe('buildChatPrompt', () => {
     expect(prompt).not.toContain('x'.repeat(MAX_MESSAGE_CHARS + 1));
   });
 });
+
+describe('buildChatPrompt with attachments', () => {
+  const staged = new Map([
+    [
+      'a1',
+      {
+        id: 'a1',
+        name: 'informe.pdf',
+        path: '.attachments/a1-informe.pdf',
+        kind: 'pdf' as const,
+        size: 2048,
+      },
+    ],
+  ]);
+  const withFile = {
+    role: 'user' as const,
+    content: 'Revisa este informe',
+    attachments: [{ id: 'a1', name: 'informe.pdf' }],
+  };
+
+  it('says where the attachments are and how to read them', () => {
+    const prompt = buildChatPrompt(pullRequest, [withFile], null, staged);
+
+    expect(prompt).toContain(
+      '- informe.pdf (PDF, 2 KB): `.attachments/a1-informe.pdf`',
+    );
+    expect(prompt).toContain('herramienta Read');
+    expect(prompt.indexOf('# Conversación')).toBeLessThan(
+      prompt.indexOf('.attachments/a1-informe.pdf'),
+    );
+    // Las instrucciones aparecen una sola vez, aunque haya varios adjuntos.
+    expect(prompt.split('herramienta Read')).toHaveLength(2);
+  });
+
+  it('has nothing about attachments when there are none', () => {
+    const prompt = buildChatPrompt(pullRequest, [
+      { role: 'user', content: 'hola' },
+    ]);
+
+    expect(prompt).not.toContain('.attachments');
+    expect(prompt).not.toContain('Adjuntos:');
+  });
+
+  it('says an attachment is no longer there instead of inventing it', () => {
+    const prompt = buildChatPrompt(pullRequest, [withFile], null, new Map());
+
+    expect(prompt).toContain('informe.pdf: ya no está disponible');
+  });
+
+  it('leaves out the attachments of the messages that no longer go into the prompt', () => {
+    const messages = [
+      withFile,
+      ...Array.from({ length: MAX_HISTORY_MESSAGES }, (_, i) => ({
+        role: 'user' as const,
+        content: `mensaje-${i}`,
+      })),
+    ];
+
+    const prompt = buildChatPrompt(pullRequest, messages, null, staged);
+
+    expect(prompt).toContain('(1 mensajes anteriores omitidos)');
+    expect(prompt).not.toContain('informe.pdf');
+    expect(prompt).not.toContain('herramienta Read');
+  });
+});
