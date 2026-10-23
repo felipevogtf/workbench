@@ -1,9 +1,10 @@
 /** Módulo de la app al que sirve un agente (cada módulo tiene su agente por defecto). */
-export type AgentModule = 'pr-review' | 'planner';
+export type AgentModule = 'pr-review' | 'planner' | 'chat';
 
 export const MODULE_OPTIONS: readonly { value: AgentModule; label: string }[] = [
   { value: 'pr-review', label: 'Revisión de PRs' },
   { value: 'planner', label: 'Planificador' },
+  { value: 'chat', label: 'Chat' },
 ];
 
 export function moduleLabel(module: AgentModule): string {
@@ -50,4 +51,5 @@ export interface AgentInput {
 export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
   'pr-review': ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
   planner: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
+  chat: ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
 };

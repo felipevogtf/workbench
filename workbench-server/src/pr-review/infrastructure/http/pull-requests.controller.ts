@@ -9,7 +9,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { PullRequestChatService } from '@pr-review/application/pull-request-chat.service';
 import { PullRequestsService } from '@pr-review/application/pull-requests.service';
+import { ChatReplyDto, ChatRequestDto } from '@pr-review/dto/chat.dto';
 import { ReviewsService } from '@pr-review/application/reviews.service';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { Review } from '@pr-review/domain/entities/review.entity';
@@ -30,6 +32,7 @@ export class PullRequestsController {
   constructor(
     private readonly pullRequestsService: PullRequestsService,
     private readonly reviewsService: ReviewsService,
+    private readonly chatService: PullRequestChatService,
   ) {}
 
   @Get()
@@ -80,6 +83,15 @@ export class PullRequestsController {
   @Header('Content-Type', 'text/plain; charset=utf-8')
   getDiff(@Param('id') id: string): Promise<string> {
     return this.pullRequestsService.getDiff(id);
+  }
+
+  @Post(':id/chat')
+  @HttpCode(200)
+  chat(
+    @Param('id') id: string,
+    @Body() dto: ChatRequestDto,
+  ): Promise<ChatReplyDto> {
+    return this.chatService.reply(id, dto.messages);
   }
 
   @Get(':id/review')

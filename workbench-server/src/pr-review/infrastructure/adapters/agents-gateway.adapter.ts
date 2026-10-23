@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { AgentsService } from '@ai-agents/application/agents.service';
 import {
   AgentsGatewayPort,
+  ChatRunRequest,
+  ChatRunResult,
   ReviewRunRequest,
   ReviewRunResult,
 } from '@pr-review/domain/ports/agents-gateway.port';
@@ -23,6 +25,20 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
     return {
       markdown: result.output,
       agentId: result.agentId,
+      agentName: result.agentName,
+      model: result.model,
+    };
+  }
+
+  async runChat(request: ChatRunRequest): Promise<ChatRunResult> {
+    const result = await this.agentsService.run({
+      module: 'chat',
+      prompt: request.prompt,
+      workdir: request.workdir,
+    });
+
+    return {
+      markdown: result.output,
       agentName: result.agentName,
       model: result.model,
     };

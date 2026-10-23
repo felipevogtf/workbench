@@ -26,6 +26,12 @@ import { GithubAdapter } from './infrastructure/adapters/github.adapter';
 import { GitCliCheckoutAdapter } from './infrastructure/adapters/git-cli-checkout.adapter';
 import { LocalFileReviewStorageAdapter } from './infrastructure/adapters/local-file-review-storage.adapter';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
+import { REPOSITORY_CACHE_PORT } from './domain/ports/repository-cache.port';
+import { GitCliRepositoryCacheAdapter } from './infrastructure/adapters/git-cli-repository-cache.adapter';
+import {
+  CHAT_CONCURRENCY,
+  PullRequestChatService,
+} from './application/pull-request-chat.service';
 import { PullRequestsService } from './application/pull-requests.service';
 import {
   REVIEW_CONCURRENCY,
@@ -90,8 +96,16 @@ function enabledProviders(
         Number(config.get('REVIEW_CONCURRENCY') || 1),
       inject: [ConfigService],
     },
+    { provide: REPOSITORY_CACHE_PORT, useClass: GitCliRepositoryCacheAdapter },
+    {
+      provide: CHAT_CONCURRENCY,
+      useFactory: (config: ConfigService) =>
+        Number(config.get('CHAT_CONCURRENCY') || 2),
+      inject: [ConfigService],
+    },
     ReviewsService,
     PullRequestsService,
+    PullRequestChatService,
     PrReviewScheduler,
   ],
 })

@@ -58,5 +58,13 @@ export function validateEnv(
     throw new Error('PLANNER_CONCURRENCY must be an integer >= 1');
   }
 
+  const chatConcurrency = config['CHAT_CONCURRENCY'];
+  if (
+    chatConcurrency &&
+    (!Number.isInteger(Number(chatConcurrency)) || Number(chatConcurrency) < 1)
+  ) {
+    throw new Error('CHAT_CONCURRENCY must be an integer >= 1');
+  }
+
   return config;
 }

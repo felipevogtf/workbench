@@ -9,10 +9,9 @@ import {
   RepositoryCheckout,
   RepositoryCheckoutPort,
 } from '@pr-review/domain/ports/repository-checkout.port';
+import { assertSafeRemote, remoteUrls } from './git-remote';
 
 const RULES_FILE = 'REVIEW_RULES.md';
-
-const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 
 /**
  * Clona el repo de la PR en un directorio temporal y deja la rama de la PR en
@@ -24,14 +23,17 @@ export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
   constructor(private readonly config: ConfigService) {}
 
   async checkout(pullRequest: PullRequest): Promise<RepositoryCheckout> {
-    this.assertSafe(pullRequest);
+    assertSafeRemote(pullRequest);
 
     const workdir = await mkdtemp(join(tmpdir(), 'prrev-'));
     const dest = join(workdir, 'repo');
     const dispose = () => rm(workdir, { recursive: true, force: true });
 
     try {
-      const { cloneUrl, cleanUrl, secret } = this.urls(pullRequest);
+      const { cloneUrl, cleanUrl, secret } = remoteUrls(
+        this.config,
+        pullRequest,
+      );
 
       await this.git(['clone', '--quiet', '--no-checkout', cloneUrl, dest], {
         secret,
@@ -83,37 +85,6 @@ export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
       }
     }
     return null;
-  }
-
-  private urls(pullRequest: PullRequest) {
-    if (pullRequest.provider === 'bitbucket') {
-      const token = this.config.getOrThrow<string>('BITBUCKET_TOKEN');
-      return {
-        cloneUrl: `https://x-bitbucket-api-token-auth:${encodeURIComponent(token)}@bitbucket.org/${pullRequest.repo}.git`,
-        cleanUrl: `https://bitbucket.org/${pullRequest.repo}.git`,
-        secret: token,
-      };
-    }
-
-    const token = this.config.getOrThrow<string>('GITHUB_TOKEN');
-    return {
-      cloneUrl: `https://x-access-token:${encodeURIComponent(token)}@github.com/${pullRequest.repo}.git`,
-      cleanUrl: `https://github.com/${pullRequest.repo}.git`,
-      secret: token,
-    };
-  }
-
-  /** Los nombres vienen del autor de la PR: no deben poder inyectar opciones de git. */
-  private assertSafe(pullRequest: PullRequest): void {
-    if (!REPO_PATTERN.test(pullRequest.repo)) {
-      throw new Error(`Unsafe repository name: ${pullRequest.repo}`);
-    }
-    for (const branch of [pullRequest.sourceBranch, pullRequest.destBranch]) {
-      const hasControlChar = [...branch].some((c) => c.charCodeAt(0) < 32);
-      if (branch.startsWith('-') || /\s/.test(branch) || hasControlChar) {
-        throw new Error(`Unsafe branch name: ${branch}`);
-      }
-    }
   }
 
   private git(
