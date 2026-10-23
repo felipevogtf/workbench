@@ -30,6 +30,7 @@ import { PriorityBadge } from '../../components/priority-badge/priority-badge';
 import { HoursPanel } from '../../components/hours-panel/hours-panel';
 import { PlanPanel } from '../../components/plan-panel/plan-panel';
 import { TaskChat } from '../../components/task-chat/task-chat';
+import { ExecutionPanel, IssueExecutionsStore } from '@executions/index';
 import { PlansStore } from '../../data-access/plans.store';
 import { TaskChatStore } from '../../data-access/task-chat.store';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
@@ -62,11 +63,12 @@ import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
     IssueFormDialog,
     TransferIssueDialog,
     PlanPanel,
+    ExecutionPanel,
     TaskChat,
     HoursPanel,
     Spinner,
   ],
-  providers: [TimeEntriesStore, PlansStore, TaskChatStore],
+  providers: [TimeEntriesStore, PlansStore, TaskChatStore, IssueExecutionsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './issue-detail-page.html',
   styleUrl: './issue-detail-page.scss',
@@ -80,6 +82,11 @@ export class IssueDetailPage {
   protected readonly store = inject(IssuesStore);
   protected readonly hours = inject(TimeEntriesStore);
   protected readonly plansStore = inject(PlansStore);
+  /** Hay un plan listo: es lo que se puede ejecutar con IA. */
+  protected readonly hasReadyPlan = computed(() =>
+    this.plansStore.plans().some((plan) => plan.status === 'ready'),
+  );
+  protected readonly executionsStore = inject(IssueExecutionsStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly projectsStore = inject(ProjectsStore);
   private readonly statesStore = inject(StatesStore);
@@ -204,6 +211,7 @@ export class IssueDetailPage {
     this.fetched.set(null);
     void this.hours.load(id);
     void this.plansStore.load(id, this.destroyRef);
+    void this.executionsStore.load(id, this.destroyRef);
 
     await this.store.load();
     if (this.store.issueById().has(id)) return;

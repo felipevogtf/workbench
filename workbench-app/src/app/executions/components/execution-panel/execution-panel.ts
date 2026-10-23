@@ -1,0 +1,62 @@
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { TimeAgoPipe } from '@shared/pipes/time-ago';
+import { Badge } from '@shared/ui/badge/badge';
+import { Button } from '@shared/ui/button/button';
+import { Card } from '@shared/ui/card/card';
+import { Icon } from '@shared/ui/icon/icon';
+import { Spinner } from '@shared/ui/spinner/spinner';
+import { IssueExecutionsStore } from '../../data-access/issue-executions.store';
+import {
+  EXECUTION_STATUS_LABEL,
+  Execution,
+  EXECUTION_STATUS_TONE,
+  TICKET_STATUS_LABEL,
+} from '../../models/execution';
+
+/** Cuántas ejecuciones se listan en el panel; el resto se ve entrando a cada una. */
+const HISTORY_SHOWN = 5;
+
+/**
+ * «Ejecutar con IA» en el detalle de una tarea: lanza la ejecución con el último plan y lista las
+ * anteriores. El estado vive en `IssueExecutionsStore`, que provee la página que lo usa.
+ */
+@Component({
+  selector: 'app-execution-panel',
+  imports: [RouterLink, TimeAgoPipe, Badge, Button, Card, Icon, Spinner],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './execution-panel.html',
+  styleUrl: './execution-panel.scss',
+})
+export class ExecutionPanel {
+  /** La tarea a ejecutar. */
+  readonly issueId = input.required<string>();
+  /** La tarea ya tiene un plan listo, que es lo que se ejecuta. */
+  readonly canRun = input(false);
+
+  protected readonly store = inject(IssueExecutionsStore);
+  private readonly router = inject(Router);
+
+  protected readonly statusLabel = EXECUTION_STATUS_LABEL;
+  protected readonly statusTone = EXECUTION_STATUS_TONE;
+  protected readonly history = computed(() => this.store.executions().slice(0, HISTORY_SHOWN));
+  protected readonly hiddenCount = computed(() =>
+    Math.max(0, this.store.executions().length - HISTORY_SHOWN),
+  );
+
+  /** Progreso en una frase, p. ej. «Ticket 2 de 3: En revisión». */
+  protected progress(execution: Execution | null): string | null {
+    if (!execution || execution.status !== 'running') return null;
+    const tickets = execution.tickets;
+    if (tickets.length === 0) return 'Creando los tickets del plan…';
+
+    const index = tickets.findIndex((ticket) => ticket.status !== 'done');
+    if (index === -1) return 'Subiendo la rama y abriendo la PR…';
+    return `Ticket ${index + 1} de ${tickets.length}: ${TICKET_STATUS_LABEL[tickets[index].status]}`;
+  }
+
+  protected async run(): Promise<void> {
+    const execution = await this.store.start();
+    if (execution) await this.router.navigate(['/executions', execution.id]);
+  }
+}

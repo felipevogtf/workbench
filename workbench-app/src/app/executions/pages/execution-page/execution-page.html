@@ -1,0 +1,211 @@
+<div class="page">
+  @if (store.error(); as error) {
+    <a app-button variant="ghost" size="sm" routerLink="/tasks/issues">
+      <app-icon name="arrow-left" size="1em" /> Tareas
+    </a>
+    <app-alert tone="danger" heading="No se pudo cargar la ejecución">{{ error }}</app-alert>
+  } @else if (store.detail(); as execution) {
+    <app-page-header
+      heading="Ejecución con IA"
+      [subtitle]="execution.repo.fullName + ' · ' + execution.branch"
+    >
+      <a
+        back
+        app-button
+        variant="ghost"
+        size="sm"
+        [routerLink]="['/tasks/issues', execution.issueId]"
+      >
+        <app-icon name="arrow-left" size="1em" /> Volver a la tarea
+      </a>
+
+      <ng-container actions>
+        @if (execution.pullRequestUrl; as url) {
+          <a app-button variant="secondary" [href]="url" target="_blank" rel="noopener noreferrer">
+            <app-icon name="git-pull-request" size="1em" /> Abrir la PR
+          </a>
+        }
+        @if (execution.status === 'running') {
+          <button
+            app-button
+            variant="danger"
+            type="button"
+            [disabled]="store.acting()"
+            (click)="cancel()"
+          >
+            <app-icon name="x" size="1em" /> Cancelar
+          </button>
+        }
+        @if (execution.status === 'failed') {
+          <button app-button type="button" [loading]="store.acting()" (click)="retry()">
+            <app-icon name="refresh" size="1em" /> Reintentar
+          </button>
+        }
+      </ng-container>
+    </app-page-header>
+
+    <div class="stack">
+      <div class="state">
+        <app-badge [tone]="statusTone[execution.status]" dot>
+          {{ statusLabel[execution.status] }}
+        </app-badge>
+        <span class="muted">Empezó {{ execution.createdAt | timeAgo }}</span>
+        <span class="muted">Costo: {{ cost(execution.costUsd) }}</span>
+      </div>
+
+      @if (execution.waitingForRunner) {
+        <app-alert tone="warning" heading="Esperando un runner">
+          No hay ningún runner conectado, así que el trabajo espera. Abre el runner en tu PC y
+          seguirá solo.
+          <a alert-action app-button variant="secondary" size="sm" routerLink="/executions/runners">
+            Ver runners
+          </a>
+        </app-alert>
+      }
+      @if (execution.status === 'failed' && execution.error) {
+        <app-alert tone="danger" heading="La ejecución falló">
+          {{ execution.error }} Puedes reintentar desde donde quedó.
+        </app-alert>
+      }
+      @if (execution.status === 'completed') {
+        <app-alert tone="success" heading="Lista para revisar">
+          La rama <code>{{ execution.branch }}</code> está subida y la pull request abierta.
+        </app-alert>
+      }
+      @if (execution.status === 'cancelled') {
+        <app-alert tone="info" heading="Cancelada">
+          Se detuvo antes de terminar. Lo que alcanzó a hacer quedó en la rama de tu PC.
+        </app-alert>
+      }
+
+      <app-card>
+        <h4 card-header>Etapas</h4>
+        <ol class="stages">
+          @for (stage of execution.stages; track stage.key) {
+            <li [attr.data-status]="stage.status">
+              <span class="stages__icon" aria-hidden="true">
+                @if (stage.status === 'running') {
+                  <app-spinner size="1.1rem" />
+                } @else if (stageIcon[stage.status]; as icon) {
+                  <app-icon [name]="icon" size="1.1rem" />
+                }
+              </span>
+              <span class="stages__text">
+                <strong>{{ stageLabel[stage.key] }}</strong>
+                <span class="muted">{{ stageHint[stage.key] }}</span>
+              </span>
+            </li>
+          }
+        </ol>
+      </app-card>
+
+      <app-card>
+        <h4 card-header>Tickets ({{ execution.tickets.length }})</h4>
+        @if (execution.tickets.length === 0) {
+          <p class="muted">
+            @if (execution.status === 'running') {
+              El agente está leyendo el plan y el código para crear los tickets…
+            } @else {
+              No se llegaron a crear tickets.
+            }
+          </p>
+        } @else {
+          <ul class="tickets">
+            @for (ticket of execution.tickets; track ticket.id; let i = $index) {
+              <li>
+                <div class="ticket__head">
+                  <span class="ticket__title">{{ i + 1 }}. {{ ticket.title }}</span>
+                  <app-badge [tone]="ticketTone[ticket.status]" dot>
+                    {{ ticketLabel[ticket.status] }}
+                  </app-badge>
+                  @if (ticket.rounds > 0) {
+                    <span class="muted">{{ ticket.rounds }} revisión(es)</span>
+                  }
+                </div>
+                <p class="muted">{{ ticket.description }}</p>
+                @if (ticket.criteria.length > 0) {
+                  <ul class="ticket__criteria">
+                    @for (criterion of ticket.criteria; track criterion) {
+                      <li>{{ criterion }}</li>
+                    }
+                  </ul>
+                }
+                @if (ticket.feedback?.length) {
+                  <app-alert tone="warning" heading="El revisor pidió cambios">
+                    @for (issue of ticket.feedback; track issue) {
+                      <div>· {{ issue }}</div>
+                    }
+                  </app-alert>
+                }
+                @if (ticket.summary) {
+                  <details class="ticket__more">
+                    <summary>Lo que hizo el desarrollador</summary>
+                    <p>{{ ticket.summary }}</p>
+                  </details>
+                }
+                @if (ticket.reviewNote) {
+                  <p class="muted"><strong>Revisión:</strong> {{ ticket.reviewNote }}</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </app-card>
+
+      <app-card>
+        <h4 card-header>Trabajo de los agentes</h4>
+        @if (execution.jobs.length === 0) {
+          <p class="muted">Todavía no hay trabajos.</p>
+        } @else {
+          <div class="jobs">
+            <ul class="jobs__list" aria-label="Trabajos">
+              @for (job of execution.jobs; track job.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="job"
+                    [class.is-selected]="store.selectedJob()?.id === job.id"
+                    [attr.aria-pressed]="store.selectedJob()?.id === job.id"
+                    (click)="select(job)"
+                  >
+                    <span class="job__title">{{ jobTitle(job) }}</span>
+                    <span class="job__meta">
+                      <app-badge [tone]="jobTone[job.status]" [loading]="job.status === 'running'">
+                        {{ jobLabel[job.status] }}
+                      </app-badge>
+                      <span class="muted">{{ cost(job.costUsd) }}</span>
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+            <div class="jobs__log">
+              @if (store.selectedJob(); as job) {
+                @if (job.error) {
+                  <app-alert tone="danger" heading="Este trabajo falló">{{ job.error }}</app-alert>
+                }
+                @if (store.logs(); as logs) {
+                  <pre class="logs" tabindex="0" aria-label="Registro del trabajo">{{ logs }}</pre>
+                } @else {
+                  <p class="muted">
+                    @if (job.status === 'pending') {
+                      En cola: el registro aparece cuando un runner lo tome.
+                    } @else {
+                      Sin registro todavía.
+                    }
+                  </p>
+                }
+              }
+            </div>
+          </div>
+        }
+      </app-card>
+    </div>
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton width="50%" height="2rem" />
+      <app-skeleton height="110px" />
+      <app-skeleton height="220px" />
+    </div>
+  }
+</div>

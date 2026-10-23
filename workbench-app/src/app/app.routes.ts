@@ -19,6 +19,10 @@ export const routes: Routes = [
     loadChildren: () => import('@pr-review/pr-review.routes').then((m) => m.PR_REVIEW_ROUTES),
   },
   {
+    path: 'executions',
+    loadChildren: () => import('@executions/executions.routes').then((m) => m.EXECUTIONS_ROUTES),
+  },
+  {
     path: 'agents',
     loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.AI_AGENTS_ROUTES),
   },

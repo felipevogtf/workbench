@@ -21,7 +21,8 @@
       "@tasks/*": ["./src/app/tasks/*"],
       "@kanban/*": ["./src/app/kanban/*"],
       "@dashboard/*": ["./src/app/dashboard/*"],
-      "@credentials/*": ["./src/app/credentials/*"]
+      "@credentials/*": ["./src/app/credentials/*"],
+      "@executions/*": ["./src/app/executions/*"]
     },
     "module": "preserve"
   },
