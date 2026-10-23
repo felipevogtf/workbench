@@ -17,6 +17,8 @@ services:
       - reviews:/data/reviews
       # Copias de los repos de las PRs para el chat: se reutilizan entre preguntas y entre despliegues.
       - chat_repos:/data/chat-repos
+      # Copias de los repos de las tareas para su chat: también sobreviven a los despliegues.
+      - task_repos:/data/task-repos
       # Sesión de los CLIs que se inician con login (agy, copilot): sobrevive a los reinicios.
       - cli_home:/home/node/.gemini
       - copilot_home:/home/node/.copilot
@@ -46,5 +48,6 @@ networks:
 volumes:
   reviews:
   chat_repos:
+  task_repos:
   cli_home:
   copilot_home:
