@@ -144,20 +144,17 @@
   }
 }
 
-// El texto arriba, sin bordes propios, y abajo una barra con el botón de enviar separada por una línea.
-// El borde del conjunto es lo que marca el foco.
+// El texto arriba y abajo una barra con el botón de enviar, separadas por una línea. Todo el bloque va sin
+// bordes, sobre un fondo suave.
 .composer {
-  border: 1px solid var(--border);
+  overflow: hidden;
   border-radius: var(--radius-sm);
-  background: var(--background);
-  transition: border-color 0.15s ease;
+  background: var(--tone-neutral-bg);
+  transition: background-color 0.15s ease;
 
-  &:hover {
-    border-color: var(--text-color);
-  }
-
+  // Sin borde alrededor: el fondo marca el bloque y se oscurece un poco al escribir.
   &:focus-within {
-    border-color: var(--primary);
+    background: var(--tone-info-bg);
   }
 
   textarea {
