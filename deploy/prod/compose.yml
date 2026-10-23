@@ -19,6 +19,8 @@ services:
       - chat_repos:/data/chat-repos
       # Copias de los repos de las tareas para su chat: también sobreviven a los despliegues.
       - task_repos:/data/task-repos
+      # Archivos adjuntos del chat: una conversación puede seguir días después de subirlos.
+      - chat_attachments:/data/chat-attachments
       # Sesión de los CLIs que se inician con login (agy, copilot): sobrevive a los reinicios.
       - cli_home:/home/node/.gemini
       - copilot_home:/home/node/.copilot
@@ -49,5 +51,6 @@ volumes:
   reviews:
   chat_repos:
   task_repos:
+  chat_attachments:
   cli_home:
   copilot_home:
