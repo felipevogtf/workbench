@@ -1,3 +1,4 @@
+import { ChatAttachmentsApi } from '@core/api/chat-attachments.api';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Toast } from '@shared/ui/toast/toast';
@@ -46,7 +47,12 @@ describe('TaskChat', () => {
       ),
     };
     TestBed.configureTestingModule({
-      providers: [PlansStore, TaskChatStore, { provide: TasksApi, useValue: api }],
+      providers: [
+        PlansStore,
+        TaskChatStore,
+        { provide: TasksApi, useValue: api },
+        { provide: ChatAttachmentsApi, useValue: { upload: vi.fn() } },
+      ],
     });
     chat = TestBed.inject(TaskChatStore);
     plans = TestBed.inject(PlansStore);

@@ -1,3 +1,4 @@
+import { ChatAttachmentsApi } from '@core/api/chat-attachments.api';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { ChatReply } from '../models/chat';
@@ -19,7 +20,11 @@ describe('PullRequestChatStore', () => {
     localStorage.clear();
     api = { chat: vi.fn(() => of(reply('Hace X.'))) };
     TestBed.configureTestingModule({
-      providers: [PullRequestChatStore, { provide: PullRequestsApi, useValue: api }],
+      providers: [
+        PullRequestChatStore,
+        { provide: PullRequestsApi, useValue: api },
+        { provide: ChatAttachmentsApi, useValue: { upload: vi.fn() } },
+      ],
     });
     store = TestBed.inject(PullRequestChatStore);
     store.bind('p1');

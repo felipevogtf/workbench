@@ -29,6 +29,16 @@
       @for (message of chat.messages(); track $index) {
         <article class="msg" [attr.data-role]="message.role">
           <app-markdown-viewer [content]="message.content" [breaks]="message.role === 'user'" />
+          @if (message.attachments?.length) {
+            <ul class="msg__files" aria-label="Archivos adjuntos">
+              @for (file of message.attachments; track file.id) {
+                <li [title]="file.name">
+                  <app-icon [name]="kindIcon[file.kind]" size="1em" />
+                  <span>{{ file.name }}</span>
+                </li>
+              }
+            </ul>
+          }
         </article>
       } @empty {
         <div class="panel__empty"><ng-content select="[chat-empty]" /></div>
@@ -63,7 +73,45 @@
     <footer class="panel__footer">
       <div class="panel__actions"><ng-content select="[chat-actions]" /></div>
 
-      <form class="composer" (submit)="$event.preventDefault(); send(box)">
+      <form
+        class="composer"
+        [class.is-dragging]="dragging()"
+        (submit)="$event.preventDefault(); send(box)"
+        (dragover)="onDragOver($event)"
+        (dragleave)="dragging.set(false)"
+        (drop)="onDrop($event)"
+      >
+        @if (chat.draftAttachments().length > 0) {
+          <ul class="composer__files" aria-label="Archivos para adjuntar">
+            @for (file of chat.draftAttachments(); track file.key) {
+              <li class="file" [attr.data-status]="file.status" [title]="file.error ?? file.name">
+                @if (file.status === 'uploading') {
+                  <app-spinner size="0.9em" label="Subiendo" />
+                } @else {
+                  <app-icon
+                    [name]="file.attachment ? kindIcon[file.attachment.kind] : 'alert'"
+                    size="1em"
+                  />
+                }
+                <span class="file__name">{{ file.name }}</span>
+                <span class="file__size">
+                  {{ file.status === 'error' ? 'no se pudo subir' : formatBytes(file.size) }}
+                </span>
+                <button
+                  type="button"
+                  class="file__remove"
+                  [attr.aria-label]="'Quitar ' + file.name"
+                  (click)="chat.removeAttachment(file.key)"
+                >
+                  <app-icon name="x" size="0.9em" />
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        @if (chat.attachError(); as problem) {
+          <p class="composer__error" role="alert">{{ problem }}</p>
+        }
         <textarea
           #box
           rows="2"
@@ -72,15 +120,36 @@
           [disabled]="chat.sending()"
           (input)="onInput(box)"
           (keydown.enter)="onEnter($event, box)"
+          (paste)="onPaste($event)"
         ></textarea>
         <div class="composer__bar">
+          <button
+            app-icon-button
+            class="composer__clip"
+            type="button"
+            label="Adjuntar archivos (PDF, imágenes, texto o CSV)"
+            [disabled]="chat.sending()"
+            (click)="picker.click()"
+          >
+            <app-icon name="paperclip" size="1.1rem" />
+          </button>
+          <input
+            #picker
+            type="file"
+            multiple
+            hidden
+            aria-hidden="true"
+            tabindex="-1"
+            [accept]="accept"
+            (change)="onPick(picker)"
+          />
           <span class="composer__hint">Enter envía · Mayús+Enter, nueva línea</span>
           <button
             class="panel__send"
             type="submit"
             aria-label="Enviar"
             title="Enviar (Enter)"
-            [disabled]="!draft().trim() || chat.sending()"
+            [disabled]="!chat.canSend(draft())"
           >
             <app-icon name="send" size="1.1rem" />
           </button>

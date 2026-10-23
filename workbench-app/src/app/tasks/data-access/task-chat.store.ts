@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ChatConversation } from '@shared/chat/chat-conversation';
-import { ChatMessage } from '@shared/chat/chat.models';
+import { ChatAttachment, ChatMessage } from '@shared/chat/chat.models';
+import { ChatAttachmentsApi } from '@core/api/chat-attachments.api';
 import { TasksApi } from './tasks.api';
 
 /**
@@ -11,8 +12,13 @@ import { TasksApi } from './tasks.api';
 @Injectable()
 export class TaskChatStore extends ChatConversation {
   private readonly api = inject(TasksApi);
+  private readonly attachments = inject(ChatAttachmentsApi);
 
   protected readonly storagePrefix = 'workbench.chat.task.';
+
+  protected upload(file: File): Promise<ChatAttachment> {
+    return firstValueFrom(this.attachments.upload(file));
+  }
 
   protected async request(issueId: string, messages: ChatMessage[]): Promise<string> {
     const { reply } = await firstValueFrom(this.api.chatTask(issueId, messages));

@@ -1,3 +1,4 @@
+import { ChatAttachmentsApi } from '@core/api/chat-attachments.api';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { TaskChatReply } from '../models/plan';
@@ -20,7 +21,11 @@ describe('TaskChatStore', () => {
     localStorage.clear();
     api = { chatTask: vi.fn(() => of(reply('Cambiaría el paso 2.'))) };
     TestBed.configureTestingModule({
-      providers: [TaskChatStore, { provide: TasksApi, useValue: api }],
+      providers: [
+        TaskChatStore,
+        { provide: TasksApi, useValue: api },
+        { provide: ChatAttachmentsApi, useValue: { upload: vi.fn() } },
+      ],
     });
     store = TestBed.inject(TaskChatStore);
     store.bind('i1');
