@@ -5,6 +5,21 @@ export interface ChatMessage {
   content: string;
 }
 
+/** El archivo que el usuario tiene abierto en el diff mientras conversa. */
+export interface ChatFileContext {
+  path: string;
+  status?: 'added' | 'deleted' | 'modified' | 'renamed';
+  /** Ruta anterior, si el archivo se renombró. */
+  oldPath?: string;
+}
+
+const STATUS_TEXT: Record<NonNullable<ChatFileContext['status']>, string> = {
+  added: 'añadido en esta PR',
+  deleted: 'eliminado en esta PR',
+  modified: 'modificado en esta PR',
+  renamed: 'renombrado en esta PR',
+};
+
 /** Cuántos mensajes anteriores se reenvían al agente (que no recuerda nada entre una pregunta y otra). */
 export const MAX_HISTORY_MESSAGES = 20;
 export const MAX_MESSAGE_CHARS = 30_000;
@@ -23,6 +38,7 @@ const SPEAKER: Record<ChatMessage['role'], string> = {
 export function buildChatPrompt(
   pullRequest: PullRequest,
   messages: readonly ChatMessage[],
+  file?: ChatFileContext | null,
 ): string {
   const source = pullRequest.sourceBranch;
   const target = pullRequest.destBranch;
@@ -51,6 +67,7 @@ export function buildChatPrompt(
             : description,
         ]
       : []),
+    ...fileSection(file),
     '',
     '# Conversación',
     ...conversation(messages),
@@ -58,6 +75,32 @@ export function buildChatPrompt(
     'Responde al último mensaje del usuario.',
   ].join('\n');
 }
+
+/**
+ * El archivo que el usuario tiene seleccionado. Así, aunque no lo nombre en su pregunta, el agente sabe de
+ * cuál habla. La ruta viene del navegador: se le quitan los saltos de línea y las comillas invertidas
+ * para que no pueda colarse en el prompt como si fueran instrucciones.
+ */
+function fileSection(file?: ChatFileContext | null): string[] {
+  const path = clean(file?.path);
+  if (!path) return [];
+
+  const status = file?.status ? ` (${STATUS_TEXT[file.status]})` : '';
+  const oldPath = clean(file?.oldPath);
+  return [
+    '',
+    '## Archivo que el usuario tiene abierto ahora en el diff',
+    `\`${path}\`${status}${oldPath && oldPath !== path ? `, antes \`${oldPath}\`` : ''}`,
+    'Si el usuario no dice de qué archivo habla, se refiere a este.',
+  ];
+}
+
+/** Sin caracteres de control (saltos de línea, tabuladores…) ni comillas invertidas. */
+const clean = (text?: string): string =>
+  [...(text ?? '')]
+    .filter((char) => char.charCodeAt(0) >= 32 && char !== '`')
+    .join('')
+    .trim();
 
 function conversation(messages: readonly ChatMessage[]): string[] {
   const recent = messages.slice(-MAX_HISTORY_MESSAGES);

@@ -100,7 +100,7 @@ export class PullRequestsController {
     @Param('id') id: string,
     @Body() dto: ChatRequestDto,
   ): Promise<ChatReplyDto> {
-    return this.chatService.reply(id, dto.messages);
+    return this.chatService.reply(id, dto.messages, dto.context);
   }
 
   @Get(':id/review')

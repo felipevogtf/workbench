@@ -51,6 +51,23 @@ describe('PullRequestChatService', () => {
     });
   });
 
+  it('gives the agent the file the user has open', async () => {
+    const { service, pullRequest, runChat } = build();
+
+    await service.reply(
+      pullRequest.id,
+      [{ role: 'user', content: 'Qué hace esto?' }],
+      { path: 'src/a.ts', status: 'added' },
+    );
+
+    expect(runChat).toHaveBeenCalledWith({
+      prompt: expect.stringContaining(
+        '`src/a.ts` (añadido en esta PR)',
+      ) as string,
+      workdir: '/repos/pr-1',
+    });
+  });
+
   it('rejects a chat that does not end with a message of the user', async () => {
     const { service, pullRequest, ensure } = build();
 

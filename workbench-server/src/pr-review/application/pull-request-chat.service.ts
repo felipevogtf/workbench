@@ -12,6 +12,7 @@ import {
 import { PullRequestsService } from '@pr-review/application/pull-requests.service';
 import {
   buildChatPrompt,
+  type ChatFileContext,
   type ChatMessage,
 } from '@pr-review/application/chat-prompt';
 
@@ -45,6 +46,7 @@ export class PullRequestChatService {
   async reply(
     pullRequestId: string,
     messages: readonly ChatMessage[],
+    file?: ChatFileContext | null,
   ): Promise<ChatReply> {
     const last = messages[messages.length - 1];
     if (!last || last.role !== 'user' || !last.content.trim()) {
@@ -56,7 +58,7 @@ export class PullRequestChatService {
     return this.limiter.run(async () => {
       const repository = await this.repositories.ensure(pullRequest);
       const result = await this.agents.runChat({
-        prompt: buildChatPrompt(pullRequest, messages),
+        prompt: buildChatPrompt(pullRequest, messages, file),
         workdir: repository.path,
       });
 
