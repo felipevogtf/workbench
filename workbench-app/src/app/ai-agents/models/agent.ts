@@ -1,11 +1,21 @@
 /** Módulo de la app al que sirve un agente (cada módulo tiene su agente por defecto). */
-export type AgentModule = 'pr-review' | 'planner' | 'chat' | 'task-chat';
+export type AgentModule =
+  | 'pr-review'
+  | 'planner'
+  | 'chat'
+  | 'task-chat'
+  | 'task-tickets'
+  | 'task-developer'
+  | 'task-reviewer';
 
 export const MODULE_OPTIONS: readonly { value: AgentModule; label: string }[] = [
   { value: 'pr-review', label: 'Revisión de PRs' },
   { value: 'planner', label: 'Planificador' },
   { value: 'chat', label: 'Chat' },
   { value: 'task-chat', label: 'Chat de tareas' },
+  { value: 'task-tickets', label: 'Ejecución: tickets' },
+  { value: 'task-developer', label: 'Ejecución: desarrollo' },
+  { value: 'task-reviewer', label: 'Ejecución: revisión' },
 ];
 
 export function moduleLabel(module: AgentModule): string {
@@ -45,7 +55,8 @@ export interface AgentInput {
 }
 
 /**
- * Herramientas que el backend permite a un agente de cada módulo (todas de solo lectura).
+ * Herramientas que el backend permite a un agente de cada módulo (de solo lectura, salvo el
+ * desarrollador de la ejecución de tareas, que además edita archivos y corre pruebas).
  * Espejo de `MODULE_TOOLS` en workbench-server; si el backend rechaza otra, devuelve un 400
  * con la lista real.
  */
@@ -54,4 +65,9 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
   planner: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   'task-chat': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   chat: ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
+  'task-tickets': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
+  // prettier-ignore
+  'task-developer': ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(npm test:*)', 'Bash(npm run test:*)', 'Bash(npm run lint:*)', 'Bash(npm run build:*)'],
+  // prettier-ignore
+  'task-reviewer': ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
 };

@@ -13,6 +13,7 @@ import { REVIEW_REPOSITORY_PORT } from './domain/ports/review-repository.port';
 import { PULL_REQUEST_SOURCE_PORTS } from './domain/ports/pull-request-source.port';
 import { PULL_REQUEST_COMMENT_PORTS } from './domain/ports/pull-request-comment.port';
 import { REPOSITORY_CHECKOUT_PORT } from './domain/ports/repository-checkout.port';
+import { PULL_REQUEST_CREATION_PORTS } from './domain/ports/pull-request-creation.port';
 import { REVIEW_STORAGE_PORT } from './domain/ports/review-storage.port';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
 import { TICKETS_GATEWAY_PORT } from './domain/ports/tickets-gateway.port';
@@ -35,6 +36,7 @@ import {
   CHAT_CONCURRENCY,
   PullRequestChatService,
 } from './application/pull-request-chat.service';
+import { PullRequestPublisherService } from './application/pull-request-publisher.service';
 import { PullRequestsService } from './application/pull-requests.service';
 import {
   REVIEW_CONCURRENCY,
@@ -85,6 +87,13 @@ function enabledProviders(
     { provide: PULL_REQUEST_SOURCE_PORTS, useExisting: ENABLED_PROVIDERS },
     { provide: PULL_REQUEST_COMMENT_PORTS, useExisting: ENABLED_PROVIDERS },
     {
+      // Hoy solo Bitbucket sabe abrir PRs; GitHub se suma cuando haga falta.
+      provide: PULL_REQUEST_CREATION_PORTS,
+      useFactory: (bitbucket: BitbucketAdapter) =>
+        bitbucket.isEnabled() ? [bitbucket] : [],
+      inject: [BitbucketAdapter],
+    },
+    {
       provide: PULL_REQUEST_REPOSITORY_PORT,
       useClass: TypeOrmPullRequestRepository,
     },
@@ -111,7 +120,9 @@ function enabledProviders(
     ReviewsService,
     PullRequestsService,
     PullRequestChatService,
+    PullRequestPublisherService,
     PrReviewScheduler,
   ],
+  exports: [PullRequestPublisherService],
 })
 export class PrReviewModule {}

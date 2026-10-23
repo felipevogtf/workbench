@@ -7,6 +7,9 @@ export const AGENT_MODULES = [
   'planner',
   'chat',
   'task-chat',
+  'task-tickets',
+  'task-developer',
+  'task-reviewer',
 ] as const;
 
 export type AgentModule = (typeof AGENT_MODULES)[number];
@@ -34,6 +37,38 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
   planner: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   // El chat de una tarea ayuda a afinar su plan: lee el código de sus repos para verificarlo.
   'task-chat': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
+  // Los agentes de la ejecución de tareas corren en el PC del usuario (runner), no en el servidor. El
+  // runner además recorta esta lista con la suya: nunca usa más de lo que esta le permite.
+  'task-tickets': [
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash(git log:*)',
+    'Bash(git show:*)',
+  ],
+  // Escribe código, pero no hace commit ni push: de eso se encarga el runner.
+  'task-developer': [
+    'Read',
+    'Grep',
+    'Glob',
+    'Edit',
+    'Write',
+    'Bash(git status:*)',
+    'Bash(git diff:*)',
+    'Bash(git log:*)',
+    'Bash(npm test:*)',
+    'Bash(npm run test:*)',
+    'Bash(npm run lint:*)',
+    'Bash(npm run build:*)',
+  ],
+  'task-reviewer': [
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash(git diff:*)',
+    'Bash(git log:*)',
+    'Bash(git show:*)',
+  ],
   // El chat conversa sobre el código de una PR: puede leerlo y comparar ramas, nada más.
   chat: [
     'Read',

@@ -1,0 +1,449 @@
+import { DomainError } from '@core/domain/domain.error';
+import { Job } from '@executions/domain/entities/job.entity';
+import { JobResult } from '@executions/domain/entities/job.props';
+import { Runner } from '@executions/domain/entities/runner.entity';
+import { ExecutionsService } from './executions.service';
+import { RunnerJobsService, STALE_JOB_MS } from './runner-jobs.service';
+import { RunnersService } from './runners.service';
+import {
+  FakeAgents,
+  FakePlans,
+  FakePullRequests,
+  FakeTasks,
+  InMemoryExecutions,
+  InMemoryJobs,
+  InMemoryRunners,
+} from './testing/fakes';
+
+const TICKETS_OUTPUT =
+  'Aquí están:\n```json\n' +
+  JSON.stringify({
+    tickets: [
+      { title: 'API de órdenes', description: 'Endpoint', criteria: ['200'] },
+      { title: 'Vista', description: 'Pantalla', criteria: [] },
+    ],
+  }) +
+  '\n```';
+const APPROVED = JSON.stringify({
+  approved: true,
+  summary: 'Bien',
+  issues: [],
+});
+const REJECTED = JSON.stringify({
+  approved: false,
+  summary: 'Falta algo',
+  issues: ['Maneja el error 404'],
+});
+
+describe('ExecutionsService', () => {
+  let executions: InMemoryExecutions;
+  let jobs: InMemoryJobs;
+  let tasks: FakeTasks;
+  let plans: FakePlans;
+  let agents: FakeAgents;
+  let pullRequests: FakePullRequests;
+  let runners: InMemoryRunners;
+  let service: ExecutionsService;
+  let runnerJobs: RunnerJobsService;
+  let runner: Runner;
+
+  beforeEach(async () => {
+    executions = new InMemoryExecutions();
+    jobs = new InMemoryJobs();
+    tasks = new FakeTasks();
+    plans = new FakePlans();
+    agents = new FakeAgents();
+    pullRequests = new FakePullRequests();
+    runners = new InMemoryRunners();
+    service = new ExecutionsService(
+      executions,
+      jobs,
+      tasks,
+      plans,
+      agents,
+      pullRequests,
+    );
+    runnerJobs = new RunnerJobsService(
+      jobs,
+      runners,
+      new RunnersService(runners),
+      service,
+    );
+    runner = await runners.save(Runner.create({ name: 'pc', tokenHash: 'x' }));
+  });
+
+  /** El runner toma el siguiente trabajo y lo entrega con este resultado. */
+  async function answer(result: JobResult, ok = true, error?: string) {
+    const job = (await runnerJobs.claim(runner, 0)) as Job;
+    expect(job).not.toBeNull();
+    await runnerJobs.finish(runner, job.id, {
+      ok,
+      result,
+      error,
+      costUsd: 0.1,
+    });
+    return job;
+  }
+
+  const developed = (before: string, after: string) => ({
+    output: 'Hecho',
+    headBefore: before,
+    headAfter: after,
+  });
+
+  describe('start', () => {
+    it('queues the tickets job with the plan, the repo and a branch of its own', async () => {
+      const execution = await service.start('issue-1');
+
+      expect(execution.status).toBe('running');
+      expect(execution.branch).toMatch(
+        /^workbench\/vista-de-ordenes-de-carga-[0-9a-f]{8}$/,
+      );
+      expect(execution.repo).toMatchObject({
+        fullName: 'acme/web',
+        sshUrl: 'git@bitbucket.org:acme/web.git',
+      });
+      expect(execution.stages.map((s) => [s.key, s.status])).toEqual([
+        ['tickets', 'running'],
+        ['develop', 'pending'],
+        ['review', 'pending'],
+        ['publish', 'pending'],
+      ]);
+
+      expect(jobs.items).toHaveLength(1);
+      const [job] = jobs.items;
+      expect(job.kind).toBe('tickets');
+      expect(job.payload.prompt).toContain('Hacer todo');
+      expect(job.payload.prompt).toContain('Vista de órdenes de carga');
+      expect(job.payload.agent?.name).toBe('default-task-tickets');
+      expect(job.payload.repo.sshUrl).toBe('git@bitbucket.org:acme/web.git');
+    });
+
+    it('rejects a task that does not exist', async () => {
+      tasks.task = null;
+      await expect(service.start('issue-1')).rejects.toMatchObject({
+        kind: 'not-found',
+      });
+    });
+
+    it('rejects a second execution while one is running', async () => {
+      await service.start('issue-1');
+      await expect(service.start('issue-1')).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+
+    it('needs a ready plan', async () => {
+      plans.plan = null;
+      await expect(service.start('issue-1')).rejects.toThrow('ready plan');
+    });
+
+    it('needs exactly one repository', async () => {
+      tasks.task!.repoUrls = [];
+      await expect(service.start('issue-1')).rejects.toThrow('no repository');
+
+      tasks.task!.repoUrls = [
+        'https://bitbucket.org/acme/web',
+        'https://bitbucket.org/acme/api',
+      ];
+      await expect(service.start('issue-1')).rejects.toThrow('several');
+    });
+
+    it('only supports Bitbucket for now', async () => {
+      tasks.task!.repoUrls = ['https://github.com/acme/web'];
+      await expect(service.start('issue-1')).rejects.toThrow('Bitbucket');
+    });
+
+    it('refuses agents that the runner cannot run', async () => {
+      agents.provider = 'copilot';
+      const error = await service.start('issue-1').catch((e: unknown) => e);
+      // El agente se resuelve al armar el primer trabajo, antes de guardar nada.
+      expect(error).toBeInstanceOf(DomainError);
+      expect(executions.items.size).toBe(0);
+      expect(jobs.items).toHaveLength(0);
+    });
+  });
+
+  describe('the full flow', () => {
+    it('creates tickets, develops and reviews each one on the same branch and opens the pull request', async () => {
+      const execution = await service.start('issue-1');
+
+      await answer({ output: TICKETS_OUTPUT });
+      let current = (await service.get(execution.id)).execution;
+      expect(current.tickets.map((t) => [t.title, t.status])).toEqual([
+        ['API de órdenes', 'developing'],
+        ['Vista', 'pending'],
+      ]);
+      expect(jobs.items.at(-1)).toMatchObject({
+        kind: 'develop',
+        ticketId: current.tickets[0].id,
+      });
+      expect(jobs.items.at(-1)!.payload.prompt).toContain('API de órdenes');
+      expect(jobs.items.at(-1)!.payload.commitMessage).toContain(
+        'API de órdenes',
+      );
+
+      await answer(developed('aaa', 'bbb'));
+      const review = jobs.items.at(-1)!;
+      expect(review.kind).toBe('review');
+      expect(review.payload.reviewFrom).toBe('aaa');
+      expect(review.payload.prompt).toContain('git diff aaa HEAD');
+
+      await answer({ output: APPROVED });
+      current = (await service.get(execution.id)).execution;
+      expect(current.tickets.map((t) => t.status)).toEqual([
+        'done',
+        'developing',
+      ]);
+
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: APPROVED });
+
+      const publish = jobs.items.at(-1)!;
+      expect(publish.kind).toBe('publish');
+      expect(publish.payload.agent).toBeNull();
+      current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('running');
+
+      await answer({ baseBranch: 'main' });
+      current = (await service.get(execution.id)).execution;
+
+      expect(current.status).toBe('completed');
+      expect(current.pullRequestUrl).toBe(
+        'https://bitbucket.org/acme/web/pull/7',
+      );
+      expect(current.stages.every((s) => s.status === 'done')).toBe(true);
+      expect(pullRequests.created).toEqual([
+        expect.objectContaining({
+          host: 'bitbucket.org',
+          repo: 'acme/web',
+          sourceBranch: execution.branch,
+          destBranch: 'main',
+          title: 'Vista de órdenes de carga',
+        }),
+      ]);
+      expect(pullRequests.created[0].description).toContain('API de órdenes');
+    });
+
+    it('reports the total cost of the jobs', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+
+      const { jobs: summary } = await service.get(execution.id);
+      expect(summary.reduce((sum, job) => sum + (job.costUsd ?? 0), 0)).toBe(
+        0.1,
+      );
+    });
+  });
+
+  describe('when the developer makes no changes', () => {
+    it('fails the execution and lets the user retry the same job', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      await answer(developed('aaa', 'aaa'));
+
+      let current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('no changes');
+      expect(current.stages.find((s) => s.key === 'develop')!.status).toBe(
+        'failed',
+      );
+
+      await service.retry(execution.id);
+      current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('running');
+      expect(jobs.items.at(-1)).toMatchObject({
+        kind: 'develop',
+        status: 'pending',
+        attempt: 2,
+      });
+    });
+  });
+
+  describe('the review loop', () => {
+    async function reachFirstReview() {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      await answer(developed('aaa', 'bbb'));
+      return execution;
+    }
+
+    it('sends the reviewer feedback back to the developer', async () => {
+      const execution = await reachFirstReview();
+      await answer({ output: REJECTED });
+
+      const next = jobs.items.at(-1)!;
+      expect(next.kind).toBe('develop');
+      expect(next.payload.prompt).toContain('Maneja el error 404');
+      expect(
+        (await service.get(execution.id)).execution.tickets[0],
+      ).toMatchObject({ status: 'developing', rounds: 1 });
+    });
+
+    it('fails when the reviewer still asks for changes after the second review', async () => {
+      const execution = await reachFirstReview();
+      await answer({ output: REJECTED });
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: REJECTED });
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('Maneja el error 404');
+      expect(current.tickets[0].status).toBe('failed');
+    });
+
+    it('gives one more round when the user retries after that failure', async () => {
+      const execution = await reachFirstReview();
+      await answer({ output: REJECTED });
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: REJECTED });
+
+      await service.retry(execution.id);
+
+      expect(jobs.items.at(-1)).toMatchObject({
+        kind: 'develop',
+        status: 'pending',
+      });
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('running');
+      expect(current.tickets[0]).toMatchObject({
+        status: 'developing',
+        rounds: 1,
+      });
+    });
+
+    it('fails when the reviewer does not answer with a verdict', async () => {
+      const execution = await reachFirstReview();
+      await answer({ output: 'Se ve bien' });
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('JSON');
+    });
+  });
+
+  describe('bad answers from the tickets agent', () => {
+    it('fails when there is no valid JSON', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: 'No sé qué hacer' });
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.stages.find((s) => s.key === 'tickets')!.status).toBe(
+        'failed',
+      );
+    });
+
+    it('caps the number of tickets', async () => {
+      const execution = await service.start('issue-1');
+      const many = Array.from({ length: 9 }, (_, i) => ({
+        title: `T${i}`,
+        description: 'd',
+        criteria: [],
+      }));
+      await answer({ output: JSON.stringify({ tickets: many }) });
+
+      expect((await service.get(execution.id)).execution.tickets).toHaveLength(
+        5,
+      );
+    });
+  });
+
+  describe('when the pull request cannot be opened', () => {
+    it('keeps the pushed branch and retries only the pull request', async () => {
+      const execution = await service.start('issue-1');
+      await answer({
+        output: JSON.stringify({
+          tickets: [{ title: 'Único', description: 'd', criteria: [] }],
+        }),
+      });
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: APPROVED });
+
+      pullRequests.failWith = 'token sin permiso';
+      await answer({ baseBranch: 'main' });
+
+      let current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('token sin permiso');
+      expect(current.error).toContain('pushed');
+      const jobsBefore = jobs.items.length;
+
+      pullRequests.failWith = null;
+      await service.retry(execution.id);
+
+      current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('completed');
+      expect(jobs.items).toHaveLength(jobsBefore);
+      expect(pullRequests.created).toHaveLength(1);
+    });
+  });
+
+  describe('failures reported by the runner', () => {
+    it('fail the execution with its message', async () => {
+      const execution = await service.start('issue-1');
+      await answer({}, false, 'git clone failed');
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toBe('git clone failed');
+    });
+
+    it('only a failed execution can be retried', async () => {
+      const execution = await service.start('issue-1');
+      await expect(service.retry(execution.id)).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+  });
+
+  describe('cancel', () => {
+    it('stops the execution, drops the open jobs and ignores late results', async () => {
+      const execution = await service.start('issue-1');
+      const job = (await runnerJobs.claim(runner, 0)) as Job;
+
+      await service.cancel(execution.id);
+      expect((await service.get(execution.id)).execution.status).toBe(
+        'cancelled',
+      );
+      expect(job.status).toBe('cancelled');
+
+      // El runner no se entera hasta su próxima señal de vida y entrega igual.
+      await runnerJobs.finish(runner, job.id, {
+        ok: true,
+        result: { output: TICKETS_OUTPUT },
+      });
+      expect(jobs.items).toHaveLength(1);
+      expect(await runnerJobs.heartbeat(runner, [job.id])).toEqual([job.id]);
+    });
+
+    it('cannot cancel what is not running', async () => {
+      const execution = await service.start('issue-1');
+      await service.cancel(execution.id);
+      await expect(service.cancel(execution.id)).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+  });
+
+  describe('lost runners', () => {
+    it('fails the jobs of a runner that stopped answering', async () => {
+      const execution = await service.start('issue-1');
+      await runnerJobs.claim(runner, 0);
+
+      const later = new Date(Date.now() + STALE_JOB_MS + 1000);
+      expect(await runnerJobs.failStaleJobs(later)).toBe(1);
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('failed');
+      expect(current.error).toContain('stopped answering');
+    });
+
+    it('leaves alone the jobs of a runner that is still alive', async () => {
+      await service.start('issue-1');
+      await runnerJobs.claim(runner, 0);
+
+      expect(await runnerJobs.failStaleJobs()).toBe(0);
+    });
+  });
+});

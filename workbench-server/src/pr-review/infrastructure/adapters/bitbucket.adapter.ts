@@ -7,12 +7,19 @@ import {
   RemotePullRequestData,
 } from '@pr-review/domain/ports/pull-request-source.port';
 import { PullRequestCommentPort } from '@pr-review/domain/ports/pull-request-comment.port';
+import {
+  NewPullRequestData,
+  PullRequestCreationPort,
+} from '@pr-review/domain/ports/pull-request-creation.port';
 import { BitbucketApiClient } from '@pr-review/infrastructure/clients/bitbucket-api.client';
 import { BitbucketPullRequest } from '@pr-review/infrastructure/clients/bitbucket-api.types';
 
 @Injectable()
 export class BitbucketAdapter
-  implements PullRequestSourcePort, PullRequestCommentPort
+  implements
+    PullRequestSourcePort,
+    PullRequestCommentPort,
+    PullRequestCreationPort
 {
   readonly provider: GitProvider = 'bitbucket';
   private readonly logger = new Logger(BitbucketAdapter.name);
@@ -106,6 +113,43 @@ export class BitbucketAdapter
   ): Promise<string> {
     const comment = await this.client.postComment(repo, externalId, markdown);
     return comment.links.html.href;
+  }
+
+  async create(data: NewPullRequestData): Promise<{ url: string }> {
+    // Bitbucket no deja que el autor (el dueño del token) se revise a sí mismo.
+    const me = await this.client.getCurrentUser();
+    const reviewerUuids = data.reviewerIds.filter((uuid) => uuid !== me.uuid);
+    const body = {
+      title: data.title,
+      description: data.description,
+      sourceBranch: data.sourceBranch,
+      destBranch: data.destBranch,
+    };
+
+    try {
+      const pr = await this.client.createPullRequest(data.repo, {
+        ...body,
+        reviewerUuids,
+      });
+      return { url: pr.links.html.href };
+    } catch (error) {
+      // Un revisor inválido no debe impedir abrir la PR: se reintenta sin revisores.
+      if (
+        reviewerUuids.length === 0 ||
+        !(error instanceof HttpException) ||
+        error.getStatus() !== 400
+      ) {
+        throw error;
+      }
+      this.logger.warn(
+        `The pull request was rejected with reviewers; retrying without them`,
+      );
+      const pr = await this.client.createPullRequest(data.repo, {
+        ...body,
+        reviewerUuids: [],
+      });
+      return { url: pr.links.html.href };
+    }
   }
 
   private async resolveRepoSlugs(): Promise<string[]> {

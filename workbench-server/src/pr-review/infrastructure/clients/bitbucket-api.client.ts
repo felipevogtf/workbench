@@ -136,6 +136,33 @@ export class BitbucketApiClient {
     );
   }
 
+  /** Abre una PR. Los revisores van por su `uuid` (no puede estar el autor entre ellos). */
+  createPullRequest(
+    repoFullName: string,
+    body: {
+      title: string;
+      description: string;
+      sourceBranch: string;
+      destBranch: string;
+      reviewerUuids: string[];
+    },
+  ): Promise<BitbucketPullRequest> {
+    return this.call(() =>
+      this.http.post<BitbucketPullRequest>(
+        `${API}/repositories/${repoFullName}/pullrequests`,
+        {
+          title: body.title,
+          description: body.description,
+          source: { branch: { name: body.sourceBranch } },
+          destination: { branch: { name: body.destBranch } },
+          reviewers: body.reviewerUuids.map((uuid) => ({ uuid })),
+          close_source_branch: false,
+        },
+        this.options(),
+      ),
+    );
+  }
+
   private async paginate<T>(firstUrl: string): Promise<T[]> {
     const all: T[] = [];
     let url: string | undefined = firstUrl;

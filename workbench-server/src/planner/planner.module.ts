@@ -59,5 +59,6 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
     TaskChatService,
     PlannerRecovery,
   ],
+  exports: [PlansService],
 })
 export class PlannerModule {}
