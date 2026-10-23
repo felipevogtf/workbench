@@ -29,13 +29,41 @@ describe('PullRequestChatStore', () => {
     await store.send('  Qué hace esto?  ');
     await store.send('Y esto otro?');
 
-    expect(api.chat).toHaveBeenLastCalledWith('p1', [
-      { role: 'user', content: 'Qué hace esto?' },
-      { role: 'assistant', content: 'Hace X.' },
-      { role: 'user', content: 'Y esto otro?' },
-    ]);
+    expect(api.chat).toHaveBeenLastCalledWith(
+      'p1',
+      [
+        { role: 'user', content: 'Qué hace esto?' },
+        { role: 'assistant', content: 'Hace X.' },
+        { role: 'user', content: 'Y esto otro?' },
+      ],
+      undefined,
+    );
     expect(store.messages().map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
     expect(store.sending()).toBe(false);
+  });
+
+  it('sends the file the user has open with every question', async () => {
+    store.setContext({ path: 'src/a.ts', status: 'modified' });
+
+    await store.send('Qué hace esto?');
+    store.setContext({ path: 'src/b.ts', status: 'renamed', oldPath: 'src/old.ts' });
+    await store.send('Y este?');
+
+    expect(api.chat.mock.calls[0][2]).toEqual({ path: 'src/a.ts', status: 'modified' });
+    expect(api.chat.mock.calls[1][2]).toEqual({
+      path: 'src/b.ts',
+      status: 'renamed',
+      oldPath: 'src/old.ts',
+    });
+  });
+
+  it('sends no file when none is open', async () => {
+    store.setContext({ path: 'src/a.ts', status: 'modified' });
+    store.setContext(null);
+
+    await store.send('hola');
+
+    expect(api.chat.mock.calls[0][2]).toBeUndefined();
   });
 
   it('ignores an empty message and does not send while it is waiting for an answer', async () => {

@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
-import { ChatMessage, MAX_MESSAGE_CHARS } from '../models/chat';
+import { ChatFileContext, ChatMessage, MAX_MESSAGE_CHARS } from '../models/chat';
 import { PullRequestsApi } from './pull-requests.api';
 
 const STORAGE_PREFIX = 'workbench.chat.pr.';
@@ -20,12 +20,15 @@ export class PullRequestChatStore {
   private readonly openState = signal(false);
   private readonly sendingState = signal(false);
   private readonly errorState = signal<string | null>(null);
+  private readonly contextState = signal<ChatFileContext | null>(null);
   private pullRequestId: string | null = null;
 
   readonly messages = this.messagesState.asReadonly();
   readonly open = this.openState.asReadonly();
   readonly sending = this.sendingState.asReadonly();
   readonly error = this.errorState.asReadonly();
+  /** El archivo que el usuario tiene abierto: va con cada pregunta. */
+  readonly context = this.contextState.asReadonly();
 
   /** Hay una pregunta sin respuesta (falló): se puede reintentar. */
   readonly canRetry = computed(() => {
@@ -39,6 +42,11 @@ export class PullRequestChatStore {
     this.pullRequestId = pullRequestId;
     this.messagesState.set(this.load(pullRequestId));
     this.errorState.set(null);
+  }
+
+  /** Cambia el archivo que se le dice a la IA que el usuario está mirando (null = ninguno). */
+  setContext(context: ChatFileContext | null): void {
+    this.contextState.set(context);
   }
 
   toggle(): void {
@@ -87,7 +95,9 @@ export class PullRequestChatStore {
         role,
         content: content.slice(0, MAX_MESSAGE_CHARS),
       }));
-      const { reply } = await firstValueFrom(this.api.chat(id, messages));
+      const { reply } = await firstValueFrom(
+        this.api.chat(id, messages, this.contextState() ?? undefined),
+      );
 
       // Si mientras tanto se pasó a otra PR, la respuesta ya no corresponde a esta conversación.
       if (this.pullRequestId === id) {

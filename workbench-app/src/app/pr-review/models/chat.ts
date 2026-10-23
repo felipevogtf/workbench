@@ -5,6 +5,14 @@ export interface ChatMessage {
   content: string;
 }
 
+/** El archivo que el usuario tiene abierto en el diff: se le pasa a la IA para que sepa de qué se habla. */
+export interface ChatFileContext {
+  path: string;
+  status: 'added' | 'deleted' | 'modified' | 'renamed';
+  /** Ruta anterior, solo si el archivo se renombró. */
+  oldPath?: string;
+}
+
 export interface ChatReply {
   reply: string;
   agentName: string;

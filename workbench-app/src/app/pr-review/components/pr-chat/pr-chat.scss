@@ -83,6 +83,30 @@
   color: var(--text-color);
 }
 
+// Qué archivo sabe la IA que se está mirando.
+.panel__file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--text-color);
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    color: var(--primary);
+  }
+}
+
 .panel__messages {
   display: flex;
   flex: 1;

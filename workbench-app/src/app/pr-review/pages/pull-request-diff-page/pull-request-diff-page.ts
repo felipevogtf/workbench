@@ -89,10 +89,19 @@ export class PullRequestDiffPage {
   /** Cada lado con su propio scroll y sin espacios grises; se conserva al cambiar de archivo. */
   protected readonly independentScroll = signal(false);
 
+  /** Rutas de los archivos que se están viendo completos. */
+  private readonly fullPaths = signal<ReadonlySet<string>>(new Set());
+
+  /** El archivo elegido se ve completo. */
+  protected readonly isFull = computed(() => {
+    const file = this.store.selected();
+    return !!file && this.fullPaths().has(file.path);
+  });
+
   /** Con scroll independiente el archivo debe ocupar todo el alto de su zona (solo si hay dos lados). */
   protected readonly fillsHeight = computed(() => {
     const file = this.store.selected();
-    return this.independentScroll() && !!file && canCompare(file);
+    return this.independentScroll() && this.isFull() && !!file && canCompare(file);
   });
 
   /** Rutas de las carpetas plegadas; todas parten abiertas. */
@@ -110,11 +119,33 @@ export class PullRequestDiffPage {
         this.chat.bind(id);
       });
     });
+
+    // El chat siempre sabe qué archivo se está mirando, para que no haya que nombrarlo en cada pregunta.
+    effect(() => {
+      const file = this.store.selected();
+      const context = file
+        ? {
+            path: file.path,
+            status: file.status,
+            ...(file.oldPath !== file.path && { oldPath: file.oldPath }),
+          }
+        : null;
+      untracked(() => this.chat.setContext(context));
+    });
   }
 
   /** El botón de IA de un segmento: abre el chat y le pide que lo explique. */
   protected explainHunk(file: DiffFileData, hunk: DiffHunk): void {
     void this.chat.ask(buildExplainMessage(file, hunk));
+  }
+
+  protected setFull(path: string, full: boolean): void {
+    this.fullPaths.update((current) => {
+      const next = new Set(current);
+      if (full) next.add(path);
+      else next.delete(path);
+      return next;
+    });
   }
 
   protected toggleFolder(path: string): void {

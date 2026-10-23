@@ -72,7 +72,9 @@ export class DiffFile {
   readonly fullState = input<FullFileState | null>(null);
   /** Porcentaje del ancho que se lleva el código de la izquierda (antes). */
   readonly split = model(50);
-  /** Cada lado con su propio scroll y sin filas vacías. */
+  /** Se ve el archivo entero en vez de solo los segmentos con cambios. */
+  readonly full = model(false);
+  /** Cada lado con su propio scroll y sin filas vacías; solo aplica al ver el archivo completo. */
   readonly independentScroll = model(false);
   /** Se pidió explicar un segmento con la IA. */
   readonly explain = output<HunkData>();
@@ -95,14 +97,8 @@ export class DiffFile {
     () => !this.file().binary && this.file().hunks.length > 0,
   );
   protected readonly independent = computed(
-    () => this.independentScroll() && this.mode() === 'split',
+    () => this.independentScroll() && this.full() && this.mode() === 'split',
   );
-
-  /** Se reinicia al cambiar de archivo: ver uno completo no abre los demás. */
-  protected readonly full = linkedSignal<File, boolean>({
-    source: this.file,
-    computation: () => false,
-  });
 
   protected readonly fullError = computed(() => {
     const state = this.fullState();

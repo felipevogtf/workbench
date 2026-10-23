@@ -6,9 +6,9 @@
     }
   </div>
   <div class="file__meta">
-    @if (comparable()) {
+    @if (comparable() && full()) {
       <app-checkbox class="file__sync" [(value)]="independentScroll">
-        Desincronizar scroll
+        Scroll independiente
       </app-checkbox>
     }
     @if (hasContent()) {

@@ -59,11 +59,30 @@ describe('PrChat', () => {
     await settle();
     await settle();
 
-    expect(api.chat).toHaveBeenCalledWith('p1', [{ role: 'user', content: 'Qué hace esto?' }]);
+    expect(api.chat).toHaveBeenCalledWith(
+      'p1',
+      [{ role: 'user', content: 'Qué hace esto?' }],
+      undefined,
+    );
     const messages = Array.from(element.querySelectorAll('.msg'));
     expect(messages.map((m) => m.getAttribute('data-role'))).toEqual(['user', 'assistant']);
     expect(messages[1].querySelector('strong')?.textContent).toBe('X');
     expect(box.value).toBe('');
+  });
+
+  it('shows which file the AI knows the user is looking at, and nothing without one', async () => {
+    store.toggle();
+    const element = await render();
+    expect(element.querySelector('.panel__file')).toBeNull();
+
+    store.setContext({ path: 'src/Services/Gps.php', status: 'modified' });
+    await settle();
+    await settle();
+
+    const chip = element.querySelector('.panel__file')!;
+    expect(chip.textContent).toContain('Gps.php');
+    expect(chip.textContent).not.toContain('src/Services');
+    expect(chip.getAttribute('title')).toBe('src/Services/Gps.php');
   });
 
   it('does not send with Shift+Enter, which is a line break', async () => {

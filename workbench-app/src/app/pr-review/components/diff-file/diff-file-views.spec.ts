@@ -117,23 +117,47 @@ describe('DiffFile views', () => {
   });
 
   describe('independent scroll', () => {
-    it('keeps both sides aligned, with their empty rows, until it is turned on', async () => {
+    const ready: FullFileState = { status: 'ready', hunk: fullHunk };
+    const independent = { independentScroll: true, full: true, fullState: ready };
+
+    it('is offered only while the whole file is shown', async () => {
       const fixture = await render();
+      expect(element(fixture).querySelector('.file__sync')).toBeNull();
+
+      fixture.componentRef.setInput('full', true);
+      fixture.componentRef.setInput('fullState', ready);
+      await fixture.whenStable();
+
+      expect(element(fixture).querySelector('.file__sync')?.textContent).toContain(
+        'Scroll independiente',
+      );
+    });
+
+    it('keeps both sides aligned, with their empty rows, until it is turned on', async () => {
+      const fixture = await render({ full: true, fullState: ready });
 
       expect(element(fixture).querySelectorAll('.pane')).toHaveLength(0);
-      expect(element(fixture).querySelectorAll('.row')).toHaveLength(3);
-      expect(element(fixture).querySelector('.file__sync')).not.toBeNull();
+      expect(element(fixture).querySelectorAll('.row')).toHaveLength(4);
+    });
+
+    it('is ignored when only the changes are shown, even if it was left turned on', async () => {
+      const fixture = await render({ independentScroll: true });
+
+      expect(element(fixture).querySelectorAll('.pane')).toHaveLength(0);
+      expect(element(fixture).classList.contains('is-independent')).toBe(false);
     });
 
     it('splits the sides into two panes that only have their own lines', async () => {
-      const fixture = await render({ independentScroll: true });
+      const fixture = await render(independent);
       const [oldPane, newPane] = Array.from(element(fixture).querySelectorAll('.pane'));
 
       expect(Array.from(oldPane.querySelectorAll('.row')).map(cells)).toEqual([
+        ['1', 'before the change'],
         ['1', 'keep'],
         ['2', 'old'],
       ]);
       expect(Array.from(newPane.querySelectorAll('.row')).map(cells)).toEqual([
+        ['1', 'before the change'],
         ['1', 'keep'],
         ['2', 'new'],
         ['3', 'extra'],
@@ -142,7 +166,7 @@ describe('DiffFile views', () => {
     });
 
     it('moves the divider as a plain percentage of the width', async () => {
-      const fixture = await render({ independentScroll: true });
+      const fixture = await render(independent);
       const box = element(fixture).querySelector<HTMLElement>('.file__hunks')!;
       vi.spyOn(box, 'getBoundingClientRect').mockReturnValue({
         left: 100,
@@ -155,7 +179,7 @@ describe('DiffFile views', () => {
     });
 
     it('has nothing to unsynchronize in an added file', async () => {
-      const fixture = await render({ file: { ...file, status: 'added' } });
+      const fixture = await render({ file: { ...file, status: 'added' }, full: true });
 
       expect(element(fixture).querySelector('.file__sync')).toBeNull();
       expect(element(fixture).classList.contains('is-independent')).toBe(false);

@@ -19,6 +19,15 @@
       </button>
     </header>
 
+    @if (store.context(); as file) {
+      <p class="panel__file" [title]="file.path">
+        <app-icon name="file" size="1em" />
+        <span
+          >Hablando de <code>{{ fileName(file.path) }}</code></span
+        >
+      </p>
+    }
+
     <div class="panel__messages" #scroller aria-live="polite">
       @for (message of store.messages(); track $index) {
         <article class="msg" [attr.data-role]="message.role">

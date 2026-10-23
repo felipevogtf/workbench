@@ -54,6 +54,11 @@ export class PrChat {
     });
   }
 
+  /** Solo el nombre del archivo: la ruta completa va en el tooltip. */
+  protected fileName(path: string): string {
+    return path.slice(path.lastIndexOf('/') + 1);
+  }
+
   protected onInput(box: HTMLTextAreaElement): void {
     this.draft.set(box.value);
     this.fit(box);
