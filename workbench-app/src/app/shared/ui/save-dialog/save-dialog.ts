@@ -26,7 +26,7 @@ import { Dialog } from '../dialog/dialog';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-dialog [heading]="heading()" [(open)]="open">
-      <form [id]="formId" class="stack" (submit)="submit()" novalidate>
+      <form [id]="formId" class="stack" (submit)="$event.preventDefault(); submit()" novalidate>
         @if (error(); as message) {
           <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
         }

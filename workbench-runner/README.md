@@ -40,7 +40,7 @@ nuevo avisa y termina. Para deshacerlo: `npm run autostart:remove`. `npm run aut
 muestra lo que haría sin tocar nada.
 
 El enlace abre el runner **de este PC**, así que conviene que el runner **predeterminado** de la app sea
-el de tu PC (el primero que creas lo es; se cambia en *Trabajadores → Runners → Usar por defecto*).
+el de tu PC (el primero que creas lo es; se cambia en *Automatización → Runners → Usar por defecto*).
 
 ## Varios runners
 

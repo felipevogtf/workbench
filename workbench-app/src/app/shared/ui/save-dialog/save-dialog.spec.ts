@@ -41,10 +41,19 @@ describe('SaveDialog', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     const submit = () => {
-      root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+      const event = new Event('submit', { cancelable: true });
+      root.querySelector('form')!.dispatchEvent(event);
+      lastSubmit = event;
       return fixture.whenStable();
     };
-    return { fixture, host: fixture.componentInstance, root, submit };
+    let lastSubmit: Event | null = null;
+    return {
+      fixture,
+      host: fixture.componentInstance,
+      root,
+      submit,
+      wasNativeSubmitCancelled: () => lastSubmit?.defaultPrevented ?? false,
+    };
   }
 
   it('announces each time it opens', async () => {
@@ -66,6 +75,15 @@ describe('SaveDialog', () => {
     expect(host.save).not.toHaveBeenCalled();
     expect(host.form.controls.name.touched).toBe(true);
     expect(host.open()).toBe(true);
+  });
+
+  it('does not let the browser submit the form natively, which would reload the page', async () => {
+    const { host, submit, wasNativeSubmitCancelled } = await render();
+    host.form.controls.name.setValue('algo');
+
+    await submit();
+
+    expect(wasNativeSubmitCancelled()).toBe(true);
   });
 
   it('saves a valid form and closes', async () => {

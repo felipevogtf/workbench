@@ -1,6 +1,14 @@
 <div class="page">
   <app-page-header
-    [heading]="isEdit() ? 'Editar agente' : 'Nuevo agente'"
+    [heading]="
+      isEdit()
+        ? scope() === 'workers'
+          ? 'Editar trabajador'
+          : 'Editar agente'
+        : scope() === 'workers'
+          ? 'Nuevo trabajador'
+          : 'Nuevo agente'
+    "
     [subtitle]="
       scope() === 'workers'
         ? 'El prompt le dice al agente qué hacer en su etapa. Solo el desarrollador puede editar archivos.'
@@ -8,7 +16,8 @@
     "
   >
     <a back app-button variant="ghost" size="sm" [routerLink]="base()">
-      <app-icon name="arrow-left" size="1em" /> Agentes
+      <app-icon name="arrow-left" size="1em" />
+      {{ scope() === 'workers' ? 'Trabajadores' : 'Agentes' }}
     </a>
   </app-page-header>
 

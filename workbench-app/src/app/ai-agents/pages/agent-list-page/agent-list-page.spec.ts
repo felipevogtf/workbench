@@ -76,7 +76,7 @@ describe('AgentListPage', () => {
     it('«Trabajadores» shows only the agents of the workers, under their own names', async () => {
       const element = await render(mixed(), 'workers');
 
-      expect(element.querySelector('h3')?.textContent).toContain('Agentes de los trabajadores');
+      expect(element.querySelector('h3')?.textContent).toContain('Trabajadores');
       expect(element.querySelectorAll('app-agent-card')).toHaveLength(3);
       expect(names(element).join()).not.toContain('agent-pr');
       expect(

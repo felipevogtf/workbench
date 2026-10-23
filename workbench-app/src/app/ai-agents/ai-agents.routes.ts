@@ -4,7 +4,7 @@ import { Routes } from '@angular/router';
 export const WORKER_AGENTS_ROUTES: Routes = [
   {
     path: '',
-    title: 'Agentes · Trabajadores · Workbench',
+    title: 'Trabajadores · Workbench',
     data: { scope: 'workers' },
     loadComponent: () =>
       import('./pages/agent-list-page/agent-list-page').then((m) => m.AgentListPage),
