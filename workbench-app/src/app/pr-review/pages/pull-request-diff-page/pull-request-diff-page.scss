@@ -37,7 +37,7 @@
 }
 
 .files__totals,
-.files__meta {
+.files__counts {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -46,36 +46,63 @@
 .files {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+// Una fila simple: icono del cambio, nombre y contador de líneas.
 .files__item {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
   width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  padding: var(--space-2);
+  border: none;
   border-radius: var(--radius-sm);
   background: none;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: background-color 0.15s ease;
 
-  &:hover,
+  &:hover {
+    background: var(--tone-neutral-bg);
+  }
+
   &[aria-pressed='true'] {
-    border-color: var(--primary);
+    background: var(--tone-info-bg);
   }
 }
 
-.files__path {
+// El color del icono dice qué pasó con el archivo: verde añadido, rojo eliminado, amarillo modificado.
+.files__icon {
+  color: var(--warning);
+}
+
+.files__item[data-status='added'] .files__icon {
+  color: var(--success);
+}
+
+.files__item[data-status='deleted'] .files__icon {
+  color: var(--danger);
+}
+
+.files__name {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   color: var(--primary);
+}
+
+.files__dir {
+  color: var(--text-color);
+}
+
+.files__counts {
+  flex: none;
 }
 
 .stat {

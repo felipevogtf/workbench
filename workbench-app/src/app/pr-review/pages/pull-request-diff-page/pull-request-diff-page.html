@@ -42,14 +42,20 @@
                   <button
                     type="button"
                     class="files__item"
+                    [attr.data-status]="file.status"
                     [attr.aria-pressed]="file === store.selected()"
+                    [attr.aria-label]="file.path + ' (' + statusLabel[file.status] + ')'"
+                    [title]="file.path + ' · ' + statusLabel[file.status]"
                     (click)="store.select(file.path)"
                   >
-                    <span class="files__path break-anywhere">{{ file.path }}</span>
-                    <span class="files__meta">
-                      <app-badge [tone]="statusTone[file.status]">{{
-                        statusLabel[file.status]
-                      }}</app-badge>
+                    <app-icon class="files__icon" [name]="fileIcon[file.status]" size="1.1rem" />
+                    <span class="files__name break-anywhere">
+                      @if (parts(file.path); as part) {
+                        <span class="files__dir">{{ part.dir }}</span
+                        >{{ part.name }}
+                      }
+                    </span>
+                    <span class="files__counts">
                       <span class="stat stat--add">+{{ file.additions }}</span>
                       <span class="stat stat--del">−{{ file.deletions }}</span>
                     </span>

@@ -11,16 +11,16 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Alert } from '@shared/ui/alert/alert';
-import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
 import { Icon } from '@shared/ui/icon/icon';
+import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
-import { DiffFile, STATUS_TONE } from '../../components/diff-file/diff-file';
+import { DiffFile } from '../../components/diff-file/diff-file';
 import { SplitHandle } from '../../components/split-handle/split-handle';
 import { PullRequestDiffStore } from '../../data-access/pull-request-diff.store';
-import { DIFF_STATUS_LABEL } from '../../models/diff';
+import { DIFF_STATUS_LABEL, DiffFileStatus } from '../../models/diff';
 import { PROVIDER_LABEL } from '../../models/pull-request';
 
 const FILES_DEFAULT_PX = 300;
@@ -38,18 +38,7 @@ const HANDLE_PX = 10;
  */
 @Component({
   selector: 'app-pull-request-diff-page',
-  imports: [
-    RouterLink,
-    PageHeader,
-    Button,
-    Card,
-    Icon,
-    Alert,
-    Badge,
-    Skeleton,
-    DiffFile,
-    SplitHandle,
-  ],
+  imports: [RouterLink, PageHeader, Button, Card, Icon, Alert, Skeleton, DiffFile, SplitHandle],
   providers: [PullRequestDiffStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pull-request-diff-page.html',
@@ -62,7 +51,13 @@ export class PullRequestDiffPage {
   protected readonly store = inject(PullRequestDiffStore);
   protected readonly providerLabel = PROVIDER_LABEL;
   protected readonly statusLabel = DIFF_STATUS_LABEL;
-  protected readonly statusTone = STATUS_TONE;
+  /** Añadido lleva «+», eliminado «X» y el resto (modificado, renombrado) el archivo a secas. */
+  protected readonly fileIcon: Record<DiffFileStatus, IconName> = {
+    added: 'file-plus',
+    deleted: 'file-x',
+    modified: 'file',
+    renamed: 'file',
+  };
 
   /** Ancho de la lista de archivos. */
   protected readonly filesWidth = signal(FILES_DEFAULT_PX);
@@ -76,6 +71,12 @@ export class PullRequestDiffPage {
       const id = this.id();
       untracked(() => void this.store.load(id));
     });
+  }
+
+  /** La carpeta (con su barra final) y el nombre del archivo, para resaltar el nombre. */
+  protected parts(path: string): { dir: string; name: string } {
+    const slash = path.lastIndexOf('/') + 1;
+    return { dir: path.slice(0, slash), name: path.slice(slash) };
   }
 
   protected dragFiles(clientX: number): void {
