@@ -64,7 +64,8 @@
       }
       @if (execution.status === 'failed' && execution.error) {
         <app-alert tone="danger" heading="La ejecución falló">
-          {{ execution.error }} Puedes reintentar desde donde quedó.
+          <div>{{ execution.error }}</div>
+          <div>Puedes reintentar desde donde quedó.</div>
         </app-alert>
       }
       @if (execution.status === 'completed') {

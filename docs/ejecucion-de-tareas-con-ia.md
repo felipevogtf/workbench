@@ -2,7 +2,26 @@
 
 Plan para que, una vez que una tarea tiene su plan, agentes de IA la desarrollen de punta a punta: crean tickets, los desarrollan, los revisan y dejan una PR lista para revisar.
 
-Estado: **propuesta, sin implementar**. Este documento recoge lo conversado y lo que falta decidir.
+Estado: **fase 1 implementada** en la rama `feat/task-executions` (servidor, runner y front), probada de punta
+a punta con el `claude` real sobre un repo local. Falta probar la apertura real de la PR en Bitbucket y decidir
+si se incorpora a `main`.
+
+### Cómo quedó la fase 1 respecto al plan
+
+- **Varios tickets, en orden, en una sola rama.** En vez de un solo ticket, el agente crea hasta 5 y se
+  desarrollan uno tras otro sobre la misma rama (sin paralelismo ni integración de ramas: eso es la fase 1b).
+- **Los tickets viven dentro de la ejecución** (columna JSON), no en una tabla aparte.
+- **El runner hace los commits**, no el agente: el desarrollador solo edita y corre pruebas, y el runner
+  guarda lo que quedó. Por eso `task-developer` no tiene `git add` ni `git commit`.
+- **Revisión:** hasta 2 revisiones por ticket; si la segunda sigue pidiendo cambios, la ejecución falla y
+  «Reintentar» da una vuelta más de corrección.
+- **Reintentar** repite el trabajo que falló sin rehacer lo anterior; si lo que falló fue abrir la PR, solo se
+  repite eso (la rama ya está subida).
+- **Revisor de la PR:** Bitbucket no deja que el autor (el dueño del token) se revise a sí mismo, así que la
+  PR sale sin revisor salvo que se configure `EXECUTIONS_PR_REVIEWERS` con las cuentas (uuid) de otras personas.
+- **Aislamiento del agente en el PC:** corre con `--setting-sources project`, `--strict-mcp-config`,
+  `--no-session-persistence` y un tope de gasto por trabajo (`maxBudgetUsd`).
+
 
 ## 1. Objetivo
 
