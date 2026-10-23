@@ -5,6 +5,14 @@ export interface RunnerRepositoryPort {
   findByTokenHash(tokenHash: string): Promise<Runner | null>;
   findAll(): Promise<Runner[]>;
   save(runner: Runner): Promise<Runner>;
+  /**
+   * Anota que el runner dio señales (y, si se indica, quién dice ser). Solo actualiza: si el runner ya
+   * no existe (lo revocaron) no lo vuelve a crear. Devuelve si existía.
+   */
+  markSeen(
+    id: string,
+    info?: { version?: string; host?: string },
+  ): Promise<boolean>;
   delete(id: string): Promise<void>;
 }
 

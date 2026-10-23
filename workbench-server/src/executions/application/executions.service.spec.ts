@@ -426,6 +426,24 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('a revoked runner', () => {
+    it('gets no more work from a poll that was still waiting', async () => {
+      await service.start('issue-1');
+      await runners.delete(runner.id);
+
+      expect(await runnerJobs.claim(runner, 0)).toBeNull();
+      expect(jobs.items[0].status).toBe('pending');
+    });
+
+    it('is told to stop everything it was doing', async () => {
+      await service.start('issue-1');
+      const job = (await runnerJobs.claim(runner, 0)) as Job;
+      await runners.delete(runner.id);
+
+      expect(await runnerJobs.heartbeat(runner, [job.id])).toEqual([job.id]);
+    });
+  });
+
   describe('lost runners', () => {
     it('fails the jobs of a runner that stopped answering', async () => {
       const execution = await service.start('issue-1');

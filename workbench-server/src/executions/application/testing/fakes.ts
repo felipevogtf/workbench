@@ -90,6 +90,16 @@ export class InMemoryRunners implements RunnerRepositoryPort {
     this.items.set(runner.id, runner);
     return Promise.resolve(runner);
   }
+  markSeen(
+    id: string,
+    info: { version?: string; host?: string } = {},
+  ): Promise<boolean> {
+    // Como la base: solo actualiza lo que existe.
+    const runner = this.items.get(id);
+    if (!runner) return Promise.resolve(false);
+    runner.introduce(info);
+    return Promise.resolve(true);
+  }
   delete(id: string): Promise<void> {
     this.items.delete(id);
     return Promise.resolve();

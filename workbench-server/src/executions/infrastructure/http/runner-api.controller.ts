@@ -38,7 +38,8 @@ export class RunnerApiController {
     @CurrentRunner() runner: Runner,
     @Body() dto: RunnerHelloDto,
   ): Promise<RunnerResponseDto> {
-    return toRunnerDto(await this.runners.introduce(runner, dto));
+    await this.runners.introduce(runner, dto);
+    return toRunnerDto(runner);
   }
 
   /** Señal de vida. Responde qué trabajos debe detener. */

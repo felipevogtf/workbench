@@ -43,6 +43,18 @@ export class TypeOrmRunnerRepository implements RunnerRepositoryPort {
     return this.toDomain(saved);
   }
 
+  async markSeen(
+    id: string,
+    info: { version?: string; host?: string } = {},
+  ): Promise<boolean> {
+    const result = await this.repository.update(id, {
+      last_seen_at: new Date(),
+      ...(info.version !== undefined && { version: info.version.slice(0, 40) }),
+      ...(info.host !== undefined && { host: info.host.slice(0, 120) }),
+    });
+    return (result.affected ?? 0) > 0;
+  }
+
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
   }

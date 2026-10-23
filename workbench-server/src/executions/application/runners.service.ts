@@ -49,18 +49,19 @@ export class RunnersService {
     return this.runners.findByTokenHash(hashToken(token));
   }
 
+  /** El runner se presenta. `false` si ya lo revocaron mientras tanto. */
   async introduce(
     runner: Runner,
     info: { version?: string; host?: string },
-  ): Promise<Runner> {
+  ): Promise<boolean> {
     runner.introduce(info);
-    return this.runners.save(runner);
+    return this.runners.markSeen(runner.id, info);
   }
 
-  /** Marca que el runner sigue vivo. */
-  async touch(runner: Runner): Promise<void> {
+  /** Marca que el runner sigue vivo. `false` si ya lo revocaron (no se vuelve a crear). */
+  async touch(runner: Runner): Promise<boolean> {
     runner.introduce({});
-    await this.runners.save(runner);
+    return this.runners.markSeen(runner.id);
   }
 
   /** `true` si algún runner dio señales hace poco. */

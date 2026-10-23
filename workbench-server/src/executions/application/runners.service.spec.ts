@@ -55,6 +55,18 @@ describe('RunnersService', () => {
     );
   });
 
+  it('does not bring a revoked runner back when a request of it was still in flight', async () => {
+    const { runner, token } = await service.create('Mi PC');
+    await service.delete(runner.id);
+
+    // El runner había sido autenticado antes de que lo revocaran y sigue dando señales.
+    expect(await service.touch(runner)).toBe(false);
+    expect(await service.introduce(runner, { version: '0.1.0' })).toBe(false);
+
+    expect(await service.findAll()).toEqual([]);
+    expect(await service.authenticate(token)).toBeNull();
+  });
+
   it('remembers who the runner says it is', async () => {
     const { runner } = await service.create('Mi PC');
     await service.introduce(runner, { version: '0.1.0', host: 'DESKTOP-1' });

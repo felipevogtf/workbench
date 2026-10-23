@@ -47,7 +47,8 @@ export class RunnerJobsService {
     const deadline = Date.now() + waitMs;
 
     for (;;) {
-      await this.runnersService.touch(runner);
+      // Un runner revocado en pleno sondeo no recibe más trabajo (y su petición termina).
+      if (!(await this.runnersService.touch(runner))) return null;
       const job = await this.jobs.claimNext(runner.id);
       if (job) return job;
       if (Date.now() + CLAIM_POLL_MS >= deadline) return null;
@@ -60,7 +61,8 @@ export class RunnerJobsService {
    * detener: los que se cancelaron o ya no existen.
    */
   async heartbeat(runner: Runner, runningJobIds: string[]): Promise<string[]> {
-    await this.runnersService.touch(runner);
+    // Un runner revocado debe detener todo lo que esté haciendo.
+    if (!(await this.runnersService.touch(runner))) return [...runningJobIds];
 
     const stop: string[] = [];
     for (const id of runningJobIds) {
