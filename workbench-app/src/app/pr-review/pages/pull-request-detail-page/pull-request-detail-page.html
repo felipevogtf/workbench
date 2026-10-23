@@ -184,6 +184,8 @@
       [agents]="agentsStore.agentsOf('pr-review')"
       (confirmed)="reReview($event)"
     />
+
+    <app-pr-chat [context]="pr.repo + ' #' + pr.externalId" />
   } @else {
     <div class="stack" aria-busy="true">
       <app-skeleton width="60%" height="2rem" />

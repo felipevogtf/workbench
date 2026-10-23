@@ -22,6 +22,8 @@ import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
 import { downloadText } from '@shared/util/download-text';
+import { PrChat } from '../../components/pr-chat/pr-chat';
+import { PullRequestChatStore } from '../../data-access/pull-request-chat.store';
 import { PullRequestDetailStore } from '../../data-access/pull-request-detail.store';
 import { ProviderIcon } from '../../components/provider-icon/provider-icon';
 import { ReReviewDialog } from '../../components/re-review-dialog/re-review-dialog';
@@ -47,8 +49,9 @@ import { PROVIDER_LABEL, ReReviewRequest, Review, shortCommit } from '../../mode
     TicketTags,
     ReviewHistory,
     ReReviewDialog,
+    PrChat,
   ],
-  providers: [PullRequestDetailStore],
+  providers: [PullRequestDetailStore, PullRequestChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pull-request-detail-page.html',
   styleUrl: './pull-request-detail-page.scss',
@@ -59,6 +62,7 @@ export class PullRequestDetailPage {
 
   protected readonly store = inject(PullRequestDetailStore);
   protected readonly agentsStore = inject(AgentsStore);
+  private readonly chat = inject(PullRequestChatStore);
   private readonly toast = inject(Toast);
   private readonly confirm = inject(ConfirmDialog);
 
@@ -76,7 +80,10 @@ export class PullRequestDetailPage {
 
     effect(() => {
       const id = this.id();
-      untracked(() => void this.store.load(id));
+      untracked(() => {
+        void this.store.load(id);
+        this.chat.bind(id);
+      });
     });
   }
 
