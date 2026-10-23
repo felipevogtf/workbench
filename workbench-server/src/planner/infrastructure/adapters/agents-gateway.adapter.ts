@@ -4,6 +4,8 @@ import {
   AgentsGatewayPort,
   PlanRunRequest,
   PlanRunResult,
+  TaskChatRunRequest,
+  TaskChatRunResult,
 } from '@planner/domain/ports/agents-gateway.port';
 
 /** Único punto del planificador que conoce al módulo ai-agents. */
@@ -23,6 +25,20 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
     return {
       markdown: result.output,
       agentId: result.agentId,
+      agentName: result.agentName,
+      model: result.model,
+    };
+  }
+
+  async runTaskChat(request: TaskChatRunRequest): Promise<TaskChatRunResult> {
+    const result = await this.agentsService.run({
+      module: 'task-chat',
+      prompt: request.prompt,
+      workdir: request.workdir,
+    });
+
+    return {
+      markdown: result.output,
       agentName: result.agentName,
       model: result.model,
     };

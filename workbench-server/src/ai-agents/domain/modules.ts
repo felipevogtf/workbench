@@ -2,7 +2,12 @@
  * Módulos de la app que usan agentes de IA. Cada agente pertenece a uno y cada módulo tiene su
  * propio agente por defecto. Sumar un módulo es agregar un valor aquí (y su lista de herramientas).
  */
-export const AGENT_MODULES = ['pr-review', 'planner', 'chat'] as const;
+export const AGENT_MODULES = [
+  'pr-review',
+  'planner',
+  'chat',
+  'task-chat',
+] as const;
 
 export type AgentModule = (typeof AGENT_MODULES)[number];
 
@@ -27,6 +32,8 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(git show:*)',
   ],
   planner: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
+  // El chat de una tarea ayuda a afinar su plan: lee el código de sus repos para verificarlo.
+  'task-chat': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   // El chat conversa sobre el código de una PR: puede leerlo y comparar ramas, nada más.
   chat: [
     'Read',

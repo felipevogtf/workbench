@@ -11,6 +11,12 @@ export interface PlanRepoInfo {
   note: string | null;
 }
 
+/** Un mensaje de la conversación con la que se pidió una replanificación. */
+export interface PlanChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface PlanProps {
   id: string;
   issueId: string;
@@ -25,6 +31,10 @@ export interface PlanProps {
   agentName: string | null;
   model: string | null;
   repos: PlanRepoInfo[];
+  /** Conversación con la que se pidió este plan (replanificación); null en un plan normal. */
+  conversation: PlanChatMessage[] | null;
+  /** El plan del que parte (el último listo al pedir la replanificación); null si no había. */
+  basedOnPlanId: string | null;
   error: string | null;
   queuedAt: Date;
   createdAt: Date;

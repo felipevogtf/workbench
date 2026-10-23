@@ -1,10 +1,14 @@
 import { DomainError } from '@core/domain/domain.error';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { withTimeout } from '@core/async/with-timeout';
 import { WorkQueue } from '@core/queue/work-queue';
-import { extractTicketKeys } from '@core/text/ticket-keys';
 import { Plan } from '@planner/domain/entities/plan.entity';
-import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
+import { userTexts } from '@planner/domain/conversation';
+import {
+  PlanChatMessage,
+  PlanRepoInfo,
+} from '@planner/domain/entities/plan.props';
+import { readTickets } from '@planner/application/ticket-reader';
+import { MAX_REPOS_PER_PLAN, repoUrlsOf } from '@planner/domain/task-repos';
 import { buildPlanPrompt } from '@planner/domain/plan-prompt';
 import {
   AGENTS_GATEWAY_PORT,
@@ -29,11 +33,11 @@ import {
   type TicketData,
   type TicketsGatewayPort,
 } from '@planner/domain/ports/tickets-gateway.port';
+import { PlanRevision } from '@planner/domain/plan-prompt';
 
 export const PLANNER_CONCURRENCY = Symbol('PLANNER_CONCURRENCY');
 
-/** Máximo de repositorios que se clonan por plan (acota el tiempo y el disco). */
-export const MAX_REPOS_PER_PLAN = 3;
+export { MAX_REPOS_PER_PLAN };
 /** Máximo de tickets de Plane citados que se leen por plan. */
 export const MAX_TICKETS_PER_PLAN = 3;
 const TICKET_TIMEOUT_MS = 10_000;
@@ -65,10 +69,16 @@ export class PlansService {
     });
   }
 
-  /** Deja un plan en cola. Quien encola nunca genera: solo despierta a los workers. */
+  /**
+   * Deja un plan en cola. Quien encola nunca genera: solo despierta a los workers.
+   *
+   * Con `revision` es una replanificación: el plan nuevo parte del último plan listo (solo ese, aunque
+   * el historial tenga más) y de la conversación que se le pasa.
+   */
   async create(
     issueId: string,
     override: { agentId?: string; model?: string } = {},
+    revision?: { messages: PlanChatMessage[] },
   ): Promise<Plan> {
     if (!(await this.tasks.getTask(issueId))) {
       throw DomainError.notFound(`Issue with id ${issueId} not found`);
@@ -79,7 +89,26 @@ export class PlansService {
       );
     }
 
-    const plan = await this.plans.save(Plan.create({ issueId, ...override }));
+    let conversation: PlanChatMessage[] | undefined;
+    let basedOnPlanId: string | null = null;
+    if (revision) {
+      if (
+        !revision.messages.some((m) => m.role === 'user' && m.content.trim())
+      ) {
+        throw new DomainError(
+          'A conversation with the user is needed to replan',
+        );
+      }
+      conversation = revision.messages;
+      const latest = (await this.plans.findByIssueId(issueId)).find(
+        (candidate) => candidate.status === 'ready' && candidate.content,
+      );
+      basedOnPlanId = latest?.id ?? null;
+    }
+
+    const plan = await this.plans.save(
+      Plan.create({ issueId, ...override, conversation, basedOnPlanId }),
+    );
     this.kick();
     return plan;
   }
@@ -133,14 +162,19 @@ export class PlansService {
       const task = await this.tasks.getTask(plan.issueId);
       if (!task) throw new Error('The task no longer exists');
 
-      const tickets = await this.loadTickets(task);
-      checkout = await this.checkoutPort.checkout(this.repoUrls(task));
+      const revision = await this.revisionOf(plan);
+      const tickets = await this.loadTickets(
+        task,
+        // Los tickets que el usuario mencionó al conversar también entran al contexto.
+        revision ? userTexts(revision.conversation) : [],
+      );
+      checkout = await this.checkoutPort.checkout(repoUrlsOf(task));
       repos = checkout.repos;
 
       const result = await this.agents.runPlan({
         agentId: plan.requestedAgentId ?? undefined,
         model: plan.requestedModel ?? undefined,
-        prompt: buildPlanPrompt({ task, tickets, repos }),
+        prompt: buildPlanPrompt({ task, tickets, repos, revision }),
         workdir: checkout.path,
       });
 
@@ -166,49 +200,33 @@ export class PlansService {
     }
   }
 
-  /** Repositorios de las etiquetas (sin repetidos, por nombre de etiqueta), hasta el máximo. */
-  private repoUrls(task: TaskContext): string[] {
-    const urls = [...task.labels]
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-      .flatMap((label) => (label.repoUrl ? [label.repoUrl] : []));
-    return [...new Set(urls)].slice(0, MAX_REPOS_PER_PLAN);
+  /** Lo que una replanificación agrega al prompt; null en un plan normal. */
+  private async revisionOf(plan: Plan): Promise<PlanRevision | null> {
+    const conversation = plan.conversation;
+    if (!conversation) return null;
+
+    // Solo el plan del que parte, no el historial entero. Si ya se borró, se replanifica sin él.
+    const previous = plan.basedOnPlanId
+      ? await this.plans.findById(plan.basedOnPlanId)
+      : null;
+    return { previousPlan: previous?.content ?? null, conversation };
   }
 
-  /** Tickets de Plane citados en el título o la descripción. Nunca bloquea el plan. */
-  private async loadTickets(task: TaskContext): Promise<TicketData[]> {
-    try {
-      const identifiers = await withTimeout(
-        this.tickets.getProjectIdentifiers(),
-        TICKET_TIMEOUT_MS,
-      );
-      const keys = extractTicketKeys(
-        [task.name, task.description],
-        identifiers,
-        MAX_TICKETS_PER_PLAN,
-      );
-
-      const found = await Promise.all(
-        keys.map(async (key) => {
-          try {
-            return await withTimeout(
-              this.tickets.getTicket(key),
-              TICKET_TIMEOUT_MS,
-            );
-          } catch (error) {
-            this.logger.warn(
-              `Could not read ticket ${key}: ${this.errorMessage(error)}`,
-            );
-            return null;
-          }
-        }),
-      );
-      return found.filter((ticket): ticket is TicketData => ticket !== null);
-    } catch (error) {
-      this.logger.warn(
-        `Could not read Plane tickets: ${this.errorMessage(error)}`,
-      );
-      return [];
-    }
+  /** Tickets de Plane citados en lo que se pasa y en el título o la descripción. Nunca bloquea el plan. */
+  private async loadTickets(
+    task: TaskContext,
+    extraTexts: string[] = [],
+  ): Promise<TicketData[]> {
+    const { tickets } = await readTickets(
+      this.tickets,
+      [...extraTexts, task.name, task.description],
+      {
+        max: MAX_TICKETS_PER_PLAN,
+        timeoutMs: TICKET_TIMEOUT_MS,
+        warn: (message) => this.logger.warn(message),
+      },
+    );
+    return tickets;
   }
 
   private errorMessage(error: unknown): string {

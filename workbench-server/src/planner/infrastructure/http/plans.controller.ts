@@ -8,25 +8,48 @@ import {
   Post,
 } from '@nestjs/common';
 import { PlansService } from '@planner/application/plans.service';
+import { TaskChatService } from '@planner/application/task-chat.service';
 import { Plan } from '@planner/domain/entities/plan.entity';
-import { CreatePlanDto, PlanResponseDto } from '@planner/dto/plan.dto';
+import {
+  CreatePlanDto,
+  PlanResponseDto,
+  TaskChatReplyDto,
+  TaskChatRequestDto,
+} from '@planner/dto/plan.dto';
 
 @Controller()
 export class PlansController {
-  constructor(private readonly plansService: PlansService) {}
+  constructor(
+    private readonly plansService: PlansService,
+    private readonly taskChatService: TaskChatService,
+  ) {}
 
-  /** Encola un plan para la tarea; se genera en segundo plano (consultar con GET). */
+  /**
+   * Encola un plan para la tarea; se genera en segundo plano (consultar con GET). Con `messages` es una
+   * replanificación: actualiza el último plan con esa conversación.
+   */
   @Post('issues/:issueId/plans')
   @HttpCode(202)
   async create(
     @Param('issueId') issueId: string,
     @Body() dto: CreatePlanDto = {},
   ): Promise<PlanResponseDto> {
-    const plan = await this.plansService.create(issueId, {
-      agentId: dto?.agentId,
-      model: dto?.model,
-    });
+    const plan = await this.plansService.create(
+      issueId,
+      { agentId: dto?.agentId, model: dto?.model },
+      dto?.messages ? { messages: dto.messages } : undefined,
+    );
     return this.toDto(plan);
+  }
+
+  /** Conversa sobre la tarea para mejorar su plan (no lo cambia: eso es replanificar). */
+  @Post('issues/:issueId/chat')
+  @HttpCode(200)
+  chat(
+    @Param('issueId') issueId: string,
+    @Body() dto: TaskChatRequestDto,
+  ): Promise<TaskChatReplyDto> {
+    return this.taskChatService.reply(issueId, dto.messages);
   }
 
   /** Historial de planes de la tarea, del más nuevo al más antiguo (sin el contenido). */
@@ -55,6 +78,8 @@ export class PlansController {
       agentName: plan.agentName,
       model: plan.model,
       repos: plan.repos,
+      basedOnPlanId: plan.basedOnPlanId,
+      revised: plan.conversation !== null,
       error: plan.error,
       ...(withContent ? { content: plan.content } : {}),
       createdAt: plan.createdAt.toISOString(),

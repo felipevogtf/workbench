@@ -6,7 +6,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
+import {
+  PlanChatMessage,
+  PlanRepoInfo,
+} from '@planner/domain/entities/plan.props';
 
 @Entity('plans')
 export class PlanOrmEntity {
@@ -40,6 +43,12 @@ export class PlanOrmEntity {
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
   repos!: PlanRepoInfo[];
+
+  @Column({ type: 'jsonb', nullable: true })
+  conversation!: PlanChatMessage[] | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  based_on_plan_id!: string | null;
 
   @Column({ type: 'text', nullable: true })
   error!: string | null;

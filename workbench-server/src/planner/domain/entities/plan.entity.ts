@@ -1,5 +1,10 @@
 import { DomainError } from '@core/domain/domain.error';
-import { PlanProps, PlanRepoInfo, PlanStatus } from './plan.props';
+import {
+  PlanChatMessage,
+  PlanProps,
+  PlanRepoInfo,
+  PlanStatus,
+} from './plan.props';
 
 export class Plan {
   private constructor(private props: PlanProps) {}
@@ -8,6 +13,8 @@ export class Plan {
     issueId: string;
     agentId?: string;
     model?: string;
+    conversation?: PlanChatMessage[];
+    basedOnPlanId?: string | null;
   }): Plan {
     const now = new Date();
     return new Plan({
@@ -21,6 +28,8 @@ export class Plan {
       agentName: null,
       model: null,
       repos: [],
+      conversation: data.conversation?.length ? data.conversation : null,
+      basedOnPlanId: data.basedOnPlanId ?? null,
       error: null,
       queuedAt: now,
       createdAt: now,
@@ -111,6 +120,12 @@ export class Plan {
   }
   get repos(): PlanRepoInfo[] {
     return [...this.props.repos];
+  }
+  get conversation(): PlanChatMessage[] | null {
+    return this.props.conversation ? [...this.props.conversation] : null;
+  }
+  get basedOnPlanId(): string | null {
+    return this.props.basedOnPlanId;
   }
   get error(): string | null {
     return this.props.error;

@@ -4,12 +4,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { PLANNER_CONCURRENCY, PlansService } from './application/plans.service';
+import {
+  TASK_CHAT_CONCURRENCY,
+  TaskChatService,
+} from './application/task-chat.service';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
 import { PLAN_REPOSITORY_PORT } from './domain/ports/plan-repository.port';
+import { REPOS_CACHE_PORT } from './domain/ports/repos-cache.port';
 import { REPOS_CHECKOUT_PORT } from './domain/ports/repos-checkout.port';
 import { TASKS_GATEWAY_PORT } from './domain/ports/tasks-gateway.port';
 import { TICKETS_GATEWAY_PORT } from './domain/ports/tickets-gateway.port';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
+import { GitReposCacheAdapter } from './infrastructure/adapters/git-repos-cache.adapter';
 import { GitReposCheckoutAdapter } from './infrastructure/adapters/git-repos-checkout.adapter';
 import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.adapter';
 import { TicketsGatewayAdapter } from './infrastructure/adapters/tickets-gateway.adapter';
@@ -37,7 +43,15 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
         Number(config.get('PLANNER_CONCURRENCY') || 1),
       inject: [ConfigService],
     },
+    { provide: REPOS_CACHE_PORT, useClass: GitReposCacheAdapter },
+    {
+      provide: TASK_CHAT_CONCURRENCY,
+      useFactory: (config: ConfigService) =>
+        Number(config.get('CHAT_CONCURRENCY') || 2),
+      inject: [ConfigService],
+    },
     PlansService,
+    TaskChatService,
     PlannerRecovery,
   ],
 })

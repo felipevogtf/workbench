@@ -9,16 +9,13 @@ import {
   ReposCheckout,
   ReposCheckoutPort,
 } from '@planner/domain/ports/repos-checkout.port';
-
-const BRANCHES = ['main', 'master'];
-const HOSTS = ['github.com', 'bitbucket.org'];
-const SEGMENT = /^[\w.-]+$/;
-
-interface ParsedRepo {
-  host: string;
-  organization: string;
-  name: string;
-}
+import {
+  ParsedRepo,
+  REPO_BRANCHES,
+  parseRepoUrl,
+  repoCredentials,
+  repoFolderName,
+} from './repo-remote';
 
 /**
  * Clona repositorios en un directorio temporal, superficialmente y de solo lectura: rama `main` o,
@@ -38,7 +35,7 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
       const folders = new Set<string>();
 
       for (const url of repoUrls) {
-        const parsed = this.parse(url);
+        const parsed = parseRepoUrl(url);
         if (!parsed) {
           repos.push({
             url,
@@ -49,7 +46,7 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
           continue;
         }
 
-        const name = this.folderName(parsed, folders);
+        const name = repoFolderName(parsed, folders);
         folders.add(name);
         repos.push(await this.cloneOne(url, parsed, join(workdir, name), name));
       }
@@ -67,7 +64,7 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
     dest: string,
     name: string,
   ): Promise<PlanRepoInfo> {
-    const credentials = this.credentials(parsed);
+    const credentials = repoCredentials(this.config, parsed);
     if (!credentials) {
       return {
         url,
@@ -77,7 +74,7 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
       };
     }
 
-    for (const branch of BRANCHES) {
+    for (const branch of REPO_BRANCHES) {
       try {
         await runGit(
           [
@@ -109,66 +106,5 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
       used: false,
       note: 'no se pudo clonar: no existe la rama main ni master, o no hay acceso',
     };
-  }
-
-  /** Defensa en profundidad: aunque la etiqueta ya validó el enlace, aquí se vuelve a comprobar. */
-  private parse(url: string): ParsedRepo | null {
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      return null;
-    }
-    const parts = parsed.pathname.split('/').filter(Boolean);
-    if (
-      parsed.protocol !== 'https:' ||
-      !HOSTS.includes(parsed.hostname) ||
-      parsed.username ||
-      parsed.password ||
-      parts.length !== 2
-    ) {
-      return null;
-    }
-
-    const [organization, name] = [parts[0], parts[1].replace(/\.git$/, '')];
-    const valid = (segment: string) =>
-      SEGMENT.test(segment) &&
-      !segment.startsWith('-') &&
-      !/^\.+$/.test(segment);
-    return valid(organization) && valid(name)
-      ? { host: parsed.hostname, organization, name }
-      : null;
-  }
-
-  /** El nombre del repo; si ya hay otro igual (de otra organización), con la organización delante. */
-  private folderName(repo: ParsedRepo, taken: Set<string>): string {
-    return taken.has(repo.name)
-      ? `${repo.organization}-${repo.name}`
-      : repo.name;
-  }
-
-  private credentials(
-    repo: ParsedRepo,
-  ): { cloneUrl: string; cleanUrl: string; secret: string } | null {
-    const path = `${repo.organization}/${repo.name}.git`;
-    if (repo.host === 'bitbucket.org') {
-      const token = this.config.get<string>('BITBUCKET_TOKEN');
-      return token
-        ? {
-            cloneUrl: `https://x-bitbucket-api-token-auth:${encodeURIComponent(token)}@bitbucket.org/${path}`,
-            cleanUrl: `https://bitbucket.org/${path}`,
-            secret: token,
-          }
-        : null;
-    }
-
-    const token = this.config.get<string>('GITHUB_TOKEN');
-    return token
-      ? {
-          cloneUrl: `https://x-access-token:${encodeURIComponent(token)}@github.com/${path}`,
-          cleanUrl: `https://github.com/${path}`,
-          secret: token,
-        }
-      : null;
   }
 }

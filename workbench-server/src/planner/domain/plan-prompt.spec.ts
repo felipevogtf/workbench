@@ -1,4 +1,8 @@
-import { buildPlanPrompt, MAX_DESCRIPTION_CHARS } from './plan-prompt';
+import {
+  buildPlanPrompt,
+  MAX_DESCRIPTION_CHARS,
+  MAX_PREVIOUS_PLAN_CHARS,
+} from './plan-prompt';
 import { TaskContext } from './ports/tasks-gateway.port';
 
 const task: TaskContext = {
@@ -96,5 +100,77 @@ describe('buildPlanPrompt', () => {
       repos: [],
     });
     expect(prompt).toContain('(La tarea no tiene descripción.)');
+  });
+
+  describe('replanning', () => {
+    const conversation = [
+      {
+        role: 'user' as const,
+        content: '¿El endpoint ya existe? Mira también MEL-9.',
+      },
+      { role: 'assistant' as const, content: 'Sí, está en OrdersController.' },
+      { role: 'user' as const, content: 'Entonces no hace falta crearlo.' },
+    ];
+
+    it('adds nothing for a normal plan', () => {
+      const prompt = buildPlanPrompt({ task, tickets: [], repos: [] });
+
+      expect(prompt).not.toContain('## Plan anterior');
+      expect(prompt).not.toContain('Conversación con el usuario');
+    });
+
+    it('gives the previous plan, the conversation and what to do with them', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: {
+          previousPlan: '## Objetivo\nCrear el endpoint',
+          conversation,
+        },
+      });
+
+      expect(prompt).toContain(
+        '## Plan anterior\n\n## Objetivo\nCrear el endpoint',
+      );
+      expect(prompt).toContain('## Conversación con el usuario sobre el plan');
+      expect(prompt).toContain('### Usuario\n¿El endpoint ya existe?');
+      expect(prompt).toContain('### Asistente\nSí, está en OrdersController.');
+      expect(prompt).toContain('Esta es una replanificación');
+      expect(prompt).toContain('Entrega el plan completo y actualizado');
+      // El plan anterior va antes que la conversación y las instrucciones van al final.
+      expect(prompt.indexOf('## Plan anterior')).toBeLessThan(
+        prompt.indexOf('## Conversación con el usuario'),
+      );
+      expect(prompt.indexOf('## Conversación con el usuario')).toBeLessThan(
+        prompt.indexOf('## Qué hacer ahora'),
+      );
+    });
+
+    it('plans from scratch, saying so, when there is no previous plan', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: { previousPlan: null, conversation },
+      });
+
+      expect(prompt).toContain('No hay un plan anterior');
+    });
+
+    it('cuts a huge previous plan', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: {
+          previousPlan: 'x'.repeat(MAX_PREVIOUS_PLAN_CHARS + 500),
+          conversation,
+        },
+      });
+
+      expect(prompt).toContain('[…plan recortado…]');
+      expect(prompt).not.toContain('x'.repeat(MAX_PREVIOUS_PLAN_CHARS + 1));
+    });
   });
 });

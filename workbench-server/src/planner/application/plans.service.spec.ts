@@ -3,6 +3,10 @@ import { Plan } from '@planner/domain/entities/plan.entity';
 import { PlanStatus } from '@planner/domain/entities/plan.props';
 import { PlanRepositoryPort } from '@planner/domain/ports/plan-repository.port';
 import { TaskContext } from '@planner/domain/ports/tasks-gateway.port';
+import {
+  PlanRunRequest,
+  PlanRunResult,
+} from '@planner/domain/ports/agents-gateway.port';
 import { MAX_REPOS_PER_PLAN, PlansService } from './plans.service';
 
 const task: TaskContext = {
@@ -29,8 +33,9 @@ function build(
   const store: Plan[] = [];
   const repo: PlanRepositoryPort = {
     findById: (id) => Promise.resolve(store.find((p) => p.id === id) ?? null),
+    // Como el repositorio real: del más nuevo al más antiguo.
     findByIssueId: (issueId) =>
-      Promise.resolve(store.filter((p) => p.issueId === issueId)),
+      Promise.resolve(store.filter((p) => p.issueId === issueId).reverse()),
     findByStatus: (status: PlanStatus) =>
       Promise.resolve(store.filter((p) => p.status === status)),
     findActiveByIssueId: (issueId) =>
@@ -68,7 +73,7 @@ function build(
       dispose,
     }),
   );
-  const runPlan = jest.fn(() =>
+  const runPlan = jest.fn<Promise<PlanRunResult>, [PlanRunRequest]>(() =>
     options.runFails
       ? Promise.reject(new Error('cli exploded'))
       : Promise.resolve({
@@ -79,29 +84,32 @@ function build(
         }),
   );
 
+  const getTicket = jest.fn((key: string) =>
+    Promise.resolve({
+      key,
+      title: 'Ticket',
+      stateName: null,
+      labels: [],
+      priority: null,
+      descriptionText: null,
+    }),
+  );
+
   const service = new PlansService(
     repo,
     {
       getTask: () =>
         Promise.resolve(options.task === undefined ? task : options.task),
     },
-    { runPlan },
+    { runPlan, runTaskChat: jest.fn() },
     { checkout },
     {
       getProjectIdentifiers: () => Promise.resolve(['MEL']),
-      getTicket: (key) =>
-        Promise.resolve({
-          key,
-          title: 'Ticket',
-          stateName: null,
-          labels: [],
-          priority: null,
-          descriptionText: null,
-        }),
+      getTicket,
     },
     1,
   );
-  return { service, store, checkout, runPlan, dispose };
+  return { service, store, checkout, runPlan, dispose, getTicket };
 }
 
 /** Espera a que el worker en segundo plano deje la cola vacía. */
@@ -214,5 +222,162 @@ describe('PlansService', () => {
     expect(await service.recoverInterrupted()).toBe(1);
     expect(orphan.status).toBe('failed');
     expect(orphan.error).toContain('restart');
+  });
+});
+
+describe('PlansService replanning', () => {
+  const conversation = [
+    {
+      role: 'user' as const,
+      content: 'Revisa también MEL-9, que dejé afuera.',
+    },
+    { role: 'assistant' as const, content: 'Lo reviso.' },
+    { role: 'user' as const, content: 'Y no hace falta tocar el controlador.' },
+  ];
+
+  const promptOf = (runPlan: jest.Mock<unknown, [PlanRunRequest]>, call = 0) =>
+    runPlan.mock.calls[call][0].prompt;
+
+  it('updates the last ready plan with the conversation, and stores both on the new plan', async () => {
+    const { service, store, runPlan } = build();
+    const first = await service.create('i1');
+    await settle(store);
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect(revised.conversation).toEqual(conversation);
+    expect(revised.basedOnPlanId).toBe(first.id);
+    expect(first.conversation).toBeNull();
+    const prompt = promptOf(runPlan, 1);
+    expect(prompt).toContain('## Plan anterior');
+    expect(prompt).toContain('## Objetivo\nok');
+    expect(prompt).toContain('Y no hace falta tocar el controlador.');
+    // El historial queda: el plan anterior y el nuevo.
+    expect(await service.listByIssue('i1')).toHaveLength(2);
+  });
+
+  it('only gives the agent the last plan, not the whole history', async () => {
+    const { service, store, runPlan } = build();
+    runPlan
+      .mockResolvedValueOnce({
+        markdown: 'PLAN-UNO',
+        agentId: 'a',
+        agentName: 'n',
+        model: 'm',
+      })
+      .mockResolvedValueOnce({
+        markdown: 'PLAN-DOS',
+        agentId: 'a',
+        agentName: 'n',
+        model: 'm',
+      });
+    await service.create('i1');
+    await settle(store);
+    await service.create('i1');
+    await settle(store);
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    const prompt = promptOf(runPlan, 2);
+    expect(prompt).toContain('PLAN-DOS');
+    expect(prompt).not.toContain('PLAN-UNO');
+    expect(revised.basedOnPlanId).toBe((await service.listByIssue('i1'))[1].id);
+  });
+
+  it('ignores plans that failed when choosing the plan to start from', async () => {
+    const { service, store, runPlan } = build();
+    runPlan.mockResolvedValueOnce({
+      markdown: 'PLAN-BUENO',
+      agentId: 'a',
+      agentName: 'n',
+      model: 'm',
+    });
+    const good = await service.create('i1');
+    await settle(store);
+    runPlan.mockRejectedValueOnce(new Error('cli exploded'));
+    await service.create('i1');
+    await settle(store);
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect(revised.basedOnPlanId).toBe(good.id);
+    expect(promptOf(runPlan, 2)).toContain('PLAN-BUENO');
+  });
+
+  it('plans from scratch with the conversation when there is no ready plan yet', async () => {
+    const { service, store, runPlan } = build();
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect(revised.basedOnPlanId).toBeNull();
+    expect(promptOf(runPlan)).toContain('No hay un plan anterior');
+    expect(promptOf(runPlan)).toContain(
+      'Y no hace falta tocar el controlador.',
+    );
+  });
+
+  it('reads the tickets the user mentioned in the conversation', async () => {
+    const { service, store, getTicket } = build();
+
+    await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect(getTicket).toHaveBeenCalledWith('MEL-9');
+  });
+
+  it('replans without the previous plan if it was deleted while the replan was waiting', async () => {
+    const { service, store, runPlan } = build();
+    // Un plan en cola cuyo plan base ya no existe.
+    store.push(
+      Plan.create({
+        issueId: 'i1',
+        conversation,
+        basedOnPlanId: crypto.randomUUID(),
+      }),
+    );
+
+    service.kick();
+    await settle(store);
+
+    expect(store[0].status).toBe('ready');
+    expect(promptOf(runPlan)).toContain('No hay un plan anterior');
+    expect(promptOf(runPlan)).toContain(
+      'Y no hace falta tocar el controlador.',
+    );
+  });
+
+  it('needs something the user said to replan', async () => {
+    const { service } = build();
+
+    await expect(
+      service.create('i1', {}, { messages: [] }),
+    ).rejects.toBeInstanceOf(DomainError);
+    await expect(
+      service.create(
+        'i1',
+        {},
+        { messages: [{ role: 'assistant', content: 'hola' }] },
+      ),
+    ).rejects.toBeInstanceOf(DomainError);
+    await expect(
+      service.create(
+        'i1',
+        {},
+        { messages: [{ role: 'user', content: '   ' }] },
+      ),
+    ).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('still refuses to replan while a plan is being generated', async () => {
+    const { service } = build();
+    await service.create('i1');
+
+    await expect(
+      service.create('i1', {}, { messages: conversation }),
+    ).rejects.toBeInstanceOf(DomainError);
   });
 });
