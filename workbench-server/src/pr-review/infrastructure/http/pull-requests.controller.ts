@@ -85,6 +85,15 @@ export class PullRequestsController {
     return this.pullRequestsService.getDiff(id);
   }
 
+  @Get(':id/file')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  getFile(
+    @Param('id') id: string,
+    @Query('path') path?: string,
+  ): Promise<string> {
+    return this.pullRequestsService.getFile(id, path ?? '');
+  }
+
   @Post(':id/chat')
   @HttpCode(200)
   chat(

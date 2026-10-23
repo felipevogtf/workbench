@@ -78,6 +78,27 @@ export class BitbucketAdapter
     }
   }
 
+  async getFile(
+    repo: string,
+    externalId: string,
+    path: string,
+  ): Promise<string | null> {
+    try {
+      // El commit se pide a la PR en este momento: así se lee lo último que tiene la rama.
+      const pullRequest = await this.client.getPullRequest(repo, externalId);
+      return await this.client.getFileContent(
+        repo,
+        pullRequest.source.commit.hash,
+        path,
+      );
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async postComment(
     repo: string,
     externalId: string,

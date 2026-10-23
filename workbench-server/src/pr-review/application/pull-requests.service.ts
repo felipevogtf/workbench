@@ -23,6 +23,27 @@ import {
 import { extractTicketKeys } from '@core/text/ticket-keys';
 import { ReviewsService } from '@pr-review/application/reviews.service';
 
+/** Archivos más grandes que esto no se muestran completos. */
+const MAX_FILE_CHARS = 2_000_000;
+const MAX_PATH_CHARS = 1024;
+
+/**
+ * La ruta se pega en la URL del provider: no puede salirse de ella con `..`, ni empezar con `/`,
+ * ni traer caracteres de control.
+ */
+function assertValidPath(path: string): void {
+  const hasControlChar = [...path].some((c) => c.charCodeAt(0) < 32);
+  const segments = path.split('/');
+  if (
+    !path ||
+    path.length > MAX_PATH_CHARS ||
+    hasControlChar ||
+    segments.some((s) => s === '' || s === '.' || s === '..')
+  ) {
+    throw new DomainError(`Invalid file path: ${path}`);
+  }
+}
+
 export interface SyncResult {
   created: number;
   updated: number;
@@ -103,6 +124,36 @@ export class PullRequestsService {
       );
     }
     return diff;
+  }
+
+  /** Contenido de un archivo de la PR en el último commit de su rama, tal como lo entrega el provider. */
+  async getFile(id: string, path: string): Promise<string> {
+    assertValidPath(path);
+
+    const pullRequest = await this.findById(id);
+    const source = this.sources.find(
+      (candidate) => candidate.provider === pullRequest.provider,
+    );
+    if (!source) {
+      throw DomainError.notFound(
+        `Provider ${pullRequest.provider} is not configured`,
+      );
+    }
+
+    const content = await source.getFile(
+      pullRequest.repo,
+      pullRequest.externalId,
+      path,
+    );
+    if (content === null) {
+      throw DomainError.notFound(
+        `File ${path} not found in ${pullRequest.repo}#${pullRequest.externalId}`,
+      );
+    }
+    if (content.length > MAX_FILE_CHARS) {
+      throw new DomainError(`File ${path} is too large to show`);
+    }
+    return content;
   }
 
   private async doSync(): Promise<SyncResult> {

@@ -38,6 +38,15 @@ export interface PullRequestSourcePort {
   ): Promise<RemotePullRequestData | null>;
   /** Diff unificado de la PR tal como lo entrega el provider. null si el provider ya no la conoce. */
   getDiff(repo: string, externalId: string): Promise<string | null>;
+  /**
+   * Contenido de un archivo en el último commit de la rama de la PR. null si el archivo (o la PR) ya
+   * no existe en el provider.
+   */
+  getFile(
+    repo: string,
+    externalId: string,
+    path: string,
+  ): Promise<string | null>;
 }
 
 export const PULL_REQUEST_SOURCE_PORTS = Symbol('PULL_REQUEST_SOURCE_PORTS');

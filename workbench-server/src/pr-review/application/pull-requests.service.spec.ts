@@ -18,6 +18,7 @@ function build(
   results: Array<PullRequestSourceResult | Error>,
   ticketsOverrides: Partial<TicketsGatewayPort> = {},
   diffs: string[] = [],
+  files: Record<string, string> = {},
 ) {
   const prs = new InMemoryPullRequestRepository();
   const reviews = new InMemoryReviewRepository();
@@ -26,6 +27,7 @@ function build(
     provider: 'bitbucket',
     getPullRequest: () => Promise.resolve(null),
     getDiff: () => Promise.resolve(diffs.shift() ?? null),
+    getFile: (_repo, _externalId, path) => Promise.resolve(files[path] ?? null),
     getReviewRequestedPullRequests: () => {
       const next = queue.shift();
       if (!next) throw new Error('no more results');
@@ -92,6 +94,7 @@ describe('PullRequestsService.sync', () => {
         provider: 'bitbucket',
         getPullRequest: () => Promise.resolve(null),
         getDiff: () => Promise.resolve(null),
+        getFile: () => Promise.resolve(null),
         getReviewRequestedPullRequests: () =>
           Promise.resolve({
             pullRequests: [
@@ -222,6 +225,55 @@ describe('PullRequestsService.getDiff', () => {
     const { service } = build([]);
 
     await expect(service.getDiff('nope')).rejects.toBeInstanceOf(DomainError);
+  });
+});
+
+describe('PullRequestsService.getFile', () => {
+  async function ready(files: Record<string, string>) {
+    const harness = build([listing(['1'])], {}, [], files);
+    await harness.service.sync();
+    const [pr] = [...harness.prs.items.values()];
+    return { ...harness, id: pr.id };
+  }
+
+  it('returns the file as the provider has it in the branch of the pull request', async () => {
+    const { service, id } = await ready({ 'src/a.ts': 'const a = 1;\n' });
+
+    await expect(service.getFile(id, 'src/a.ts')).resolves.toBe(
+      'const a = 1;\n',
+    );
+  });
+
+  it('throws NotFound when the file or the pull request does not exist', async () => {
+    const { service, id } = await ready({});
+
+    await expect(service.getFile(id, 'src/a.ts')).rejects.toBeInstanceOf(
+      DomainError,
+    );
+    await expect(service.getFile('nope', 'src/a.ts')).rejects.toBeInstanceOf(
+      DomainError,
+    );
+  });
+
+  it.each([
+    '',
+    '/etc/passwd',
+    '../secret',
+    'src/../../x',
+    'src//a.ts',
+    './a.ts',
+  ])('rejects the path %j, which could leave the repository', async (path) => {
+    const { service, id } = await ready({ [path]: 'secret' });
+
+    await expect(service.getFile(id, path)).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('does not show a file that is too large', async () => {
+    const { service, id } = await ready({ 'big.sql': 'x'.repeat(2_000_001) });
+
+    await expect(service.getFile(id, 'big.sql')).rejects.toBeInstanceOf(
+      DomainError,
+    );
   });
 });
 

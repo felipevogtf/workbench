@@ -15,6 +15,11 @@ const API = 'https://api.github.com';
 const PAGE_SIZE = 50;
 const MAX_PAGES = 10;
 const REQUEST_TIMEOUT_MS = 60_000;
+const MAX_FILE_BYTES = 3_000_000;
+
+/** Cada tramo de la ruta se codifica por separado para conservar las barras. */
+const encodePath = (path: string) =>
+  path.split('/').map(encodeURIComponent).join('/');
 
 @Injectable()
 export class GithubApiClient {
@@ -74,6 +79,24 @@ export class GithubApiClient {
         },
         responseType: 'text',
       }),
+    );
+  }
+
+  /** Contenido en bruto de un archivo en un commit. */
+  getFileContent(repo: string, path: string, ref: string): Promise<string> {
+    return this.call(() =>
+      this.http.get<string>(
+        `${API}/repos/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`,
+        {
+          ...this.options(),
+          headers: {
+            ...this.headers,
+            Accept: 'application/vnd.github.raw+json',
+          },
+          responseType: 'text',
+          maxContentLength: MAX_FILE_BYTES,
+        },
+      ),
     );
   }
 

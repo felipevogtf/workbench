@@ -14,6 +14,11 @@ import {
 
 const API = 'https://api.bitbucket.org/2.0';
 const REQUEST_TIMEOUT_MS = 60_000;
+const MAX_FILE_BYTES = 3_000_000;
+
+/** Cada tramo de la ruta se codifica por separado para conservar las barras. */
+const encodePath = (path: string) =>
+  path.split('/').map(encodeURIComponent).join('/');
 
 @Injectable()
 export class BitbucketApiClient {
@@ -93,6 +98,25 @@ export class BitbucketApiClient {
           ...this.options(),
           headers: { ...this.headers, Accept: 'text/plain' },
           responseType: 'text',
+        },
+      ),
+    );
+  }
+
+  /** Contenido en bruto de un archivo en un commit. */
+  getFileContent(
+    repoFullName: string,
+    commit: string,
+    path: string,
+  ): Promise<string> {
+    return this.call(() =>
+      this.http.get<string>(
+        `${API}/repositories/${repoFullName}/src/${encodeURIComponent(commit)}/${encodePath(path)}`,
+        {
+          ...this.options(),
+          headers: { ...this.headers, Accept: '*/*' },
+          responseType: 'text',
+          maxContentLength: MAX_FILE_BYTES,
         },
       ),
     );
