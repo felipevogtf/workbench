@@ -76,6 +76,12 @@ export class PullRequestsController {
     };
   }
 
+  @Get(':id/diff')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  getDiff(@Param('id') id: string): Promise<string> {
+    return this.pullRequestsService.getDiff(id);
+  }
+
   @Get(':id/review')
   @Header('Content-Type', 'text/markdown; charset=utf-8')
   readLatestReview(@Param('id') id: string): Promise<string> {

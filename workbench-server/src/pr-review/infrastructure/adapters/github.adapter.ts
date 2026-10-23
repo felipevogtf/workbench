@@ -63,6 +63,17 @@ export class GithubAdapter
     }
   }
 
+  async getDiff(repo: string, externalId: string): Promise<string | null> {
+    try {
+      return await this.client.getPullRequestDiff(repo, Number(externalId));
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async postComment(
     repo: string,
     externalId: string,

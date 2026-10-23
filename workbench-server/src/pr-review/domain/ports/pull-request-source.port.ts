@@ -36,6 +36,8 @@ export interface PullRequestSourcePort {
     repo: string,
     externalId: string,
   ): Promise<RemotePullRequestData | null>;
+  /** Diff unificado de la PR tal como lo entrega el provider. null si el provider ya no la conoce. */
+  getDiff(repo: string, externalId: string): Promise<string | null>;
 }
 
 export const PULL_REQUEST_SOURCE_PORTS = Symbol('PULL_REQUEST_SOURCE_PORTS');

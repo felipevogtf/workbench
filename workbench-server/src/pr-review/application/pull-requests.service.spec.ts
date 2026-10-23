@@ -17,6 +17,7 @@ import {
 function build(
   results: Array<PullRequestSourceResult | Error>,
   ticketsOverrides: Partial<TicketsGatewayPort> = {},
+  diffs: string[] = [],
 ) {
   const prs = new InMemoryPullRequestRepository();
   const reviews = new InMemoryReviewRepository();
@@ -24,6 +25,7 @@ function build(
   const source: PullRequestSourcePort = {
     provider: 'bitbucket',
     getPullRequest: () => Promise.resolve(null),
+    getDiff: () => Promise.resolve(diffs.shift() ?? null),
     getReviewRequestedPullRequests: () => {
       const next = queue.shift();
       if (!next) throw new Error('no more results');
@@ -89,6 +91,7 @@ describe('PullRequestsService.sync', () => {
       {
         provider: 'bitbucket',
         getPullRequest: () => Promise.resolve(null),
+        getDiff: () => Promise.resolve(null),
         getReviewRequestedPullRequests: () =>
           Promise.resolve({
             pullRequests: [
@@ -195,6 +198,30 @@ describe('PullRequestsService.findById', () => {
     const { service } = build([]);
 
     await expect(service.findById('nope')).rejects.toBeInstanceOf(DomainError);
+  });
+});
+
+describe('PullRequestsService.getDiff', () => {
+  it('returns the diff the provider gives for the pull request', async () => {
+    const { service, prs } = build([listing(['1'])], {}, ['diff --git a b']);
+    await service.sync();
+    const [pr] = [...prs.items.values()];
+
+    await expect(service.getDiff(pr.id)).resolves.toBe('diff --git a b');
+  });
+
+  it('throws NotFound when the provider no longer knows the pull request', async () => {
+    const { service, prs } = build([listing(['1'])]);
+    await service.sync();
+    const [pr] = [...prs.items.values()];
+
+    await expect(service.getDiff(pr.id)).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('throws NotFound when the pull request does not exist', async () => {
+    const { service } = build([]);
+
+    await expect(service.getDiff('nope')).rejects.toBeInstanceOf(DomainError);
   });
 });
 

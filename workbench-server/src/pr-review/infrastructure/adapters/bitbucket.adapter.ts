@@ -67,6 +67,17 @@ export class BitbucketAdapter
     }
   }
 
+  async getDiff(repo: string, externalId: string): Promise<string | null> {
+    try {
+      return await this.client.getPullRequestDiff(repo, externalId);
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async postComment(
     repo: string,
     externalId: string,

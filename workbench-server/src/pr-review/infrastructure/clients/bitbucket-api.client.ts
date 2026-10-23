@@ -81,6 +81,23 @@ export class BitbucketApiClient {
     );
   }
 
+  /** Bitbucket responde con una redirección al diff; axios la sigue. */
+  getPullRequestDiff(
+    repoFullName: string,
+    pullRequestId: string,
+  ): Promise<string> {
+    return this.call(() =>
+      this.http.get<string>(
+        `${API}/repositories/${repoFullName}/pullrequests/${pullRequestId}/diff`,
+        {
+          ...this.options(),
+          headers: { ...this.headers, Accept: 'text/plain' },
+          responseType: 'text',
+        },
+      ),
+    );
+  }
+
   postComment(
     repoFullName: string,
     pullRequestId: string,

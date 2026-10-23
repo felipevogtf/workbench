@@ -64,6 +64,19 @@ export class GithubApiClient {
     );
   }
 
+  getPullRequestDiff(repo: string, number: number): Promise<string> {
+    return this.call(() =>
+      this.http.get<string>(`${API}/repos/${repo}/pulls/${number}`, {
+        ...this.options(),
+        headers: {
+          ...this.headers,
+          Accept: 'application/vnd.github.diff',
+        },
+        responseType: 'text',
+      }),
+    );
+  }
+
   // Los comentarios generales de una PR se publican por la API de issues.
   postComment(
     repo: string,

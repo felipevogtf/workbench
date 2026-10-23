@@ -84,6 +84,27 @@ export class PullRequestsService {
     return { pullRequest, reviews };
   }
 
+  /** Diff unificado de la PR, pedido al provider en el momento (siempre refleja el commit vigente). */
+  async getDiff(id: string): Promise<string> {
+    const pullRequest = await this.findById(id);
+    const source = this.sources.find(
+      (candidate) => candidate.provider === pullRequest.provider,
+    );
+    if (!source) {
+      throw DomainError.notFound(
+        `Provider ${pullRequest.provider} is not configured`,
+      );
+    }
+
+    const diff = await source.getDiff(pullRequest.repo, pullRequest.externalId);
+    if (diff === null) {
+      throw DomainError.notFound(
+        `Diff of ${pullRequest.repo}#${pullRequest.externalId} not found in ${pullRequest.provider}`,
+      );
+    }
+    return diff;
+  }
+
   private async doSync(): Promise<SyncResult> {
     const result: SyncResult = { created: 0, updated: 0, closed: 0 };
     const identifiers = await this.loadProjectIdentifiers();
