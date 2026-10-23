@@ -40,13 +40,15 @@
 
 // `--split` (0–100) es el porcentaje del ancho que se lleva el código de la izquierda; lo fija quien
 // muestra el diff. Las columnas de números miden lo mismo (`--num-col`) para que el divisor calce.
+// (`fr` no puede ir dentro de `calc()`: por eso el lado izquierdo se calcula con porcentajes y el
+// derecho se queda con lo que sobra.)
 .row {
   display: grid;
   grid-template-columns:
     var(--num-col, 3.25rem)
-    minmax(0, calc(var(--split, 50) * 1fr))
+    minmax(0, calc((100% - 2 * var(--num-col, 3.25rem)) * var(--split, 50) / 100))
     var(--num-col, 3.25rem)
-    minmax(0, calc((100 - var(--split, 50)) * 1fr));
+    minmax(0, 1fr);
 }
 
 .num,
