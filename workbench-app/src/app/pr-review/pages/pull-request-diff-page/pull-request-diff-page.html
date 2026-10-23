@@ -1,4 +1,4 @@
-<div class="page">
+<div class="diffpage">
   @if (store.error(); as error) {
     <a app-button variant="ghost" size="sm" routerLink="/pull-requests">
       <app-icon name="arrow-left" size="1em" /> Pull requests
@@ -25,7 +25,7 @@
         El proveedor no devolvió diferencias para esta pull request.
       </app-alert>
     } @else {
-      <div class="diff">
+      <div class="diff" #layout [style.--files-width.px]="filesWidth()">
         <aside class="diff__files" aria-labelledby="files-title">
           <app-card>
             <div card-header class="files__head">
@@ -60,10 +60,17 @@
           </app-card>
         </aside>
 
+        <app-split-handle
+          class="diff__split"
+          label="Ajustar el ancho de la lista de archivos"
+          (dragged)="dragFiles($event)"
+          (nudged)="nudgeFiles($event)"
+        />
+
         <section class="diff__file" aria-label="Diff del archivo">
           @if (store.selected(); as file) {
             <app-card>
-              <app-diff-file [file]="file" />
+              <app-diff-file [file]="file" [(split)]="split" />
             </app-card>
           }
         </section>

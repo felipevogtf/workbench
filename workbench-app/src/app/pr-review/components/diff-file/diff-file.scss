@@ -1,4 +1,6 @@
 :host {
+  --num-col: 3.25rem;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -56,9 +58,20 @@ code {
 }
 
 .file__hunks {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+// El divisor va justo en el borde entre el código de la izquierda y la columna de números de la derecha
+// (1px del borde del hunk, a un lado y a otro, más las dos columnas de números).
+.file__split {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(1px + var(--num-col) + (100% - 2px - 2 * var(--num-col)) * var(--split) / 100 - 5px);
+  z-index: 1;
 }
 
 .file__note {

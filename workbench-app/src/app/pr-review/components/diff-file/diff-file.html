@@ -26,9 +26,16 @@
     </button>
   </div>
 } @else {
-  <div class="file__hunks">
+  <div class="file__hunks" #hunks>
     @for (hunk of file().hunks; track $index) {
       <app-diff-hunk [hunk]="hunk" />
     }
+    <app-split-handle
+      class="file__split"
+      label="Ajustar el ancho del código de antes y de después"
+      [attr.aria-valuenow]="split()"
+      (dragged)="drag($event)"
+      (nudged)="nudge($event)"
+    />
   </div>
 }

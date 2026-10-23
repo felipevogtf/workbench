@@ -1,7 +1,27 @@
+// Ancho completo, como el tablero: el diff usa toda la pantalla (el menú es un panel flotante).
+.diffpage {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100dvh - 56px);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+
+  // Más compacto que en las demás pantallas: lo importante es el código.
+  app-page-header {
+    margin-bottom: var(--space-3);
+  }
+}
+
 .diff {
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
+  gap: var(--space-4);
+}
+
+// Móvil y tablet: la lista queda arriba del código y no hay divisor entre ambos.
+.diff__split {
+  display: none;
 }
 
 .files__head {
@@ -72,17 +92,33 @@
   color: var(--tone-danger-fg);
 }
 
+@media (min-width: 768px) {
+  .diffpage {
+    padding: var(--space-5) var(--space-6) var(--space-6);
+  }
+}
+
+// Escritorio: la página mide lo que la pantalla y la lista y el código se desplazan por separado,
+// así el encabezado y el divisor siempre están a la vista.
 @media (min-width: 1100px) {
-  .diff {
-    grid-template-columns: 320px minmax(0, 1fr);
-    align-items: start;
+  .diffpage {
+    height: calc(100dvh - 56px);
+    min-height: 0;
   }
 
-  // La lista acompaña el scroll del diff.
-  .diff__files {
-    position: sticky;
-    top: var(--space-4);
-    max-height: calc(100vh - var(--space-6));
+  .diff {
+    min-height: 0;
+    grid-template-columns: var(--files-width, 300px) 10px minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .diff__split {
+    display: block;
+  }
+
+  .diff__files,
+  .diff__file {
+    min-height: 0;
     overflow-y: auto;
   }
 }

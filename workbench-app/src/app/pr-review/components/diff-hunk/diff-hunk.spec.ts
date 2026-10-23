@@ -27,9 +27,9 @@ describe('DiffHunk', () => {
 
   it('puts the old code on the left and the new code on the right', async () => {
     const element = await render();
-    const rows = Array.from(element.querySelectorAll('tbody tr'));
+    const rows = Array.from(element.querySelectorAll('.row'));
     const cells = (row: Element) =>
-      Array.from(row.querySelectorAll('td')).map((td) => td.textContent?.trim());
+      Array.from(row.children).map((cell) => cell.textContent?.trim());
 
     expect(element.querySelector('.hunk__header')?.textContent).toBe('@@ -1,2 +1,2 @@');
     expect(rows).toHaveLength(3);
@@ -39,10 +39,10 @@ describe('DiffHunk', () => {
 
   it('marks removed, added and missing lines so they can be colored', async () => {
     const element = await render();
-    const kinds = Array.from(element.querySelectorAll('tbody tr:nth-child(2) td')).map((td) =>
-      td.getAttribute('data-kind'),
+    const kinds = Array.from(element.querySelectorAll('.row:nth-child(2) > *')).map((cell) =>
+      cell.getAttribute('data-kind'),
     );
-    const missing = element.querySelector('tbody tr:nth-child(3) td')?.getAttribute('data-kind');
+    const missing = element.querySelector('.row:nth-child(3) > *')?.getAttribute('data-kind');
 
     expect(kinds).toEqual(['del', 'del', 'add', 'add']);
     expect(missing).toBe('empty');

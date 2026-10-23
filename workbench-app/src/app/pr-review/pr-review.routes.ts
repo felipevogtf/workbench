@@ -12,6 +12,8 @@ export const PR_REVIEW_ROUTES: Routes = [
   {
     path: ':id/diff',
     title: 'Cambios · Workbench',
+    // El shell muestra el diff a ancho completo, con el menú como panel flotante.
+    data: { immersive: true },
     loadComponent: () =>
       import('./pages/pull-request-diff-page/pull-request-diff-page').then(
         (m) => m.PullRequestDiffPage,

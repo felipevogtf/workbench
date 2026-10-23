@@ -32,22 +32,26 @@
   }
 }
 
-.hunk__table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
+.rows {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
-.col-num {
-  width: 3.25rem;
+// `--split` (0–100) es el porcentaje del ancho que se lleva el código de la izquierda; lo fija quien
+// muestra el diff. Las columnas de números miden lo mismo (`--num-col`) para que el divisor calce.
+.row {
+  display: grid;
+  grid-template-columns:
+    var(--num-col, 3.25rem)
+    minmax(0, calc(var(--split, 50) * 1fr))
+    var(--num-col, 3.25rem)
+    minmax(0, calc((100 - var(--split, 50)) * 1fr));
 }
 
-td {
+.num,
+.code {
   padding: 0 var(--space-2);
-  vertical-align: top;
 }
 
 .num {
@@ -67,15 +71,15 @@ td {
   color: var(--primary);
 }
 
-td[data-kind='add'] {
+[data-kind='add'] {
   background: var(--tone-success-bg);
 }
 
-td[data-kind='del'] {
+[data-kind='del'] {
   background: var(--tone-danger-bg);
 }
 
 // Lado sin línea correspondiente.
-td[data-kind='empty'] {
+[data-kind='empty'] {
   background: var(--tone-neutral-bg);
 }
