@@ -1,0 +1,25 @@
+{
+  "name": "workbench-runner",
+  "version": "0.1.0",
+  "description": "Ejecuta en este PC el trabajo de las ejecuciones de tareas del workbench (agentes, git y push por SSH).",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "workbench-runner": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "check": "node dist/main.js check",
+    "test": "npm run build && node --test \"dist/**/*.test.js\"",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

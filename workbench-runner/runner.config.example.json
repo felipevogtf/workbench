@@ -1,0 +1,6 @@
+{
+  "serverUrl": "http://personal-task-manager:4321/api",
+  "token": "wbr_pega-aqui-el-token-que-te-dio-la-app",
+  "workDir": "E:\\workbench-agent-repos",
+  "maxBudgetUsd": 5
+}
