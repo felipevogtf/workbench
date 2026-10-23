@@ -145,6 +145,16 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
   return files;
 }
 
+/**
+ * Un archivo con dos versiones que comparar. Uno añadido o eliminado solo tiene una, y uno binario o
+ * sin cambios de contenido no tiene líneas que mostrar.
+ */
+export function canCompare(file: DiffFile): boolean {
+  return (
+    !file.binary && file.hunks.length > 0 && file.status !== 'added' && file.status !== 'deleted'
+  );
+}
+
 export function countRows(file: DiffFile): number {
   return file.hunks.reduce((total, hunk) => total + hunk.rows.length, 0);
 }

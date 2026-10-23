@@ -6,6 +6,24 @@
     }
   </div>
   <div class="file__meta">
+    @if (comparable()) {
+      <app-checkbox class="file__sync" [(value)]="independentScroll">
+        Desincronizar scroll
+      </app-checkbox>
+    }
+    @if (hasContent()) {
+      <button
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        [attr.aria-pressed]="full()"
+        (click)="toggleFull()"
+      >
+        <app-icon [name]="full() ? 'diff' : 'file'" size="1em" />
+        {{ full() ? 'Solo cambios' : 'Archivo completo' }}
+      </button>
+    }
     <app-badge [tone]="statusTone[file().status]">{{ statusLabel[file().status] }}</app-badge>
     <span class="stat stat--add">+{{ file().additions }}</span>
     <span class="stat stat--del">−{{ file().deletions }}</span>
@@ -18,28 +36,69 @@
   <p class="file__note">
     Sin cambios de contenido (por ejemplo, solo cambió el nombre o los permisos).
   </p>
+} @else if (full() && fullState()?.status !== 'ready') {
+  @if (fullError(); as message) {
+    <div class="file__note" role="alert">
+      <p>{{ message }}</p>
+      <button app-button variant="secondary" size="sm" type="button" (click)="fullRequested.emit()">
+        Reintentar
+      </button>
+    </div>
+  } @else {
+    <p class="file__note file__loading" role="status">
+      <app-spinner size="1em" label="Cargando el archivo" /> Cargando el archivo completo…
+    </p>
+  }
 } @else if (collapsed()) {
   <div class="file__note">
-    <p>Este archivo tiene {{ rows() }} líneas de diff; mostrarlas todas puede tardar.</p>
+    <p>Este archivo tiene {{ rows() }} líneas; mostrarlas todas puede tardar.</p>
     <button app-button variant="secondary" size="sm" type="button" (click)="show()">
       Mostrar de todos modos
     </button>
   </div>
 } @else {
-  <div class="file__hunks" #hunks>
-    @for (hunk of file().hunks; track $index) {
-      <app-diff-hunk [hunk]="hunk" [mode]="mode()">
-        <button
-          hunk-actions
-          app-icon-button
-          class="hunk__ai"
-          type="button"
-          label="Explicar este segmento con IA"
-          (click)="explain.emit(hunk)"
-        >
-          <app-icon name="sparkles" size="1rem" />
-        </button>
-      </app-diff-hunk>
+  <div class="file__hunks" [class.is-independent]="independent()" #hunks>
+    @if (independent()) {
+      <div class="pane pane--old">
+        @for (hunk of shownHunks(); track $index) {
+          <app-diff-hunk [hunk]="hunk" mode="old" />
+        }
+      </div>
+      <div class="pane pane--new">
+        @for (hunk of shownHunks(); track $index) {
+          <app-diff-hunk [hunk]="hunk" mode="new">
+            @if (!full()) {
+              <button
+                hunk-actions
+                app-icon-button
+                class="hunk__ai"
+                type="button"
+                label="Explicar este segmento con IA"
+                (click)="explain.emit(hunk)"
+              >
+                <app-icon name="sparkles" size="1rem" />
+              </button>
+            }
+          </app-diff-hunk>
+        }
+      </div>
+    } @else {
+      @for (hunk of shownHunks(); track $index) {
+        <app-diff-hunk [hunk]="hunk" [mode]="mode()">
+          @if (!full()) {
+            <button
+              hunk-actions
+              app-icon-button
+              class="hunk__ai"
+              type="button"
+              label="Explicar este segmento con IA"
+              (click)="explain.emit(hunk)"
+            >
+              <app-icon name="sparkles" size="1rem" />
+            </button>
+          }
+        </app-diff-hunk>
+      }
     }
     @if (mode() === 'split') {
       <app-split-handle

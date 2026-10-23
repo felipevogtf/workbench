@@ -53,6 +53,14 @@ export class PullRequestsApi {
     return this.http.get(`${this.url}/${id}/diff`, { responseType: 'text' });
   }
 
+  /** Contenido de un archivo de la PR en el último commit de su rama. */
+  file(id: string, path: string): Observable<string> {
+    return this.http.get(`${this.url}/${id}/file`, {
+      params: { path },
+      responseType: 'text',
+    });
+  }
+
   /** Responde al último mensaje de la conversación; el agente lee el repo de la PR. Puede tardar. */
   chat(id: string, messages: readonly ChatMessage[]): Observable<ChatReply> {
     return this.http.post<ChatReply>(`${this.url}/${id}/chat`, { messages });

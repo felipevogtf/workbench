@@ -1,4 +1,4 @@
-import { countRows, parseUnifiedDiff } from './diff';
+import { canCompare, countRows, parseUnifiedDiff } from './diff';
 
 const MODIFIED = `diff --git a/src/a.ts b/src/a.ts
 index 111..222 100644
@@ -103,5 +103,29 @@ diff --git a/b.txt b/b.txt
 
   it('returns nothing for an empty diff', () => {
     expect(parseUnifiedDiff('')).toEqual([]);
+  });
+});
+
+describe('canCompare', () => {
+  it('is true only for a file with content that has two versions', () => {
+    const files = parseUnifiedDiff(`${MODIFIED}diff --git a/n.ts b/n.ts
+new file mode 100644
+--- /dev/null
++++ b/n.ts
+@@ -0,0 +1,1 @@
++one
+diff --git a/img.png b/img.png
+Binary files a/img.png and b/img.png differ
+diff --git a/r.ts b/q.ts
+rename from r.ts
+rename to q.ts
+`);
+
+    expect(files.map((f) => [f.path, canCompare(f)])).toEqual([
+      ['src/a.ts', true],
+      ['n.ts', false],
+      ['img.png', false],
+      ['q.ts', false],
+    ]);
   });
 });

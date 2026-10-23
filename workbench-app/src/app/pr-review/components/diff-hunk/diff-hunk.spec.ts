@@ -69,6 +69,21 @@ describe('DiffHunk', () => {
     expect(Array.from(row.children).map((c) => c.textContent?.trim())).toEqual(['1', 'gone']);
   });
 
+  it('leaves out the rows that have nothing on the side it shows', async () => {
+    const fixture = TestBed.createComponent(DiffHunk);
+    fixture.componentRef.setInput('hunk', hunk);
+    fixture.componentRef.setInput('mode', 'old');
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelectorAll('.row')).toHaveLength(2);
+
+    fixture.componentRef.setInput('mode', 'new');
+    await fixture.whenStable();
+
+    expect(root.querySelectorAll('.row')).toHaveLength(3);
+  });
+
   it('marks removed, added and missing lines so they can be colored', async () => {
     const element = await render();
     const kinds = Array.from(element.querySelectorAll('.row:nth-child(2) > *')).map((cell) =>

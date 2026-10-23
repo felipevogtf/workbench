@@ -39,8 +39,13 @@ code {
 
 .file__meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-3);
+}
+
+.file__sync {
+  font-size: 0.875rem;
 }
 
 .stat {
@@ -64,6 +69,42 @@ code {
   gap: var(--space-3);
 }
 
+// Desincronizado: cada lado es un panel con su propio scroll. El divisor es un porcentaje directo del ancho.
+.file__hunks.is-independent {
+  display: grid;
+  grid-template-columns: minmax(0, calc(var(--split) * 1%)) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+
+  .file__split {
+    left: calc(var(--split) * 1% - 5px);
+  }
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  // En pantallas chicas la página no tiene alto fijo: el panel se limita para poder desplazarse.
+  max-height: 70dvh;
+  overflow: auto;
+}
+
+// Los segmentos no se encogen para caber en el alto del panel: el panel se desplaza.
+.pane > * {
+  flex: none;
+}
+
+.pane--old {
+  padding-right: 5px;
+}
+
+.pane--new {
+  padding-left: 5px;
+}
+
 // El divisor va justo en el borde entre el código de la izquierda y la columna de números de la derecha
 // (1px del borde del hunk, a un lado y a otro, más las dos columnas de números).
 .file__split {
@@ -72,6 +113,11 @@ code {
   bottom: 0;
   left: calc(1px + var(--num-col) + (100% - 2px - 2 * var(--num-col)) * var(--split) / 100 - 5px);
   z-index: 1;
+}
+
+.file__loading {
+  flex-direction: row;
+  align-items: center;
 }
 
 .file__note {
@@ -93,7 +139,24 @@ code {
 // Botón de IA de cada segmento: solo el ícono y más chico que el estándar, para no agrandar el
 // encabezado del hunk.
 .hunk__ai {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 26px;
+  min-height: 26px;
   padding: 2px;
+}
+
+// Escritorio: con scroll independiente el archivo ocupa todo el alto disponible y cada panel se
+// desplaza por su cuenta.
+@media (min-width: 1100px) {
+  :host(.is-independent) {
+    height: 100%;
+  }
+
+  .file__hunks.is-independent {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .pane {
+    max-height: none;
+  }
 }

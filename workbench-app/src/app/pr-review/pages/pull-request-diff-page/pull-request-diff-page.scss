@@ -150,6 +150,16 @@
     display: block;
   }
 
+  // Con scroll independiente los dos paneles del archivo ya se desplazan solos: la zona no lo hace y la
+  // card ocupa todo su alto.
+  .diff__file.is-independent {
+    overflow: hidden;
+
+    app-card {
+      height: 100%;
+    }
+  }
+
   .diff__files,
   .diff__file {
     min-height: 0;

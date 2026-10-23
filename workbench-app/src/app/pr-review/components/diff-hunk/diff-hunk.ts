@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { DiffHunk as Hunk } from '../../models/diff';
 
 /**
@@ -21,4 +21,13 @@ export type DiffHunkMode = 'split' | 'new' | 'old';
 export class DiffHunk {
   readonly hunk = input.required<Hunk>();
   readonly mode = input<DiffHunkMode>('split');
+
+  /** En una sola columna no se dibujan las filas que no tienen nada de ese lado (los espacios grises). */
+  protected readonly rows = computed(() => {
+    const rows = this.hunk().rows;
+    const mode = this.mode();
+    if (mode === 'old') return rows.filter((row) => row.left);
+    if (mode === 'new') return rows.filter((row) => row.right);
+    return rows;
+  });
 }

@@ -42,6 +42,8 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
     .card__body {
       flex: 1;
       min-width: 0;
+      /* Si la card tiene un alto fijo, el contenido puede encogerse y desplazarse por dentro. */
+      min-height: 0;
     }
 
     .card__header {

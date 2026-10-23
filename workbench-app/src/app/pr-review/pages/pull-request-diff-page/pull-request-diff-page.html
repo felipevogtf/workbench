@@ -91,12 +91,19 @@
           (nudged)="nudgeFiles($event)"
         />
 
-        <section class="diff__file" aria-label="Diff del archivo">
+        <section
+          class="diff__file"
+          aria-label="Diff del archivo"
+          [class.is-independent]="fillsHeight()"
+        >
           @if (store.selected(); as file) {
             <app-card>
               <app-diff-file
                 [file]="file"
+                [fullState]="store.fullState()"
                 [(split)]="split"
+                [(independentScroll)]="independentScroll"
+                (fullRequested)="store.loadFull(file)"
                 (explain)="explainHunk(file, $event)"
               />
             </app-card>

@@ -21,11 +21,19 @@ diff --git a/b.ts b/b.ts
 const detail = { id: 'p1', title: 'PR 1', reviews: [] } as unknown as PullRequestDetail;
 
 describe('PullRequestDiffStore', () => {
-  let api: { get: ReturnType<typeof vi.fn>; diff: ReturnType<typeof vi.fn> };
+  let api: {
+    get: ReturnType<typeof vi.fn>;
+    diff: ReturnType<typeof vi.fn>;
+    file: ReturnType<typeof vi.fn>;
+  };
   let store: PullRequestDiffStore;
 
   beforeEach(() => {
-    api = { get: vi.fn(() => of(detail)), diff: vi.fn(() => of(DIFF)) };
+    api = {
+      get: vi.fn(() => of(detail)),
+      diff: vi.fn(() => of(DIFF)),
+      file: vi.fn(() => of('keep\nadded\n')),
+    };
     TestBed.configureTestingModule({
       providers: [PullRequestDiffStore, { provide: PullRequestsApi, useValue: api }],
     });
@@ -81,5 +89,85 @@ diff --git a/src/inner.ts b/src/inner.ts
     expect(store.error()).toBeTruthy();
     expect(store.detail()).toBeNull();
     expect(store.loading()).toBe(false);
+  });
+
+  describe('full file', () => {
+    it('asks the provider for the new version of a modified file and builds every line', async () => {
+      await store.load('p1');
+      const file = store.files()[0];
+
+      await store.loadFull(file);
+
+      expect(api.file).toHaveBeenCalledWith('p1', 'a.ts');
+      expect(store.fullState()).toMatchObject({ status: 'ready' });
+      const state = store.fullState();
+      expect(state?.status === 'ready' && state.hunk.rows.map((r) => r.right?.text)).toEqual([
+        'keep',
+        'added',
+      ]);
+    });
+
+    it('does not ask again for a file that is already loaded', async () => {
+      await store.load('p1');
+      const file = store.files()[0];
+
+      await store.loadFull(file);
+      await store.loadFull(file);
+
+      expect(api.file).toHaveBeenCalledTimes(1);
+    });
+
+    it('takes an added file from the diff, without asking the provider', async () => {
+      api.diff.mockReturnValue(
+        of(`diff --git a/n.ts b/n.ts
+new file mode 100644
+--- /dev/null
++++ b/n.ts
+@@ -0,0 +1,1 @@
++one
+`),
+      );
+      await store.load('p1');
+
+      await store.loadFull(store.files()[0]);
+
+      expect(api.file).not.toHaveBeenCalled();
+      expect(store.fullState()).toMatchObject({ status: 'ready' });
+    });
+
+    it('explains that the file changed when it no longer matches the diff, and can try again', async () => {
+      api.file.mockReturnValueOnce(of('something else entirely\n'));
+      await store.load('p1');
+      const file = store.files()[0];
+
+      await store.loadFull(file);
+
+      expect(store.fullState()).toMatchObject({
+        status: 'error',
+        message: expect.stringContaining('cambió') as string,
+      });
+
+      await store.loadFull(file);
+
+      expect(store.fullState()).toMatchObject({ status: 'ready' });
+    });
+
+    it('reports a failure of the provider', async () => {
+      api.file.mockReturnValueOnce(throwError(() => new Error('boom')));
+      await store.load('p1');
+
+      await store.loadFull(store.files()[0]);
+
+      expect(store.fullState()).toMatchObject({ status: 'error' });
+    });
+
+    it('forgets the loaded files when the page loads again', async () => {
+      await store.load('p1');
+      await store.loadFull(store.files()[0]);
+
+      await store.load('p1');
+
+      expect(store.fullState()).toBeNull();
+    });
   });
 });

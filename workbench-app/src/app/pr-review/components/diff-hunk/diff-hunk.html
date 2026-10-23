@@ -4,7 +4,7 @@
 </div>
 
 <div class="rows" [attr.data-mode]="mode()">
-  @for (row of hunk().rows; track $index) {
+  @for (row of rows(); track $index) {
     <div class="row">
       @if (mode() !== 'new') {
         <span class="num" [attr.data-kind]="row.left?.kind ?? 'empty'">{{ row.left?.line }}</span>

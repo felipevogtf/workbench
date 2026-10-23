@@ -29,6 +29,7 @@ import {
   DiffFile as DiffFileData,
   DiffFileStatus,
   DiffHunk,
+  canCompare,
 } from '../../models/diff';
 import { flattenTree } from '../../models/diff-tree';
 import { PROVIDER_LABEL } from '../../models/pull-request';
@@ -85,6 +86,14 @@ export class PullRequestDiffPage {
   protected readonly filesWidth = signal(FILES_DEFAULT_PX);
   /** Porcentaje del código que se lleva el lado de antes; se conserva al cambiar de archivo. */
   protected readonly split = signal(50);
+  /** Cada lado con su propio scroll y sin espacios grises; se conserva al cambiar de archivo. */
+  protected readonly independentScroll = signal(false);
+
+  /** Con scroll independiente el archivo debe ocupar todo el alto de su zona (solo si hay dos lados). */
+  protected readonly fillsHeight = computed(() => {
+    const file = this.store.selected();
+    return this.independentScroll() && !!file && canCompare(file);
+  });
 
   /** Rutas de las carpetas plegadas; todas parten abiertas. */
   private readonly collapsed = signal<ReadonlySet<string>>(new Set());
