@@ -6,7 +6,10 @@ import { ExecutionsApi } from './executions.api';
 import { RunnersStore } from './runners.store';
 
 describe('RunnersStore', () => {
-  let api: Record<'listRunners' | 'createRunner' | 'deleteRunner', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'listRunners' | 'createRunner' | 'deleteRunner' | 'setDefaultRunner',
+    ReturnType<typeof vi.fn>
+  >;
   let store: RunnersStore;
   let toast: Toast;
 
@@ -16,6 +19,7 @@ describe('RunnersStore', () => {
       listRunners: vi.fn(() => of([runner('a', { online: false })])),
       createRunner: vi.fn(() => of(createdRunner('b'))),
       deleteRunner: vi.fn(() => of(undefined)),
+      setDefaultRunner: vi.fn(),
     };
     TestBed.configureTestingModule({
       providers: [RunnersStore, { provide: ExecutionsApi, useValue: api }],
@@ -89,6 +93,42 @@ describe('RunnersStore', () => {
     expect(api.deleteRunner).toHaveBeenCalledWith('b');
     expect(store.runners().map((r) => r.id)).toEqual(['a']);
     expect(store.created()).toBeNull();
+  });
+
+  it('chooses the default runner with what the server answers', async () => {
+    api.listRunners.mockReturnValue(of([runner('a', { isDefault: true }), runner('b')]));
+    await store.load();
+    api.setDefaultRunner.mockReturnValue(of([runner('a'), runner('b', { isDefault: true })]));
+
+    await store.setDefault(runner('b'));
+
+    expect(api.setDefaultRunner).toHaveBeenCalledWith('b');
+    expect(store.runners().map((r) => [r.id, r.isDefault])).toEqual([
+      ['a', false],
+      ['b', true],
+    ]);
+  });
+
+  it('keeps the list as it was when choosing the default fails', async () => {
+    api.listRunners.mockReturnValue(of([runner('a', { isDefault: true }), runner('b')]));
+    await store.load();
+    const error = vi.spyOn(toast, 'error');
+    api.setDefaultRunner.mockReturnValue(throwError(() => new Error('boom')));
+
+    await store.setDefault(runner('b'));
+
+    expect(error).toHaveBeenCalled();
+    expect(store.runners().find((r) => r.isDefault)?.id).toBe('a');
+  });
+
+  it('reads again which one is the default when the default one is revoked', async () => {
+    api.listRunners.mockReturnValue(of([runner('a', { isDefault: true }), runner('b')]));
+    await store.load();
+    api.listRunners.mockReturnValue(of([runner('b', { isDefault: true })]));
+
+    await store.remove(runner('a', { isDefault: true }));
+
+    expect(store.runners().map((r) => [r.id, r.isDefault])).toEqual([['b', true]]);
   });
 
   it('keeps the runner when revoking fails', async () => {

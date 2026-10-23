@@ -21,6 +21,33 @@ Siempre es el runner quien llama al servidor (por Tailscale): no abre puertos en
 4. `npm run check`: comprueba git, claude, la carpeta, y que el servidor acepte el token.
 5. `npm start`: se queda esperando trabajo. `Ctrl+C` lo detiene (cancela lo que esté haciendo).
 
+## Que arranque solo (Windows)
+
+```
+npm run autostart:install
+```
+
+Hace dos cosas, las dos solo para tu usuario y sin pedir administrador:
+
+1. **Arranque con Windows:** deja un lanzador en tu carpeta «Inicio». Al iniciar sesión el runner se abre
+   solo, **sin ventana**, y deja su salida en `runner.log` (junto al programa; puedes borrarlo).
+2. **Enlace `workbench-runner://`:** al pulsar **Ejecutar el plan** en la app, si no hay ningún runner
+   conectado, la página abre `workbench-runner://start`, Windows lanza el runner y la app espera a que
+   aparezca «Conectado». La primera vez el navegador pregunta si abrirlo: elige *permitir siempre*.
+
+Es seguro lanzarlo de más: si ya hay un runner corriendo en esa carpeta de trabajo (`runner.lock`), el
+nuevo avisa y termina. Para deshacerlo: `npm run autostart:remove`. `npm run autostart:install -- --dry-run`
+muestra lo que haría sin tocar nada.
+
+El enlace abre el runner **de este PC**, así que conviene que el runner **predeterminado** de la app sea
+el de tu PC (el primero que creas lo es; se cambia en *Trabajadores → Runners → Usar por defecto*).
+
+## Varios runners
+
+- El **predeterminado** toma el trabajo primero. Los demás solo toman trabajo cuando el predeterminado no
+  está conectado, así que con varios PCs no se pisan.
+- Si revocas el predeterminado, el más antiguo que quede pasa a serlo.
+
 ## Configuración (`runner.config.json`)
 
 | Campo | Para qué |

@@ -58,6 +58,15 @@ export class RunnersStore {
     }
   }
 
+  /** Elige el runner predeterminado. */
+  async setDefault(runner: Runner): Promise<void> {
+    try {
+      this.items.set(await firstValueFrom(this.api.setDefaultRunner(runner.id)));
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+    }
+  }
+
   dismissCreated(): void {
     this.createdState.set(null);
   }
@@ -67,6 +76,8 @@ export class RunnersStore {
       await firstValueFrom(this.api.deleteRunner(runner.id));
       this.items.update((list) => list.filter((item) => item.id !== runner.id));
       if (this.createdState()?.id === runner.id) this.createdState.set(null);
+      // Si era el predeterminado, el servidor eligió otro: se vuelve a leer cuál.
+      if (runner.isDefault) await this.refresh();
     } catch (error) {
       this.toast.error(errorMessage(error));
     }

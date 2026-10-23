@@ -19,6 +19,11 @@ export const routes: Routes = [
     loadChildren: () => import('@pr-review/pr-review.routes').then((m) => m.PR_REVIEW_ROUTES),
   },
   {
+    // Antes que `executions`: la lista de agentes de los trabajadores la sirve el módulo ai-agents.
+    path: 'executions/agents',
+    loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.WORKER_AGENTS_ROUTES),
+  },
+  {
     path: 'executions',
     loadChildren: () => import('@executions/executions.routes').then((m) => m.EXECUTIONS_ROUTES),
   },

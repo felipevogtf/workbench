@@ -2,3 +2,5 @@
 /node_modules
 runner.config.json
 *.log
+runner.lock
+start-hidden.vbs

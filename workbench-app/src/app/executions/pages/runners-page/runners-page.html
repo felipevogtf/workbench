@@ -84,6 +84,10 @@
       </button>
     </app-empty-state>
   } @else {
+    <p class="muted">
+      El runner <strong>predeterminado</strong> toma el trabajo primero, y es el que la app intenta
+      abrir sola al pulsar «Ejecutar».
+    </p>
     <ul class="runners" aria-label="Runners">
       @for (runner of store.runners(); track runner.id) {
         <li>
@@ -105,6 +109,24 @@
                   }
                 </span>
               </div>
+              @if (runner.isDefault) {
+                <app-badge
+                  tone="info"
+                  title="Toma el trabajo primero y es el que se abre al pulsar Ejecutar"
+                >
+                  Predeterminado
+                </app-badge>
+              } @else {
+                <button
+                  app-button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  (click)="store.setDefault(runner)"
+                >
+                  Usar por defecto
+                </button>
+              }
               <app-badge [tone]="runner.online ? 'success' : 'neutral'" dot>
                 {{ runner.online ? 'Conectado' : 'Desconectado' }}
               </app-badge>

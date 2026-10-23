@@ -43,6 +43,11 @@ export class ExecutionsApi {
     return this.http.post<CreatedRunner>(`${this.base}/runners`, { name });
   }
 
+  /** Elige el runner predeterminado; devuelve todos los runners ya actualizados. */
+  setDefaultRunner(id: string): Observable<Runner[]> {
+    return this.http.post<Runner[]>(`${this.base}/runners/${id}/default`, {});
+  }
+
   deleteRunner(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/runners/${id}`);
   }

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ServerApi } from './api';
+import { acquireLock } from './lock';
+import { install, remove, userStartupDir } from './windows';
 import { loadConfig } from './config';
 import { VERSION, Worker } from './worker';
 import { Workspaces } from './workspace';
@@ -63,11 +66,55 @@ async function check(): Promise<number> {
   return problems === 0 ? 0 : 1;
 }
 
+/** `autostart install|remove [--dry-run]`: arranque con Windows y enlace `workbench-runner://`. */
+function autostart(): number {
+  const action = process.argv[3];
+  if (action !== 'install' && action !== 'remove') {
+    console.error('Uso: autostart install|remove [--dry-run]');
+    return 1;
+  }
+  if (process.platform !== 'win32') {
+    console.error('El arranque automático solo está resuelto para Windows.');
+    return 1;
+  }
+
+  const setup = {
+    runnerDir: resolve(__dirname, '..'),
+    nodePath: process.execPath,
+    startupDir: userStartupDir(),
+    dryRun: process.argv.includes('--dry-run'),
+  };
+  if (action === 'install') {
+    install(setup);
+    console.log(
+      [
+        '',
+        'Listo. El runner arrancará solo al iniciar sesión, y el botón «Ejecutar» de la app podrá abrirlo.',
+        'La primera vez el navegador pregunta si abrir «workbench-runner»: elige permitir siempre.',
+      ].join('\n'),
+    );
+  } else {
+    remove(setup);
+  }
+  return 0;
+}
+
 async function main(): Promise<number> {
   if (process.argv[2] === 'check') return check();
+  if (process.argv[2] === 'autostart') return autostart();
 
   const config = loadConfig();
   await mkdir(config.workDir, { recursive: true });
+
+  // Solo un runner por carpeta: el enlace de la app y el arranque con Windows lo lanzan sin mirar.
+  const lock = acquireLock(config.workDir);
+  if (!lock.ok) {
+    console.log(
+      `Ya hay un runner corriendo (PID ${lock.busyPid}); no se inicia otro.`,
+    );
+    return 0;
+  }
+  process.on('exit', () => lock.release());
 
   const workspaces = new Workspaces(config.workDir, config.remoteOverrides);
   const removed = await workspaces.sweep();

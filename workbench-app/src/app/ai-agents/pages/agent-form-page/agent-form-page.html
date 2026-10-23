@@ -1,9 +1,13 @@
 <div class="page">
   <app-page-header
     [heading]="isEdit() ? 'Editar agente' : 'Nuevo agente'"
-    subtitle="El prompt le dice al agente cómo revisar; las herramientas son siempre de solo lectura."
+    [subtitle]="
+      scope() === 'workers'
+        ? 'El prompt le dice al agente qué hacer en su etapa. Solo el desarrollador puede editar archivos.'
+        : 'El prompt le dice al agente cómo revisar; las herramientas son siempre de solo lectura.'
+    "
   >
-    <a back app-button variant="ghost" size="sm" routerLink="/agents">
+    <a back app-button variant="ghost" size="sm" [routerLink]="base()">
       <app-icon name="arrow-left" size="1em" /> Agentes
     </a>
   </app-page-header>
@@ -39,7 +43,7 @@
         <app-select
           inputId="agent-module"
           formControlName="module"
-          [options]="moduleOptions"
+          [options]="moduleOptions()"
           [describedBy]="'agent-module-msg'"
           (change)="onModuleChange()"
         />
@@ -101,7 +105,7 @@
       </section>
 
       <div class="form__actions">
-        <a app-button variant="secondary" routerLink="/agents">Cancelar</a>
+        <a app-button variant="secondary" [routerLink]="base()">Cancelar</a>
         <button app-button type="submit" [loading]="saving()">
           {{ isEdit() ? 'Guardar cambios' : 'Crear agente' }}
         </button>

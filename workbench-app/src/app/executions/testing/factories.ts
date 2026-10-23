@@ -94,6 +94,7 @@ export function runner(id: string, extra: Partial<Runner> = {}): Runner {
     host: 'DESKTOP-1',
     lastSeenAt: '2026-10-23T12:00:00Z',
     online: true,
+    isDefault: false,
     createdAt: '2026-10-20T12:00:00Z',
     ...extra,
   };

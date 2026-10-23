@@ -19,6 +19,15 @@ si se incorpora a `main`.
   repite eso (la rama ya está subida).
 - **Revisor de la PR:** Bitbucket no deja que el autor (el dueño del token) se revise a sí mismo, así que la
   PR sale sin revisor salvo que se configure `EXECUTIONS_PR_REVIEWERS` con las cuentas (uuid) de otras personas.
+- **Menú «Trabajadores»:** reúne los *Runners* y los *Agentes* de la automatización (creador de tickets,
+  desarrollador y revisor). Los agentes de siempre (revisión de PRs, planificador, chats) siguen en
+  «Agentes de IA» y ya no se mezclan con los de la automatización. A los agentes de los trabajadores se les
+  dará personalidad más adelante.
+- **Runner predeterminado:** el primero que se crea lo es; toma el trabajo primero (los demás solo si el
+  predeterminado no está conectado) y es el que la app intenta abrir al pulsar «Ejecutar».
+- **Que el runner arranque solo:** `npm run autostart:install` lo deja en la carpeta «Inicio» de Windows y
+  registra el enlace `workbench-runner://`. Al pulsar «Ejecutar» sin runner conectado, la app abre ese
+  enlace y espera a que se conecte. Solo hay un runner por carpeta de trabajo (`runner.lock`).
 - **Aislamiento del agente en el PC:** corre con `--setting-sources project`, `--strict-mcp-config`,
   `--no-session-persistence` y un tope de gasto por trabajo (`maxBudgetUsd`).
 

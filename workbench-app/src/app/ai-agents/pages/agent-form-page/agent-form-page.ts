@@ -25,7 +25,14 @@ import { Toast } from '@shared/ui/toast/toast';
 import { ToolsPicker } from '../../components/tools-picker/tools-picker';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { AgentModule, AgentProvider, MODULE_OPTIONS, MODULE_TOOLS } from '../../models/agent';
+import {
+  AgentModule,
+  AgentProvider,
+  AgentScope,
+  MODULE_TOOLS,
+  SCOPE_BASE,
+  modulesOf,
+} from '../../models/agent';
 
 type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
 
@@ -53,13 +60,17 @@ type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
 export class AgentFormPage {
   /** Viene de la ruta (`withComponentInputBinding`); vacío al crear. */
   readonly id = input<string>();
+  /** Viene de la ruta (`data.scope`): los agentes de siempre o los de los trabajadores. */
+  readonly scope = input<AgentScope>('general');
 
   private readonly store = inject(AgentsStore);
   private readonly providersStore = inject(ProvidersStore);
   private readonly router = inject(Router);
   private readonly toast = inject(Toast);
 
-  protected readonly moduleOptions: SelectOption[] = [...MODULE_OPTIONS];
+  protected readonly moduleOptions = computed<SelectOption[]>(() => [...modulesOf(this.scope())]);
+  /** Dónde está la lista de este menú: a donde se vuelve y se navega al guardar. */
+  protected readonly base = computed(() => SCOPE_BASE[this.scope()]);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
@@ -117,6 +128,17 @@ export class AgentFormPage {
       if (id) untracked(() => void this.load(id));
     });
 
+    // Al crear en el menú de los trabajadores, el módulo parte del primero de ese menú.
+    effect(() => {
+      const first = modulesOf(this.scope())[0];
+      untracked(() => {
+        if (!this.id() && first && !this.form.controls.module.dirty) {
+          this.form.controls.module.setValue(first.value);
+          this.tools.set([...MODULE_TOOLS[first.value]]);
+        }
+      });
+    });
+
     // Al crear, el modelo parte del primero del proveedor elegido.
     effect(() => {
       const models = this.providersStore.modelsOf(this.provider());
@@ -167,7 +189,7 @@ export class AgentFormPage {
         await this.store.create(value);
         this.toast.success('Agente creado');
       }
-      await this.router.navigate(['/agents']);
+      await this.router.navigate([this.base()]);
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {

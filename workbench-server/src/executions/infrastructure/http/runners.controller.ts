@@ -32,6 +32,13 @@ export class RunnersController {
     return { ...toRunnerDto(runner), token };
   }
 
+  /** Elige el runner predeterminado: toma el trabajo primero y es el que la app intenta despertar. */
+  @Post(':id/default')
+  @HttpCode(200)
+  async setDefault(@Param('id') id: string): Promise<RunnerResponseDto[]> {
+    return (await this.runners.setDefault(id)).map(toRunnerDto);
+  }
+
   /** Revoca el runner: su token deja de servir. */
   @Delete(':id')
   @HttpCode(204)

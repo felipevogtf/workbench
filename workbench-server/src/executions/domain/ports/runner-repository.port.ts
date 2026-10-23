@@ -13,6 +13,8 @@ export interface RunnerRepositoryPort {
     id: string,
     info?: { version?: string; host?: string },
   ): Promise<boolean>;
+  /** Deja a este runner como el predeterminado y quita la marca a los demás. */
+  makeDefault(id: string): Promise<void>;
   delete(id: string): Promise<void>;
 }
 

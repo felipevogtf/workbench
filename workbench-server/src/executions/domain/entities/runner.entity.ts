@@ -6,7 +6,11 @@ export const RUNNER_ONLINE_MS = 60_000;
 export class Runner {
   private constructor(private props: RunnerProps) {}
 
-  static create(data: { name: string; tokenHash: string }): Runner {
+  static create(data: {
+    name: string;
+    tokenHash: string;
+    isDefault?: boolean;
+  }): Runner {
     return new Runner({
       id: crypto.randomUUID(),
       name: data.name.trim(),
@@ -14,6 +18,7 @@ export class Runner {
       version: null,
       host: null,
       lastSeenAt: null,
+      isDefault: data.isDefault ?? false,
       createdAt: new Date(),
     });
   }
@@ -39,6 +44,9 @@ export class Runner {
   }
   get lastSeenAt(): Date | null {
     return this.props.lastSeenAt;
+  }
+  get isDefault(): boolean {
+    return this.props.isDefault;
   }
   get createdAt(): Date {
     return this.props.createdAt;

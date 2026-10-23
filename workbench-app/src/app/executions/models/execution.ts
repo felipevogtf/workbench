@@ -76,6 +76,8 @@ export interface Runner {
   host: string | null;
   lastSeenAt: string | null;
   online: boolean;
+  /** El que toma el trabajo primero y al que la app intenta despertar. */
+  isDefault: boolean;
   createdAt: string;
 }
 

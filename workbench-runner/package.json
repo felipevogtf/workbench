@@ -14,6 +14,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "check": "node dist/main.js check",
+    "autostart:install": "node dist/main.js autostart install",
+    "autostart:remove": "node dist/main.js autostart remove",
     "test": "npm run build && node --test \"dist/**/*.test.js\"",
     "format": "prettier --write \"src/**/*.ts\""
   },

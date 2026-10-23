@@ -30,17 +30,35 @@ export class RunnersService {
     if (!name.trim()) throw new DomainError('The runner needs a name');
 
     const token = TOKEN_PREFIX + randomBytes(32).toString('base64url');
+    // El primero que se crea es el predeterminado; los demás, solo si se elige después.
+    const first = (await this.runners.findAll()).length === 0;
     const runner = await this.runners.save(
-      Runner.create({ name, tokenHash: hashToken(token) }),
+      Runner.create({ name, tokenHash: hashToken(token), isDefault: first }),
     );
     return { runner, token };
   }
 
+  /** Revoca el runner. Si era el predeterminado, el más antiguo que quede lo reemplaza. */
   async delete(id: string): Promise<void> {
-    if (!(await this.runners.findById(id))) {
+    const runner = await this.runners.findById(id);
+    if (!runner) {
       throw DomainError.notFound(`Runner with id ${id} not found`);
     }
     await this.runners.delete(id);
+
+    if (runner.isDefault) {
+      const [next] = await this.runners.findAll();
+      if (next) await this.runners.makeDefault(next.id);
+    }
+  }
+
+  /** Elige el runner predeterminado; el anterior deja de serlo. */
+  async setDefault(id: string): Promise<Runner[]> {
+    if (!(await this.runners.findById(id))) {
+      throw DomainError.notFound(`Runner with id ${id} not found`);
+    }
+    await this.runners.makeDefault(id);
+    return this.runners.findAll();
   }
 
   /** El runner dueño del token, o `null` si no existe o fue revocado. */

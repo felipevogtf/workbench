@@ -49,11 +49,27 @@ export class RunnerJobsService {
     for (;;) {
       // Un runner revocado en pleno sondeo no recibe más trabajo (y su petición termina).
       if (!(await this.runnersService.touch(runner))) return null;
-      const job = await this.jobs.claimNext(runner.id);
+      // Con el predeterminado conectado, el trabajo es suyo: este espera por si se desconecta.
+      const job = (await this.shouldLeaveToDefault(runner))
+        ? null
+        : await this.jobs.claimNext(runner.id);
       if (job) return job;
       if (Date.now() + CLAIM_POLL_MS >= deadline) return null;
       await new Promise((resolve) => setTimeout(resolve, CLAIM_POLL_MS));
     }
+  }
+
+  /**
+   * Un runner que no es el predeterminado solo toma trabajo cuando el predeterminado no está
+   * conectado; así, con varios PCs, la ejecución va primero al que se eligió.
+   */
+  private async shouldLeaveToDefault(runner: Runner): Promise<boolean> {
+    const all = await this.runners.findAll();
+    const current = all.find((candidate) => candidate.id === runner.id);
+    if (!current || current.isDefault) return false;
+
+    const preferred = all.find((candidate) => candidate.isDefault);
+    return !!preferred && preferred.isOnline();
   }
 
   /**

@@ -426,6 +426,37 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('several runners', () => {
+    /** `runner` (el de siempre) es el predeterminado; `other` es un segundo PC. */
+    async function twoRunners() {
+      await runners.save(
+        Runner.reconstruct({ ...runner.toProps(), isDefault: true }),
+      );
+      const other = await runners.save(
+        Runner.create({ name: 'Portátil', tokenHash: 'y' }),
+      );
+      return { other };
+    }
+
+    it('give the work to the default one while it is connected', async () => {
+      const { other } = await twoRunners();
+      await new RunnersService(runners).touch(runner); // el predeterminado está conectado
+      await service.start('issue-1');
+
+      expect(await runnerJobs.claim(other, 0)).toBeNull();
+      expect(jobs.items[0].status).toBe('pending');
+
+      expect(await runnerJobs.claim(runner, 0)).not.toBeNull();
+    });
+
+    it('let another one take the work when the default is not connected', async () => {
+      const { other } = await twoRunners();
+      await service.start('issue-1');
+
+      expect(await runnerJobs.claim(other, 0)).not.toBeNull();
+    });
+  });
+
   describe('a revoked runner', () => {
     it('gets no more work from a poll that was still waiting', async () => {
       await service.start('issue-1');

@@ -6,5 +6,7 @@ export interface RunnerProps {
   version: string | null;
   host: string | null;
   lastSeenAt: Date | null;
+  /** El runner que toma el trabajo primero y al que la app intenta despertar. Solo hay uno. */
+  isDefault: boolean;
   createdAt: Date;
 }

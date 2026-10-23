@@ -9,6 +9,7 @@ export function toRunnerDto(runner: Runner): RunnerResponseDto {
     host: runner.host,
     lastSeenAt: runner.lastSeenAt?.toISOString() ?? null,
     online: runner.isOnline(),
+    isDefault: runner.isDefault,
     createdAt: runner.createdAt.toISOString(),
   };
 }

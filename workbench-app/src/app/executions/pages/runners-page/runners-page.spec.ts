@@ -7,7 +7,10 @@ import { createdRunner, runner } from '../../testing/factories';
 import { RunnersPage } from './runners-page';
 
 describe('RunnersPage', () => {
-  let api: Record<'listRunners' | 'createRunner' | 'deleteRunner', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'listRunners' | 'createRunner' | 'deleteRunner' | 'setDefaultRunner',
+    ReturnType<typeof vi.fn>
+  >;
   let ask: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -17,6 +20,7 @@ describe('RunnersPage', () => {
       listRunners: vi.fn(() => of([])),
       createRunner: vi.fn(() => of(createdRunner('b'))),
       deleteRunner: vi.fn(() => of(undefined)),
+      setDefaultRunner: vi.fn(),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -60,6 +64,31 @@ describe('RunnersPage', () => {
     expect(rows[1].textContent).toContain('todavía no se conectó');
   });
 
+  it('marks the default runner and lets the user choose another', async () => {
+    api.listRunners.mockReturnValue(
+      of([runner('a', { name: 'Mi PC', isDefault: true }), runner('b', { name: 'Portátil' })]),
+    );
+    api.setDefaultRunner.mockReturnValue(
+      of([runner('a', { name: 'Mi PC' }), runner('b', { name: 'Portátil', isDefault: true })]),
+    );
+    const fixture = await render();
+    const element = fixture.nativeElement as HTMLElement;
+
+    let rows = Array.from(element.querySelectorAll('.runners li'));
+    expect(rows[0].textContent).toContain('Predeterminado');
+    expect(rows[0].textContent).not.toContain('Usar por defecto');
+    expect(rows[1].textContent).toContain('Usar por defecto');
+
+    (rows[1].querySelector('button') as HTMLButtonElement).click();
+    await vi.advanceTimersByTimeAsync(0);
+    await fixture.whenStable();
+
+    expect(api.setDefaultRunner).toHaveBeenCalledWith('b');
+    rows = Array.from(element.querySelectorAll('.runners li'));
+    expect(rows[0].textContent).toContain('Usar por defecto');
+    expect(rows[1].textContent).toContain('Predeterminado');
+  });
+
   it('shows the token of a new runner once, with the configuration to paste', async () => {
     const fixture = await render();
     const element = fixture.nativeElement as HTMLElement;
@@ -89,7 +118,7 @@ describe('RunnersPage', () => {
     const fixture = await render();
     const element = fixture.nativeElement as HTMLElement;
 
-    (element.querySelector('.runner button') as HTMLButtonElement).click();
+    (element.querySelector('.runner button[aria-label^="Revocar"]') as HTMLButtonElement).click();
     await vi.advanceTimersByTimeAsync(0);
     await fixture.whenStable();
 
@@ -104,7 +133,9 @@ describe('RunnersPage', () => {
     const fixture = await render();
 
     (
-      (fixture.nativeElement as HTMLElement).querySelector('.runner button') as HTMLButtonElement
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.runner button[aria-label^="Revocar"]',
+      ) as HTMLButtonElement
     ).click();
     await vi.advanceTimersByTimeAsync(0);
 

@@ -100,6 +100,12 @@ export class InMemoryRunners implements RunnerRepositoryPort {
     runner.introduce(info);
     return Promise.resolve(true);
   }
+  makeDefault(id: string): Promise<void> {
+    for (const runner of this.items.values()) {
+      runner.toProps().isDefault = runner.id === id;
+    }
+    return Promise.resolve();
+  }
   delete(id: string): Promise<void> {
     this.items.delete(id);
     return Promise.resolve();

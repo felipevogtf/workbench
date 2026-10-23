@@ -11,12 +11,13 @@
       <button
         app-button
         type="button"
-        [loading]="store.starting()"
-        [disabled]="!canRun() || !!store.active()"
+        [loading]="store.starting() || launching()"
+        [disabled]="!canRun() || !!store.active() || launching()"
         [title]="canRun() ? '' : 'Primero genera un plan de ejecución'"
         (click)="run()"
       >
-        <app-icon name="play" size="1em" /> Ejecutar el plan
+        <app-icon name="play" size="1em" />
+        {{ launching() ? 'Iniciando el runner…' : 'Ejecutar el plan' }}
       </button>
       @if (!canRun() && !store.active()) {
         <span class="exec__muted">La tarea necesita un plan listo.</span>

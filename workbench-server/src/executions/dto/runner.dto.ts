@@ -26,6 +26,8 @@ export class RunnerResponseDto {
   host!: string | null;
   lastSeenAt!: string | null;
   online!: boolean;
+  /** El runner que toma el trabajo primero y al que la app intenta despertar. */
+  isDefault!: boolean;
   createdAt!: string;
 }
 

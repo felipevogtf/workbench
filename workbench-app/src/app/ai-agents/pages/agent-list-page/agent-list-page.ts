@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
@@ -10,7 +10,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { AgentCard } from '../../components/agent-card/agent-card';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { Agent, MODULE_OPTIONS } from '../../models/agent';
+import { Agent, AgentScope, modulesOf } from '../../models/agent';
 
 @Component({
   selector: 'app-agent-list-page',
@@ -20,8 +20,16 @@ import { Agent, MODULE_OPTIONS } from '../../models/agent';
   styleUrl: './agent-list-page.scss',
 })
 export class AgentListPage {
+  /** Viene de la ruta (`data.scope`): los agentes de siempre o los de los trabajadores. */
+  readonly scope = input<AgentScope>('general');
+
   protected readonly store = inject(AgentsStore);
-  protected readonly groups = MODULE_OPTIONS;
+  protected readonly groups = computed(() => modulesOf(this.scope()));
+  /** Los agentes de esta pantalla: los del otro menú no aparecen aquí. */
+  protected readonly visible = computed(() => {
+    const modules = this.groups().map((group) => group.value);
+    return this.store.agents().filter((agent) => modules.includes(agent.module));
+  });
   // Carga los proveedores para que las tarjetas muestren su nombre.
   private readonly providers = inject(ProvidersStore);
   private readonly confirm = inject(ConfirmDialog);

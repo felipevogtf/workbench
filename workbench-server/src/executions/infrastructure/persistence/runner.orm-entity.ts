@@ -25,6 +25,9 @@ export class RunnerOrmEntity {
   @Column({ type: 'timestamp', nullable: true })
   last_seen_at!: Date | null;
 
+  @Column({ type: 'boolean', default: false })
+  is_default!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 }

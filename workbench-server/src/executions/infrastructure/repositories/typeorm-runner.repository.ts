@@ -38,6 +38,7 @@ export class TypeOrmRunnerRepository implements RunnerRepositoryPort {
       version: props.version,
       host: props.host,
       last_seen_at: props.lastSeenAt,
+      is_default: props.isDefault,
       created_at: props.createdAt,
     });
     return this.toDomain(saved);
@@ -55,6 +56,12 @@ export class TypeOrmRunnerRepository implements RunnerRepositoryPort {
     return (result.affected ?? 0) > 0;
   }
 
+  async makeDefault(id: string): Promise<void> {
+    await this.repository.query('UPDATE runners SET is_default = (id = $1)', [
+      id,
+    ]);
+  }
+
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
   }
@@ -67,6 +74,7 @@ export class TypeOrmRunnerRepository implements RunnerRepositoryPort {
       version: orm.version,
       host: orm.host,
       lastSeenAt: orm.last_seen_at,
+      isDefault: orm.is_default,
       createdAt: orm.created_at,
     });
   }
