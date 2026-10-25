@@ -80,3 +80,19 @@ Estado al pausar. Rama: `feat/task-executions`. El plan de fondo está en `ejecu
   herramienta Write y ejecutarlo.
 - Para ver el estado de una ejecución sin tocar la base de datos, usar la API:
   `GET /api/issues/:id/executions`, `GET /api/executions/:id` y `GET /api/executions/jobs/:jobId/logs`.
+
+## Resultado del reintento (2026-10-25)
+
+Con `npm install` el desarrollador ya pudo instalar y compilar, y la ejecución avanzó (desarrollo → revisión ×2).
+Falló otra vez, ahora con un motivo legítimo del revisor: el `npm install` reescribió `package-lock.json` con
+cambios ajenos al ticket (borró entradas como `@awesome-cordova-plugins/core` y las anidadas de
+`@ionic/angular-toolkit`; el repo es Ionic 6 / Angular 13 y el npm del PC es más nuevo). El desarrollador no
+pudo deshacerlo porque no tiene `git checkout` ni `git restore`.
+
+Opciones (a decidir):
+1. Permitir al desarrollador `Bash(git restore:*)` y `Bash(git checkout:*)`: solo afectan su worktree aislado, y
+   le dejan deshacer sus propios cambios (por ejemplo restaurar el lockfile y volver a instalar solo el paquete).
+2. Añadir al prompt: «no dejes que `npm install` toque el lockfile más allá del paquete nuevo; revisa
+   `git diff --stat package-lock.json`».
+3. Aceptar el ticket a mano: la rama con el trabajo quedó en `E:\workbench-agent-repos` (worktree de la
+   ejecución) y se puede revisar y arreglar el lockfile a mano.
