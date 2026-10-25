@@ -42,8 +42,17 @@ export class GithubApiClient {
   }
 
   /** PRs abiertas con una solicitud de review pendiente para el usuario del token. */
-  async searchReviewRequested(): Promise<GithubSearchItem[]> {
-    const q = encodeURIComponent('is:pr is:open review-requested:@me');
+  searchReviewRequested(): Promise<GithubSearchItem[]> {
+    return this.search('is:pr is:open review-requested:@me');
+  }
+
+  /** PRs abiertas que abrió el usuario del token. */
+  searchAuthored(): Promise<GithubSearchItem[]> {
+    return this.search('is:pr is:open author:@me');
+  }
+
+  private async search(query: string): Promise<GithubSearchItem[]> {
+    const q = encodeURIComponent(query);
     const items: GithubSearchItem[] = [];
 
     for (let page = 1; page <= MAX_PAGES; page++) {

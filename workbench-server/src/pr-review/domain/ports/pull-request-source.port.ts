@@ -13,6 +13,8 @@ export interface RemotePullRequestData {
   headCommit: string;
   /** Descripción de la PR en el provider (texto/markdown). */
   description: string | null;
+  /** La abrió el usuario del token (no es una que le pidieron revisar). */
+  authoredByMe?: boolean;
 }
 
 export interface PullRequestSourceResult {
@@ -26,7 +28,7 @@ export interface PullRequestSourceResult {
 
 export interface PullRequestSourcePort {
   readonly provider: GitProvider;
-  /** PRs abiertas donde el usuario es reviewer. */
+  /** PRs abiertas donde el usuario es reviewer o autor. */
   getReviewRequestedPullRequests(): Promise<PullRequestSourceResult>;
   /**
    * Datos actuales de una PR concreta (título, descripción, commit…). Sirve para revisar con lo vigente

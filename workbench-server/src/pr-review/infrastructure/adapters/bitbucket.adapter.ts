@@ -45,7 +45,9 @@ export class BitbucketAdapter
       const repo = `${workspace}/${slug}`;
       try {
         const raws = await this.client.getPullRequestsToReview(slug, me.uuid);
-        pullRequests.push(...raws.map((raw) => this.toRemote(repo, raw)));
+        pullRequests.push(
+          ...raws.map((raw) => this.toRemote(repo, raw, me.uuid)),
+        );
       } catch (error) {
         // Un repo sin acceso o sin PRs habilitadas no debe frenar a los demás.
         const status = error instanceof HttpException ? error.getStatus() : '?';
@@ -166,6 +168,7 @@ export class BitbucketAdapter
   private toRemote(
     repo: string,
     raw: BitbucketPullRequest,
+    myUuid?: string,
   ): RemotePullRequestData {
     return {
       provider: this.provider,
@@ -178,6 +181,7 @@ export class BitbucketAdapter
       destBranch: raw.destination.branch.name,
       headCommit: raw.source.commit.hash,
       description: raw.description?.trim() || null,
+      authoredByMe: !!myUuid && raw.author.uuid === myUuid,
     };
   }
 }

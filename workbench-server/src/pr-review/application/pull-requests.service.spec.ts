@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { DomainError } from '@core/domain/domain.error';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import {
@@ -19,6 +20,7 @@ function build(
   ticketsOverrides: Partial<TicketsGatewayPort> = {},
   diffs: string[] = [],
   files: Record<string, string> = {},
+  settings: Record<string, string> = {},
 ) {
   const prs = new InMemoryPullRequestRepository();
   const reviews = new InMemoryReviewRepository();
@@ -45,6 +47,7 @@ function build(
     [source],
     tickets,
     reviewsService,
+    { get: (key: string) => settings[key] } as unknown as ConfigService,
   );
   return { service, prs, kick, tickets };
 }
@@ -69,6 +72,46 @@ describe('PullRequestsService.sync', () => {
       'pending',
     ]);
     expect(kick).toHaveBeenCalled();
+  });
+
+  describe('the pull requests I opened', () => {
+    const mixed = (): PullRequestSourceResult => ({
+      pullRequests: [
+        remotePullRequest('1'),
+        remotePullRequest('2', 'ws/app', { authoredByMe: true }),
+      ],
+      unreachableRepos: [],
+    });
+    const statuses = (prs: InMemoryPullRequestRepository) =>
+      [...prs.items.values()].map((pr) => [pr.externalId, pr.status]);
+
+    it('are reviewed like any other by default', async () => {
+      const { service, prs } = build([mixed()]);
+
+      await service.sync();
+
+      expect(statuses(prs)).toEqual([
+        ['1', 'pending'],
+        ['2', 'pending'],
+      ]);
+    });
+
+    it('come in skipped, and are shown but not reviewed, when PR_REVIEW_OWN_PRS is skip', async () => {
+      const { service, prs } = build(
+        [mixed()],
+        {},
+        [],
+        {},
+        { PR_REVIEW_OWN_PRS: 'skip' },
+      );
+
+      await service.sync();
+
+      expect(statuses(prs)).toEqual([
+        ['1', 'pending'],
+        ['2', 'skipped'],
+      ]);
+    });
   });
 
   it('does not duplicate a pull request that already exists', async () => {

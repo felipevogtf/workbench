@@ -373,9 +373,9 @@ describe('ReviewsService execution', () => {
     await waitFor(() => allDone(h));
     const [review] = h.reviews.items;
 
-    await expect(
-      h.service.deleteReview('other-pr', review.id),
-    ).rejects.toThrow(DomainError);
+    await expect(h.service.deleteReview('other-pr', review.id)).rejects.toThrow(
+      DomainError,
+    );
     await expect(h.service.deleteReview(pr.id, 'missing')).rejects.toThrow(
       DomainError,
     );

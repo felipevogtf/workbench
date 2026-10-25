@@ -15,6 +15,16 @@ const remote = {
 };
 
 describe('PullRequest', () => {
+  it('can come in skipped, and does not keep where it came from', () => {
+    const pr = PullRequest.createFromRemote(
+      { ...remote, authoredByMe: true },
+      { skipReview: true },
+    );
+
+    expect(pr.status).toBe('skipped');
+    expect(pr).not.toHaveProperty('props.authoredByMe');
+  });
+
   it('is born pending and open', () => {
     const pr = PullRequest.createFromRemote(remote);
 
