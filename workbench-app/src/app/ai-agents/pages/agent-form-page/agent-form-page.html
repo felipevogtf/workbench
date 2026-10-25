@@ -34,6 +34,17 @@
       }
 
       <app-form-field
+        label="Imagen"
+        for="agent-avatar"
+        hint="Opcional. Cualquier foto: se recorta al cuadrado y se reduce sola."
+      >
+        <app-avatar-picker
+          [name]="form.controls.displayName.value || form.controls.name.value"
+          [(value)]="avatar"
+        />
+      </app-form-field>
+
+      <app-form-field
         label="Nombre para mostrar"
         for="agent-display-name"
         hint="Opcional. Así se ve en el tablero, por ejemplo «David»."

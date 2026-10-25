@@ -22,6 +22,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { Textarea } from '@shared/ui/textarea/textarea';
 import { Toast } from '@shared/ui/toast/toast';
+import { AvatarPicker } from '../../components/avatar-picker/avatar-picker';
 import { ToolsPicker } from '../../components/tools-picker/tools-picker';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
@@ -48,6 +49,7 @@ type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
     Select,
     Textarea,
     ToolsPicker,
+    AvatarPicker,
     Button,
     Icon,
     Alert,
@@ -80,6 +82,8 @@ export class AgentFormPage {
     model: ['', Validators.required],
     systemPrompt: ['', Validators.required],
   });
+  /** La imagen elegida (data URL); `null` = el avatar dibujado. */
+  protected readonly avatar = signal<string | null>(null);
   protected readonly tools = signal<string[]>([...MODULE_TOOLS['pr-review']]);
 
   protected readonly loading = signal(false);
@@ -181,6 +185,8 @@ export class AgentFormPage {
       allowedTools: this.tools(),
       // Vacío = sin nombre para mostrar (el servidor lo guarda como nulo).
       displayName: this.form.controls.displayName.value.trim(),
+      // Vacío = quitar la imagen.
+      avatar: this.avatar() ?? '',
     };
     this.saving.set(true);
     try {
@@ -216,6 +222,7 @@ export class AgentFormPage {
         model: agent.model,
         systemPrompt: agent.systemPrompt,
       });
+      this.avatar.set(agent.avatar ?? null);
       this.tools.set([...agent.allowedTools]);
     } catch (error) {
       this.error.set(errorMessage(error));
