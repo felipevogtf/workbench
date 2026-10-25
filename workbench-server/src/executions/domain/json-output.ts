@@ -40,7 +40,10 @@ export function extractJson(text: string): unknown {
       // se prueba el siguiente
     }
   }
-  throw new DomainError('The agent did not answer with valid JSON');
+  const start = text.trim().replace(/\s+/g, ' ');
+  throw new DomainError(
+    `The agent did not answer with valid JSON. Start of its answer: ${start.slice(0, 200)}`,
+  );
 }
 
 function text(value: unknown, max: number): string {
