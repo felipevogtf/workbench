@@ -74,9 +74,9 @@ export class WorkerLevels1793400000000 implements MigrationInterface {
     for (const developer of DEVELOPERS) {
       await queryRunner.query(
         `INSERT INTO "agents" ("id", "name", "system_prompt", "model", "allowed_tools", "is_default", "module", "provider", "display_name", "effort", "level")
-         SELECT uuid_generate_v4(), $1, REPLACE("system_prompt", 'desarrollador senior', 'desarrollador'), $2, "allowed_tools", false, 'task-developer', 'claude', $3, $4, $5
+         SELECT uuid_generate_v4(), $1::varchar, REPLACE("system_prompt", 'desarrollador senior', 'desarrollador'), $2::varchar, "allowed_tools", false, 'task-developer', 'claude', $3::varchar, $4::varchar, $5::varchar
          FROM "agents" WHERE "name" = 'default-task-developer'
-           AND NOT EXISTS (SELECT 1 FROM "agents" WHERE "name" = $1)`,
+           AND NOT EXISTS (SELECT 1 FROM "agents" WHERE "name" = $1::varchar)`,
         [
           developer.name,
           developer.model,
