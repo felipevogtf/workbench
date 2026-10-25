@@ -33,6 +33,8 @@ export type ExecutionAgentModule =
 export interface ResolvedAgent {
   id: string;
   name: string;
+  /** Cómo se muestra en la app (ej. «David»); `null` = su nombre técnico. */
+  displayName: string | null;
   /** El runner solo sabe correr `claude`. */
   provider: string;
   model: string;
@@ -52,6 +54,14 @@ export interface AgentsGatewayPort {
   listByModule(module: ExecutionAgentModule): Promise<ResolvedAgent[]>;
   /** Un agente por su id, o `null` si ya no existe. */
   getById(id: string): Promise<ResolvedAgent | null>;
+  /** Conversa como la líder de tickets (Lucy): responde con texto, sin tocar nada. */
+  chat(request: { prompt: string }): Promise<AgentChatReply>;
+}
+
+export interface AgentChatReply {
+  reply: string;
+  agentName: string;
+  model: string;
 }
 export const AGENTS_GATEWAY_PORT = Symbol('EXECUTIONS_AGENTS_GATEWAY_PORT');
 

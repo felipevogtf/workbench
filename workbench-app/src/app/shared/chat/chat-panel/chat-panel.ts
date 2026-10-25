@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Alert } from '@shared/ui/alert/alert';
+import { Avatar } from '@shared/ui/avatar/avatar';
 import { Button } from '@shared/ui/button/button';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
@@ -34,7 +35,7 @@ const MAX_INPUT_PX = 144;
  */
 @Component({
   selector: 'app-chat-panel',
-  imports: [Alert, Button, Icon, IconButton, MarkdownViewer, Spinner],
+  imports: [Alert, Avatar, Button, Icon, IconButton, MarkdownViewer, Spinner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
@@ -50,6 +51,10 @@ export class ChatPanel {
   readonly infoTitle = input('');
   readonly placeholder = input('Escribe tu pregunta…');
   readonly emptyTitle = input('¿En qué te ayudo?');
+  /** Con quién se conversa (ej. Lucy): su avatar reemplaza al icono del botón y acompaña sus respuestas. */
+  readonly assistant = input<{ name: string; avatar: string | null } | null>(null);
+  /** Permite adjuntar archivos; algunos chats no los usan. */
+  readonly attachments = input(true);
   /** Preguntas de ejemplo para empezar. */
   readonly suggestions = input<readonly string[]>([]);
 
@@ -118,6 +123,7 @@ export class ChatPanel {
   }
 
   protected onPick(input: HTMLInputElement): void {
+    if (!this.attachments()) return;
     const files = Array.from(input.files ?? []);
     // Se vacía para que elegir el mismo archivo otra vez vuelva a disparar el cambio.
     input.value = '';
@@ -125,6 +131,7 @@ export class ChatPanel {
   }
 
   protected onDragOver(event: DragEvent): void {
+    if (!this.attachments()) return;
     if (!event.dataTransfer?.types.includes('Files')) return;
     event.preventDefault();
     this.dragging.set(true);
@@ -137,6 +144,7 @@ export class ChatPanel {
   }
 
   protected onDrop(event: DragEvent): void {
+    if (!this.attachments()) return;
     event.preventDefault();
     this.dragging.set(false);
     const files = Array.from(event.dataTransfer?.files ?? []);
@@ -145,6 +153,7 @@ export class ChatPanel {
 
   /** Pegar una captura de pantalla (u otro archivo) la adjunta; pegar texto sigue igual. */
   protected onPaste(event: ClipboardEvent): void {
+    if (!this.attachments()) return;
     const files = Array.from(event.clipboardData?.files ?? []);
     if (files.length === 0) return;
     event.preventDefault();

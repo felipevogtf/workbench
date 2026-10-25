@@ -1,7 +1,11 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
 import { AgentsService } from '@ai-agents/application/agents.service';
 import {
+  AgentChatReply,
   AgentsGatewayPort,
   ExecutionAgentModule,
   ResolvedAgent,
@@ -30,10 +34,30 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
     );
   }
 
+  async chat(request: { prompt: string }): Promise<AgentChatReply> {
+    // Lucy conversa sobre el estado de la ejecución, que va en el prompt: no necesita ningún repo.
+    const workdir = await mkdtemp(join(tmpdir(), 'wb-exec-chat-'));
+    try {
+      const result = await this.agents.run({
+        module: 'task-tickets',
+        prompt: request.prompt,
+        workdir,
+      });
+      return {
+        reply: result.output,
+        agentName: result.agentName,
+        model: result.model,
+      };
+    } finally {
+      await rm(workdir, { recursive: true, force: true });
+    }
+  }
+
   private resolve(agent: Agent): ResolvedAgent {
     return {
       id: agent.id,
       name: agent.name,
+      displayName: agent.displayName,
       provider: agent.provider,
       model: agent.model,
       systemPrompt: agent.systemPrompt,

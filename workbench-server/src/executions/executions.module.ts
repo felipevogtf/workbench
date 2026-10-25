@@ -4,6 +4,7 @@ import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PlannerModule } from '@planner/planner.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
 import { TasksModule } from '@tasks/tasks.module';
+import { ExecutionChatService } from './application/execution-chat.service';
 import { ExecutionsService } from './application/executions.service';
 import { RunnerJobsService } from './application/runner-jobs.service';
 import { RunnersService } from './application/runners.service';
@@ -60,6 +61,7 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
       useClass: PullRequestsGatewayAdapter,
     },
     ExecutionsService,
+    ExecutionChatService,
     RunnersService,
     RunnerJobsService,
     RunnerAuthGuard,

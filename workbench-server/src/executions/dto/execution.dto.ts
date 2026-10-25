@@ -1,4 +1,16 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import {
   ExecutionRepo,
   ExecutionStatus,
@@ -74,4 +86,34 @@ export class AssignTicketDto {
   @IsOptional()
   @IsUUID()
   reviewerId?: string;
+}
+
+/** Largo máximo de un mensaje del chat (el mismo tope que los demás chats). */
+const MAX_CHAT_MESSAGE_CHARS = 30_000;
+/** Tope de mensajes que acepta una petición (la conversación completa viaja en cada una). */
+const MAX_CHAT_MESSAGES = 100;
+
+export class ExecutionChatMessageDto {
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MAX_CHAT_MESSAGE_CHARS)
+  content!: string;
+}
+
+export class ExecutionChatRequestDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_CHAT_MESSAGES)
+  @ValidateNested({ each: true })
+  @Type(() => ExecutionChatMessageDto)
+  messages!: ExecutionChatMessageDto[];
+}
+
+export class ExecutionChatReplyDto {
+  reply!: string;
+  agentName!: string;
+  model!: string;
 }

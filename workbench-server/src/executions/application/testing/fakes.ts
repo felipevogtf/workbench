@@ -147,11 +147,24 @@ export class FakeAgents implements AgentsGatewayPort {
   tools = ['Read'];
   /** Agentes extra por módulo, además del por defecto. */
   extra: ResolvedAgent[] = [];
+  /** Los prompts con que se conversó con Lucy. */
+  readonly chats: string[] = [];
+  chatReply = 'Respuesta de Lucy';
+
+  chat(request: { prompt: string }) {
+    this.chats.push(request.prompt);
+    return Promise.resolve({
+      reply: this.chatReply,
+      agentName: 'default-task-tickets',
+      model: 'claude-sonnet-5-5',
+    });
+  }
 
   private base(module: ExecutionAgentModule): ResolvedAgent {
     return {
       id: `agent-${module}`,
       name: `default-${module}`,
+      displayName: null,
       provider: this.provider,
       model: 'claude-sonnet-5-5',
       systemPrompt: `prompt de ${module}`,

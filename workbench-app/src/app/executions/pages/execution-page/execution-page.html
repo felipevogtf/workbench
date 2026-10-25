@@ -152,6 +152,11 @@
       }
     </div>
 
+    <app-execution-chat
+      [executionId]="execution.id"
+      [context]="execution.repo.fullName + ' · ' + execution.branch"
+    />
+
     @if (openId()) {
       <app-ticket-panel
         [card]="panelCard()"

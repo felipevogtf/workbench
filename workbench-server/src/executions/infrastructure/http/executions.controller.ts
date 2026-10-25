@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ExecutionChatService } from '@executions/application/execution-chat.service';
 import { ExecutionsService } from '@executions/application/executions.service';
 import { RunnersService } from '@executions/application/runners.service';
 import { Execution } from '@executions/domain/entities/execution.entity';
@@ -14,6 +15,8 @@ import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
   AssignTicketDto,
+  ExecutionChatReplyDto,
+  ExecutionChatRequestDto,
   ExecutionDetailDto,
   ExecutionListItemDto,
   ExecutionResponseDto,
@@ -28,6 +31,7 @@ const MAX_OUTPUT = 2000;
 export class ExecutionsController {
   constructor(
     private readonly executions: ExecutionsService,
+    private readonly chatService: ExecutionChatService,
     private readonly runners: RunnersService,
   ) {}
 
@@ -86,6 +90,16 @@ export class ExecutionsController {
   @HttpCode(200)
   async cancel(@Param('id') id: string): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.cancel(id));
+  }
+
+  /** Conversa con Lucy sobre la ejecución (no cambia nada). Puede tardar. */
+  @Post('executions/:id/chat')
+  @HttpCode(200)
+  chat(
+    @Param('id') id: string,
+    @Body() dto: ExecutionChatRequestDto,
+  ): Promise<ExecutionChatReplyDto> {
+    return this.chatService.reply(id, dto.messages);
   }
 
   /** El visto bueno tras crear los tickets: empieza el desarrollo. */

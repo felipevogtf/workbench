@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
+import { ChatMessage } from '@shared/chat/chat.models';
 import {
   CreatedRunner,
   Execution,
@@ -59,6 +60,11 @@ export class ExecutionsApi {
     body: { developerId?: string; reviewerId?: string },
   ): Observable<Execution> {
     return this.http.patch<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}`, body);
+  }
+
+  /** Conversa con Lucy sobre la ejecución; ella lee su estado completo. Puede tardar. */
+  chat(id: string, messages: readonly ChatMessage[]): Observable<{ reply: string }> {
+    return this.http.post<{ reply: string }>(`${this.base}/executions/${id}/chat`, { messages });
   }
 
   listRunners(): Observable<Runner[]> {

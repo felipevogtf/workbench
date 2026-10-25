@@ -575,6 +575,7 @@ describe('ExecutionsService', () => {
     ) => ({
       id,
       name: id,
+      displayName: null,
       provider: 'claude',
       model: data.model ?? 'claude-haiku-4-5-20251001',
       systemPrompt: 'prompt',

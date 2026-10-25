@@ -33,10 +33,13 @@ describe('ChatPanel', () => {
     chat.toggle();
   });
 
-  async function render(): Promise<HTMLElement> {
+  async function render(inputs: Record<string, unknown> = {}): Promise<HTMLElement> {
     const fixture = TestBed.createComponent(ChatPanel);
     fixture.componentRef.setInput('store', chat);
     fixture.componentRef.setInput('heading', 'Chat de prueba');
+    for (const [name, value] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(name, value);
+    }
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
@@ -361,5 +364,66 @@ describe('ChatPanel empty state and context', () => {
     const element = await render();
 
     expect(element.querySelector('.panel__info')).toBeNull();
+  });
+
+  describe('with an assistant', () => {
+    const lucy = { name: 'Lucy', avatar: null };
+
+    it('shows her avatar on the button instead of the chat icon, and on her answers', async () => {
+      chat.toggle(); // cerrado: se ve el botón
+      const closed = await render({ assistant: lucy });
+      expect(closed.querySelector('.fab app-avatar')).not.toBeNull();
+      expect(closed.querySelector('.fab app-icon')).toBeNull();
+      expect(closed.querySelector('.fab')?.getAttribute('aria-label')).toBe(
+        'Abrir el chat con Lucy',
+      );
+    });
+
+    it('keeps the close icon on the button while the panel is open, and names her in the panel', async () => {
+      const element = await render({ assistant: lucy });
+
+      expect(element.querySelector('.fab app-avatar')).toBeNull();
+      expect(element.querySelector('.fab app-icon')).not.toBeNull();
+      expect(element.querySelector('.panel__head app-avatar')).not.toBeNull();
+    });
+
+    it('labels her answers with her name', async () => {
+      const element = await render({ assistant: lucy });
+      const box = element.querySelector<HTMLTextAreaElement>('textarea')!;
+
+      box.value = 'hola';
+      box.dispatchEvent(new Event('input'));
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+      await settle();
+      await settle();
+
+      const [user, assistant] = Array.from(element.querySelectorAll('.msg'));
+      expect(user.querySelector('.msg__who')).toBeNull();
+      expect(assistant.querySelector('.msg__who')?.textContent).toContain('Lucy');
+    });
+
+    it('keeps the generic chat icon when there is no assistant', async () => {
+      chat.toggle();
+      const element = await render();
+
+      expect(element.querySelector('.fab app-avatar')).toBeNull();
+      expect(element.querySelector('.fab app-icon')).not.toBeNull();
+    });
+  });
+
+  describe('without attachments', () => {
+    it('has no clip, no file picker and no drop zone', async () => {
+      const element = await render({ attachments: false });
+
+      expect(element.querySelector('.composer__clip')).toBeNull();
+      expect(element.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    it('still has them by default', async () => {
+      const element = await render();
+
+      expect(element.querySelector('.composer__clip')).not.toBeNull();
+      expect(element.querySelector('input[type="file"]')).not.toBeNull();
+    });
   });
 });

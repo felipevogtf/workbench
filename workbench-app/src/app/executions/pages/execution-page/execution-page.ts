@@ -20,9 +20,11 @@ import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
+import { ExecutionChat } from '../../components/execution-chat/execution-chat';
 import { TicketAssignment } from '../../components/ticket-assignment/ticket-assignment';
 import { TicketBoard } from '../../components/ticket-board/ticket-board';
 import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
+import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
 import { activityOf } from '../../models/activity';
 import {
@@ -63,11 +65,12 @@ const GENERAL = 'general';
     PageHeader,
     Skeleton,
     Spinner,
+    ExecutionChat,
     TicketAssignment,
     TicketBoard,
     TicketPanel,
   ],
-  providers: [ExecutionStore],
+  providers: [ExecutionStore, ExecutionChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './execution-page.html',
   styleUrl: './execution-page.scss',

@@ -34,7 +34,7 @@ const AGENTS = [
 
 describe('ExecutionPage', () => {
   let api: Record<
-    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign',
+    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign' | 'chat',
     ReturnType<typeof vi.fn>
   >;
   let ask: ReturnType<typeof vi.fn>;
@@ -49,6 +49,7 @@ describe('ExecutionPage', () => {
       retry: vi.fn(() => of(execution('e1', 'running'))),
       begin: vi.fn(() => of(execution('e1', 'running'))),
       assign: vi.fn(() => of(execution('e1', 'awaiting'))),
+      chat: vi.fn(() => of({ reply: 'Va bien' })),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -245,6 +246,23 @@ describe('ExecutionPage', () => {
       expect(
         element.querySelector('[data-status="developing"] .card__worker')?.textContent?.trim(),
       ).toBe('David');
+    });
+  });
+
+  describe('the chat with Lucy', () => {
+    it('is the avatar of Lucy on a button, and it answers about this execution', async () => {
+      const fixture = await render(detail('e1', 'running', { tickets: [ticket('a')] }));
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(element.querySelector('app-execution-chat .fab app-avatar')).not.toBeNull();
+      expect(element.querySelector('app-execution-chat .fab')?.getAttribute('aria-label')).toBe(
+        'Abrir el chat con Lucy',
+      );
+
+      (element.querySelector('app-execution-chat .fab') as HTMLButtonElement).click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(element.textContent).toContain('Habla con Lucy');
     });
   });
 

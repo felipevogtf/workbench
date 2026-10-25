@@ -35,6 +35,19 @@
   }
 }
 
+// Con el avatar de quien contesta, el botón es el avatar mismo: sin el fondo de color.
+.fab--avatar {
+  background: transparent;
+  box-shadow: none;
+}
+
+.msg__who {
+  margin: 0 0 var(--space-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
 // Avisa que hay una respuesta en camino mientras el panel está cerrado.
 .fab__dot {
   position: absolute;
@@ -73,6 +86,13 @@
   gap: var(--space-2) var(--space-2);
   padding: var(--space-4) var(--space-3) var(--space-4) var(--gutter);
   border-bottom: 1px solid var(--border);
+}
+
+.panel__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .panel__title {

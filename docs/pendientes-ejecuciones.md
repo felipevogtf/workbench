@@ -2,6 +2,27 @@
 
 Estado al pausar. Rama: `feat/task-executions`. El plan de fondo está en `ejecucion-de-tareas-con-ia.md`.
 
+## Al 2026-10-25 (lo más reciente; el resto de este archivo es de antes)
+
+Hecho y desplegado desde entonces: niveles de ticket con tres desarrolladores (Rebecca, Kiwi, David) y dos
+revisores (Maine, Pilar), esfuerzo por agente, pausa para asignar antes de empezar, subida de avatares,
+revisión de las PRs propias (`PR_REVIEW_OWN_PRS`), y tareas con **varios repositorios** (fase 1).
+
+Pendiente:
+
+- **Recetas de proyectos** (cómo se levanta cada proyecto, con referencias entre ellas): ver
+  `recetas-de-proyectos.md`. Etapa A (menú de recetas) y después etapa B (entorno con Docker por repo).
+- **Probar una tarea real con dos repos** (por ejemplo la de MiSeguridad): nunca se ha corrido de verdad, solo con
+  pruebas. Mirar si Lucy reparte bien los tickets entre repos.
+- **Herramientas de PHP/Docker** para los desarrolladores de los repos web (parte de la etapa B de las recetas).
+- **Error «The agent did not answer with valid JSON»** de Lucy: sin diagnosticar. Ahora el mensaje trae el inicio
+  de su respuesta; si vuelve a pasar, mirar eso.
+- **Paralelismo de tickets** (varios desarrolladores a la vez): se dejó fuera a propósito; ver «Ideas para
+  después».
+- **Skills por agente** (carpetas `.claude/skills` que el runner deja en el worktree): pendiente, hoy basta con
+  el prompt del agente.
+- **Reiniciar el runner** tras cada cambio de código del runner (el compilado se hace con `npm run build`).
+
 ## Hecho y probado en local, pero SIN subir ni desplegar
 
 Último arreglo (tras la ejecución fallida de «HU 1 - MiObra», ticket «Incorporar tipografía Space Grotesk»):
