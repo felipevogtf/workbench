@@ -12,9 +12,11 @@ import {
 import {
   AGENTS_GATEWAY_PORT,
   PLANS_GATEWAY_PORT,
+  REPOSITORIES_GATEWAY_PORT,
   TASKS_GATEWAY_PORT,
   type AgentsGatewayPort,
   type PlansGatewayPort,
+  type RepositoriesGatewayPort,
   type TasksGatewayPort,
 } from '@executions/domain/ports/gateways.port';
 import {
@@ -51,6 +53,8 @@ export class ExecutionChatService {
     private readonly plans: PlansGatewayPort,
     @Inject(AGENTS_GATEWAY_PORT)
     private readonly agents: AgentsGatewayPort,
+    @Inject(REPOSITORIES_GATEWAY_PORT)
+    private readonly repositories: RepositoriesGatewayPort,
   ) {}
 
   async reply(
@@ -66,11 +70,13 @@ export class ExecutionChatService {
     if (!execution) {
       throw DomainError.notFound(`Execution with id ${executionId} not found`);
     }
-    const [jobs, task, plan, lucy] = await Promise.all([
+    const [jobs, task, plan, lucy, code] = await Promise.all([
       this.jobs.findByExecutionId(executionId),
       this.tasks.getTask(execution.issueId),
       this.plans.getPlan(execution.planId),
       this.agents.getDefault('task-tickets'),
+      // El código de los repos (rama principal), clonado por la misma caché del plan; si no hay, se sigue sin él.
+      this.repositories.ensure(execution.issueId),
     ]);
 
     // Los nombres con que se ve a cada trabajador (David, Maine…), no los técnicos.
@@ -95,8 +101,13 @@ export class ExecutionChatService {
       nameOf: (agentId) =>
         (agentId && names.get(agentId)) || 'el agente por defecto',
       messages,
+      repos: code?.repos,
     });
 
-    return this.limiter.run(() => this.agents.chat({ prompt }));
+    // Con algún repo leíble, Lucy trabaja en la carpeta de la caché; si no, en una vacía.
+    const workdir = code?.repos.some((repo) => repo.used)
+      ? code.path
+      : undefined;
+    return this.limiter.run(() => this.agents.chat({ prompt, workdir }));
   }
 }

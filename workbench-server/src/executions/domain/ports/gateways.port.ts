@@ -55,7 +55,11 @@ export interface AgentsGatewayPort {
   /** Un agente por su id, o `null` si ya no existe. */
   getById(id: string): Promise<ResolvedAgent | null>;
   /** Conversa como la líder de tickets (Lucy): responde con texto, sin tocar nada. */
-  chat(request: { prompt: string }): Promise<AgentChatReply>;
+  chat(request: {
+    prompt: string;
+    /** Carpeta con código que puede leer; sin ella, una carpeta vacía. */
+    workdir?: string;
+  }): Promise<AgentChatReply>;
 }
 
 export interface AgentChatReply {
@@ -79,6 +83,29 @@ export interface PullRequestsGatewayPort {
   /** Abre la PR y devuelve su enlace. */
   create(request: NewPullRequest): Promise<{ url: string }>;
 }
+/** Un repositorio de la tarea ya clonado para leerlo. */
+export interface ReadableRepo {
+  url: string;
+  /** Su carpeta, dentro del directorio de trabajo. */
+  folder: string;
+  used: boolean;
+  /** Motivo cuando no se pudo leer. */
+  note: string | null;
+}
+
+export interface RepositoriesGatewayPort {
+  /**
+   * Los repos de la tarea clonados y al día (rama principal, solo lectura), o `null` si no hay forma de
+   * leerlos. Nunca lanza: leer el código es un extra, no una condición.
+   */
+  ensure(
+    issueId: string,
+  ): Promise<{ path: string; repos: ReadableRepo[] } | null>;
+}
+export const REPOSITORIES_GATEWAY_PORT = Symbol(
+  'EXECUTIONS_REPOSITORIES_GATEWAY_PORT',
+);
+
 export const PULL_REQUESTS_GATEWAY_PORT = Symbol(
   'EXECUTIONS_PULL_REQUESTS_GATEWAY_PORT',
 );

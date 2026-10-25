@@ -34,14 +34,19 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
     );
   }
 
-  async chat(request: { prompt: string }): Promise<AgentChatReply> {
-    // Lucy conversa sobre el estado de la ejecución, que va en el prompt: no necesita ningún repo.
-    const workdir = await mkdtemp(join(tmpdir(), 'wb-exec-chat-'));
+  async chat(request: {
+    prompt: string;
+    workdir?: string;
+  }): Promise<AgentChatReply> {
+    // Sin repos que leer, Lucy trabaja en una carpeta vacía: el estado de la ejecución va en el prompt.
+    const temp = request.workdir
+      ? null
+      : await mkdtemp(join(tmpdir(), 'wb-exec-chat-'));
     try {
       const result = await this.agents.run({
         module: 'task-tickets',
         prompt: request.prompt,
-        workdir,
+        workdir: request.workdir ?? temp ?? '',
       });
       return {
         reply: result.output,
@@ -49,7 +54,7 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
         model: result.model,
       };
     } finally {
-      await rm(workdir, { recursive: true, force: true });
+      if (temp) await rm(temp, { recursive: true, force: true });
     }
   }
 

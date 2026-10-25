@@ -13,6 +13,7 @@ import {
   AGENTS_GATEWAY_PORT,
   PLANS_GATEWAY_PORT,
   PULL_REQUESTS_GATEWAY_PORT,
+  REPOSITORIES_GATEWAY_PORT,
   TASKS_GATEWAY_PORT,
 } from './domain/ports/gateways.port';
 import { JOB_REPOSITORY_PORT } from './domain/ports/job-repository.port';
@@ -20,6 +21,7 @@ import { RUNNER_REPOSITORY_PORT } from './domain/ports/runner-repository.port';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
 import { PlansGatewayAdapter } from './infrastructure/adapters/plans-gateway.adapter';
 import { PullRequestsGatewayAdapter } from './infrastructure/adapters/pull-requests-gateway.adapter';
+import { RepositoriesGatewayAdapter } from './infrastructure/adapters/repositories-gateway.adapter';
 import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.adapter';
 import { ExecutionsController } from './infrastructure/http/executions.controller';
 import { RunnerApiController } from './infrastructure/http/runner-api.controller';
@@ -56,6 +58,10 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
     { provide: TASKS_GATEWAY_PORT, useClass: TasksGatewayAdapter },
     { provide: PLANS_GATEWAY_PORT, useClass: PlansGatewayAdapter },
     { provide: AGENTS_GATEWAY_PORT, useClass: AgentsGatewayAdapter },
+    {
+      provide: REPOSITORIES_GATEWAY_PORT,
+      useClass: RepositoriesGatewayAdapter,
+    },
     {
       provide: PULL_REQUESTS_GATEWAY_PORT,
       useClass: PullRequestsGatewayAdapter,

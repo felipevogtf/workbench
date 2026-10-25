@@ -9,7 +9,9 @@ import type {
   NewPullRequest,
   PlansGatewayPort,
   PullRequestsGatewayPort,
+  ReadableRepo,
   ReadyPlan,
+  RepositoriesGatewayPort,
   ResolvedAgent,
   TasksGatewayPort,
 } from '@executions/domain/ports/gateways.port';
@@ -151,8 +153,12 @@ export class FakeAgents implements AgentsGatewayPort {
   readonly chats: string[] = [];
   chatReply = 'Respuesta de Lucy';
 
-  chat(request: { prompt: string }) {
+  /** La carpeta de código con que se conversó en cada pregunta (`undefined` = una vacía). */
+  readonly chatWorkdirs: (string | undefined)[] = [];
+
+  chat(request: { prompt: string; workdir?: string }) {
     this.chats.push(request.prompt);
+    this.chatWorkdirs.push(request.workdir);
     return Promise.resolve({
       reply: this.chatReply,
       agentName: 'default-task-tickets',
@@ -192,6 +198,17 @@ export class FakeAgents implements AgentsGatewayPort {
     ];
     const all = [...modules.map((module) => this.base(module)), ...this.extra];
     return Promise.resolve(all.find((agent) => agent.id === id) ?? null);
+  }
+}
+
+export class FakeRepositories implements RepositoriesGatewayPort {
+  /** Lo que devuelve; `null` = no hay forma de leer el código. */
+  result: { path: string; repos: ReadableRepo[] } | null = null;
+  readonly asked: string[] = [];
+
+  ensure(issueId: string) {
+    this.asked.push(issueId);
+    return Promise.resolve(this.result);
   }
 }
 

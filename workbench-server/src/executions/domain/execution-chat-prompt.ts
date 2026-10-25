@@ -1,6 +1,7 @@
 import { Execution } from './entities/execution.entity';
 import { ExecutionStatus, TicketStatus } from './entities/execution.props';
 import { Job } from './entities/job.entity';
+import type { ReadableRepo } from './ports/gateways.port';
 
 /** Un mensaje del chat de la ejecución (la conversación viaja completa en cada pregunta). */
 export interface ExecutionChatMessage {
@@ -56,6 +57,47 @@ export interface ExecutionChatPromptInput {
   /** Cómo se muestra el agente de un id (ej. «David»); sin nombre, un genérico. */
   nameOf: (agentId: string | null) => string;
   messages: readonly ExecutionChatMessage[];
+  /** Los repos de la tarea que Lucy puede leer (rama principal); vacío si no hay código a la mano. */
+  repos?: readonly ReadableRepo[];
+}
+
+/** El código que Lucy puede leer, y la advertencia de que no incluye el trabajo en curso. */
+function codeLines(
+  repos: readonly ReadableRepo[],
+  execution: Execution,
+): string[] {
+  const readable = repos.filter((repo) => repo.used);
+  if (repos.length === 0) return [];
+
+  if (readable.length === 0) {
+    return [
+      '# Código',
+      'No hay código disponible: si la pregunta lo necesita, dilo en vez de suponerlo.',
+      '',
+    ];
+  }
+  const branches = execution
+    .targets()
+    .map((target) => target.branch)
+    .filter((branch, index, all) => all.indexOf(branch) === index)
+    .join(', ');
+  return [
+    '# Código',
+    'Puedes leer el código (solo lectura). Cada repositorio está en su carpeta, dentro del directorio actual:',
+    ...readable.map((repo) => `- \`${repo.folder}/\` — ${repo.url}`),
+    ...(repos.length > readable.length
+      ? [
+          'No se pudieron leer: ' +
+            repos
+              .filter((repo) => !repo.used)
+              .map((repo) => `${repo.url} (${repo.note ?? 'no disponible'})`)
+              .join(', '),
+        ]
+      : []),
+    `OJO: es la rama principal. No incluye el trabajo de esta ejecución, que vive en la rama ${branches} en el PC del usuario hasta que se publica: lo que se hizo lo sabes por los resúmenes de los tickets.`,
+    'Lee el código solo cuando la pregunta lo necesite (¿es factible?, ¿dónde vive algo?, ¿qué habría que tocar?). Para el estado de la ejecución usa el contexto de arriba.',
+    '',
+  ];
 }
 
 /** El estado de la ejecución, tal como lo ve el usuario en la pantalla. */
@@ -184,6 +226,7 @@ export function buildExecutionChatPrompt(
     ...stateLines(input),
     ...ticketLines(input),
     ...failureLines(input.jobs),
+    ...codeLines(input.repos ?? [], input.execution),
     '# Plan aprobado',
     plan?.trim() ? clip(plan, MAX_PLAN) : '(el plan ya no existe)',
     '',

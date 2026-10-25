@@ -22,6 +22,8 @@
   place-items: center;
   width: 56px;
   height: 56px;
+  // Sin el relleno por defecto del botón: el avatar mide lo mismo que el botón y se corría de lugar.
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: var(--primary);

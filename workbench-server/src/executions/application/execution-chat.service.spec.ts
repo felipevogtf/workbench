@@ -4,6 +4,7 @@ import { ExecutionChatService } from './execution-chat.service';
 import {
   FakeAgents,
   FakePlans,
+  FakeRepositories,
   FakeTasks,
   InMemoryExecutions,
   InMemoryJobs,
@@ -43,6 +44,7 @@ describe('ExecutionChatService', () => {
   let executions: InMemoryExecutions;
   let agents: FakeAgents;
   let plans: FakePlans;
+  let repositories: FakeRepositories;
   let service: ExecutionChatService;
   let execution: Execution;
 
@@ -50,12 +52,14 @@ describe('ExecutionChatService', () => {
     executions = new InMemoryExecutions();
     agents = new FakeAgents();
     plans = new FakePlans();
+    repositories = new FakeRepositories();
     service = new ExecutionChatService(
       executions,
       new InMemoryJobs(),
       new FakeTasks(),
       plans,
       agents,
+      repositories,
     );
 
     execution = Execution.create({
@@ -160,5 +164,50 @@ describe('ExecutionChatService', () => {
     await ask('¿Qué decía el plan?');
 
     expect(agents.chats[0]).toContain('el plan ya no existe');
+  });
+
+  describe('reading the code', () => {
+    const cloned = (used = true) => ({
+      path: '/cache/issue-1',
+      repos: [
+        {
+          url: 'https://bitbucket.org/acme/web',
+          folder: 'acme-web',
+          used,
+          note: used ? null : 'no se pudo clonar',
+        },
+      ],
+    });
+
+    it('lets Lucy read the cloned repositories, and warns that it is not the work in progress', async () => {
+      repositories.result = cloned();
+
+      await ask('¿Es factible el ticket 2?');
+
+      expect(repositories.asked).toEqual(['issue-1']);
+      expect(agents.chatWorkdirs).toEqual(['/cache/issue-1']);
+      const prompt = agents.chats[0];
+      expect(prompt).toContain('acme-web/');
+      expect(prompt).toContain('es la rama principal');
+      expect(prompt).toContain('workbench/vista-1234abcd'); // dónde está el trabajo de la ejecución
+    });
+
+    it('works in an empty folder, without a code section, when there is no way to read the code', async () => {
+      repositories.result = null;
+
+      await ask('¿Cómo va?');
+
+      expect(agents.chatWorkdirs).toEqual([undefined]);
+      expect(agents.chats[0]).not.toContain('# Código');
+    });
+
+    it('says so, and uses an empty folder, when no repository could be cloned', async () => {
+      repositories.result = cloned(false);
+
+      await ask('¿Dónde vive esa pantalla?');
+
+      expect(agents.chatWorkdirs).toEqual([undefined]);
+      expect(agents.chats[0]).toContain('No hay código disponible');
+    });
   });
 });

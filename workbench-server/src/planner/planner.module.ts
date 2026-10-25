@@ -10,6 +10,7 @@ import {
   TASK_CHAT_CONCURRENCY,
   TaskChatService,
 } from './application/task-chat.service';
+import { TaskReposService } from './application/task-repos.service';
 import { AGENTS_GATEWAY_PORT } from './domain/ports/agents-gateway.port';
 import { PLAN_REPOSITORY_PORT } from './domain/ports/plan-repository.port';
 import { ATTACHMENTS_PORT } from './domain/ports/attachments.port';
@@ -57,8 +58,9 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
     },
     PlansService,
     TaskChatService,
+    TaskReposService,
     PlannerRecovery,
   ],
-  exports: [PlansService],
+  exports: [PlansService, TaskReposService],
 })
 export class PlannerModule {}
