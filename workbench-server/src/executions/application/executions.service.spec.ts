@@ -91,6 +91,40 @@ describe('ExecutionsService', () => {
     headAfter: after,
   });
 
+  describe('the history of all the tasks', () => {
+    it('lists the most recent executions first, each with the name of its task', async () => {
+      const first = await service.start('issue-1');
+      await service.cancel(first.id);
+      tasks.task = { ...tasks.task!, id: 'issue-2', name: 'Otra tarea' };
+      const second = await service.start('issue-2');
+
+      const items = await service.listRecent();
+
+      expect(items.map((i) => i.execution.id)).toEqual([second.id, first.id]);
+      expect(items.map((i) => i.issueName)).toEqual([
+        'Otra tarea',
+        'Otra tarea',
+      ]);
+    });
+
+    it('caps how many it returns', async () => {
+      for (let i = 0; i < 3; i++) {
+        const started = await service.start('issue-1');
+        await service.cancel(started.id);
+      }
+
+      expect(await service.listRecent(2)).toHaveLength(2);
+    });
+
+    it('leaves the name empty when the task no longer exists', async () => {
+      const started = await service.start('issue-1');
+      await service.cancel(started.id);
+      tasks.task = null;
+
+      expect((await service.listRecent())[0].issueName).toBeNull();
+    });
+  });
+
   describe('start', () => {
     it('queues the tickets job with the plan, the repo and a branch of its own', async () => {
       const execution = await service.start('issue-1');
@@ -312,6 +346,64 @@ describe('ExecutionsService', () => {
       expect(current.stages.find((s) => s.key === 'develop')!.status).toBe(
         'failed',
       );
+    });
+  });
+
+  describe('which stage is running', () => {
+    const states = async (id: string) =>
+      Object.fromEntries(
+        (await service.get(id)).execution.stages.map((s) => [s.key, s.status]),
+      );
+
+    async function twoTickets() {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT }); // 2 tickets; el primero pasa a desarrollo
+      return execution;
+    }
+
+    it('only development runs while a ticket is being developed', async () => {
+      const execution = await twoTickets();
+
+      expect(await states(execution.id)).toMatchObject({
+        tickets: 'done',
+        develop: 'running',
+        review: 'pending',
+      });
+    });
+
+    it('only review runs while a ticket is being reviewed, even with others waiting', async () => {
+      const execution = await twoTickets();
+      await answer(developed('aaa', 'bbb'));
+
+      expect(await states(execution.id)).toMatchObject({
+        develop: 'pending',
+        review: 'running',
+      });
+    });
+
+    it('goes back to development alone when the reviewer asks for changes', async () => {
+      const execution = await twoTickets();
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: REJECTED });
+
+      expect(await states(execution.id)).toMatchObject({
+        develop: 'running',
+        review: 'pending',
+      });
+    });
+
+    it('finishes both when every ticket is done', async () => {
+      const execution = await twoTickets();
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: APPROVED });
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: APPROVED });
+
+      expect(await states(execution.id)).toMatchObject({
+        develop: 'done',
+        review: 'done',
+        publish: 'running',
+      });
     });
   });
 

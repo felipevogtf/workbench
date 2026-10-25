@@ -26,6 +26,14 @@ export class TypeOrmExecutionRepository implements ExecutionRepositoryPort {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findRecent(limit: number): Promise<Execution[]> {
+    const rows = await this.repository.find({
+      order: { created_at: 'DESC' },
+      take: limit,
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async findActiveByIssueId(issueId: string): Promise<Execution | null> {
     const orm = await this.repository.findOne({
       where: { issue_id: issueId, status: 'running' },

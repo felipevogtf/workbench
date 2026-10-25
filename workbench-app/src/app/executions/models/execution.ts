@@ -44,6 +44,11 @@ export interface Execution {
   finishedAt: string | null;
 }
 
+/** Una ejecución en el historial general: con el nombre de su tarea (`null` si ya no existe). */
+export interface ExecutionListItem extends Execution {
+  issueName: string | null;
+}
+
 export interface JobSummary {
   id: string;
   kind: StageKey;
@@ -151,8 +156,15 @@ export const JOB_STATUS_TONE: Record<JobStatus, BadgeTone> = {
   cancelled: 'neutral',
 };
 
-/** El costo de un trabajo o de toda la ejecución, para mostrar. */
-export function formatCost(usd: number | null): string {
-  if (usd === null) return '—';
-  return usd < 0.01 && usd > 0 ? '<$0.01' : `$${usd.toFixed(2)}`;
+/** Dónde va una ejecución en marcha, en una frase; `null` si no está en marcha. */
+export function executionProgress(
+  execution: Pick<Execution, 'status' | 'tickets'> | null,
+): string | null {
+  if (!execution || execution.status !== 'running') return null;
+  const tickets = execution.tickets;
+  if (tickets.length === 0) return 'Creando los tickets del plan…';
+
+  const index = tickets.findIndex((ticket) => ticket.status !== 'done');
+  if (index === -1) return 'Subiendo la rama y abriendo la PR…';
+  return `Ticket ${index + 1} de ${tickets.length}: ${TICKET_STATUS_LABEL[tickets[index].status]}`;
 }

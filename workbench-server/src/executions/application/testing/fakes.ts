@@ -27,6 +27,13 @@ export class InMemoryExecutions implements ExecutionRepositoryPort {
       [...this.items.values()].filter((item) => item.issueId === issueId),
     );
   }
+  findRecent(limit: number): Promise<Execution[]> {
+    return Promise.resolve(
+      [...this.items.values()]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit),
+    );
+  }
   findActiveByIssueId(issueId: string): Promise<Execution | null> {
     return Promise.resolve(
       [...this.items.values()].find(

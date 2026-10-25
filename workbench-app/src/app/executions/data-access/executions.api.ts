@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
-import { CreatedRunner, Execution, ExecutionDetail, JobLogs, Runner } from '../models/execution';
+import {
+  CreatedRunner,
+  Execution,
+  ExecutionDetail,
+  ExecutionListItem,
+  JobLogs,
+  Runner,
+} from '../models/execution';
 
 /** Llamadas HTTP de las ejecuciones de tareas y de los runners (sin estado: el estado vive en los stores). */
 @Injectable({ providedIn: 'root' })
@@ -13,6 +20,11 @@ export class ExecutionsApi {
   /** Empieza a ejecutar la tarea con su último plan; el trabajo lo hace el runner en segundo plano. */
   start(issueId: string): Observable<Execution> {
     return this.http.post<Execution>(`${this.base}/issues/${issueId}/executions`, {});
+  }
+
+  /** El historial general: las ejecuciones más recientes de todas las tareas. */
+  listAll(): Observable<ExecutionListItem[]> {
+    return this.http.get<ExecutionListItem[]>(`${this.base}/executions`);
   }
 
   listByIssue(issueId: string): Observable<Execution[]> {

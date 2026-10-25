@@ -1,7 +1,13 @@
 import { Routes } from '@angular/router';
 
 export const EXECUTIONS_ROUTES: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'runners' },
+  { path: '', pathMatch: 'full', redirectTo: 'history' },
+  {
+    path: 'history',
+    title: 'Ejecuciones · Workbench',
+    loadComponent: () =>
+      import('./pages/executions-page/executions-page').then((m) => m.ExecutionsPage),
+  },
   {
     path: 'runners',
     title: 'Runners · Workbench',

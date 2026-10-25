@@ -122,6 +122,25 @@ export class ExecutionsService {
     return execution;
   }
 
+  /**
+   * Las ejecuciones más recientes de todas las tareas (las en curso y el historial), cada una con el
+   * nombre de su tarea. Si la tarea ya no existe, el nombre va en `null`.
+   */
+  async listRecent(
+    limit = 100,
+  ): Promise<{ execution: Execution; issueName: string | null }[]> {
+    const executions = await this.executions.findRecent(limit);
+
+    const names = new Map<string, string | null>();
+    for (const issueId of new Set(executions.map((e) => e.issueId))) {
+      names.set(issueId, (await this.tasks.getTask(issueId))?.name ?? null);
+    }
+    return executions.map((execution) => ({
+      execution,
+      issueName: names.get(execution.issueId) ?? null,
+    }));
+  }
+
   listByIssue(issueId: string): Promise<Execution[]> {
     return this.executions.findByIssueId(issueId);
   }
@@ -459,30 +478,29 @@ export class ExecutionsService {
     execution.fail(message);
   }
 
-  /** El estado de cada etapa sale de los tickets: es lo único que cambia durante la ejecución. */
+  /**
+   * El estado de cada etapa sale de los tickets, y solo «corre» la que se está haciendo ahora:
+   * desarrollo mientras algún ticket se desarrolla, revisión mientras alguno se revisa. Con varios
+   * tickets las dos etapas se repiten; una que espera su próxima vuelta queda en «pendiente».
+   */
   private refreshStages(execution: Execution): void {
     const tickets = execution.tickets;
     if (tickets.length === 0) return;
 
+    const developing = tickets.some((ticket) => ticket.status === 'developing');
     const developed = tickets.every(
       (ticket) => ticket.status === 'reviewing' || ticket.status === 'done',
     );
-    const started = tickets.some((ticket) => ticket.status !== 'pending');
     execution.setStage(
       'develop',
-      developed ? 'done' : started ? 'running' : 'pending',
+      developing ? 'running' : developed ? 'done' : 'pending',
     );
 
+    const reviewing = tickets.some((ticket) => ticket.status === 'reviewing');
     const reviewed = tickets.every((ticket) => ticket.status === 'done');
-    const reviewing = tickets.some(
-      (ticket) =>
-        ticket.status === 'reviewing' ||
-        ticket.status === 'done' ||
-        ticket.rounds > 0,
-    );
     execution.setStage(
       'review',
-      reviewed ? 'done' : reviewing ? 'running' : 'pending',
+      reviewing ? 'running' : reviewed ? 'done' : 'pending',
     );
   }
 }

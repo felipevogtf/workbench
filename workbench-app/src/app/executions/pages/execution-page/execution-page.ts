@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
+import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { ExecutionStore } from '../../data-access/execution.store';
@@ -32,7 +33,6 @@ import {
   StageStatus,
   TICKET_STATUS_LABEL,
   TICKET_STATUS_TONE,
-  formatCost,
 } from '../../models/execution';
 
 const STAGE_ICON: Record<StageStatus, IconName | null> = {
@@ -56,6 +56,7 @@ const STAGE_ICON: Record<StageStatus, IconName | null> = {
     Button,
     Card,
     Icon,
+    MarkdownViewer,
     PageHeader,
     Skeleton,
     Spinner,
@@ -82,7 +83,6 @@ export class ExecutionPage {
   protected readonly ticketTone = TICKET_STATUS_TONE;
   protected readonly jobLabel = JOB_STATUS_LABEL;
   protected readonly jobTone = JOB_STATUS_TONE;
-  protected readonly cost = formatCost;
 
   /** Nombres de los tickets por id, para rotular los trabajos. */
   private readonly ticketTitles = computed(
@@ -102,6 +102,11 @@ export class ExecutionPage {
     const ticket = job.ticketId ? this.ticketTitles().get(job.ticketId) : null;
     const retry = job.attempt > 1 ? ` (intento ${job.attempt})` : '';
     return `${stage}${ticket ? ` · ${ticket}` : ''}${retry}`;
+  }
+
+  /** Una lista de textos como lista de Markdown (los criterios y las correcciones traen formato). */
+  protected list(items: readonly string[]): string {
+    return items.map((item) => `- ${item}`).join('\n');
   }
 
   protected async cancel(): Promise<void> {

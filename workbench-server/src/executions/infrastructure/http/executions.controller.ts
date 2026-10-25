@@ -5,6 +5,7 @@ import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
 import {
   ExecutionDetailDto,
+  ExecutionListItemDto,
   ExecutionResponseDto,
   JobLogsDto,
   JobSummaryDto,
@@ -33,6 +34,16 @@ export class ExecutionsController {
   ): Promise<ExecutionResponseDto[]> {
     const executions = await this.executions.listByIssue(issueId);
     return executions.map((execution) => this.toDto(execution));
+  }
+
+  /** El historial general: lo que se está ejecutando y lo que ya se ejecutó, de todas las tareas. */
+  @Get('executions')
+  async listAll(): Promise<ExecutionListItemDto[]> {
+    const items = await this.executions.listRecent();
+    return items.map(({ execution, issueName }) => ({
+      ...this.toDto(execution),
+      issueName,
+    }));
   }
 
   @Get('executions/:id')

@@ -1,0 +1,103 @@
+<div class="page">
+  <app-page-header
+    heading="Ejecuciones"
+    subtitle="Lo que la IA está ejecutando ahora y lo que ya ejecutó, de todas las tareas."
+  />
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las ejecuciones">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="72px" />
+      <app-skeleton height="72px" />
+      <app-skeleton height="72px" />
+    </div>
+  } @else if (store.executions().length === 0) {
+    <app-empty-state icon="play" heading="Todavía no hay ejecuciones">
+      Se lanzan desde el panel «Ejecutar con IA» del detalle de una tarea que ya tiene un plan.
+    </app-empty-state>
+  } @else {
+    @if (store.running().length > 0) {
+      <section aria-labelledby="running-title">
+        <h4 id="running-title" class="section__title">En curso ({{ store.running().length }})</h4>
+        <app-card>
+          <ul class="rows">
+            @for (execution of store.running(); track execution.id) {
+              <ng-container
+                [ngTemplateOutlet]="row"
+                [ngTemplateOutletContext]="{ $implicit: execution }"
+              />
+            }
+          </ul>
+        </app-card>
+      </section>
+    }
+
+    @if (store.finished().length > 0) {
+      <section aria-labelledby="history-title">
+        <h4 id="history-title" class="section__title">Historial</h4>
+        <app-card>
+          <ul class="rows">
+            @for (execution of store.finished(); track execution.id) {
+              <ng-container
+                [ngTemplateOutlet]="row"
+                [ngTemplateOutletContext]="{ $implicit: execution }"
+              />
+            }
+          </ul>
+        </app-card>
+      </section>
+    }
+  }
+</div>
+
+<ng-template #row let-execution>
+  <li class="row">
+    <div class="row__main">
+      <a class="row__title" [routerLink]="['/executions', execution.id]">
+        {{ execution.issueName ?? 'Tarea eliminada' }}
+      </a>
+      <span class="muted">{{ execution.repo.fullName }} · {{ execution.createdAt | timeAgo }}</span>
+
+      @if (progress(execution); as text) {
+        <span class="row__progress"><app-spinner size="0.9em" /> {{ text }}</span>
+      } @else if (execution.status === 'failed' && execution.error) {
+        <span class="row__error" [title]="execution.error">{{ execution.error }}</span>
+      } @else if (execution.tickets.length > 0) {
+        <span class="muted"
+          >{{ done(execution) }} de {{ execution.tickets.length }} tickets hechos</span
+        >
+      }
+    </div>
+
+    <app-badge [tone]="tone(execution)" dot>{{ label(execution) }}</app-badge>
+
+    <span class="row__actions">
+      @if (execution.pullRequestUrl) {
+        <a
+          app-button
+          variant="ghost"
+          size="sm"
+          [href]="execution.pullRequestUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <app-icon name="git-pull-request" size="1em" /> PR
+        </a>
+      }
+      <a app-button variant="ghost" size="sm" [routerLink]="['/executions', execution.id]">Ver</a>
+    </span>
+  </li>
+</ng-template>

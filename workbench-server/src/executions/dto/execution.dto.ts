@@ -35,6 +35,11 @@ export class ExecutionResponseDto {
   finishedAt!: string | null;
 }
 
+/** Una ejecución en el historial general: con el nombre de su tarea. */
+export class ExecutionListItemDto extends ExecutionResponseDto {
+  issueName!: string | null;
+}
+
 export class ExecutionDetailDto extends ExecutionResponseDto {
   jobs!: JobSummaryDto[];
   /** Hay trabajo en cola y ningún runner conectado para hacerlo. */

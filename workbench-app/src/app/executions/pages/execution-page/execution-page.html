@@ -50,7 +50,6 @@
           {{ statusLabel[execution.status] }}
         </app-badge>
         <span class="muted">Empezó {{ execution.createdAt | timeAgo }}</span>
-        <span class="muted">Costo: {{ cost(execution.costUsd) }}</span>
       </div>
 
       @if (execution.waitingForRunner) {
@@ -123,29 +122,26 @@
                     <span class="muted">{{ ticket.rounds }} revisión(es)</span>
                   }
                 </div>
-                <p class="muted">{{ ticket.description }}</p>
+                <app-markdown-viewer class="ticket__text" [content]="ticket.description" />
                 @if (ticket.criteria.length > 0) {
-                  <ul class="ticket__criteria">
-                    @for (criterion of ticket.criteria; track criterion) {
-                      <li>{{ criterion }}</li>
-                    }
-                  </ul>
+                  <app-markdown-viewer class="ticket__text" [content]="list(ticket.criteria)" />
                 }
                 @if (ticket.feedback?.length) {
                   <app-alert tone="warning" heading="El revisor pidió cambios">
-                    @for (issue of ticket.feedback; track issue) {
-                      <div>· {{ issue }}</div>
-                    }
+                    <app-markdown-viewer [content]="list(ticket.feedback ?? [])" />
                   </app-alert>
                 }
                 @if (ticket.summary) {
                   <details class="ticket__more">
                     <summary>Lo que hizo el desarrollador</summary>
-                    <p>{{ ticket.summary }}</p>
+                    <app-markdown-viewer [content]="ticket.summary" />
                   </details>
                 }
                 @if (ticket.reviewNote) {
-                  <p class="muted"><strong>Revisión:</strong> {{ ticket.reviewNote }}</p>
+                  <app-markdown-viewer
+                    class="ticket__text"
+                    [content]="'**Revisión:** ' + ticket.reviewNote"
+                  />
                 }
               </li>
             }
@@ -174,7 +170,6 @@
                       <app-badge [tone]="jobTone[job.status]" [loading]="job.status === 'running'">
                         {{ jobLabel[job.status] }}
                       </app-badge>
-                      <span class="muted">{{ cost(job.costUsd) }}</span>
                     </span>
                   </button>
                 </li>

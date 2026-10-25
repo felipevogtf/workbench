@@ -11,9 +11,8 @@ import { IssueExecutionsStore } from '../../data-access/issue-executions.store';
 import { RunnerLauncher } from '../../data-access/runner-launcher';
 import {
   EXECUTION_STATUS_LABEL,
-  Execution,
   EXECUTION_STATUS_TONE,
-  TICKET_STATUS_LABEL,
+  executionProgress,
 } from '../../models/execution';
 
 /** Cuántas ejecuciones se listan en el panel; el resto se ve entrando a cada una. */
@@ -52,15 +51,7 @@ export class ExecutionPanel {
   );
 
   /** Progreso en una frase, p. ej. «Ticket 2 de 3: En revisión». */
-  protected progress(execution: Execution | null): string | null {
-    if (!execution || execution.status !== 'running') return null;
-    const tickets = execution.tickets;
-    if (tickets.length === 0) return 'Creando los tickets del plan…';
-
-    const index = tickets.findIndex((ticket) => ticket.status !== 'done');
-    if (index === -1) return 'Subiendo la rama y abriendo la PR…';
-    return `Ticket ${index + 1} de ${tickets.length}: ${TICKET_STATUS_LABEL[tickets[index].status]}`;
-  }
+  protected readonly progress = executionProgress;
 
   protected async run(): Promise<void> {
     // Antes de ejecutar, que haya un runner: si no está corriendo, se le pide a Windows que lo abra.

@@ -10,6 +10,7 @@ export const EXECUTIONS_NAV: NavItem = {
   icon: 'sparkles',
   order: 15,
   children: [
+    { label: 'Ejecuciones', icon: 'list-checks', path: '/executions/history' },
     { label: 'Runners', icon: 'play', path: '/executions/runners' },
     { label: 'Trabajadores', icon: 'bot', path: '/executions/agents' },
   ],

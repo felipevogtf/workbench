@@ -2,6 +2,7 @@ import {
   CreatedRunner,
   Execution,
   ExecutionDetail,
+  ExecutionListItem,
   ExecutionStatus,
   ExecutionTicket,
   JobSummary,
@@ -102,4 +103,12 @@ export function runner(id: string, extra: Partial<Runner> = {}): Runner {
 
 export function createdRunner(id: string): CreatedRunner {
   return { ...runner(id, { lastSeenAt: null, online: false }), token: 'wbr_secreto' };
+}
+
+export function listItem(
+  id: string,
+  status: ExecutionStatus = 'running',
+  extra: Partial<ExecutionListItem> = {},
+): ExecutionListItem {
+  return { ...execution(id, status), issueName: `Tarea ${id}`, ...extra };
 }
