@@ -218,6 +218,31 @@ describe('ExecutionPage', () => {
     });
   });
 
+  describe('jobs from before the agent id was saved', () => {
+    it('are still shown with their worker, found by the technical name of the agent', async () => {
+      const element: HTMLElement = (
+        await render(
+          detail('e1', 'running', {
+            tickets: [ticket('c', { title: 'Tres', status: 'developing' })],
+            jobs: [
+              job('jc', {
+                kind: 'develop',
+                ticketId: 'c',
+                status: 'running',
+                agentId: null,
+                agentName: 'default-task-developer',
+              }),
+            ],
+          }),
+        )
+      ).nativeElement;
+
+      expect(
+        element.querySelector('[data-status="developing"] .card__worker')?.textContent?.trim(),
+      ).toBe('David');
+    });
+  });
+
   describe('the side panel', () => {
     const open = async (fixture: Awaited<ReturnType<typeof render>>, title: string) => {
       const card = [

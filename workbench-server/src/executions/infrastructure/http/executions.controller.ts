@@ -117,6 +117,7 @@ export class ExecutionsController {
     const output = job.result?.output ?? '';
     return {
       agentId: job.payload.agent?.id ?? null,
+      agentName: job.payload.agent?.name ?? null,
       output:
         job.kind === 'develop' && output ? output.slice(0, MAX_OUTPUT) : null,
       review: this.reviewOf(job, output),

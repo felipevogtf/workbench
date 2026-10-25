@@ -12,16 +12,16 @@ export interface ActivityEvent {
 /**
  * La historia de un ticket, en el orden en que pasó, armada con sus trabajos: quién lo creó, quién lo
  * desarrolló, qué dijo cada revisión. `jobs` trae los del ticket y, si se quiere ver su origen, el de
- * crear los tickets. `who` da el nombre con que se muestra a un agente.
+ * crear los tickets. `who` da el nombre con que se muestra al agente de un trabajo.
  */
 export function activityOf(
   jobs: readonly JobSummary[],
-  who: (agentId: string | null) => string,
+  who: (job: JobSummary) => string,
 ): ActivityEvent[] {
   const events: ActivityEvent[] = [];
 
   for (const job of jobs) {
-    const name = who(job.agentId);
+    const name = who(job);
 
     if (job.kind === 'tickets') {
       if (job.status === 'done') {

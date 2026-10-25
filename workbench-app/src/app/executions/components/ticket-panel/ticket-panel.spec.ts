@@ -123,7 +123,7 @@ describe('TicketPanel', () => {
         error: 'Sin permiso',
       }),
     ];
-    const workerName = (id: string | null) => (id === 'dev' ? 'David' : '');
+    const workerName = (job: JobSummary) => (job.agentId === 'dev' ? 'David' : '');
 
     it('lists the jobs with their worker and attempt, and shows the log of the picked one', async () => {
       const fixture = await render({

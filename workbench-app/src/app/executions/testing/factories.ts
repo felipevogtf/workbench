@@ -69,6 +69,7 @@ export function job(id: string, extra: Partial<JobSummary> = {}): JobSummary {
     error: null,
     runnerId: 'r1',
     agentId: null,
+    agentName: null,
     output: null,
     review: null,
     startedAt: '2026-10-23T12:00:00Z',

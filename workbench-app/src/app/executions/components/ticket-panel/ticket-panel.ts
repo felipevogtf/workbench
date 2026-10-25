@@ -41,8 +41,8 @@ export class TicketPanel {
   readonly events = input<readonly ActivityEvent[]>([]);
   readonly logs = input('');
   readonly selectedJobId = input<string | null>(null);
-  /** Cómo se muestra el nombre de un agente. */
-  readonly workerName = input<(agentId: string | null) => string>(() => '');
+  /** Cómo se muestra el agente que hizo un trabajo. */
+  readonly workerName = input<(job: JobSummary) => string>(() => '');
 
   readonly dismissed = output();
   readonly selectJob = output<string>();
@@ -82,7 +82,7 @@ export class TicketPanel {
 
   /** «Desarrollo · David (intento 2)». */
   protected jobLabel(job: JobSummary): string {
-    const who = job.agentId ? this.workerName()(job.agentId) : '';
+    const who = this.workerName()(job);
     const retry = job.attempt > 1 ? ` (intento ${job.attempt})` : '';
     return `${STAGE_LABEL[job.kind]}${who ? ` · ${who}` : ''}${retry}`;
   }

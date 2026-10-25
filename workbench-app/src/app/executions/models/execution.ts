@@ -63,6 +63,8 @@ export interface JobSummary {
   runnerId: string | null;
   /** El agente que hizo (o hará) el trabajo; `null` en los que no usan uno. */
   agentId: string | null;
+  /** Nombre técnico del agente; sirve para reconocer a los de trabajos viejos, que no guardaron su id. */
+  agentName: string | null;
   /** El resumen del desarrollador (solo en los trabajos de desarrollo). */
   output: string | null;
   /** El veredicto del revisor (solo en las revisiones terminadas). */

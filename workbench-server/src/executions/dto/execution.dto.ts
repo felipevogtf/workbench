@@ -17,6 +17,8 @@ export class JobSummaryDto {
   runnerId!: string | null;
   /** El agente que hizo (o hará) el trabajo; `null` en los que no usan uno (subir la rama). */
   agentId!: string | null;
+  /** Su nombre técnico: los trabajos anteriores a que se guardara el id solo se reconocen por él. */
+  agentName!: string | null;
   /** Lo que respondió el desarrollador al terminar (su resumen); solo en los trabajos de desarrollo. */
   output!: string | null;
   /** El veredicto del revisor; solo en los trabajos de revisión ya terminados. */

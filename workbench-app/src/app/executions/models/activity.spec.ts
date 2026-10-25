@@ -1,8 +1,8 @@
 import { activityOf } from './activity';
 import { job } from '../testing/factories';
 
-const who = (agentId: string | null) =>
-  agentId === 'dev' ? 'David' : agentId === 'rev' ? 'Maine' : 'Lucy';
+const who = (job: { agentId: string | null }) =>
+  job.agentId === 'dev' ? 'David' : job.agentId === 'rev' ? 'Maine' : 'Lucy';
 
 describe('activityOf', () => {
   it('tells who created the tickets', () => {

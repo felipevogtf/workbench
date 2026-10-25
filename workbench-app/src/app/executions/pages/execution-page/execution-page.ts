@@ -29,6 +29,7 @@ import {
   EXECUTION_STATUS_LABEL,
   EXECUTION_STATUS_TONE,
   ExecutionDetail,
+  JobSummary,
   STAGE_LABEL,
   StageStatus,
   Worker,
@@ -87,8 +88,8 @@ export class ExecutionPage {
   protected readonly openId = signal<string | null>(null);
 
   /** Cómo se muestra un agente; sin conocerlo, un nombre genérico. */
-  protected readonly workerName = (agentId: string | null): string =>
-    this.workerOf(agentId)?.name ?? 'Un trabajador';
+  protected readonly workerName = (job: JobSummary): string =>
+    this.workerOf(job)?.name ?? 'Un trabajador';
 
   /** Las tarjetas del tablero: cada ticket con quién lo tiene ahora. */
   protected readonly cards = computed<BoardCard[]>(() => {
@@ -108,7 +109,7 @@ export class ExecutionPage {
               ? mine.at(-1)
               : undefined;
 
-      let worker = this.workerOf(job?.agentId ?? null);
+      let worker = job ? this.workerOf(job) : null;
       let upcoming = false;
       // Un ticket que espera su turno es del desarrollador de ahora, que lo tomará.
       if (!worker && ticket.status === 'pending' && developer) {
@@ -211,9 +212,15 @@ export class ExecutionPage {
     void this.store.retry();
   }
 
-  private workerOf(agentId: string | null): Worker | null {
-    if (!agentId) return null;
-    const agent = this.agents.agents().find((candidate) => candidate.id === agentId);
+  /** El trabajador que hizo un trabajo: por su id y, en los trabajos viejos, por su nombre técnico. */
+  private workerOf(job: JobSummary): Worker | null {
+    const agent = this.agents
+      .agents()
+      .find(
+        (candidate) =>
+          (job.agentId !== null && candidate.id === job.agentId) ||
+          (job.agentId === null && job.agentName !== null && candidate.name === job.agentName),
+      );
     return agent ? { name: agentLabel(agent), avatar: agent.avatar ?? null } : null;
   }
 }
