@@ -172,15 +172,17 @@ describe('ExecutionsService', () => {
       await expect(service.start('issue-1')).rejects.toThrow('ready plan');
     });
 
-    it('needs exactly one repository', async () => {
+    it('needs at least one repository, and no more than three', async () => {
       tasks.task!.repoUrls = [];
       await expect(service.start('issue-1')).rejects.toThrow('no repository');
 
       tasks.task!.repoUrls = [
-        'https://bitbucket.org/acme/web',
-        'https://bitbucket.org/acme/api',
+        'https://bitbucket.org/acme/a',
+        'https://bitbucket.org/acme/b',
+        'https://bitbucket.org/acme/c',
+        'https://bitbucket.org/acme/d',
       ];
-      await expect(service.start('issue-1')).rejects.toThrow('several');
+      await expect(service.start('issue-1')).rejects.toThrow('up to 3');
     });
 
     it('only supports Bitbucket for now', async () => {
@@ -410,6 +412,159 @@ describe('ExecutionsService', () => {
         review: 'done',
         publish: 'running',
       });
+    });
+  });
+
+  describe('a task that touches several repositories', () => {
+    const MULTI = JSON.stringify({
+      tickets: [
+        {
+          title: 'API',
+          description: 'Backend',
+          repo: 'acme/web',
+          criteria: [],
+        },
+        {
+          title: 'Pantalla',
+          description: 'App',
+          repo: 'acme/app',
+          criteria: [],
+        },
+        { title: 'Sin repo', description: 'Nada', criteria: [] },
+        {
+          title: 'Repo raro',
+          description: 'Otro',
+          repo: 'otro/x',
+          criteria: [],
+        },
+      ],
+    });
+
+    beforeEach(() => {
+      tasks.task!.repoUrls = [
+        'https://bitbucket.org/acme/web',
+        'https://bitbucket.org/acme/app',
+      ];
+    });
+
+    it('opens a branch with the same name in each repository, and lets Lucy read them all', async () => {
+      const execution = await service.start('issue-1');
+
+      const targets = execution.targets();
+      expect(targets).toHaveLength(2);
+      expect(targets.map((t) => t.repo.fullName)).toEqual([
+        'acme/web',
+        'acme/app',
+      ]);
+      expect(targets[1].branch).toBe(targets[0].branch);
+
+      const job = jobs.items.at(-1)!;
+      expect(job.payload.repo.fullName).toBe('acme/web');
+      expect(job.payload.context).toEqual([
+        {
+          sshUrl: 'git@bitbucket.org:acme/app.git',
+          fullName: 'acme/app',
+          branch: targets[0].branch,
+        },
+      ]);
+      expect(job.payload.prompt).toContain('{{dir:acme/app}}');
+      expect(job.payload.prompt).toContain('"repo"');
+    });
+
+    it('puts each ticket in the repository it names, and in the first one when it names none or an unknown one', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: MULTI });
+
+      const tickets = (await service.get(execution.id)).execution.tickets;
+      expect(tickets.map((t) => t.repo)).toEqual([
+        'acme/web',
+        'acme/app',
+        'acme/web',
+        'acme/web',
+      ]);
+    });
+
+    it('develops and reviews each ticket in its repository, with the other one to read', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: MULTI });
+      await service.begin(execution.id);
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: APPROVED });
+
+      const develop = jobs.items.at(-1)!;
+      expect(develop.kind).toBe('develop');
+      expect(develop.payload.repo.fullName).toBe('acme/app');
+      expect(develop.payload.context?.map((c) => c.fullName)).toEqual([
+        'acme/web',
+      ]);
+      expect(develop.payload.prompt).toContain('{{dir:acme/web}}');
+      expect(develop.payload.prompt).toContain('NO modifiques');
+    });
+
+    it('pushes each repository and opens one pull request for each, then completes', async () => {
+      tasks.task!.repoUrls = [
+        'https://bitbucket.org/acme/web',
+        'https://bitbucket.org/acme/app',
+      ];
+      const execution = await service.start('issue-1');
+      await answer({
+        output: JSON.stringify({
+          tickets: [
+            { title: 'API', description: 'Backend', repo: 'acme/web' },
+            { title: 'Pantalla', description: 'App', repo: 'acme/app' },
+          ],
+        }),
+      });
+      await service.begin(execution.id);
+      await answer(developed('a1', 'a2'));
+      await answer({ output: APPROVED });
+      await answer(developed('b1', 'b2'));
+      await answer({ output: APPROVED });
+
+      const first = jobs.items.at(-1)!;
+      expect([first.kind, first.payload.repo.fullName]).toEqual([
+        'publish',
+        'acme/web',
+      ]);
+      expect(first.payload.context).toBeUndefined();
+      await answer({ baseBranch: 'main' });
+
+      const second = jobs.items.at(-1)!;
+      expect([second.kind, second.payload.repo.fullName]).toEqual([
+        'publish',
+        'acme/app',
+      ]);
+      expect((await service.get(execution.id)).execution.status).toBe(
+        'running',
+      );
+      await answer({ baseBranch: 'develop' });
+
+      const done = (await service.get(execution.id)).execution;
+      expect(done.status).toBe('completed');
+      expect(
+        done.targets().map((t) => [t.repo.fullName, t.baseBranch]),
+      ).toEqual([
+        ['acme/web', 'main'],
+        ['acme/app', 'develop'],
+      ]);
+      expect(
+        pullRequests.created.map((pr) => [pr.repo, pr.destBranch]),
+      ).toEqual([
+        ['acme/web', 'main'],
+        ['acme/app', 'develop'],
+      ]);
+      // Cada PR cuenta solo sus tickets y avisa de la otra.
+      expect(pullRequests.created[0].description).toContain('API');
+      expect(pullRequests.created[0].description).not.toContain('Pantalla');
+      expect(pullRequests.created[0].description).toContain('acme/app');
+      expect(done.targets().every((t) => t.pullRequestUrl)).toBe(true);
+    });
+
+    it('does not give context to a task with a single repository', async () => {
+      tasks.task!.repoUrls = ['https://bitbucket.org/acme/web'];
+      await service.start('issue-1');
+
+      expect(jobs.items.at(-1)!.payload.context).toBeUndefined();
     });
   });
 

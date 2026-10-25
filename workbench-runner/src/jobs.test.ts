@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { git } from './git';
@@ -82,7 +82,7 @@ describe('runJob', () => {
     const dir = join(
       context.config.workDir,
       'worktrees',
-      'workbench__vista-1234abcd',
+      'web__workbench__vista-1234abcd',
     );
     assert.ok(existsSync(join(dir, 'feature.txt')));
     assert.equal(
@@ -159,10 +159,100 @@ describe('runJob', () => {
     // La carpeta de trabajo se libera: ya no hace falta.
     assert.equal(
       existsSync(
-        join(context.config.workDir, 'worktrees', 'workbench__vista-1234abcd'),
+        join(
+          context.config.workDir,
+          'worktrees',
+          'web__workbench__vista-1234abcd',
+        ),
       ),
       false,
     );
+  });
+
+  describe('with other repositories to read', () => {
+    const OTHER = {
+      sshUrl: 'git@bitbucket.org:acme/app.git',
+      fullName: 'acme/app',
+      branch: BRANCH,
+    };
+
+    function twoRepos() {
+      const web = createRemote();
+      const config = testConfig(web, {
+        remoteOverrides: { 'acme/web': web, 'acme/app': createRemote() },
+      });
+      const logs: string[] = [];
+      const context: JobContext = {
+        config,
+        workspaces: new Workspaces(config.workDir, config.remoteOverrides),
+        onLog: (line) => logs.push(line),
+        signal: new AbortController().signal,
+      };
+      return { context, logs };
+    }
+
+    function withContext(kind: JobKind): RunnerJob {
+      const result = job(kind);
+      result.payload.context = [OTHER];
+      result.payload.prompt += ' lee {{dir:acme/app}}';
+      return result;
+    }
+
+    async function run(context: JobContext, kind: JobKind) {
+      const argsFile = join(tempDir('args'), 'args.json');
+      process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+      try {
+        await runJob(withContext(kind), context);
+      } finally {
+        delete process.env.FAKE_CLAUDE_ARGS_FILE;
+      }
+      return JSON.parse(readFileSync(argsFile, 'utf8')) as {
+        args: string[];
+        cwd: string;
+        prompt: string;
+      };
+    }
+
+    it('opens the other repository on its own worktree and lets the agent see it', async () => {
+      const { context } = twoRepos();
+
+      const seen = await run(context, 'develop');
+
+      const dir = seen.args[seen.args.indexOf('--add-dir') + 1];
+      assert.ok(dir.endsWith('app__workbench__vista-1234abcd'));
+      assert.ok(existsSync(join(dir, 'README.md')));
+      // El agente trabaja en el repo del ticket, no en el de consulta.
+      assert.ok(seen.cwd.endsWith('web__workbench__vista-1234abcd'));
+      assert.ok(seen.prompt.includes(`lee ${dir}`));
+      assert.ok(!seen.prompt.includes('{{dir:'));
+    });
+
+    it('does not add folders when the task has a single repository', async () => {
+      const { context } = setup();
+      const argsFile = join(tempDir('args'), 'args.json');
+      process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+      try {
+        await runJob(job('develop'), context);
+      } finally {
+        delete process.env.FAKE_CLAUDE_ARGS_FILE;
+      }
+
+      const { args } = JSON.parse(readFileSync(argsFile, 'utf8')) as {
+        args: string[];
+      };
+      assert.ok(!args.includes('--add-dir'));
+    });
+
+    it('throws away what the agent changed in a repository that is only to read', async () => {
+      const { context, logs } = twoRepos();
+      const other = await context.workspaces.prepare(OTHER, OTHER.branch);
+      writeFileSync(join(other.dir, 'intruso.txt'), 'no debería estar\n');
+
+      await run(context, 'develop');
+
+      assert.equal(existsSync(join(other.dir, 'intruso.txt')), false);
+      assert.ok(logs.some((line) => line.includes('solo de consulta')));
+    });
   });
 
   it('fails with the message of the agent and its cost', async () => {

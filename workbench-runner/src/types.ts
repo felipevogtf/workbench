@@ -15,6 +15,8 @@ export interface JobPayload {
   prompt: string;
   repo: { sshUrl: string; fullName: string };
   branch: string;
+  /** Los otros repositorios de la tarea: se dejan a la vista del agente, solo para leer. */
+  context?: { sshUrl: string; fullName: string; branch: string }[];
   commitMessage?: string;
   reviewFrom?: string;
 }

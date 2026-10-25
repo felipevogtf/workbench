@@ -34,6 +34,9 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
               <app-badge [tone]="tone[card.ticket.level]">{{
                 levelName[card.ticket.level]
               }}</app-badge>
+              @if (card.repo) {
+                <app-badge tone="info">{{ card.repo }}</app-badge>
+              }
             </div>
 
             <label class="row__field">

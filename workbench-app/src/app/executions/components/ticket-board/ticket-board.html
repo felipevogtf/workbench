@@ -33,8 +33,11 @@
                 }
               </span>
 
-              @if (card.ticket.rounds > 0 || card.ticket.feedback?.length) {
+              @if (card.repo || card.ticket.rounds > 0 || card.ticket.feedback?.length) {
                 <span class="card__flags">
+                  @if (card.repo) {
+                    <app-badge tone="info">{{ card.repo }}</app-badge>
+                  }
                   @if (card.ticket.rounds > 0) {
                     <app-badge>{{ card.ticket.rounds }} revisión(es)</app-badge>
                   }

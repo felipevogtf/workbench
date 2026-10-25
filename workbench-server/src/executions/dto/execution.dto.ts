@@ -2,6 +2,7 @@ import { IsOptional, IsUUID } from 'class-validator';
 import {
   ExecutionRepo,
   ExecutionStatus,
+  ExecutionTarget,
   ExecutionTicket,
   StageRun,
 } from '@executions/domain/entities/execution.props';
@@ -34,6 +35,8 @@ export class ExecutionResponseDto {
   repo!: ExecutionRepo;
   branch!: string;
   baseBranch!: string | null;
+  /** Todos los repositorios de la tarea (el primero igual que arriba), cada uno con su rama y su PR. */
+  repos!: ExecutionTarget[];
   status!: ExecutionStatus;
   stages!: StageRun[];
   tickets!: ExecutionTicket[];

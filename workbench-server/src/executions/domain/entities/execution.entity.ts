@@ -1,8 +1,10 @@
 import { DomainError } from '@core/domain/domain.error';
 import {
+  ExecutionExtraRepo,
   ExecutionProps,
   ExecutionRepo,
   ExecutionStatus,
+  ExecutionTarget,
   ExecutionTicket,
   STAGE_KEYS,
   StageKey,
@@ -18,6 +20,8 @@ export class Execution {
     planId: string;
     repo: ExecutionRepo;
     branch: string;
+    /** Los demás repositorios de la tarea, ya con su rama. */
+    extraRepos?: { repo: ExecutionRepo; branch: string }[];
   }): Execution {
     const now = new Date();
     return new Execution({
@@ -27,6 +31,11 @@ export class Execution {
       repo: data.repo,
       branch: data.branch,
       baseBranch: null,
+      extraRepos: (data.extraRepos ?? []).map((extra): ExecutionExtraRepo => ({
+        ...extra,
+        baseBranch: null,
+        pullRequestUrl: null,
+      })),
       status: 'running',
       stages: STAGE_KEYS.map((key) => ({
         key,
@@ -45,6 +54,7 @@ export class Execution {
 
   static reconstruct(props: ExecutionProps): Execution {
     // Los tickets de antes de los niveles no traían estos datos.
+    props.extraRepos ??= [];
     for (const ticket of props.tickets) {
       ticket.level ??= 'medium';
       ticket.developerId ??= null;
@@ -70,6 +80,9 @@ export class Execution {
   }
   get baseBranch(): string | null {
     return this.props.baseBranch;
+  }
+  get extraRepos(): ExecutionExtraRepo[] {
+    return this.props.extraRepos;
   }
   get status(): ExecutionStatus {
     return this.props.status;
@@ -110,6 +123,47 @@ export class Execution {
       throw DomainError.notFound(`Ticket ${id} not found in the execution`);
     }
     return ticket;
+  }
+
+  /** Todos los repositorios de la ejecución, el primero antes. */
+  targets(): ExecutionTarget[] {
+    return [
+      {
+        primary: true,
+        repo: this.props.repo,
+        branch: this.props.branch,
+        baseBranch: this.props.baseBranch,
+        pullRequestUrl: this.props.pullRequestUrl,
+      },
+      ...this.props.extraRepos.map((extra) => ({ ...extra, primary: false })),
+    ];
+  }
+
+  /** El repositorio de un nombre `organización/repo`; sin nombre (o desconocido), el primero. */
+  targetOf(fullName?: string | null): ExecutionTarget {
+    const targets = this.targets();
+    return (
+      targets.find((target) => target.repo.fullName === fullName) ?? targets[0]
+    );
+  }
+
+  /** Rama destino y PR de un repositorio, a medida que se suben y se abren. */
+  setTargetBaseBranch(fullName: string, baseBranch: string): void {
+    const extra = this.props.extraRepos.find(
+      (candidate) => candidate.repo.fullName === fullName,
+    );
+    if (extra) extra.baseBranch = baseBranch;
+    else this.props.baseBranch = baseBranch;
+    this.touch();
+  }
+
+  setTargetPullRequest(fullName: string, url: string): void {
+    const extra = this.props.extraRepos.find(
+      (candidate) => candidate.repo.fullName === fullName,
+    );
+    if (extra) extra.pullRequestUrl = url;
+    else this.props.pullRequestUrl = url;
+    this.touch();
   }
 
   /** El siguiente ticket por desarrollar, en el orden en que los creó el agente. */

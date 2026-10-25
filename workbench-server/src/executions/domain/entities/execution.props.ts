@@ -28,6 +28,8 @@ export interface ExecutionTicket {
   title: string;
   description: string;
   criteria: string[];
+  /** `organización/repo` en que se desarrolla; ausente en las ejecuciones de un solo repo. */
+  repo?: string;
   level: TicketLevel;
   /** El desarrollador asignado; `null` = el que esté por defecto. */
   developerId: string | null;
@@ -57,6 +59,23 @@ export interface ExecutionRepo {
   sshUrl: string;
 }
 
+/**
+ * Un repositorio más de la tarea (el primero va en `repo`, `branch`, `baseBranch` y `pullRequestUrl`):
+ * cada uno tiene su rama y abre su propia PR.
+ */
+export interface ExecutionExtraRepo {
+  repo: ExecutionRepo;
+  branch: string;
+  baseBranch: string | null;
+  pullRequestUrl: string | null;
+}
+
+/** Un repositorio de la ejecución con su rama y su PR, sea el primero o uno de los demás. */
+export interface ExecutionTarget extends ExecutionExtraRepo {
+  /** El primero: el que se ve en el resumen y al que van los tickets sin repo. */
+  primary: boolean;
+}
+
 export interface ExecutionProps {
   id: string;
   issueId: string;
@@ -64,6 +83,8 @@ export interface ExecutionProps {
   repo: ExecutionRepo;
   branch: string;
   baseBranch: string | null;
+  /** Los demás repositorios de la tarea, si toca más de uno. */
+  extraRepos: ExecutionExtraRepo[];
   status: ExecutionStatus;
   stages: StageRun[];
   tickets: ExecutionTicket[];

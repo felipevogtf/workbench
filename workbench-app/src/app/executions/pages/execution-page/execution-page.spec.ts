@@ -295,6 +295,69 @@ describe('ExecutionPage', () => {
     });
   });
 
+  describe('a task with several repositories', () => {
+    const target = (name: string, pullRequestUrl: string | null, primary = false) => ({
+      repo: {
+        url: `https://bitbucket.org/acme/${name}`,
+        host: 'bitbucket.org',
+        fullName: `acme/${name}`,
+        sshUrl: `git@bitbucket.org:acme/${name}.git`,
+      },
+      branch: 'workbench/tarea-e1',
+      baseBranch: pullRequestUrl ? 'main' : null,
+      pullRequestUrl,
+      primary,
+    });
+
+    const multi = (urls: [string | null, string | null]) =>
+      detail('e1', 'completed', {
+        repos: [target('web', urls[0], true), target('app', urls[1])],
+        pullRequestUrl: urls[0],
+        tickets: [
+          ticket('a', { title: 'API', status: 'done', repo: 'acme/web' }),
+          ticket('b', { title: 'Pantalla', status: 'done', repo: 'acme/app' }),
+        ],
+        jobs: [job('jt', { kind: 'tickets', agentId: 'ag-tk' })],
+      });
+
+    it('says in which repository each ticket is developed', async () => {
+      const fixture = await render(multi([null, null]));
+      const element: HTMLElement = fixture.nativeElement;
+
+      const badges = [...element.querySelectorAll('.card')].map((card) =>
+        card.querySelector('app-badge')?.textContent?.trim(),
+      );
+      expect(badges).toEqual(['web', 'app']);
+      expect(element.textContent).toContain('2 repositorios');
+    });
+
+    it('offers one link to a pull request per repository that already has one', async () => {
+      const fixture = await render(multi(['https://pr/web', 'https://pr/app']));
+
+      const links = [
+        ...fixture.nativeElement.querySelectorAll('app-page-header a[href^="https://pr/"]'),
+      ];
+      expect(links.map((link) => [link.textContent?.trim(), link.getAttribute('href')])).toEqual([
+        ['PR de web', 'https://pr/web'],
+        ['PR de app', 'https://pr/app'],
+      ]);
+    });
+
+    it('does not label the tickets nor change the link when there is a single repository', async () => {
+      const fixture = await render(
+        detail('e1', 'completed', {
+          pullRequestUrl: 'https://pr/web',
+          repos: [target('web', 'https://pr/web', true)],
+          tickets: [ticket('a', { title: 'API', status: 'done' })],
+        }),
+      );
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(element.querySelector('.card app-badge')).toBeNull();
+      expect(headerButtons(element)).toContain('Abrir la PR');
+    });
+  });
+
   describe('the side panel', () => {
     const open = async (fixture: Awaited<ReturnType<typeof render>>, title: string) => {
       const card = [

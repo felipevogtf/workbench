@@ -122,7 +122,10 @@ export class ExecutionPage {
           upcoming = true;
         }
       }
-      return { ticket, number: index + 1, worker, upcoming };
+      // Con varios repositorios, cada tarjeta dice en cuál se desarrolla.
+      const repo =
+        detail.repos.length > 1 ? (ticket.repo ?? detail.repo.fullName).split('/').pop() : null;
+      return { ticket, number: index + 1, worker, repo, upcoming };
     });
   });
 

@@ -22,6 +22,11 @@ export interface JobPayload {
   prompt: string;
   repo: { sshUrl: string; fullName: string };
   branch: string;
+  /**
+   * Los otros repositorios de la tarea, con su rama: el runner deja su carpeta a la vista del agente
+   * (solo para leer), con lo que ya se hizo en ellos.
+   */
+  context?: { sshUrl: string; fullName: string; branch: string }[];
   /** Solo en `develop`: mensaje del commit que el runner hace al terminar. */
   commitMessage?: string;
   /** Solo en `review`: commit desde el que se revisa. */

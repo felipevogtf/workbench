@@ -70,7 +70,16 @@ export class Workspaces {
     }
 
     const baseBranch = await this.defaultBranch(clone);
-    const dir = this.inside('worktrees', branch.replaceAll('/', '__'));
+    // El worktree que ya tiene esta rama se reutiliza, esté donde esté; uno nuevo lleva el nombre del
+    // repo, porque varios repos de una misma tarea usan el mismo nombre de rama.
+    let existing = await this.worktreeOf(clone, branch);
+    if (existing && !existsSync(existing)) {
+      // La carpeta se borró a mano: git sigue creyendo que la rama está ocupada.
+      await git(['worktree', 'prune'], { cwd: clone }).catch(() => undefined);
+      existing = null;
+    }
+    const dir =
+      existing ?? this.inside('worktrees', this.worktreeName(repo, branch));
 
     if (!existsSync(dir)) {
       await mkdir(resolve(dir, '..'), { recursive: true });
@@ -128,10 +137,37 @@ export class Workspaces {
   /** Quita el worktree de una rama ya publicada; la rama y el clon se conservan. */
   async release(repo: { fullName: string }, branch: string): Promise<void> {
     const clone = this.inside('repos', repo.fullName.replace('/', '__'));
-    const dir = this.inside('worktrees', branch.replaceAll('/', '__'));
+    const dir = await this.worktreeOf(clone, branch);
+    if (!dir) return;
     await git(['worktree', 'remove', '--force', dir], { cwd: clone }).catch(
       () => undefined,
     );
+  }
+
+  /** El nombre de la carpeta de un worktree nuevo: el repo (sin la organización) y la rama. */
+  private worktreeName(repo: { fullName: string }, branch: string): string {
+    const name = repo.fullName.split('/')[1] ?? repo.fullName;
+    return `${name}__${branch.replaceAll('/', '__')}`;
+  }
+
+  /** La carpeta del worktree que tiene la rama en ese clon, o `null` si no hay. */
+  private async worktreeOf(
+    clone: string,
+    branch: string,
+  ): Promise<string | null> {
+    const list = await git(['worktree', 'list', '--porcelain'], {
+      cwd: clone,
+    }).catch(() => '');
+    for (const block of list.split(/\r?\n\r?\n/)) {
+      const lines = block.split(/\r?\n/);
+      const path = lines.find((line) => line.startsWith('worktree '));
+      const head = lines.find((line) => line.startsWith('branch '));
+      if (path && head === `branch refs/heads/${branch}`) {
+        // Git escribe las rutas con `/` también en Windows.
+        return resolve(path.slice('worktree '.length).trim());
+      }
+    }
+    return null;
   }
 
   /** Borra los worktrees abandonados (ejecuciones canceladas o que fallaron y nadie retomó). */

@@ -5,6 +5,8 @@ export interface TicketDraft {
   title: string;
   description: string;
   level: TicketLevel;
+  /** Solo cuando la tarea tiene varios repositorios: en cuál se desarrolla. */
+  repo?: string;
   criteria: string[];
 }
 
@@ -61,7 +63,11 @@ function list(value: unknown, max: number, itemMax: number): string[] {
 }
 
 /** Los tickets que creó el agente, validados y sin pasarse de `max`. */
-export function parseTickets(output: string, max: number): TicketDraft[] {
+export function parseTickets(
+  output: string,
+  max: number,
+  repos: readonly string[] = [],
+): TicketDraft[] {
   const json = extractJson(output) as { tickets?: unknown } | null;
   if (!json || !Array.isArray(json.tickets)) {
     throw new DomainError('The agent answer has no "tickets" list');
@@ -75,6 +81,10 @@ export function parseTickets(output: string, max: number): TicketDraft[] {
         description: text(item.description, MAX_DESCRIPTION),
         // Sin un nivel válido, el medio: ni el más caro ni el más flojo.
         level: TICKET_LEVELS.find((level) => level === item.level) ?? 'medium',
+        // Con varios repos, el ticket va al que nombra; sin uno válido, al primero.
+        ...(repos.length > 1
+          ? { repo: repos.find((name) => name === item.repo) ?? repos[0] }
+          : {}),
         criteria: list(item.criteria, MAX_CRITERIA, MAX_CRITERION),
       };
     })

@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import type {
+  ExecutionExtraRepo,
   ExecutionRepo,
   ExecutionTicket,
   StageRun,
@@ -32,6 +33,9 @@ export class ExecutionOrmEntity {
 
   @Column({ type: 'varchar', nullable: true })
   base_branch!: string | null;
+
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  extra_repos!: ExecutionExtraRepo[];
 
   @Column({ type: 'varchar' })
   status!: string;

@@ -7,7 +7,11 @@
   } @else if (store.detail(); as execution) {
     <app-page-header
       heading="Ejecución con IA"
-      [subtitle]="execution.repo.fullName + ' · ' + execution.branch"
+      [subtitle]="
+        execution.repos.length > 1
+          ? execution.repos.length + ' repositorios · ' + execution.branch
+          : execution.repo.fullName + ' · ' + execution.branch
+      "
     >
       <a
         back
@@ -20,10 +24,23 @@
       </a>
 
       <ng-container actions>
-        @if (execution.pullRequestUrl; as url) {
-          <a app-button variant="secondary" [href]="url" target="_blank" rel="noopener noreferrer">
-            <app-icon name="git-pull-request" size="1em" /> Abrir la PR
-          </a>
+        @for (target of execution.repos; track target.repo.fullName) {
+          @if (target.pullRequestUrl; as url) {
+            <a
+              app-button
+              variant="secondary"
+              [href]="url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <app-icon name="git-pull-request" size="1em" />
+              {{
+                execution.repos.length > 1
+                  ? 'PR de ' + (target.repo.fullName.split('/').pop() ?? '')
+                  : 'Abrir la PR'
+              }}
+            </a>
+          }
         }
         @if (execution.status === 'awaiting') {
           <button app-button type="button" [loading]="store.acting()" (click)="begin()">

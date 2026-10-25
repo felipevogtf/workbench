@@ -118,6 +118,7 @@ export class ExecutionsController {
       repo: execution.repo,
       branch: execution.branch,
       baseBranch: execution.baseBranch,
+      repos: execution.targets(),
       status: execution.status,
       stages: execution.stages,
       tickets: execution.tickets,

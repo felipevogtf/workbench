@@ -21,6 +21,8 @@ export interface ExecutionTicket {
   title: string;
   description: string;
   criteria: string[];
+  /** `organización/repo` en que se desarrolla; ausente si la tarea tiene un solo repositorio. */
+  repo?: string;
   level: TicketLevel;
   /** El desarrollador asignado; `null` = el que esté por defecto. */
   developerId: string | null;
@@ -38,12 +40,24 @@ export interface ExecutionTicket {
   headSha?: string | null;
 }
 
+/** Un repositorio de la ejecución con su rama y su PR (una tarea puede tocar varios). */
+export interface ExecutionRepoTarget {
+  repo: { url: string; host: string; fullName: string; sshUrl: string };
+  branch: string;
+  baseBranch: string | null;
+  pullRequestUrl: string | null;
+  /** El primero: el que se muestra en el resumen. */
+  primary: boolean;
+}
+
 export interface Execution {
   id: string;
   issueId: string;
   repo: { url: string; host: string; fullName: string; sshUrl: string };
   branch: string;
   baseBranch: string | null;
+  /** Todos los repositorios de la tarea, el primero igual que `repo`. */
+  repos: ExecutionRepoTarget[];
   status: ExecutionStatus;
   stages: StageRun[];
   tickets: ExecutionTicket[];
@@ -207,6 +221,8 @@ export interface BoardCard {
   /** Su lugar en la lista (desde 1). */
   number: number;
   worker: Worker | null;
+  /** El repositorio del ticket, solo cuando la tarea tiene más de uno. */
+  repo?: string | null;
   /** Todavía no lo toma: es el que lo hará cuando le toque. */
   upcoming: boolean;
 }

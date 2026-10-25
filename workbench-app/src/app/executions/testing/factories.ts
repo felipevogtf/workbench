@@ -44,6 +44,21 @@ export function execution(
     },
     branch: `workbench/tarea-${id}`,
     baseBranch: null,
+    repos: [
+      {
+        repo: {
+          url: 'https://bitbucket.org/acme/web',
+          host: 'bitbucket.org',
+          fullName: 'acme/web',
+          sshUrl: 'git@bitbucket.org:acme/web.git',
+        },
+        branch: `workbench/tarea-${id}`,
+        baseBranch: null,
+        // Como lo manda el servidor: el primer repo lleva la misma PR que la ejecución.
+        pullRequestUrl: extra.pullRequestUrl ?? null,
+        primary: true,
+      },
+    ],
     status,
     stages: [
       { key: 'tickets', status: 'running', startedAt: null, finishedAt: null },
@@ -87,7 +102,7 @@ export function detail(
   extra: Partial<ExecutionDetail> = {},
 ): ExecutionDetail {
   return {
-    ...execution(id, status),
+    ...execution(id, status, { pullRequestUrl: extra.pullRequestUrl ?? null }),
     jobs: [job('j1')],
     waitingForRunner: false,
     costUsd: 0.25,

@@ -41,6 +41,8 @@ import {
 const MAX_SUMMARY_CHARS = 4000;
 /** Por ahora las PRs solo se abren en Bitbucket. */
 const SUPPORTED_HOST = 'bitbucket.org';
+/** Repositorios que puede tocar una misma tarea: cada uno suma una carpeta de trabajo y una PR. */
+const MAX_REPOS = 3;
 
 const AGENT_OF: Record<Exclude<StageKey, 'publish'>, ExecutionAgentModule> = {
   tickets: 'task-tickets',
@@ -88,15 +90,26 @@ export class ExecutionsService {
       throw new DomainError('The task needs a ready plan before it can run');
     }
 
-    if (task.repoUrls.length !== 1) {
+    if (task.repoUrls.length === 0) {
       throw new DomainError(
-        task.repoUrls.length === 0
-          ? 'The task has no repository: add a label with a repository link'
-          : 'The task has several repositories; for now a task can only run on one',
+        'The task has no repository: add a label with a repository link',
       );
     }
-    const repo = parseRepo(task.repoUrls[0]);
-    if (repo.host !== SUPPORTED_HOST) {
+    // Un mismo repositorio en dos etiquetas cuenta una vez.
+    const repos = [
+      ...new Map(
+        task.repoUrls.map((url) => {
+          const parsed = parseRepo(url);
+          return [parsed.fullName, parsed] as const;
+        }),
+      ).values(),
+    ];
+    if (repos.length > MAX_REPOS) {
+      throw new DomainError(
+        `The task has ${repos.length} repositories; a task can run on up to ${MAX_REPOS}`,
+      );
+    }
+    if (repos.some((repo) => repo.host !== SUPPORTED_HOST)) {
       throw new DomainError(
         'For now the pull request can only be opened on Bitbucket',
       );
@@ -108,12 +121,14 @@ export class ExecutionsService {
     }
 
     const id = crypto.randomUUID();
+    const branch = branchNameFor(task.name, id);
     const execution = Execution.create({
       id,
       issueId,
       planId: plan.id,
-      repo,
-      branch: branchNameFor(task.name, id),
+      repo: repos[0],
+      branch,
+      extraRepos: repos.slice(1).map((repo) => ({ repo, branch })),
     });
     execution.setStage('tickets', 'running');
 
@@ -207,6 +222,7 @@ export class ExecutionsService {
         last.kind,
         ticket ?? undefined,
         last.attempt + 1,
+        last.payload.repo.fullName,
       );
     }
     if (next.kind === 'tickets' || next.kind === 'publish') {
@@ -245,7 +261,11 @@ export class ExecutionsService {
 
     switch (job.kind) {
       case 'tickets': {
-        const drafts = parseTickets(output, MAX_TICKETS);
+        const drafts = parseTickets(
+          output,
+          MAX_TICKETS,
+          execution.targets().map((target) => target.repo.fullName),
+        );
         execution.setTickets(
           drafts.map((draft): ExecutionTicket => ({
             id: crypto.randomUUID(),
@@ -325,19 +345,29 @@ export class ExecutionsService {
         if (!baseBranch) {
           throw new DomainError('The runner did not report the base branch');
         }
-        execution.setBaseBranch(baseBranch);
+        // Cada repositorio sube su rama y abre su PR, uno tras otro.
+        const targets = execution.targets();
+        const target = execution.targetOf(job.payload.repo.fullName);
+        execution.setTargetBaseBranch(target.repo.fullName, baseBranch);
 
         const task = await this.tasks.getTask(execution.issueId);
         const { url } = await this.pullRequests
           .create({
-            host: execution.repo.host,
-            repo: execution.repo.fullName,
-            sourceBranch: execution.branch,
+            host: target.repo.host,
+            repo: target.repo.fullName,
+            sourceBranch: target.branch,
             destBranch: baseBranch,
-            title: task?.name ?? execution.branch,
+            title: task?.name ?? target.branch,
             description: buildPullRequestDescription({
-              taskName: task?.name ?? execution.branch,
-              tickets: execution.tickets,
+              taskName: task?.name ?? target.branch,
+              tickets: execution.tickets.filter(
+                (ticket) =>
+                  execution.targetOf(ticket.repo).repo.fullName ===
+                  target.repo.fullName,
+              ),
+              otherRepos: targets
+                .map((other) => other.repo.fullName)
+                .filter((name) => name !== target.repo.fullName),
             }),
           })
           .catch((error: unknown) => {
@@ -348,8 +378,27 @@ export class ExecutionsService {
             );
           });
 
+        execution.setTargetPullRequest(target.repo.fullName, url);
+
+        const next =
+          targets[
+            targets.findIndex((t) => t.repo.fullName === target.repo.fullName) +
+              1
+          ];
+        if (next) {
+          await this.jobs.save(
+            await this.buildJob(
+              execution,
+              'publish',
+              undefined,
+              1,
+              next.repo.fullName,
+            ),
+          );
+          return;
+        }
         execution.setStage('publish', 'done');
-        execution.complete(url);
+        execution.complete(execution.pullRequestUrl ?? url);
         return;
       }
     }
@@ -383,14 +432,32 @@ export class ExecutionsService {
     kind: StageKey,
     ticket?: ExecutionTicket,
     attempt = 1,
+    publishRepo?: string,
   ): Promise<Job> {
+    // El trabajo corre en el repositorio de su ticket (o el que se publica); los demás quedan de consulta.
+    const target = execution.targetOf(
+      kind === 'publish' ? publishRepo : ticket?.repo,
+    );
+    const others = execution
+      .targets()
+      .filter((other) => other.repo.fullName !== target.repo.fullName);
     const base = {
       repo: {
-        sshUrl: execution.repo.sshUrl,
-        fullName: execution.repo.fullName,
+        sshUrl: target.repo.sshUrl,
+        fullName: target.repo.fullName,
       },
-      branch: execution.branch,
+      branch: target.branch,
+      ...(kind !== 'publish' && others.length > 0
+        ? {
+            context: others.map((other) => ({
+              sshUrl: other.repo.sshUrl,
+              fullName: other.repo.fullName,
+              branch: other.branch,
+            })),
+          }
+        : {}),
     };
+    const otherRepos = others.map((other) => other.repo.fullName);
 
     if (kind === 'publish') {
       // Subir la rama no necesita un agente: lo hace el runner solo.
@@ -405,7 +472,7 @@ export class ExecutionsService {
     const agent = await this.agentFor(kind, ticket);
     const plan = await this.planOf(execution);
     const task = await this.tasks.getTask(execution.issueId);
-    const repoName = execution.repo.fullName;
+    const repoName = target.repo.fullName;
     const payload: JobPayload = {
       ...base,
       agent: this.toJobAgent(agent),
@@ -418,6 +485,7 @@ export class ExecutionsService {
         taskDescription: task?.description ?? null,
         plan,
         repoName,
+        otherRepos,
       });
     } else if (ticket) {
       const index = execution.tickets.indexOf(ticket) + 1;
@@ -428,6 +496,7 @@ export class ExecutionsService {
           total: execution.tickets.length,
           plan,
           repoName,
+          otherRepos,
         });
         payload.commitMessage = `${ticket.title}\n\nTicket ${index}/${execution.tickets.length} de la ejecución ${execution.id.slice(0, 8)} del workbench.`;
       } else {
@@ -436,6 +505,7 @@ export class ExecutionsService {
           repoName,
           from: ticket.startSha ?? 'HEAD~1',
           developerSummary: ticket.summary,
+          otherRepos,
         });
         payload.reviewFrom = ticket.startSha ?? undefined;
       }

@@ -18,6 +18,8 @@ export interface ClaudeRun {
   /** Esfuerzo con que trabaja (`--effort`); ausente = el del modelo. */
   effort?: string;
   tools: string[];
+  /** Otras carpetas a las que el agente puede acceder además de la de trabajo (`--add-dir`). */
+  addDirs?: string[];
   prompt: string;
   cwd: string;
   timeoutMs: number;
@@ -136,6 +138,7 @@ export function claudeArgs(run: ClaudeRun): string[] {
     String(run.maxBudgetUsd),
   ];
   if (run.effort) args.push('--effort', run.effort);
+  if (run.addDirs?.length) args.push('--add-dir', ...run.addDirs);
   if (run.tools.length > 0) args.push('--allowedTools', run.tools.join(','));
   return args;
 }
