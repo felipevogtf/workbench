@@ -30,6 +30,8 @@ export class Agent {
     provider?: AgentProvider;
     allowedTools?: string[];
     isDefault?: boolean;
+    displayName?: string | null;
+    avatar?: string | null;
   }): Agent {
     const now = new Date();
     const module = data.module ?? DEFAULT_MODULE;
@@ -42,6 +44,8 @@ export class Agent {
       model: data.model,
       allowedTools: data.allowedTools ?? [...MODULE_TOOLS[module]],
       isDefault: data.isDefault ?? false,
+      displayName: data.displayName?.trim() || null,
+      avatar: data.avatar || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -55,7 +59,13 @@ export class Agent {
     data: Partial<
       Pick<
         AgentProps,
-        'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+        | 'name'
+        | 'systemPrompt'
+        | 'model'
+        | 'provider'
+        | 'allowedTools'
+        | 'displayName'
+        | 'avatar'
       >
     >,
   ): void {
@@ -65,6 +75,10 @@ export class Agent {
     if (data.model !== undefined) next.model = data.model;
     if (data.provider !== undefined) next.provider = data.provider;
     if (data.allowedTools !== undefined) next.allowedTools = data.allowedTools;
+    if (data.displayName !== undefined) {
+      next.displayName = data.displayName?.trim() || null;
+    }
+    if (data.avatar !== undefined) next.avatar = data.avatar || null;
     next.updatedAt = new Date();
 
     // Valida antes de aplicar: si falla, la entidad queda intacta.
@@ -145,6 +159,14 @@ export class Agent {
 
   get isDefault(): boolean {
     return this.props.isDefault;
+  }
+
+  get displayName(): string | null {
+    return this.props.displayName;
+  }
+
+  get avatar(): string | null {
+    return this.props.avatar;
   }
 
   get createdAt(): Date {

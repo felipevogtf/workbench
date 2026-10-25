@@ -8,8 +8,26 @@ app-card {
   min-height: 260px;
 }
 
-.agent__name {
+.agent__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-2);
+}
+
+.agent__titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent__tech {
+  font-size: 0.8125rem;
+  color: var(--text-color);
+}
+
+.agent__name {
+  margin-bottom: var(--space-1);
   font-size: 1.5rem;
   font-weight: 700;
 }

@@ -5,12 +5,13 @@ import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
+import { Avatar } from '@shared/ui/avatar/avatar';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { Agent } from '../../models/agent';
+import { Agent, agentLabel } from '../../models/agent';
 
 @Component({
   selector: 'app-agent-card',
-  imports: [RouterLink, Card, Badge, Button, IconButton, Icon],
+  imports: [RouterLink, Avatar, Card, Badge, Button, IconButton, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './agent-card.html',
   styleUrl: './agent-card.scss',
@@ -24,6 +25,9 @@ export class AgentCard {
       this.providers.providers().find((p) => p.id === this.agent().provider)?.label ??
       this.agent().provider,
   );
+
+  /** Con nombre para mostrar se ve ese (y el técnico debajo); si no, solo el técnico. */
+  protected readonly label = computed(() => agentLabel(this.agent()));
 
   readonly setDefault = output<Agent>();
   readonly remove = output<Agent>();

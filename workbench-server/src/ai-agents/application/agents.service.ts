@@ -21,12 +21,20 @@ interface CreateAgentData {
   provider?: AgentProvider;
   allowedTools?: string[];
   isDefault?: boolean;
+  displayName?: string | null;
+  avatar?: string | null;
 }
 
 type UpdateAgentData = Partial<
   Pick<
     CreateAgentData,
-    'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+    | 'name'
+    | 'systemPrompt'
+    | 'model'
+    | 'provider'
+    | 'allowedTools'
+    | 'displayName'
+    | 'avatar'
   >
 >;
 

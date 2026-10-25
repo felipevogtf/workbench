@@ -31,6 +31,7 @@ export type ExecutionAgentModule =
   'task-tickets' | 'task-developer' | 'task-reviewer';
 
 export interface ResolvedAgent {
+  id: string;
   name: string;
   /** El runner solo sabe correr `claude`. */
   provider: string;

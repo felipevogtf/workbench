@@ -26,6 +26,9 @@ export interface ExecutionTicket {
   feedback: string[] | null;
   summary: string | null;
   reviewNote: string | null;
+  /** Commit de la rama antes y después de desarrollar el ticket. */
+  startSha?: string | null;
+  headSha?: string | null;
 }
 
 export interface Execution {
@@ -58,6 +61,12 @@ export interface JobSummary {
   costUsd: number | null;
   error: string | null;
   runnerId: string | null;
+  /** El agente que hizo (o hará) el trabajo; `null` en los que no usan uno. */
+  agentId: string | null;
+  /** El resumen del desarrollador (solo en los trabajos de desarrollo). */
+  output: string | null;
+  /** El veredicto del revisor (solo en las revisiones terminadas). */
+  review: { approved: boolean; summary: string; issues: string[] } | null;
   startedAt: string | null;
   finishedAt: string | null;
 }
@@ -167,4 +176,20 @@ export function executionProgress(
   const index = tickets.findIndex((ticket) => ticket.status !== 'done');
   if (index === -1) return 'Subiendo la rama y abriendo la PR…';
   return `Ticket ${index + 1} de ${tickets.length}: ${TICKET_STATUS_LABEL[tickets[index].status]}`;
+}
+
+/** Un trabajador (agente) tal como se ve en pantalla. */
+export interface Worker {
+  name: string;
+  avatar: string | null;
+}
+
+/** Una tarjeta del tablero: un ticket con quién lo tiene asignado. */
+export interface BoardCard {
+  ticket: ExecutionTicket;
+  /** Su lugar en la lista (desde 1). */
+  number: number;
+  worker: Worker | null;
+  /** Todavía no lo toma: es el que lo hará cuando le toque. */
+  upcoming: boolean;
 }

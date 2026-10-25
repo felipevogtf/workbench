@@ -5,6 +5,8 @@ export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
 
 /** El agente tal como lo recibe el runner: ya resuelto por el servidor. */
 export interface JobAgent {
+  /** El agente (de la tabla de agentes) que hace el trabajo: así la app muestra a quién estaba asignado. */
+  id: string;
   name: string;
   model: string;
   systemPrompt: string;

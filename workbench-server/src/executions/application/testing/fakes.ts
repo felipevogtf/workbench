@@ -146,6 +146,7 @@ export class FakeAgents implements AgentsGatewayPort {
   tools = ['Read'];
   getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent> {
     return Promise.resolve({
+      id: `agent-${module}`,
       name: `default-${module}`,
       provider: this.provider,
       model: 'claude-sonnet-5-5',

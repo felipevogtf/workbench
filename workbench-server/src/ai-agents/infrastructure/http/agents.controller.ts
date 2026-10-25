@@ -50,6 +50,8 @@ export class AgentsController {
         model: dto.model,
         provider: dto.provider,
         allowedTools: dto.allowedTools,
+        displayName: dto.displayName,
+        avatar: dto.avatar,
       }),
     );
   }
@@ -76,6 +78,8 @@ export class AgentsController {
       model: agent.model,
       allowedTools: agent.allowedTools,
       isDefault: agent.isDefault,
+      displayName: agent.displayName,
+      avatar: agent.avatar,
       createdAt: agent.createdAt,
       updatedAt: agent.updatedAt,
     };

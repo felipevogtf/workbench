@@ -32,6 +32,12 @@ export class AgentOrmEntity {
   @Column({ type: 'boolean', default: false })
   is_default!: boolean;
 
+  @Column({ type: 'varchar', nullable: true })
+  display_name!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  avatar!: string | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

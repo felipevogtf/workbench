@@ -9,7 +9,17 @@
     }
   </ng-container>
 
-  <h3 class="agent__name break-anywhere">{{ agent().name }}</h3>
+  <div class="agent__who">
+    @if (agent().displayName || agent().avatar) {
+      <app-avatar [name]="label()" [src]="agent().avatar" size="3rem" />
+    }
+    <div class="agent__titles">
+      <h3 class="agent__name break-anywhere">{{ label() }}</h3>
+      @if (agent().displayName) {
+        <code class="agent__tech break-anywhere">{{ agent().name }}</code>
+      }
+    </div>
+  </div>
   <p class="agent__prompt">{{ agent().systemPrompt }}</p>
   <ul class="agent__tools" aria-label="Herramientas permitidas">
     @for (tool of agent().allowedTools; track tool) {

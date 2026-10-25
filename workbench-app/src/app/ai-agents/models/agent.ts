@@ -66,6 +66,10 @@ export interface Agent {
   model: string;
   allowedTools: string[];
   isDefault: boolean;
+  /** Cómo se muestra el agente (ej. «David»); sin él, su nombre técnico. */
+  displayName?: string | null;
+  /** Su imagen (data URL); sin ella, la app dibuja un avatar. */
+  avatar?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +81,13 @@ export interface AgentInput {
   provider: AgentProvider;
   model: string;
   allowedTools: string[];
+  displayName?: string | null;
+  avatar?: string | null;
+}
+
+/** Cómo se llama el agente en pantalla: su nombre para mostrar o, si no tiene, el técnico. */
+export function agentLabel(agent: Pick<Agent, 'name' | 'displayName'>): string {
+  return agent.displayName?.trim() || agent.name;
 }
 
 /**

@@ -446,6 +446,7 @@ export class ExecutionsService {
   }
 
   private toJobAgent(agent: {
+    id: string;
     name: string;
     provider: string;
     model: string;
@@ -458,6 +459,7 @@ export class ExecutionsService {
       );
     }
     return {
+      id: agent.id,
       name: agent.name,
       model: agent.model,
       systemPrompt: agent.systemPrompt,

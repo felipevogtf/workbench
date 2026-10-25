@@ -3,6 +3,7 @@ import {
   Execution,
   ExecutionDetail,
   ExecutionListItem,
+  BoardCard,
   ExecutionStatus,
   ExecutionTicket,
   JobSummary,
@@ -67,6 +68,9 @@ export function job(id: string, extra: Partial<JobSummary> = {}): JobSummary {
     costUsd: 0.25,
     error: null,
     runnerId: 'r1',
+    agentId: null,
+    output: null,
+    review: null,
     startedAt: '2026-10-23T12:00:00Z',
     finishedAt: '2026-10-23T12:01:00Z',
     ...extra,
@@ -111,4 +115,11 @@ export function listItem(
   extra: Partial<ExecutionListItem> = {},
 ): ExecutionListItem {
   return { ...execution(id, status), issueName: `Tarea ${id}`, ...extra };
+}
+
+export function boardCard(
+  ticketData: ReturnType<typeof ticket>,
+  extra: Partial<BoardCard> = {},
+): BoardCard {
+  return { ticket: ticketData, number: 1, worker: null, upcoming: false, ...extra };
 }

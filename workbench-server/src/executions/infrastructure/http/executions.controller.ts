@@ -3,6 +3,7 @@ import { ExecutionsService } from '@executions/application/executions.service';
 import { RunnersService } from '@executions/application/runners.service';
 import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
+import { parseReview } from '@executions/domain/json-output';
 import {
   ExecutionDetailDto,
   ExecutionListItemDto,
@@ -10,6 +11,9 @@ import {
   JobLogsDto,
   JobSummaryDto,
 } from '@executions/dto/execution.dto';
+
+/** Lo que se muestra de la respuesta de un desarrollador: su resumen, no un informe entero. */
+const MAX_OUTPUT = 2000;
 
 @Controller()
 export class ExecutionsController {
@@ -99,8 +103,23 @@ export class ExecutionsController {
     };
   }
 
+  /** El veredicto del revisor, si el trabajo es una revisión terminada con una respuesta válida. */
+  private reviewOf(job: Job, output: string): JobSummaryDto['review'] {
+    if (job.kind !== 'review' || job.status !== 'done') return null;
+    try {
+      return parseReview(output);
+    } catch {
+      return null;
+    }
+  }
+
   private toJobDto(job: Job): JobSummaryDto {
+    const output = job.result?.output ?? '';
     return {
+      agentId: job.payload.agent?.id ?? null,
+      output:
+        job.kind === 'develop' && output ? output.slice(0, MAX_OUTPUT) : null,
+      review: this.reviewOf(job, output),
       id: job.id,
       kind: job.kind,
       ticketId: job.ticketId,

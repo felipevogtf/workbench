@@ -53,6 +53,8 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       model: agent.model,
       allowed_tools: agent.allowedTools,
       is_default: agent.isDefault,
+      display_name: agent.displayName,
+      avatar: agent.avatar,
       created_at: agent.createdAt,
       updated_at: agent.updatedAt,
     });
@@ -80,6 +82,8 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       model: orm.model,
       allowedTools: orm.allowed_tools,
       isDefault: orm.is_default,
+      displayName: orm.display_name,
+      avatar: orm.avatar,
       createdAt: orm.created_at,
       updatedAt: orm.updated_at,
     });

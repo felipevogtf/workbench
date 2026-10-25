@@ -43,4 +43,16 @@ export class CreateAgentDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  /** Nombre con que se muestra al agente (ej. «David»). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  displayName?: string | null;
+
+  /** Imagen del agente como data URL; tope de ~400 KB. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(400_000)
+  avatar?: string | null;
 }

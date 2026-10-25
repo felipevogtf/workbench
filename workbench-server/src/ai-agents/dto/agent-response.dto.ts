@@ -7,6 +7,8 @@ export class AgentResponseDto {
   model!: string;
   allowedTools!: string[];
   isDefault!: boolean;
+  displayName!: string | null;
+  avatar!: string | null;
   createdAt!: Date;
   updatedAt!: Date;
 }

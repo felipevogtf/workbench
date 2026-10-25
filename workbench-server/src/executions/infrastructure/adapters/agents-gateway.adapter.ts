@@ -14,6 +14,7 @@ export class AgentsGatewayAdapter implements AgentsGatewayPort {
   async getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent> {
     const agent = await this.agents.getDefault(module);
     return {
+      id: agent.id,
       name: agent.name,
       provider: agent.provider,
       model: agent.model,

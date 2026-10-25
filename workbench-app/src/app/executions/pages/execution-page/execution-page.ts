@@ -6,33 +6,33 @@ import {
   effect,
   inject,
   input,
+  signal,
   untracked,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TimeAgoPipe } from '@shared/pipes/time-ago';
+import { AgentsStore, agentLabel } from '@ai-agents/index';
 import { Alert } from '@shared/ui/alert/alert';
 import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
-import { Card } from '@shared/ui/card/card';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
-import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
+import { TicketBoard } from '../../components/ticket-board/ticket-board';
+import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
 import { ExecutionStore } from '../../data-access/execution.store';
+import { activityOf } from '../../models/activity';
 import {
+  BoardCard,
   EXECUTION_STATUS_LABEL,
   EXECUTION_STATUS_TONE,
-  JOB_STATUS_LABEL,
-  JOB_STATUS_TONE,
-  JobSummary,
-  STAGE_HINT,
+  ExecutionDetail,
   STAGE_LABEL,
   StageStatus,
-  TICKET_STATUS_LABEL,
-  TICKET_STATUS_TONE,
+  Worker,
+  executionProgress,
 } from '../../models/execution';
 
 const STAGE_ICON: Record<StageStatus, IconName | null> = {
@@ -42,24 +42,27 @@ const STAGE_ICON: Record<StageStatus, IconName | null> = {
   failed: 'x',
 };
 
+/** Lo que se abre en el panel cuando no es un ticket: el registro de crear los tickets y de subir la rama. */
+const GENERAL = 'general';
+
 /**
- * Una ejecución de tarea: en qué etapa va, sus tickets y lo que hace cada agente (registro en vivo).
- * Se actualiza sola mientras está en marcha.
+ * Una ejecución de tarea como un tablero de tickets: cada tarjeta muestra qué trabajador la tiene, y
+ * al abrirla se ve su detalle, su historia y lo que hizo cada trabajador. Se actualiza sola mientras
+ * está en marcha.
  */
 @Component({
   selector: 'app-execution-page',
   imports: [
     RouterLink,
-    TimeAgoPipe,
     Alert,
     Badge,
     Button,
-    Card,
     Icon,
-    MarkdownViewer,
     PageHeader,
     Skeleton,
     Spinner,
+    TicketBoard,
+    TicketPanel,
   ],
   providers: [ExecutionStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -71,42 +74,126 @@ export class ExecutionPage {
   readonly id = input.required<string>();
 
   protected readonly store = inject(ExecutionStore);
+  private readonly agents = inject(AgentsStore);
   private readonly confirm = inject(ConfirmDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly statusLabel = EXECUTION_STATUS_LABEL;
   protected readonly statusTone = EXECUTION_STATUS_TONE;
   protected readonly stageLabel = STAGE_LABEL;
-  protected readonly stageHint = STAGE_HINT;
   protected readonly stageIcon = STAGE_ICON;
-  protected readonly ticketLabel = TICKET_STATUS_LABEL;
-  protected readonly ticketTone = TICKET_STATUS_TONE;
-  protected readonly jobLabel = JOB_STATUS_LABEL;
-  protected readonly jobTone = JOB_STATUS_TONE;
 
-  /** Nombres de los tickets por id, para rotular los trabajos. */
-  private readonly ticketTitles = computed(
-    () => new Map(this.store.detail()?.tickets.map((ticket) => [ticket.id, ticket.title]) ?? []),
+  /** El ticket abierto en el panel (su id), o `general`; `null` = panel cerrado. */
+  protected readonly openId = signal<string | null>(null);
+
+  /** Cómo se muestra un agente; sin conocerlo, un nombre genérico. */
+  protected readonly workerName = (agentId: string | null): string =>
+    this.workerOf(agentId)?.name ?? 'Un trabajador';
+
+  /** Las tarjetas del tablero: cada ticket con quién lo tiene ahora. */
+  protected readonly cards = computed<BoardCard[]>(() => {
+    const detail = this.store.detail();
+    if (!detail) return [];
+    const developer = this.agents.defaultAgentOf('task-developer');
+
+    return detail.tickets.map((ticket, index) => {
+      const mine = detail.jobs.filter((job) => job.ticketId === ticket.id);
+      const last = (kind: 'develop' | 'review') => mine.filter((job) => job.kind === kind).at(-1);
+      const job =
+        ticket.status === 'developing'
+          ? last('develop')
+          : ticket.status === 'reviewing' || ticket.status === 'done'
+            ? last('review')
+            : ticket.status === 'failed'
+              ? mine.at(-1)
+              : undefined;
+
+      let worker = this.workerOf(job?.agentId ?? null);
+      let upcoming = false;
+      // Un ticket que espera su turno es del desarrollador de ahora, que lo tomará.
+      if (!worker && ticket.status === 'pending' && developer) {
+        worker = { name: agentLabel(developer), avatar: developer.avatar ?? null };
+        upcoming = true;
+      }
+      return { ticket, number: index + 1, worker, upcoming };
+    });
+  });
+
+  protected readonly progress = computed(() => {
+    const tickets = this.store.detail()?.tickets ?? [];
+    const done = tickets.filter((ticket) => ticket.status === 'done').length;
+    return {
+      done,
+      total: tickets.length,
+      percent: tickets.length ? Math.round((done / tickets.length) * 100) : 0,
+    };
+  });
+
+  /** El ticket abierto, o `null` si está cerrado o es el registro general. */
+  protected readonly panelCard = computed(
+    () => this.cards().find((card) => card.ticket.id === this.openId()) ?? null,
+  );
+
+  /** Los trabajos que muestra el panel: los del ticket o, en el general, los que no son de un ticket. */
+  protected readonly panelJobs = computed(() => {
+    const jobs = this.store.detail()?.jobs ?? [];
+    return this.openId() === GENERAL
+      ? jobs.filter((job) => job.kind === 'tickets' || job.kind === 'publish')
+      : jobs.filter((job) => job.ticketId === this.openId());
+  });
+
+  protected readonly panelEvents = computed(() => {
+    if (!this.panelCard()) return [];
+    const jobs = this.store.detail()?.jobs ?? [];
+    return activityOf(
+      [...jobs.filter((job) => job.kind === 'tickets'), ...this.panelJobs()],
+      this.workerName,
+    );
+  });
+
+  protected readonly panelTitle = computed(
+    () => this.panelCard()?.ticket.title ?? 'Registro general',
   );
 
   constructor() {
+    void this.agents.load();
+
     effect(() => {
       const id = this.id();
       untracked(() => void this.store.load(id, this.destroyRef));
     });
   }
 
-  /** «Desarrollo · API de órdenes (intento 2)». */
-  protected jobTitle(job: JobSummary): string {
-    const stage = STAGE_LABEL[job.kind];
-    const ticket = job.ticketId ? this.ticketTitles().get(job.ticketId) : null;
-    const retry = job.attempt > 1 ? ` (intento ${job.attempt})` : '';
-    return `${stage}${ticket ? ` · ${ticket}` : ''}${retry}`;
+  /** Dónde va la ejecución, en una frase. */
+  protected activity(execution: ExecutionDetail): string {
+    switch (execution.status) {
+      case 'running':
+        return executionProgress(execution) ?? '';
+      case 'completed':
+        return 'Todos los tickets están hechos y la pull request está abierta.';
+      case 'failed':
+        return 'Se detuvo. Puedes reintentar desde donde quedó.';
+      case 'cancelled':
+        return 'Se canceló antes de terminar.';
+    }
   }
 
-  /** Una lista de textos como lista de Markdown (los criterios y las correcciones traen formato). */
-  protected list(items: readonly string[]): string {
-    return items.map((item) => `- ${item}`).join('\n');
+  protected open(id: string): void {
+    this.openId.set(id);
+    const last = this.panelJobs().at(-1);
+    if (last) void this.store.selectJob(last.id);
+  }
+
+  protected openGeneral(): void {
+    this.open(GENERAL);
+  }
+
+  protected closePanel(): void {
+    this.openId.set(null);
+  }
+
+  protected pickJob(jobId: string): void {
+    void this.store.selectJob(jobId);
   }
 
   protected async cancel(): Promise<void> {
@@ -124,7 +211,9 @@ export class ExecutionPage {
     void this.store.retry();
   }
 
-  protected select(job: JobSummary): void {
-    void this.store.selectJob(job.id);
+  private workerOf(agentId: string | null): Worker | null {
+    if (!agentId) return null;
+    const agent = this.agents.agents().find((candidate) => candidate.id === agentId);
+    return agent ? { name: agentLabel(agent), avatar: agent.avatar ?? null } : null;
   }
 }

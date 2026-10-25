@@ -45,13 +45,6 @@
     </app-page-header>
 
     <div class="stack">
-      <div class="state">
-        <app-badge [tone]="statusTone[execution.status]" dot>
-          {{ statusLabel[execution.status] }}
-        </app-badge>
-        <span class="muted">Empezó {{ execution.createdAt | timeAgo }}</span>
-      </div>
-
       @if (execution.waitingForRunner) {
         <app-alert tone="warning" heading="Esperando un runner">
           No hay ningún runner conectado, así que el trabajo espera. Abre el runner en tu PC y
@@ -64,144 +57,90 @@
       @if (execution.status === 'failed' && execution.error) {
         <app-alert tone="danger" heading="La ejecución falló">
           <div>{{ execution.error }}</div>
-          <div>Puedes reintentar desde donde quedó.</div>
-        </app-alert>
-      }
-      @if (execution.status === 'completed') {
-        <app-alert tone="success" heading="Lista para revisar">
-          La rama <code>{{ execution.branch }}</code> está subida y la pull request abierta.
-        </app-alert>
-      }
-      @if (execution.status === 'cancelled') {
-        <app-alert tone="info" heading="Cancelada">
-          Se detuvo antes de terminar. Lo que alcanzó a hacer quedó en la rama de tu PC.
         </app-alert>
       }
 
-      <app-card>
-        <h4 card-header>Etapas</h4>
-        <ol class="stages">
+      <section class="summary" aria-label="Resumen de la ejecución">
+        <div class="summary__top">
+          <app-badge [tone]="statusTone[execution.status]" dot>
+            {{ statusLabel[execution.status] }}
+          </app-badge>
+          <span class="summary__activity">
+            @if (execution.status === 'running') {
+              <app-spinner size="0.9em" />
+            }
+            {{ activity(execution) }}
+          </span>
+          <button type="button" class="summary__link" (click)="openGeneral()">
+            Registro general
+          </button>
+        </div>
+
+        <div
+          class="progress"
+          role="progressbar"
+          aria-label="Tickets hechos"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="progress().total"
+          [attr.aria-valuenow]="progress().done"
+        >
+          <div class="progress__bar" [style.width.%]="progress().percent"></div>
+        </div>
+        <p class="summary__count">{{ progress().done }} de {{ progress().total }} tickets hechos</p>
+
+        <ol class="steps">
           @for (stage of execution.stages; track stage.key) {
             <li [attr.data-status]="stage.status">
-              <span class="stages__icon" aria-hidden="true">
+              <span class="steps__icon" aria-hidden="true">
                 @if (stage.status === 'running') {
-                  <app-spinner size="1.1rem" />
+                  <app-spinner size="0.9rem" />
                 } @else if (stageIcon[stage.status]; as icon) {
-                  <app-icon [name]="icon" size="1.1rem" />
+                  <app-icon [name]="icon" size="0.9rem" />
                 }
               </span>
-              <span class="stages__text">
-                <strong>{{ stageLabel[stage.key] }}</strong>
-                <span class="muted">{{ stageHint[stage.key] }}</span>
-              </span>
+              {{ stageLabel[stage.key] }}
             </li>
           }
         </ol>
-      </app-card>
+      </section>
 
-      <app-card>
-        <h4 card-header>Tickets ({{ execution.tickets.length }})</h4>
-        @if (execution.tickets.length === 0) {
-          <p class="muted">
-            @if (execution.status === 'running') {
-              El agente está leyendo el plan y el código para crear los tickets…
-            } @else {
-              No se llegaron a crear tickets.
-            }
-          </p>
-        } @else {
-          <ul class="tickets">
-            @for (ticket of execution.tickets; track ticket.id; let i = $index) {
-              <li>
-                <div class="ticket__head">
-                  <span class="ticket__title">{{ i + 1 }}. {{ ticket.title }}</span>
-                  <app-badge [tone]="ticketTone[ticket.status]" dot>
-                    {{ ticketLabel[ticket.status] }}
-                  </app-badge>
-                  @if (ticket.rounds > 0) {
-                    <span class="muted">{{ ticket.rounds }} revisión(es)</span>
-                  }
-                </div>
-                <app-markdown-viewer class="ticket__text" [content]="ticket.description" />
-                @if (ticket.criteria.length > 0) {
-                  <app-markdown-viewer class="ticket__text" [content]="list(ticket.criteria)" />
-                }
-                @if (ticket.feedback?.length) {
-                  <app-alert tone="warning" heading="El revisor pidió cambios">
-                    <app-markdown-viewer [content]="list(ticket.feedback ?? [])" />
-                  </app-alert>
-                }
-                @if (ticket.summary) {
-                  <details class="ticket__more">
-                    <summary>Lo que hizo el desarrollador</summary>
-                    <app-markdown-viewer [content]="ticket.summary" />
-                  </details>
-                }
-                @if (ticket.reviewNote) {
-                  <app-markdown-viewer
-                    class="ticket__text"
-                    [content]="'**Revisión:** ' + ticket.reviewNote"
-                  />
-                }
-              </li>
-            }
-          </ul>
-        }
-      </app-card>
-
-      <app-card>
-        <h4 card-header>Trabajo de los agentes</h4>
-        @if (execution.jobs.length === 0) {
-          <p class="muted">Todavía no hay trabajos.</p>
-        } @else {
-          <div class="jobs">
-            <ul class="jobs__list" aria-label="Trabajos">
-              @for (job of execution.jobs; track job.id) {
-                <li>
-                  <button
-                    type="button"
-                    class="job"
-                    [class.is-selected]="store.selectedJob()?.id === job.id"
-                    [attr.aria-pressed]="store.selectedJob()?.id === job.id"
-                    (click)="select(job)"
-                  >
-                    <span class="job__title">{{ jobTitle(job) }}</span>
-                    <span class="job__meta">
-                      <app-badge [tone]="jobTone[job.status]" [loading]="job.status === 'running'">
-                        {{ jobLabel[job.status] }}
-                      </app-badge>
-                    </span>
-                  </button>
-                </li>
-              }
-            </ul>
-            <div class="jobs__log">
-              @if (store.selectedJob(); as job) {
-                @if (job.error) {
-                  <app-alert tone="danger" heading="Este trabajo falló">{{ job.error }}</app-alert>
-                }
-                @if (store.logs(); as logs) {
-                  <pre class="logs" tabindex="0" aria-label="Registro del trabajo">{{ logs }}</pre>
-                } @else {
-                  <p class="muted">
-                    @if (job.status === 'pending') {
-                      En cola: el registro aparece cuando un runner lo tome.
-                    } @else {
-                      Sin registro todavía.
-                    }
-                  </p>
-                }
-              }
-            </div>
-          </div>
-        }
-      </app-card>
+      @if (cards().length === 0) {
+        <p class="muted">
+          @if (execution.status === 'running') {
+            El agente está leyendo el plan y el código para crear los tickets…
+          } @else {
+            No se llegaron a crear tickets.
+          }
+        </p>
+      } @else {
+        <app-ticket-board
+          [cards]="cards()"
+          [selectedId]="openId()"
+          [running]="execution.status === 'running'"
+          (open)="open($event)"
+        />
+      }
     </div>
+
+    @if (openId()) {
+      <app-ticket-panel
+        [card]="panelCard()"
+        [title]="panelTitle()"
+        [branch]="execution.branch"
+        [jobs]="panelJobs()"
+        [events]="panelEvents()"
+        [logs]="store.logs()"
+        [selectedJobId]="store.selectedJob()?.id ?? null"
+        [workerName]="workerName"
+        (dismissed)="closePanel()"
+        (selectJob)="pickJob($event)"
+      />
+    }
   } @else {
     <div class="stack" aria-busy="true">
       <app-skeleton width="50%" height="2rem" />
       <app-skeleton height="110px" />
-      <app-skeleton height="220px" />
+      <app-skeleton height="260px" />
     </div>
   }
 </div>

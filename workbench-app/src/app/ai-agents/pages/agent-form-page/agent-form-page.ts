@@ -74,6 +74,7 @@ export class AgentFormPage {
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
+    displayName: ['', Validators.maxLength(60)],
     module: ['pr-review', Validators.required],
     provider: ['claude', Validators.required],
     model: ['', Validators.required],
@@ -178,6 +179,8 @@ export class AgentFormPage {
       module: this.form.controls.module.value as AgentModule,
       provider: this.form.controls.provider.value as AgentProvider,
       allowedTools: this.tools(),
+      // Vacío = sin nombre para mostrar (el servidor lo guarda como nulo).
+      displayName: this.form.controls.displayName.value.trim(),
     };
     this.saving.set(true);
     try {
@@ -207,6 +210,7 @@ export class AgentFormPage {
       this.form.controls.module.disable();
       this.form.patchValue({
         name: agent.name,
+        displayName: agent.displayName ?? '',
         module: agent.module,
         provider: agent.provider,
         model: agent.model,

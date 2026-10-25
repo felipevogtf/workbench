@@ -15,6 +15,12 @@ export class JobSummaryDto {
   costUsd!: number | null;
   error!: string | null;
   runnerId!: string | null;
+  /** El agente que hizo (o hará) el trabajo; `null` en los que no usan uno (subir la rama). */
+  agentId!: string | null;
+  /** Lo que respondió el desarrollador al terminar (su resumen); solo en los trabajos de desarrollo. */
+  output!: string | null;
+  /** El veredicto del revisor; solo en los trabajos de revisión ya terminados. */
+  review!: { approved: boolean; summary: string; issues: string[] } | null;
   startedAt!: string | null;
   finishedAt!: string | null;
 }

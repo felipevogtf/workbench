@@ -33,6 +33,19 @@
         <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
       }
 
+      <app-form-field
+        label="Nombre para mostrar"
+        for="agent-display-name"
+        hint="Opcional. Así se ve en el tablero, por ejemplo «David»."
+      >
+        <app-text-input
+          inputId="agent-display-name"
+          formControlName="displayName"
+          placeholder="David"
+          [describedBy]="'agent-display-name-msg'"
+        />
+      </app-form-field>
+
       <app-form-field label="Nombre" for="agent-name" required [error]="fieldError('name')">
         <app-text-input
           inputId="agent-name"
