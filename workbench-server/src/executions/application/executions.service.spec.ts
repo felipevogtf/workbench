@@ -337,6 +337,8 @@ describe('ExecutionsService', () => {
 
       expect(develop.payload.prompt).toContain('npm install');
       expect(develop.payload.prompt).toContain('no te detengas');
+      // El lockfile no debe quedar con cambios ajenos al ticket tras instalar.
+      expect(develop.payload.prompt).toContain('git restore package-lock.json');
     });
 
     it('sends the reviewer feedback back to the developer', async () => {
