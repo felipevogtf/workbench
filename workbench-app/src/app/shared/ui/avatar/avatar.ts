@@ -33,6 +33,7 @@ export function avatarColor(name: string): string {
     '[style.width]': 'size()',
     '[style.height]': 'size()',
     '[style.font-size]': 'fontSize()',
+    '[attr.data-image]': 'src() ? "" : null',
   },
   template: `
     @if (src(); as image) {
@@ -54,6 +55,12 @@ export function avatarColor(name: string): string {
       font-weight: 700;
       line-height: 1;
       color: var(--avatar-color);
+    }
+
+    /* Con foto no hay marco: el neón es solo de la insignia con inicial. */
+    :host([data-image]) {
+      border: 0;
+      box-shadow: none;
     }
 
     img {

@@ -24,6 +24,13 @@ describe('Avatar', () => {
     expect(element.textContent?.trim()).toBe('');
   });
 
+  it('marks the host when it shows an image, so the neon frame is only for the letter badge', async () => {
+    expect((await render('David', 'data:image/png;base64,AAAA')).hasAttribute('data-image')).toBe(
+      true,
+    );
+    expect((await render('David')).hasAttribute('data-image')).toBe(false);
+  });
+
   it('keeps the name out of the accessibility tree: the name is already next to it', async () => {
     const element = await render('Lucy');
 
