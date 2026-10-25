@@ -19,18 +19,18 @@ export const routes: Routes = [
     loadChildren: () => import('@pr-review/pr-review.routes').then((m) => m.PR_REVIEW_ROUTES),
   },
   {
-    // Antes que `executions`: la lista de agentes de los trabajadores la sirve el módulo ai-agents.
+    // Antes que `executions`: los trabajadores los sirve el módulo ai-agents.
     path: 'executions/agents',
-    loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.WORKER_AGENTS_ROUTES),
+    loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.AI_AGENTS_ROUTES),
   },
   {
     path: 'executions',
     loadChildren: () => import('@executions/executions.routes').then((m) => m.EXECUTIONS_ROUTES),
   },
-  {
-    path: 'agents',
-    loadChildren: () => import('@ai-agents/ai-agents.routes').then((m) => m.AI_AGENTS_ROUTES),
-  },
+  // Los enlaces de antes, cuando los agentes tenían su propio menú.
+  { path: 'agents', redirectTo: 'executions/agents', pathMatch: 'full' },
+  { path: 'agents/new', redirectTo: 'executions/agents/new', pathMatch: 'full' },
+  { path: 'agents/:id/edit', redirectTo: 'executions/agents/:id/edit', pathMatch: 'full' },
   {
     path: 'credentials',
     loadChildren: () => import('@credentials/credentials.routes').then((m) => m.CREDENTIALS_ROUTES),

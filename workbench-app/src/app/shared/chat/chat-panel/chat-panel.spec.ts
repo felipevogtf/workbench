@@ -426,4 +426,71 @@ describe('ChatPanel empty state and context', () => {
       expect(element.querySelector('input[type="file"]')).not.toBeNull();
     });
   });
+
+  describe('unread answers', () => {
+    const badge = (element: HTMLElement) => element.querySelector('.fab .fab__badge');
+
+    it('counts the answers that arrive while the panel is closed, and tells it on the button', async () => {
+      chat.toggle(); // se cierra
+      const element = await render({ assistant: { name: 'Lucy', avatar: null } });
+      expect(badge(element)).toBeNull();
+
+      await chat.send('hola');
+      await chat.send('otra cosa');
+      await settle();
+      element.ownerDocument.defaultView?.dispatchEvent(new Event('resize'));
+
+      expect(chat.unread()).toBe(2);
+    });
+
+    it('shows the count, pulses and says it to screen readers while there are unread answers', async () => {
+      chat.toggle();
+      const fixture = TestBed.createComponent(ChatPanel);
+      fixture.componentRef.setInput('store', chat);
+      fixture.componentRef.setInput('heading', 'Chat');
+      fixture.componentRef.setInput('assistant', { name: 'Lucy', avatar: null });
+      await fixture.whenStable();
+
+      await chat.send('hola');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const element: HTMLElement = fixture.nativeElement;
+      const fab = element.querySelector('.fab')!;
+      expect(fab.classList.contains('fab--unread')).toBe(true);
+      expect(badge(element)?.textContent?.trim()).toBe('1');
+      expect(fab.getAttribute('aria-label')).toBe('1 mensaje nuevo. Abrir el chat con Lucy');
+    });
+
+    it('does not count the answers that arrive while the panel is open', async () => {
+      await chat.send('hola'); // el panel está abierto
+      await settle();
+
+      expect(chat.unread()).toBe(0);
+    });
+
+    it('marks them as seen when the panel is opened', async () => {
+      chat.toggle(); // cerrado
+      await chat.send('hola');
+      expect(chat.unread()).toBe(1);
+
+      chat.toggle(); // abierto
+
+      expect(chat.unread()).toBe(0);
+    });
+
+    it('shows 9+ when there are more than nine', async () => {
+      chat.toggle();
+      const fixture = TestBed.createComponent(ChatPanel);
+      fixture.componentRef.setInput('store', chat);
+      fixture.componentRef.setInput('heading', 'Chat');
+      await fixture.whenStable();
+
+      for (let i = 0; i < 10; i++) await chat.send('pregunta ' + i);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(badge(fixture.nativeElement)?.textContent?.trim()).toBe('9+');
+    });
+  });
 });

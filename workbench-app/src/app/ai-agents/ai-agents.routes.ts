@@ -1,49 +1,25 @@
 import { Routes } from '@angular/router';
 
-/** Las mismas páginas, pero solo con los agentes de los trabajadores (`/executions/agents`). */
-export const WORKER_AGENTS_ROUTES: Routes = [
-  {
-    path: '',
-    title: 'Trabajadores · Workbench',
-    data: { scope: 'workers' },
-    loadComponent: () =>
-      import('./pages/agent-list-page/agent-list-page').then((m) => m.AgentListPage),
-  },
-  {
-    path: 'new',
-    title: 'Nuevo agente · Workbench',
-    data: { scope: 'workers' },
-    loadComponent: () =>
-      import('./pages/agent-form-page/agent-form-page').then((m) => m.AgentFormPage),
-  },
-  {
-    path: ':id/edit',
-    title: 'Editar agente · Workbench',
-    data: { scope: 'workers' },
-    loadComponent: () =>
-      import('./pages/agent-form-page/agent-form-page').then((m) => m.AgentFormPage),
-  },
-];
-
+/**
+ * Los trabajadores (todos los agentes de IA de la app): la lista con filtros, uno nuevo y el detalle de
+ * cada uno. Viven en «Automatización → Trabajadores» (`/executions/agents`).
+ */
 export const AI_AGENTS_ROUTES: Routes = [
   {
     path: '',
-    title: 'Agentes de IA · Workbench',
-    data: { scope: 'general' },
+    title: 'Trabajadores · Workbench',
     loadComponent: () =>
       import('./pages/agent-list-page/agent-list-page').then((m) => m.AgentListPage),
   },
   {
     path: 'new',
-    title: 'Nuevo agente · Workbench',
-    data: { scope: 'general' },
+    title: 'Nuevo trabajador · Workbench',
     loadComponent: () =>
       import('./pages/agent-form-page/agent-form-page').then((m) => m.AgentFormPage),
   },
   {
     path: ':id/edit',
-    title: 'Editar agente · Workbench',
-    data: { scope: 'general' },
+    title: 'Trabajador · Workbench',
     loadComponent: () =>
       import('./pages/agent-form-page/agent-form-page').then((m) => m.AgentFormPage),
   },

@@ -2,8 +2,8 @@ import type { NavItem } from '@core/navigation/nav-item';
 
 /**
  * «Automatización»: lo que ejecuta una tarea con IA. Los runners (los programas del PC) y los
- * trabajadores (los agentes que crean los tickets, desarrollan y revisan). Los agentes de siempre
- * siguen en «Agentes de IA».
+ * trabajadores: todos los agentes de IA de la app (crean los tickets, desarrollan, revisan, planifican y
+ * conversan).
  */
 export const EXECUTIONS_NAV: NavItem = {
   label: 'Automatización',

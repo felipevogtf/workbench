@@ -1,15 +1,32 @@
-.grid {
+.filters {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-  gap: 20px;
-}
-
-.group + .group {
-  margin-top: var(--space-6);
-}
-
-.group__title {
+  gap: var(--space-3);
   margin-bottom: var(--space-3);
-  font-weight: 600;
+}
+
+.count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.count__clear {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .filters {
+    grid-template-columns: minmax(200px, 1.4fr) repeat(4, minmax(140px, 1fr));
+    align-items: end;
+  }
 }

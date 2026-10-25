@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
-import { AgentsStore, agentLabel } from '@ai-agents/index';
+import { AgentsStore } from '@ai-agents/index';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 
@@ -40,10 +40,7 @@ export class ExecutionChat {
   private readonly agents = inject(AgentsStore);
 
   /** Quien contesta: el agente que crea los tickets, con el nombre y la imagen con que se ve en el tablero. */
-  protected readonly lucy = computed(() => {
-    const agent = this.agents.defaultAgentOf('task-tickets');
-    return agent ? { name: agentLabel(agent), avatar: agent.avatar ?? null } : null;
-  });
+  protected readonly lucy = computed(() => this.agents.assistantOf('task-tickets'));
 
   protected readonly suggestions = [
     '¿Cómo va la ejecución?',

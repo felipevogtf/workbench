@@ -28,19 +28,88 @@
   border-radius: 50%;
   background: var(--primary);
   color: var(--background);
-  box-shadow: var(--shadow-hover);
+  // Una sombra sutil para que el botón se despegue de la pantalla, con o sin avatar.
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.12);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: scale(1.08);
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.22),
+      0 1px 3px rgba(0, 0, 0, 0.14);
   }
 }
 
 // Con el avatar de quien contesta, el botón es el avatar mismo: sin el fondo de color.
 .fab--avatar {
   background: transparent;
-  box-shadow: none;
+}
+
+// Respuesta sin ver: un anillo que late alrededor del botón y un contador, hasta que se abre el chat.
+.fab--unread {
+  animation: fab-ring 1.8s ease-out infinite;
+}
+
+@keyframes fab-ring {
+  0% {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.18),
+      0 0 0 0 color-mix(in srgb, var(--danger) 60%, transparent);
+  }
+  70% {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.18),
+      0 0 0 14px color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.18),
+      0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+}
+
+.fab__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 2px solid var(--background);
+  border-radius: 11px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  animation: fab-badge-pop 0.3s ease-out;
+}
+
+@keyframes fab-badge-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// Quien prefiere menos movimiento ve el contador, sin el latido.
+@media (prefers-reduced-motion: reduce) {
+  .fab--unread,
+  .fab__badge {
+    animation: none;
+  }
 }
 
 .msg__who {

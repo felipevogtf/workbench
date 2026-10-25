@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AgentsApi } from '../../data-access/agents.api';
-import { AgentScope, ProviderStatus } from '../../models/agent';
+import { ProviderStatus } from '../../models/agent';
 import { AgentFormPage } from './agent-form-page';
 
 const providers: ProviderStatus[] = [
@@ -17,7 +17,7 @@ const providers: ProviderStatus[] = [
 ];
 
 describe('AgentFormPage', () => {
-  async function render(scope?: AgentScope) {
+  async function render() {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -25,7 +25,6 @@ describe('AgentFormPage', () => {
       ],
     });
     const fixture = TestBed.createComponent(AgentFormPage);
-    if (scope) fixture.componentRef.setInput('scope', scope);
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
@@ -56,25 +55,22 @@ describe('AgentFormPage', () => {
     expect(root.querySelector<HTMLSelectElement>('#agent-model')?.value).toBe('auto');
   });
 
-  describe('in each menu', () => {
-    it('«Agentes de IA» offers the usual modules, starts on the reviews and goes back to /agents', async () => {
+  describe('as a worker', () => {
+    it('offers every module, starts on the developer and goes back to the workers', async () => {
       const root: HTMLElement = (await render()).nativeElement;
 
-      expect(options(root, 'agent-module')).toEqual(['pr-review', 'planner', 'chat', 'task-chat']);
-      expect(root.querySelector<HTMLSelectElement>('#agent-module')?.value).toBe('pr-review');
-      expect(root.querySelector('a[back]')?.getAttribute('href')).toBe('/agents');
-    });
-
-    it('«Trabajadores» offers only the modules of the workers, starts on the first and goes back to its own list', async () => {
-      const root: HTMLElement = (await render('workers')).nativeElement;
-
       expect(options(root, 'agent-module')).toEqual([
+        'pr-review',
+        'planner',
+        'chat',
+        'task-chat',
         'task-tickets',
         'task-developer',
         'task-reviewer',
       ]);
-      expect(root.querySelector<HTMLSelectElement>('#agent-module')?.value).toBe('task-tickets');
+      expect(root.querySelector<HTMLSelectElement>('#agent-module')?.value).toBe('task-developer');
       expect(root.querySelector('a[back]')?.getAttribute('href')).toBe('/executions/agents');
+      expect(root.textContent).toContain('Nuevo trabajador');
     });
   });
 });

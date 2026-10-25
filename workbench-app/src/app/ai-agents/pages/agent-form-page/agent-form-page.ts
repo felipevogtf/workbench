@@ -33,10 +33,8 @@ import {
   AgentProvider,
   EFFORT_OPTIONS,
   LEVEL_OPTIONS,
-  AgentScope,
   MODULE_TOOLS,
-  SCOPE_BASE,
-  modulesOf,
+  MODULE_OPTIONS,
 } from '../../models/agent';
 
 type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
@@ -66,8 +64,6 @@ type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
 export class AgentFormPage {
   /** Viene de la ruta (`withComponentInputBinding`); vacío al crear. */
   readonly id = input<string>();
-  /** Viene de la ruta (`data.scope`): los agentes de siempre o los de los trabajadores. */
-  readonly scope = input<AgentScope>('general');
 
   private readonly store = inject(AgentsStore);
   private readonly providersStore = inject(ProvidersStore);
@@ -77,23 +73,23 @@ export class AgentFormPage {
   protected readonly effortOptions = [...EFFORT_OPTIONS];
   protected readonly levelOptions = [...LEVEL_OPTIONS];
 
-  protected readonly moduleOptions = computed<SelectOption[]>(() => [...modulesOf(this.scope())]);
+  protected readonly moduleOptions: SelectOption[] = [...MODULE_OPTIONS];
   /** Dónde está la lista de este menú: a donde se vuelve y se navega al guardar. */
-  protected readonly base = computed(() => SCOPE_BASE[this.scope()]);
+  protected readonly base = '/executions/agents';
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     displayName: ['', Validators.maxLength(60)],
     effort: [''],
     level: [''],
-    module: ['pr-review', Validators.required],
+    module: ['task-developer', Validators.required],
     provider: ['claude', Validators.required],
     model: ['', Validators.required],
     systemPrompt: ['', Validators.required],
   });
   /** La imagen elegida (data URL); `null` = el avatar dibujado. */
   protected readonly avatar = signal<string | null>(null);
-  protected readonly tools = signal<string[]>([...MODULE_TOOLS['pr-review']]);
+  protected readonly tools = signal<string[]>([...MODULE_TOOLS['task-developer']]);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -143,17 +139,6 @@ export class AgentFormPage {
     effect(() => {
       const id = this.id();
       if (id) untracked(() => void this.load(id));
-    });
-
-    // Al crear en el menú de los trabajadores, el módulo parte del primero de ese menú.
-    effect(() => {
-      const first = modulesOf(this.scope())[0];
-      untracked(() => {
-        if (!this.id() && first && !this.form.controls.module.dirty) {
-          this.form.controls.module.setValue(first.value);
-          this.tools.set([...MODULE_TOOLS[first.value]]);
-        }
-      });
     });
 
     // Al crear, el modelo parte del primero del proveedor elegido.
@@ -215,7 +200,7 @@ export class AgentFormPage {
         await this.store.create(value);
         this.toast.success('Agente creado');
       }
-      await this.router.navigate([this.base()]);
+      await this.router.navigate([this.base]);
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {

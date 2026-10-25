@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
 import { ResourceStore } from '@shared/util/resource-store';
-import { Agent, AgentInput, AgentModule } from '../models/agent';
+import { Agent, AgentInput, AgentModule, agentLabel } from '../models/agent';
 import { AgentsApi } from './agents.api';
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +25,12 @@ export class AgentsStore extends ResourceStore<Agent> {
   /** El agente por defecto de un módulo (hay uno por módulo). */
   defaultAgentOf(module: AgentModule): Agent | null {
     return this.agentsOf(module).find((agent) => agent.isDefault) ?? null;
+  }
+
+  /** Quién contesta en un módulo, como se ve en pantalla: el nombre y la imagen de su agente por defecto. */
+  assistantOf(module: AgentModule): { name: string; avatar: string | null } | null {
+    const agent = this.defaultAgentOf(module);
+    return agent ? { name: agentLabel(agent), avatar: agent.avatar ?? null } : null;
   }
 
   async find(id: string): Promise<Agent> {

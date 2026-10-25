@@ -1,6 +1,7 @@
 <app-chat-panel
   [store]="store"
-  heading="Pregúntale a la IA"
+  [heading]="'Pregúntale a ' + (assistant()?.name ?? 'la IA')"
+  [assistant]="assistant()"
   [context]="context()"
   [info]="info()"
   [infoTitle]="store.context()?.path ?? ''"

@@ -208,10 +208,17 @@
 <button
   class="fab"
   [class.fab--avatar]="!!assistant() && !chat.open()"
+  [class.fab--unread]="chat.unread() > 0 && !chat.open()"
   type="button"
   [attr.aria-expanded]="chat.open()"
   [attr.aria-label]="
-    chat.open() ? 'Cerrar el chat' : 'Abrir el chat con ' + (assistant()?.name ?? 'la IA')
+    chat.open()
+      ? 'Cerrar el chat'
+      : (chat.unread() > 0
+          ? chat.unread() + (chat.unread() === 1 ? ' mensaje nuevo. ' : ' mensajes nuevos. ')
+          : '') +
+        'Abrir el chat con ' +
+        (assistant()?.name ?? 'la IA')
   "
   [title]="chat.open() ? 'Cerrar el chat' : 'Hablar con ' + (assistant()?.name ?? 'la IA')"
   (click)="chat.toggle()"
@@ -225,7 +232,11 @@
   } @else {
     <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
   }
-  @if (chat.sending() && !chat.open()) {
+  @if (chat.unread() > 0 && !chat.open()) {
+    <span class="fab__badge" aria-hidden="true">{{
+      chat.unread() > 9 ? '9+' : chat.unread()
+    }}</span>
+  } @else if (chat.sending() && !chat.open()) {
     <span class="fab__dot" aria-hidden="true"></span>
   }
 </button>

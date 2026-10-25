@@ -8,6 +8,11 @@ const KNOWN: Record<string, string> = {
   rebecca: '#f472b6',
   kiwi: '#4ade80',
   pilar: '#a78bfa',
+  faraday: '#fb923c',
+  doc: '#60a5fa',
+  falco: '#fbbf24',
+  gloria: '#c084fc',
+  dorio: '#fb7185',
 };
 const PALETTE = ['#22d3ee', '#facc15', '#f87171', '#f472b6', '#4ade80', '#a78bfa', '#fb923c'];
 

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { AgentsStore } from '@ai-agents/index';
 import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Button } from '@shared/ui/button/button';
@@ -25,6 +26,10 @@ export class TaskChat {
   readonly issue = input.required<Issue>();
 
   protected readonly chat = inject(TaskChatStore);
+  private readonly agents = inject(AgentsStore);
+
+  /** Quien contesta: el agente del chat de tareas, con el nombre y la imagen con que se ve en la app. */
+  protected readonly assistant = computed(() => this.agents.assistantOf('task-chat'));
 
   /** Preguntas para empezar. */
   protected readonly suggestions = [
@@ -50,6 +55,7 @@ export class TaskChat {
   );
 
   constructor() {
+    void this.agents.load();
     effect(() => this.chat.bind(this.issue().id));
   }
 

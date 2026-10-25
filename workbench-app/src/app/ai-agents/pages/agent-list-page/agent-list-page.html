@@ -1,20 +1,16 @@
 <div class="page">
   <app-page-header
-    [heading]="scope() === 'workers' ? 'Trabajadores' : 'Agentes de IA'"
-    [subtitle]="
-      scope() === 'workers'
-        ? 'Los agentes que crean los tickets, desarrollan y revisan cuando ejecutas una tarea con IA.'
-        : 'Definen el prompt, el proveedor, el modelo y las herramientas de cada módulo (revisión de PRs, planificador…).'
-    "
+    heading="Trabajadores"
+    subtitle="Los agentes de IA de la app: crean los tickets, desarrollan, revisan, planifican y conversan. Cada uno con su nombre, su modelo y su esfuerzo."
   >
     <a actions app-button routerLink="new">
       <app-icon name="plus" size="1em" />
-      {{ scope() === 'workers' ? 'Nuevo trabajador' : 'Nuevo agente' }}
+      Nuevo trabajador
     </a>
   </app-page-header>
 
   @if (store.error(); as error) {
-    <app-alert tone="danger" heading="No se pudieron cargar los agentes">
+    <app-alert tone="danger" heading="No se pudieron cargar los trabajadores">
       {{ error }}
       <button
         alert-action
@@ -28,38 +24,80 @@
       </button>
     </app-alert>
   } @else if (store.loading() && !store.loaded()) {
-    <div class="grid" aria-busy="true">
-      @for (n of [1, 2, 3]; track n) {
-        <app-skeleton height="260px" />
+    <div class="stack" aria-busy="true">
+      @for (n of [1, 2, 3, 4]; track n) {
+        <app-skeleton height="64px" />
       }
     </div>
-  } @else if (visible().length === 0) {
-    <app-empty-state icon="bot" heading="Todavía no hay agentes">
-      @if (scope() === 'workers') {
-        Crea un trabajador para cada etapa de la ejecución de tareas.
-      } @else {
-        Crea un agente para definir cómo se revisan las pull requests.
-      }
-      <a empty-action app-button routerLink="new">Nuevo agente</a>
+  } @else if (store.agents().length === 0) {
+    <app-empty-state icon="bot" heading="Todavía no hay trabajadores">
+      Crea un trabajador para cada módulo: los que ejecutan tareas, revisan PRs, planifican o
+      conversan.
+      <a empty-action app-button routerLink="new">Nuevo trabajador</a>
     </app-empty-state>
   } @else {
-    @for (group of groups(); track group.value) {
-      @if (store.agentsOf(group.value); as agents) {
-        @if (agents.length > 0) {
-          <section class="group" [attr.aria-label]="group.label">
-            <h4 class="group__title">{{ group.label }}</h4>
-            <div class="grid">
-              @for (agent of agents; track agent.id) {
-                <app-agent-card
-                  [agent]="agent"
-                  (setDefault)="setDefault($event)"
-                  (remove)="remove($event)"
-                />
-              }
-            </div>
-          </section>
-        }
+    <form class="filters" [formGroup]="filters" (submit)="$event.preventDefault()" role="search">
+      <app-form-field class="filters__search" label="Buscar" for="filter-search">
+        <app-text-input
+          inputId="filter-search"
+          formControlName="search"
+          placeholder="Nombre del trabajador…"
+        />
+      </app-form-field>
+      <app-form-field label="Módulo" for="filter-module">
+        <app-select
+          inputId="filter-module"
+          formControlName="module"
+          placeholder="Todos"
+          [options]="moduleOptions"
+        />
+      </app-form-field>
+      <app-form-field label="Tickets que toma" for="filter-level">
+        <app-select
+          inputId="filter-level"
+          formControlName="level"
+          placeholder="Cualquiera"
+          [options]="levelOptions"
+        />
+      </app-form-field>
+      <app-form-field label="Modelo" for="filter-model">
+        <app-select
+          inputId="filter-model"
+          formControlName="model"
+          placeholder="Todos"
+          [options]="modelOptions()"
+        />
+      </app-form-field>
+      <app-form-field label="Esfuerzo" for="filter-effort">
+        <app-select
+          inputId="filter-effort"
+          formControlName="effort"
+          placeholder="Cualquiera"
+          [options]="effortOptions"
+        />
+      </app-form-field>
+    </form>
+
+    <p class="count" aria-live="polite">
+      {{ visible().length }} de {{ store.agents().length }} trabajadores
+      @if (hasFilters()) {
+        <button type="button" class="count__clear" (click)="clearFilters()">Limpiar filtros</button>
       }
+    </p>
+
+    @if (visible().length === 0) {
+      <app-empty-state icon="inbox" heading="Ningún trabajador coincide con los filtros">
+        Prueba con otro nombre, módulo o modelo.
+        <button empty-action app-button variant="secondary" type="button" (click)="clearFilters()">
+          Limpiar filtros
+        </button>
+      </app-empty-state>
+    } @else {
+      <app-worker-table
+        [agents]="visible()"
+        (setDefault)="setDefault($event)"
+        (remove)="remove($event)"
+      />
     }
   }
 </div>
