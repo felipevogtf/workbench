@@ -75,6 +75,7 @@ export function testConfig(
       review: [...DEFAULT_CONFIG.allowedTools.review],
     },
     remoteOverrides: { 'acme/web': bare },
+    copyFiles: {},
     ...overrides,
   };
 }

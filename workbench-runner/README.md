@@ -33,14 +33,14 @@ Hace dos cosas, las dos solo para tu usuario y sin pedir administrador:
    solo, **sin ventana**, y deja su salida en `runner.log` (junto al programa; puedes borrarlo).
 2. **Enlace `workbench-runner://`:** al pulsar **Ejecutar el plan** en la app, si no hay ningún runner
    conectado, la página abre `workbench-runner://start`, Windows lanza el runner y la app espera a que
-   aparezca «Conectado». La primera vez el navegador pregunta si abrirlo: elige *permitir siempre*.
+   aparezca «Conectado». La primera vez el navegador pregunta si abrirlo: elige _permitir siempre_.
 
 Es seguro lanzarlo de más: si ya hay un runner corriendo en esa carpeta de trabajo (`runner.lock`), el
 nuevo avisa y termina. Para deshacerlo: `npm run autostart:remove`. `npm run autostart:install -- --dry-run`
 muestra lo que haría sin tocar nada.
 
 El enlace abre el runner **de este PC**, así que conviene que el runner **predeterminado** de la app sea
-el de tu PC (el primero que creas lo es; se cambia en *Automatización → Runners → Usar por defecto*).
+el de tu PC (el primero que creas lo es; se cambia en _Automatización → Runners → Usar por defecto_).
 
 ## Varios runners
 
@@ -50,16 +50,17 @@ el de tu PC (el primero que creas lo es; se cambia en *Automatización → Runne
 
 ## Configuración (`runner.config.json`)
 
-| Campo | Para qué |
-| --- | --- |
-| `serverUrl` | Dirección del servidor con `/api` |
-| `token` | Token del runner (también `WORKBENCH_RUNNER_TOKEN`) |
-| `workDir` | Carpeta donde se clonan los repos y se crean las ramas de trabajo. Mejor fuera de tus proyectos |
-| `claudeBin` | Ejecutable de Claude (por defecto `claude`) |
-| `maxBudgetUsd` | Tope de gasto de cada trabajo de un agente (por defecto 5) |
-| `timeoutMinutes` | Tiempo máximo por tipo de trabajo (`tickets`, `develop`, `review`, `publish`) |
-| `allowedTools` | Herramientas máximas por tipo de trabajo. **Manda sobre el servidor** |
-| `remoteOverrides` | `"organización/repo": "<url o ruta>"` para clonar de otra dirección (espejos, pruebas) |
+| Campo             | Para qué                                                                                                                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `serverUrl`       | Dirección del servidor con `/api`                                                                                                                                                             |
+| `token`           | Token del runner (también `WORKBENCH_RUNNER_TOKEN`)                                                                                                                                           |
+| `workDir`         | Carpeta donde se clonan los repos y se crean las ramas de trabajo. Mejor fuera de tus proyectos                                                                                               |
+| `claudeBin`       | Ejecutable de Claude (por defecto `claude`)                                                                                                                                                   |
+| `maxBudgetUsd`    | Tope de gasto de cada trabajo de un agente (por defecto 5)                                                                                                                                    |
+| `timeoutMinutes`  | Tiempo máximo por tipo de trabajo (`tickets`, `develop`, `review`, `publish`)                                                                                                                 |
+| `allowedTools`    | Herramientas máximas por tipo de trabajo. **Manda sobre el servidor**                                                                                                                         |
+| `remoteOverrides` | `"organización/repo": "<url o ruta>"` para clonar de otra dirección (espejos, pruebas)                                                                                                        |
+| `copyFiles`       | `"organización/repo": [{"from": "plantilla", "to": "archivo"}]`: archivos que se copian al worktree nuevo (p. ej. un `environment.ts` que el repo no versiona). Los submódulos se traen solos |
 
 ### Qué puede hacer un agente en tu PC
 
@@ -92,9 +93,9 @@ Nadie hace `git push` salvo el runner, y solo de la rama de la ejecución. El ag
 
 ## Si algo falla
 
-- *El servidor rechazó el token*: revocaste el runner o copiaste mal el token; crea otro.
-- *Permission denied (publickey)*: la llave SSH no tiene acceso al repo o no está cargada en el agente.
-- *git no tiene user.email*: configura tu identidad de git.
+- _El servidor rechazó el token_: revocaste el runner o copiaste mal el token; crea otro.
+- _Permission denied (publickey)_: la llave SSH no tiene acceso al repo o no está cargada en el agente.
+- _git no tiene user.email_: configura tu identidad de git.
 - Sin conexión, el runner reintenta solo con esperas crecientes; al volver sigue donde estaba. Si estuvo
   sin dar señales más de 2 minutos con un trabajo en curso, el servidor lo da por perdido y puedes
   **reintentar** esa etapa desde la app.

@@ -23,6 +23,11 @@ export interface RunnerConfig {
   allowedTools: Record<Exclude<JobKind, 'publish'>, string[]>;
   /** Repos que se clonan de otra dirección (`organización/repo` → URL). Para espejos locales y pruebas. */
   remoteOverrides: Record<string, string>;
+  /**
+   * Archivos que se copian al worktree nuevo de un repo (`organización/repo`), p. ej. el `environment.ts`
+   * que el repo no versiona y se parte de una plantilla. Rutas relativas a la raíz del repo.
+   */
+  copyFiles: Record<string, { from: string; to: string }[]>;
 }
 
 export const DEFAULT_CONFIG = {
@@ -60,6 +65,7 @@ export const DEFAULT_CONFIG = {
     ],
   },
   remoteOverrides: {},
+  copyFiles: {},
 } as const;
 
 export const CONFIG_FILE = 'runner.config.json';
@@ -140,5 +146,6 @@ export function loadConfig(
       review: tools.review ?? [...DEFAULT_CONFIG.allowedTools.review],
     },
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
+    copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],
   };
 }

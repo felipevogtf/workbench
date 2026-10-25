@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, rm, stat } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { copyFile, mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { git } from './git';
 
 const SSH_URL = /^git@(bitbucket\.org|github\.com):[\w.-]+\/[\w.-]+\.git$/;
@@ -45,6 +45,10 @@ export class Workspaces {
   constructor(
     private readonly workDir: string,
     private readonly overrides: Record<string, string> = {},
+    private readonly copyFiles: Record<
+      string,
+      { from: string; to: string }[]
+    > = {},
   ) {}
 
   /** Deja listo el worktree de la rama de la ejecución: la primera vez la crea y después la reutiliza. */
@@ -93,8 +97,27 @@ export class Workspaces {
             ],
         { cwd: clone },
       );
+      await this.setUp(repo.fullName, dir);
     }
     return { dir, baseBranch };
+  }
+
+  /**
+   * Lo que un worktree nuevo necesita para poder compilar: los submódulos (git no los trae solo) y los
+   * archivos que el repo no versiona y se configuran en `copyFiles`.
+   */
+  private async setUp(fullName: string, dir: string): Promise<void> {
+    if (existsSync(join(dir, '.gitmodules'))) {
+      await git(['submodule', 'update', '--init', '--recursive'], { cwd: dir });
+    }
+    for (const file of this.copyFiles[fullName] ?? []) {
+      const from = this.insideDir(dir, file.from);
+      if (!existsSync(from)) continue;
+      const to = this.insideDir(dir, file.to);
+      if (existsSync(to)) continue;
+      await mkdir(dirname(to), { recursive: true });
+      await copyFile(from, to);
+    }
   }
 
   /** Sube la rama al remoto (por SSH, con las llaves de este PC). */
@@ -162,6 +185,15 @@ export class Workspaces {
         'No se pudo saber cuál es la rama principal del repositorio',
       );
     return resolved;
+  }
+
+  /** Una ruta relativa dentro de un worktree; nunca fuera de él. */
+  private insideDir(dir: string, relative: string): string {
+    const path = resolve(dir, relative);
+    if (isAbsolute(relative) || !path.startsWith(dir + sep)) {
+      throw new Error(`Ruta fuera del repositorio: ${relative}`);
+    }
+    return path;
   }
 
   /** Una ruta dentro de `workDir`; nunca fuera de ella. */

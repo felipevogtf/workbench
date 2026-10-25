@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { git } from './git';
@@ -77,6 +83,41 @@ describe('Workspaces', () => {
         await git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: workspace.dir })
       ).trim(),
       BRANCH,
+    );
+  });
+
+  it('copies the configured files into a new worktree, without overwriting them afterwards', async () => {
+    const bare = createRemote();
+    const workspaces = new Workspaces(
+      tempDir('work'),
+      { 'acme/web': bare },
+      {
+        'acme/web': [
+          { from: 'README.md', to: 'src/environments/environment.ts' },
+        ],
+      },
+    );
+
+    const { dir } = await workspaces.prepare(REPO, BRANCH);
+    const copy = join(dir, 'src', 'environments', 'environment.ts');
+    assert.equal(readFileSync(copy, 'utf8'), '# web\n');
+
+    writeFileSync(copy, 'mío\n');
+    await workspaces.prepare(REPO, BRANCH);
+    assert.equal(readFileSync(copy, 'utf8'), 'mío\n');
+  });
+
+  it('refuses to copy a file out of the repository', async () => {
+    const bare = createRemote();
+    const workspaces = new Workspaces(
+      tempDir('work'),
+      { 'acme/web': bare },
+      { 'acme/web': [{ from: 'README.md', to: '../fuera.txt' }] },
+    );
+
+    await assert.rejects(
+      workspaces.prepare(REPO, BRANCH),
+      /fuera del repositorio/,
     );
   });
 

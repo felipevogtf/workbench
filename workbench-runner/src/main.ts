@@ -116,7 +116,11 @@ async function main(): Promise<number> {
   }
   process.on('exit', () => lock.release());
 
-  const workspaces = new Workspaces(config.workDir, config.remoteOverrides);
+  const workspaces = new Workspaces(
+    config.workDir,
+    config.remoteOverrides,
+    config.copyFiles,
+  );
   const removed = await workspaces.sweep();
   if (removed.length > 0)
     console.log(
