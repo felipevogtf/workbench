@@ -1,4 +1,10 @@
-export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+/** `awaiting`: los tickets están creados y asignados, y se espera a que el usuario dé el visto bueno. */
+export type ExecutionStatus =
+  'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
+
+/** Tamaño de un ticket: decide qué desarrollador lo toma. */
+export const TICKET_LEVELS = ['simple', 'medium', 'complex'] as const;
+export type TicketLevel = (typeof TICKET_LEVELS)[number];
 
 /** Etapas del flujo base, en orden. */
 export const STAGE_KEYS = ['tickets', 'develop', 'review', 'publish'] as const;
@@ -22,6 +28,11 @@ export interface ExecutionTicket {
   title: string;
   description: string;
   criteria: string[];
+  level: TicketLevel;
+  /** El desarrollador asignado; `null` = el que esté por defecto. */
+  developerId: string | null;
+  /** El revisor asignado; `null` = el que esté por defecto. */
+  reviewerId: string | null;
   status: TicketStatus;
   /** Revisiones ya hechas de este ticket. */
   rounds: number;

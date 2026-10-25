@@ -15,6 +15,8 @@ export interface ClaudeRun {
   binArgs?: string[];
   model: string;
   systemPrompt: string;
+  /** Esfuerzo con que trabaja (`--effort`); ausente = el del modelo. */
+  effort?: string;
   tools: string[];
   prompt: string;
   cwd: string;
@@ -133,6 +135,7 @@ export function claudeArgs(run: ClaudeRun): string[] {
     '--max-budget-usd',
     String(run.maxBudgetUsd),
   ];
+  if (run.effort) args.push('--effort', run.effort);
   if (run.tools.length > 0) args.push('--allowedTools', run.tools.join(','));
   return args;
 }

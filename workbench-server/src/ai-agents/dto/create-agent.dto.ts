@@ -7,6 +7,12 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import {
+  AGENT_EFFORTS,
+  AGENT_LEVELS,
+  type AgentEffort,
+  type AgentLevel,
+} from '@ai-agents/domain/effort';
 import { AGENT_MODULES, type AgentModule } from '@ai-agents/domain/modules';
 import {
   AGENT_PROVIDERS,
@@ -55,4 +61,14 @@ export class CreateAgentDto {
   @IsString()
   @MaxLength(400_000)
   avatar?: string | null;
+
+  /** Esfuerzo con que trabaja; vacío = el del modelo. */
+  @IsOptional()
+  @IsIn([...AGENT_EFFORTS, null, ''])
+  effort?: AgentEffort | null;
+
+  /** Solo desarrolladores: el tamaño de ticket que les toca. */
+  @IsOptional()
+  @IsIn([...AGENT_LEVELS, null, ''])
+  level?: AgentLevel | null;
 }

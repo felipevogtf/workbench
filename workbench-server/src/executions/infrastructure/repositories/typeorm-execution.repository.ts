@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Execution } from '@executions/domain/entities/execution.entity';
 import { ExecutionStatus } from '@executions/domain/entities/execution.props';
 import { ExecutionRepositoryPort } from '@executions/domain/ports/execution-repository.port';
@@ -36,7 +36,7 @@ export class TypeOrmExecutionRepository implements ExecutionRepositoryPort {
 
   async findActiveByIssueId(issueId: string): Promise<Execution | null> {
     const orm = await this.repository.findOne({
-      where: { issue_id: issueId, status: 'running' },
+      where: { issue_id: issueId, status: In(['running', 'awaiting']) },
     });
     return orm ? this.toDomain(orm) : null;
   }

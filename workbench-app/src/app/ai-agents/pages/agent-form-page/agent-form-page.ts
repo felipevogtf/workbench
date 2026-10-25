@@ -27,8 +27,12 @@ import { ToolsPicker } from '../../components/tools-picker/tools-picker';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
 import {
+  AgentEffort,
+  AgentLevel,
   AgentModule,
   AgentProvider,
+  EFFORT_OPTIONS,
+  LEVEL_OPTIONS,
   AgentScope,
   MODULE_TOOLS,
   SCOPE_BASE,
@@ -70,6 +74,9 @@ export class AgentFormPage {
   private readonly router = inject(Router);
   private readonly toast = inject(Toast);
 
+  protected readonly effortOptions = [...EFFORT_OPTIONS];
+  protected readonly levelOptions = [...LEVEL_OPTIONS];
+
   protected readonly moduleOptions = computed<SelectOption[]>(() => [...modulesOf(this.scope())]);
   /** Dónde está la lista de este menú: a donde se vuelve y se navega al guardar. */
   protected readonly base = computed(() => SCOPE_BASE[this.scope()]);
@@ -77,6 +84,8 @@ export class AgentFormPage {
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     displayName: ['', Validators.maxLength(60)],
+    effort: [''],
+    level: [''],
     module: ['pr-review', Validators.required],
     provider: ['claude', Validators.required],
     model: ['', Validators.required],
@@ -94,6 +103,9 @@ export class AgentFormPage {
   private readonly module = toSignal(this.form.controls.module.valueChanges, {
     initialValue: this.form.controls.module.value,
   });
+  /** El nivel de ticket solo lo tienen los desarrolladores. */
+  protected readonly isDeveloper = computed(() => this.module() === 'task-developer');
+
   /** Herramientas que ofrece el módulo elegido (cada módulo tiene su lista de solo lectura). */
   protected readonly toolOptions = computed(() => MODULE_TOOLS[this.module() as AgentModule]);
 
@@ -185,6 +197,11 @@ export class AgentFormPage {
       allowedTools: this.tools(),
       // Vacío = sin nombre para mostrar (el servidor lo guarda como nulo).
       displayName: this.form.controls.displayName.value.trim(),
+      // Vacío = sin esfuerzo / sin nivel (el servidor los guarda como nulos).
+      effort: (this.form.controls.effort.value || null) as AgentEffort | null,
+      level: (this.form.controls.module.value === 'task-developer'
+        ? this.form.controls.level.value || null
+        : null) as AgentLevel | null,
       // Vacío = quitar la imagen.
       avatar: this.avatar() ?? '',
     };
@@ -217,6 +234,8 @@ export class AgentFormPage {
       this.form.patchValue({
         name: agent.name,
         displayName: agent.displayName ?? '',
+        effort: agent.effort ?? '',
+        level: agent.level ?? '',
         module: agent.module,
         provider: agent.provider,
         model: agent.model,

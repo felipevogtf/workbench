@@ -9,6 +9,8 @@ export class AgentResponseDto {
   isDefault!: boolean;
   displayName!: string | null;
   avatar!: string | null;
+  effort!: string | null;
+  level!: string | null;
   createdAt!: Date;
   updatedAt!: Date;
 }

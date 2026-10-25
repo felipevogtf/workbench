@@ -1,8 +1,10 @@
 import { DomainError } from '@core/domain/domain.error';
+import { TICKET_LEVELS, TicketLevel } from './entities/execution.props';
 
 export interface TicketDraft {
   title: string;
   description: string;
+  level: TicketLevel;
   criteria: string[];
 }
 
@@ -71,6 +73,8 @@ export function parseTickets(output: string, max: number): TicketDraft[] {
       return {
         title: text(item.title, MAX_TITLE),
         description: text(item.description, MAX_DESCRIPTION),
+        // Sin un nivel válido, el medio: ni el más caro ni el más flojo.
+        level: TICKET_LEVELS.find((level) => level === item.level) ?? 'medium',
         criteria: list(item.criteria, MAX_CRITERIA, MAX_CRITERION),
       };
     })

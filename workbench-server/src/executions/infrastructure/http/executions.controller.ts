@@ -1,10 +1,19 @@
-import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ExecutionsService } from '@executions/application/executions.service';
 import { RunnersService } from '@executions/application/runners.service';
 import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
+  AssignTicketDto,
   ExecutionDetailDto,
   ExecutionListItemDto,
   ExecutionResponseDto,
@@ -77,6 +86,23 @@ export class ExecutionsController {
   @HttpCode(200)
   async cancel(@Param('id') id: string): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.cancel(id));
+  }
+
+  /** El visto bueno tras crear los tickets: empieza el desarrollo. */
+  @Post('executions/:id/begin')
+  @HttpCode(202)
+  async begin(@Param('id') id: string): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.begin(id));
+  }
+
+  /** Cambia quién desarrolla o revisa un ticket, mientras se espera el visto bueno. */
+  @Patch('executions/:id/tickets/:ticketId')
+  async assign(
+    @Param('id') id: string,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AssignTicketDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.assign(id, ticketId, dto));
   }
 
   @Post('executions/:id/retry')

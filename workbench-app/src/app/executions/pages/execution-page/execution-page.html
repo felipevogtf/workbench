@@ -25,7 +25,12 @@
             <app-icon name="git-pull-request" size="1em" /> Abrir la PR
           </a>
         }
-        @if (execution.status === 'running') {
+        @if (execution.status === 'awaiting') {
+          <button app-button type="button" [loading]="store.acting()" (click)="begin()">
+            <app-icon name="play" size="1em" /> Empezar el desarrollo
+          </button>
+        }
+        @if (execution.status === 'running' || execution.status === 'awaiting') {
           <button
             app-button
             variant="danger"
@@ -112,6 +117,14 @@
             No se llegaron a crear tickets.
           }
         </p>
+      } @else if (execution.status === 'awaiting') {
+        <app-ticket-assignment
+          [cards]="cards()"
+          [developers]="developers()"
+          [reviewers]="reviewers()"
+          [busy]="store.acting()"
+          (assign)="assign($event)"
+        />
       } @else {
         <app-ticket-board
           [cards]="cards()"

@@ -44,6 +44,12 @@ export class Execution {
   }
 
   static reconstruct(props: ExecutionProps): Execution {
+    // Los tickets de antes de los niveles no traían estos datos.
+    for (const ticket of props.tickets) {
+      ticket.level ??= 'medium';
+      ticket.developerId ??= null;
+      ticket.reviewerId ??= null;
+    }
     return new Execution(props);
   }
 
@@ -91,7 +97,7 @@ export class Execution {
   }
 
   get isActive(): boolean {
-    return this.props.status === 'running';
+    return this.props.status === 'running' || this.props.status === 'awaiting';
   }
 
   toProps(): ExecutionProps {
@@ -115,6 +121,21 @@ export class Execution {
 
   setTickets(tickets: ExecutionTicket[]): void {
     this.props.tickets = tickets;
+    this.touch();
+  }
+
+  /** Los tickets están listos: se espera el visto bueno del usuario antes de desarrollarlos. */
+  awaitStart(): void {
+    this.props.status = 'awaiting';
+    this.touch();
+  }
+
+  /** El usuario dio el visto bueno: empieza el desarrollo. */
+  begin(): void {
+    if (this.props.status !== 'awaiting') {
+      throw DomainError.conflict('The execution is not waiting to start');
+    }
+    this.props.status = 'running';
     this.touch();
   }
 

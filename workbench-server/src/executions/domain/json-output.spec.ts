@@ -39,7 +39,9 @@ describe('parseTickets', () => {
         ]),
         5,
       ),
-    ).toEqual([{ title: 'A', description: 'd', criteria: ['c'] }]);
+    ).toEqual([
+      { title: 'A', description: 'd', level: 'medium', criteria: ['c'] },
+    ]);
   });
 
   it('drops tickets without a title or description', () => {

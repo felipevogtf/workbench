@@ -7,7 +7,7 @@ import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Avatar } from '@shared/ui/avatar/avatar';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { Agent, agentLabel } from '../../models/agent';
+import { Agent, agentLabel, levelLabel } from '../../models/agent';
 
 @Component({
   selector: 'app-agent-card',
@@ -28,6 +28,9 @@ export class AgentCard {
 
   /** Con nombre para mostrar se ve ese (y el técnico debajo); si no, solo el técnico. */
   protected readonly label = computed(() => agentLabel(this.agent()));
+
+  /** Para qué tickets sirve (solo desarrolladores con nivel). */
+  protected readonly level = computed(() => levelLabel(this.agent().level));
 
   readonly setDefault = output<Agent>();
   readonly remove = output<Agent>();

@@ -33,7 +33,10 @@ const AGENTS = [
 ];
 
 describe('ExecutionPage', () => {
-  let api: Record<'get' | 'logs' | 'cancel' | 'retry', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign',
+    ReturnType<typeof vi.fn>
+  >;
   let ask: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -44,6 +47,8 @@ describe('ExecutionPage', () => {
       logs: vi.fn((id: string) => of({ logs: `registro de ${id}`, status: 'done' })),
       cancel: vi.fn(() => of(execution('e1', 'cancelled'))),
       retry: vi.fn(() => of(execution('e1', 'running'))),
+      begin: vi.fn(() => of(execution('e1', 'running'))),
+      assign: vi.fn(() => of(execution('e1', 'awaiting'))),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -240,6 +245,53 @@ describe('ExecutionPage', () => {
       expect(
         element.querySelector('[data-status="developing"] .card__worker')?.textContent?.trim(),
       ).toBe('David');
+    });
+  });
+
+  describe('while it waits for the go-ahead', () => {
+    const awaiting = () =>
+      detail('e1', 'awaiting', {
+        tickets: [
+          ticket('a', { title: 'Uno', developerId: 'ag-dev', reviewerId: 'ag-rev' }),
+          ticket('b', { title: 'Dos', developerId: 'ag-dev', reviewerId: 'ag-rev' }),
+        ],
+        jobs: [job('jt', { kind: 'tickets', agentId: 'ag-tk' })],
+      });
+
+    it('shows the assignment of the tickets instead of the board, with a button to start', async () => {
+      const fixture = await render(awaiting());
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(element.querySelector('app-ticket-assignment')).not.toBeNull();
+      expect(element.querySelector('app-ticket-board')).toBeNull();
+      expect(element.textContent).toContain('Esperando tu visto bueno');
+      expect(headerButtons(element)).toContain('Empezar el desarrollo');
+      expect(headerButtons(element)).toContain('Cancelar');
+    });
+
+    it('starts the development when the user gives the go-ahead', async () => {
+      const fixture = await render(awaiting());
+      const start = [...fixture.nativeElement.querySelectorAll('app-page-header button')].find(
+        (button) => (button as HTMLElement).textContent?.includes('Empezar'),
+      ) as HTMLButtonElement;
+
+      start.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.begin).toHaveBeenCalledWith('e1');
+    });
+
+    it('sends nothing when the picked worker is the one the ticket already has', async () => {
+      const fixture = await render(awaiting());
+      const select = fixture.nativeElement.querySelector(
+        'select[aria-label="Revisor del ticket 2"]',
+      ) as HTMLSelectElement;
+      select.value = 'ag-rev';
+      select.dispatchEvent(new Event('change'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      // El revisor ya era ese: no se manda nada.
+      expect(api.assign).not.toHaveBeenCalled();
     });
   });
 

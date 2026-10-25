@@ -68,6 +68,17 @@ export class ExecutionStore {
     return this.act((id) => this.api.cancel(id));
   }
 
+  async begin(): Promise<boolean> {
+    return this.act((id) => this.api.begin(id));
+  }
+
+  async assign(
+    ticketId: string,
+    body: { developerId?: string; reviewerId?: string },
+  ): Promise<boolean> {
+    return this.act((id) => this.api.assign(id, ticketId, body));
+  }
+
   async retry(): Promise<boolean> {
     return this.act((id) => this.api.retry(id));
   }

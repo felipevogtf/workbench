@@ -38,6 +38,12 @@ export class AgentOrmEntity {
   @Column({ type: 'text', nullable: true })
   avatar!: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  effort!: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  level!: string | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

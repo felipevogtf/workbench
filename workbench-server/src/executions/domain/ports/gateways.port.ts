@@ -38,11 +38,20 @@ export interface ResolvedAgent {
   model: string;
   systemPrompt: string;
   allowedTools: string[];
+  /** Esfuerzo con que trabaja; `null` = el del modelo. */
+  effort: string | null;
+  /** Solo desarrolladores: el tamaño de ticket que les toca. */
+  level: string | null;
+  isDefault: boolean;
 }
 
 export interface AgentsGatewayPort {
   /** El agente por defecto del módulo. */
   getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent>;
+  /** Todos los agentes del módulo, el por defecto primero. */
+  listByModule(module: ExecutionAgentModule): Promise<ResolvedAgent[]>;
+  /** Un agente por su id, o `null` si ya no existe. */
+  getById(id: string): Promise<ResolvedAgent | null>;
 }
 export const AGENTS_GATEWAY_PORT = Symbol('EXECUTIONS_AGENTS_GATEWAY_PORT');
 

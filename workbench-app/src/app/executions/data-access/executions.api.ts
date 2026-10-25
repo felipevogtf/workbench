@@ -47,6 +47,20 @@ export class ExecutionsApi {
     return this.http.post<Execution>(`${this.base}/executions/${id}/retry`, {});
   }
 
+  /** El visto bueno tras crear los tickets: empieza el desarrollo. */
+  begin(id: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/begin`, {});
+  }
+
+  /** Cambia quién desarrolla o revisa un ticket (solo mientras se espera el visto bueno). */
+  assign(
+    id: string,
+    ticketId: string,
+    body: { developerId?: string; reviewerId?: string },
+  ): Observable<Execution> {
+    return this.http.patch<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}`, body);
+  }
+
   listRunners(): Observable<Runner[]> {
     return this.http.get<Runner[]>(`${this.base}/runners`);
   }

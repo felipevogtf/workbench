@@ -203,6 +203,7 @@ describe('ExecutionsService', () => {
       const execution = await service.start('issue-1');
 
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       let current = (await service.get(execution.id)).execution;
       expect(current.tickets.map((t) => [t.title, t.status])).toEqual([
         ['API de órdenes', 'developing'],
@@ -262,6 +263,7 @@ describe('ExecutionsService', () => {
     it('reports the total cost of the jobs', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
 
       const { jobs: summary } = await service.get(execution.id);
       expect(summary.reduce((sum, job) => sum + (job.costUsd ?? 0), 0)).toBe(
@@ -274,6 +276,7 @@ describe('ExecutionsService', () => {
     it('fails the execution and lets the user retry the same job', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       await answer(developed('aaa', 'aaa'));
 
       let current = (await service.get(execution.id)).execution;
@@ -298,6 +301,7 @@ describe('ExecutionsService', () => {
     it('uses the agents as they are now, not as they were when the job failed', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       const before = jobs.items.at(-1)!;
       expect(before.payload.agent?.allowedTools).toEqual(['Read']);
       await answer({}, false, 'permiso denegado');
@@ -325,6 +329,7 @@ describe('ExecutionsService', () => {
     it('fails with the explanation of the developer, and leaves no stage spinning', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       await answer(developed('aaa', 'bbb'));
       await answer({ output: REJECTED }); // el revisor pide correcciones: otra vuelta de desarrollo
       await answer({
@@ -358,6 +363,7 @@ describe('ExecutionsService', () => {
     async function twoTickets() {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT }); // 2 tickets; el primero pasa a desarrollo
+      await service.begin(execution.id);
       return execution;
     }
 
@@ -407,10 +413,176 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('assigning the tickets to workers', () => {
+    const worker = (
+      id: string,
+      data: Partial<{ level: string; effort: string; model: string }>,
+    ) => ({
+      id,
+      name: id,
+      provider: 'claude',
+      model: data.model ?? 'claude-haiku-4-5-20251001',
+      systemPrompt: 'prompt',
+      allowedTools: ['Read'],
+      effort: data.effort ?? null,
+      level: data.level ?? null,
+      isDefault: false,
+    });
+    const LEVELED = JSON.stringify({
+      tickets: [
+        { title: 'Texto', description: 'd', level: 'simple', criteria: [] },
+        { title: 'Lógica', description: 'd', level: 'medium', criteria: [] },
+        { title: 'Sin nivel', description: 'd', criteria: [] },
+      ],
+    });
+
+    beforeEach(() => {
+      agents.extra = [
+        worker('agent-task-developer-simple', {
+          level: 'simple',
+          effort: 'low',
+        }),
+        worker('agent-task-reviewer-2', {}),
+      ];
+    });
+
+    it('waits for the go-ahead once the tickets exist, without developing anything yet', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+
+      const { execution: current } = await service.get(execution.id);
+      expect(current.status).toBe('awaiting');
+      expect(current.isActive).toBe(true);
+      expect(current.stages.map((s) => [s.key, s.status])).toEqual([
+        ['tickets', 'done'],
+        ['develop', 'pending'],
+        ['review', 'pending'],
+        ['publish', 'pending'],
+      ]);
+      expect(jobs.items.filter((job) => job.isOpen)).toHaveLength(0);
+      await expect(service.start('issue-1')).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+
+    it('gives each ticket the developer of its level, and the default developer when there is none', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+
+      const tickets = (await service.get(execution.id)).execution.tickets;
+      expect(tickets.map((t) => t.level)).toEqual([
+        'simple',
+        'medium',
+        'medium',
+      ]);
+      expect(tickets.map((t) => t.developerId)).toEqual([
+        'agent-task-developer-simple',
+        'agent-task-developer',
+        'agent-task-developer',
+      ]);
+    });
+
+    it('takes turns among the reviewers, starting with the default one', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+
+      const tickets = (await service.get(execution.id)).execution.tickets;
+      expect(tickets.map((t) => t.reviewerId)).toEqual([
+        'agent-task-reviewer',
+        'agent-task-reviewer-2',
+        'agent-task-reviewer',
+      ]);
+    });
+
+    it('lets the user change who works on a ticket before it starts', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      const [first] = (await service.get(execution.id)).execution.tickets;
+
+      await service.assign(execution.id, first.id, {
+        developerId: 'agent-task-developer',
+        reviewerId: 'agent-task-reviewer-2',
+      });
+
+      const [changed] = (await service.get(execution.id)).execution.tickets;
+      expect(changed.developerId).toBe('agent-task-developer');
+      expect(changed.reviewerId).toBe('agent-task-reviewer-2');
+    });
+
+    it('refuses an agent that is not a developer or a reviewer as asked', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      const [first] = (await service.get(execution.id)).execution.tickets;
+
+      await expect(
+        service.assign(execution.id, first.id, {
+          developerId: 'agent-task-reviewer',
+        }),
+      ).rejects.toThrow('cannot work as');
+      await expect(
+        service.assign(execution.id, first.id, { developerId: 'no-existe' }),
+      ).rejects.toThrow('cannot work as');
+    });
+
+    it('does not change the assignment once the development has started', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      await service.begin(execution.id);
+      const [first] = (await service.get(execution.id)).execution.tickets;
+
+      await expect(
+        service.assign(execution.id, first.id, {
+          developerId: 'agent-task-developer',
+        }),
+      ).rejects.toMatchObject({ kind: 'conflict' });
+      await expect(service.begin(execution.id)).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+
+    it('develops with the assigned worker and its effort, and reviews with the assigned reviewer', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      await service.begin(execution.id);
+
+      const develop = jobs.items.at(-1)!;
+      expect(develop.kind).toBe('develop');
+      expect(develop.payload.agent).toMatchObject({
+        id: 'agent-task-developer-simple',
+        model: 'claude-haiku-4-5-20251001',
+        effort: 'low',
+      });
+
+      await answer(developed('aaa', 'bbb'));
+      const review = jobs.items.at(-1)!;
+      expect(review.kind).toBe('review');
+      expect(review.payload.agent?.id).toBe('agent-task-reviewer');
+    });
+
+    it('can be cancelled while it waits for the go-ahead', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+
+      const cancelled = await service.cancel(execution.id);
+
+      expect(cancelled.status).toBe('cancelled');
+    });
+
+    it('asks the reviewer to read the review rules of the repository', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      await service.begin(execution.id);
+      await answer(developed('aaa', 'bbb'));
+
+      expect(jobs.items.at(-1)!.payload.prompt).toContain('REVIEW_RULES.md');
+    });
+  });
+
   describe('the review loop', () => {
     async function reachFirstReview() {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       await answer(developed('aaa', 'bbb'));
       return execution;
     }
@@ -423,8 +595,9 @@ describe('ExecutionsService', () => {
     });
 
     it('tells the developer to install the dependencies and not to stop on a denied command', async () => {
-      await service.start('issue-1');
+      const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
       const develop = jobs.items.at(-1)!;
 
       expect(develop.payload.prompt).toContain('npm install');
@@ -522,6 +695,7 @@ describe('ExecutionsService', () => {
           tickets: [{ title: 'Único', description: 'd', criteria: [] }],
         }),
       });
+      await service.begin(execution.id);
       await answer(developed('aaa', 'bbb'));
       await answer({ output: APPROVED });
 

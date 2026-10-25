@@ -62,12 +62,12 @@ export class BitbucketApiClient {
     );
   }
 
-  /** PRs abiertas del repo donde `reviewerUuid` figura como reviewer. */
+  /** PRs abiertas del repo donde `userUuid` figura como reviewer o es el autor (las propias también se revisan). */
   async getPullRequestsToReview(
     repoSlug: string,
-    reviewerUuid: string,
+    userUuid: string,
   ): Promise<BitbucketPullRequest[]> {
-    const query = `state="OPEN" AND reviewers.uuid="${reviewerUuid}"`;
+    const query = `state="OPEN" AND (reviewers.uuid="${userUuid}" OR author.uuid="${userUuid}")`;
     return this.paginate<BitbucketPullRequest>(
       `${API}/repositories/${this.workspace}/${repoSlug}/pullrequests` +
         `?pagelen=50&q=${encodeURIComponent(query)}`,

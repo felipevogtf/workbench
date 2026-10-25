@@ -4,6 +4,12 @@
     <app-badge tone="neutral"
       ><code>{{ agent().model }}</code></app-badge
     >
+    @if (level(); as level) {
+      <app-badge tone="warning">{{ level }}</app-badge>
+    }
+    @if (agent().effort; as effort) {
+      <app-badge tone="neutral">esfuerzo {{ effort }}</app-badge>
+    }
     @if (agent().isDefault) {
       <app-badge tone="success" dot>Por defecto</app-badge>
     }

@@ -30,6 +30,7 @@ export class InMemoryExecutions implements ExecutionRepositoryPort {
   findRecent(limit: number): Promise<Execution[]> {
     return Promise.resolve(
       [...this.items.values()]
+        .reverse()
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         .slice(0, limit),
     );
@@ -144,15 +145,40 @@ export class FakePlans implements PlansGatewayPort {
 export class FakeAgents implements AgentsGatewayPort {
   provider = 'claude';
   tools = ['Read'];
-  getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent> {
-    return Promise.resolve({
+  /** Agentes extra por módulo, además del por defecto. */
+  extra: ResolvedAgent[] = [];
+
+  private base(module: ExecutionAgentModule): ResolvedAgent {
+    return {
       id: `agent-${module}`,
       name: `default-${module}`,
       provider: this.provider,
       model: 'claude-sonnet-5-5',
       systemPrompt: `prompt de ${module}`,
       allowedTools: [...this.tools],
-    });
+      effort: null,
+      level: null,
+      isDefault: true,
+    };
+  }
+
+  getDefault(module: ExecutionAgentModule): Promise<ResolvedAgent> {
+    return Promise.resolve(this.base(module));
+  }
+
+  listByModule(module: ExecutionAgentModule): Promise<ResolvedAgent[]> {
+    const extra = this.extra.filter((agent) => agent.id.includes(module));
+    return Promise.resolve([this.base(module), ...extra]);
+  }
+
+  getById(id: string): Promise<ResolvedAgent | null> {
+    const modules: ExecutionAgentModule[] = [
+      'task-tickets',
+      'task-developer',
+      'task-reviewer',
+    ];
+    const all = [...modules.map((module) => this.base(module)), ...this.extra];
+    return Promise.resolve(all.find((agent) => agent.id === id) ?? null);
   }
 }
 

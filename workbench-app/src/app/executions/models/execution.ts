@@ -1,6 +1,8 @@
 import type { BadgeTone } from '@shared/ui/badge/badge';
 
-export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+/** `awaiting`: los tickets están listos y asignados; se espera el visto bueno del usuario. */
+export type ExecutionStatus = 'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
+export type TicketLevel = 'simple' | 'medium' | 'complex';
 export type StageKey = 'tickets' | 'develop' | 'review' | 'publish';
 export type StageStatus = 'pending' | 'running' | 'done' | 'failed';
 export type TicketStatus = 'pending' | 'developing' | 'reviewing' | 'done' | 'failed';
@@ -19,6 +21,11 @@ export interface ExecutionTicket {
   title: string;
   description: string;
   criteria: string[];
+  level: TicketLevel;
+  /** El desarrollador asignado; `null` = el que esté por defecto. */
+  developerId: string | null;
+  /** El revisor asignado; `null` = el que esté por defecto. */
+  reviewerId: string | null;
   status: TicketStatus;
   /** Revisiones que ya tuvo. */
   rounds: number;
@@ -102,10 +109,16 @@ export interface CreatedRunner extends Runner {
   token: string;
 }
 
-/** En marcha: mientras lo esté, la pantalla se refresca sola. */
+/** En curso (trabajando o esperando el visto bueno): no se puede lanzar otra de la misma tarea. */
 export function isExecutionActive(execution: Pick<Execution, 'status'>): boolean {
-  return execution.status === 'running';
+  return execution.status === 'running' || execution.status === 'awaiting';
 }
+
+export const TICKET_LEVEL_LABEL: Record<TicketLevel, string> = {
+  simple: 'Simple',
+  medium: 'Medio',
+  complex: 'Complejo',
+};
 
 export const STAGE_LABEL: Record<StageKey, string> = {
   tickets: 'Tickets',
@@ -123,6 +136,7 @@ export const STAGE_HINT: Record<StageKey, string> = {
 
 export const EXECUTION_STATUS_LABEL: Record<ExecutionStatus, string> = {
   running: 'En curso',
+  awaiting: 'Esperando tu visto bueno',
   completed: 'Completada',
   failed: 'Falló',
   cancelled: 'Cancelada',
@@ -130,6 +144,7 @@ export const EXECUTION_STATUS_LABEL: Record<ExecutionStatus, string> = {
 
 export const EXECUTION_STATUS_TONE: Record<ExecutionStatus, BadgeTone> = {
   running: 'info',
+  awaiting: 'warning',
   completed: 'success',
   failed: 'danger',
   cancelled: 'neutral',

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
+import { AGENT_EFFORTS, AGENT_LEVELS } from '@ai-agents/domain/effort';
 import {
   AgentModule,
   DEFAULT_MODULE,
@@ -55,6 +56,8 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       is_default: agent.isDefault,
       display_name: agent.displayName,
       avatar: agent.avatar,
+      effort: agent.effort,
+      level: agent.level,
       created_at: agent.createdAt,
       updated_at: agent.updatedAt,
     });
@@ -84,6 +87,8 @@ export class TypeOrmAgentRepository implements AgentRepositoryPort {
       isDefault: orm.is_default,
       displayName: orm.display_name,
       avatar: orm.avatar,
+      effort: AGENT_EFFORTS.find((effort) => effort === orm.effort) ?? null,
+      level: AGENT_LEVELS.find((level) => level === orm.level) ?? null,
       createdAt: orm.created_at,
       updatedAt: orm.updated_at,
     });

@@ -116,6 +116,24 @@
       </app-form-field>
 
       <app-form-field
+        label="Esfuerzo"
+        for="agent-effort"
+        hint="Cuánto se esfuerza el modelo. Más esfuerzo piensa mejor pero tarda y gasta más."
+      >
+        <app-select inputId="agent-effort" formControlName="effort" [options]="effortOptions" />
+      </app-form-field>
+
+      @if (isDeveloper()) {
+        <app-form-field
+          label="Nivel de tickets"
+          for="agent-level"
+          hint="Qué tickets toma: Lucy asigna un nivel a cada ticket y lo hace el desarrollador de ese nivel."
+        >
+          <app-select inputId="agent-level" formControlName="level" [options]="levelOptions" />
+        </app-form-field>
+      }
+
+      <app-form-field
         label="Prompt del agente"
         for="agent-prompt"
         required

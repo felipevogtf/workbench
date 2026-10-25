@@ -47,6 +47,29 @@ export function moduleLabel(module: AgentModule): string {
   return MODULE_OPTIONS.find((option) => option.value === module)?.label ?? module;
 }
 
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type AgentLevel = 'simple' | 'medium' | 'complex';
+
+export const EFFORT_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Automático (el del modelo)' },
+  { value: 'low', label: 'Bajo' },
+  { value: 'medium', label: 'Medio' },
+  { value: 'high', label: 'Alto' },
+  { value: 'xhigh', label: 'Muy alto' },
+  { value: 'max', label: 'Máximo' },
+];
+
+export const LEVEL_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Sin nivel' },
+  { value: 'simple', label: 'Simple' },
+  { value: 'medium', label: 'Medio' },
+  { value: 'complex', label: 'Complejo' },
+];
+
+export function levelLabel(level: AgentLevel | null | undefined): string | null {
+  return LEVEL_OPTIONS.find((option) => option.value === level)?.label ?? null;
+}
+
 export type AgentProvider = 'claude' | 'copilot' | 'antigravity';
 
 /** CLI de IA con el que corre un agente, con los modelos que ofrece y si está habilitado. */
@@ -70,6 +93,10 @@ export interface Agent {
   displayName?: string | null;
   /** Su imagen (data URL); sin ella, la app dibuja un avatar. */
   avatar?: string | null;
+  /** Esfuerzo con que trabaja; sin él, el del modelo. */
+  effort?: AgentEffort | null;
+  /** Solo desarrolladores: el tamaño de ticket que les toca. */
+  level?: AgentLevel | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,6 +110,8 @@ export interface AgentInput {
   allowedTools: string[];
   displayName?: string | null;
   avatar?: string | null;
+  effort?: AgentEffort | null;
+  level?: AgentLevel | null;
 }
 
 /** Cómo se llama el agente en pantalla: su nombre para mostrar o, si no tiene, el técnico. */

@@ -128,6 +128,12 @@ describe('claudeArgs', () => {
     assert.equal(args[args.indexOf('--allowedTools') + 1], 'Read,Grep');
   });
 
+  it('passes the effort of the agent, and none when it has none', () => {
+    const args = claudeArgs(run({ effort: 'low' }));
+    assert.equal(args[args.indexOf('--effort') + 1], 'low');
+    assert.ok(!claudeArgs(run()).includes('--effort'));
+  });
+
   it('does not pass --allowedTools when no tool is allowed', () => {
     assert.ok(!claudeArgs(run({ tools: [] })).includes('--allowedTools'));
   });

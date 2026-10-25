@@ -1,3 +1,4 @@
+import { IsOptional, IsUUID } from 'class-validator';
 import {
   ExecutionRepo,
   ExecutionStatus,
@@ -59,4 +60,15 @@ export class ExecutionDetailDto extends ExecutionResponseDto {
 export class JobLogsDto {
   logs!: string;
   status!: JobStatus;
+}
+
+/** Cambia quién desarrolla o revisa un ticket. */
+export class AssignTicketDto {
+  @IsOptional()
+  @IsUUID()
+  developerId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  reviewerId?: string;
 }

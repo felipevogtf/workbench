@@ -11,6 +11,8 @@ export interface JobAgent {
   model: string;
   systemPrompt: string;
   allowedTools: string[];
+  /** Esfuerzo con que trabaja (`claude --effort`); ausente = el del modelo. */
+  effort?: string;
 }
 
 /** Todo lo que el runner necesita para hacer un trabajo. */

@@ -20,6 +20,7 @@ import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
+import { TicketAssignment } from '../../components/ticket-assignment/ticket-assignment';
 import { TicketBoard } from '../../components/ticket-board/ticket-board';
 import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
 import { ExecutionStore } from '../../data-access/execution.store';
@@ -62,6 +63,7 @@ const GENERAL = 'general';
     PageHeader,
     Skeleton,
     Spinner,
+    TicketAssignment,
     TicketBoard,
     TicketPanel,
   ],
@@ -95,7 +97,7 @@ export class ExecutionPage {
   protected readonly cards = computed<BoardCard[]>(() => {
     const detail = this.store.detail();
     if (!detail) return [];
-    const developer = this.agents.defaultAgentOf('task-developer');
+    const defaultDeveloper = this.agents.defaultAgentOf('task-developer');
 
     return detail.tickets.map((ticket, index) => {
       const mine = detail.jobs.filter((job) => job.ticketId === ticket.id);
@@ -112,13 +114,29 @@ export class ExecutionPage {
       let worker = job ? this.workerOf(job) : null;
       let upcoming = false;
       // Un ticket que espera su turno es del desarrollador de ahora, que lo tomará.
-      if (!worker && ticket.status === 'pending' && developer) {
-        worker = { name: agentLabel(developer), avatar: developer.avatar ?? null };
-        upcoming = true;
+      if (!worker && ticket.status === 'pending') {
+        const developer =
+          this.agents.agents().find((agent) => agent.id === ticket.developerId) ?? defaultDeveloper;
+        if (developer) {
+          worker = { name: agentLabel(developer), avatar: developer.avatar ?? null };
+          upcoming = true;
+        }
       }
       return { ticket, number: index + 1, worker, upcoming };
     });
   });
+
+  /** Quiénes pueden desarrollar y revisar, para repartir los tickets antes de empezar. */
+  protected readonly developers = computed(() =>
+    this.agents
+      .agents()
+      .filter((agent) => agent.module === 'task-developer' && agent.provider === 'claude'),
+  );
+  protected readonly reviewers = computed(() =>
+    this.agents
+      .agents()
+      .filter((agent) => agent.module === 'task-reviewer' && agent.provider === 'claude'),
+  );
 
   protected readonly progress = computed(() => {
     const tickets = this.store.detail()?.tickets ?? [];
@@ -170,6 +188,8 @@ export class ExecutionPage {
     switch (execution.status) {
       case 'running':
         return executionProgress(execution) ?? '';
+      case 'awaiting':
+        return 'Los tickets están listos. Revisa quién hace cada uno y pulsa Empezar.';
       case 'completed':
         return 'Todos los tickets están hechos y la pull request está abierta.';
       case 'failed':
@@ -206,6 +226,14 @@ export class ExecutionPage {
       tone: 'danger',
     });
     if (confirmed) await this.store.cancel();
+  }
+
+  protected begin(): void {
+    void this.store.begin();
+  }
+
+  protected assign(change: { ticketId: string; developerId?: string; reviewerId?: string }): void {
+    void this.store.assign(change.ticketId, change);
   }
 
   protected retry(): void {

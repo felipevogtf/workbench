@@ -68,6 +68,7 @@ export async function runJob(
     binArgs: context.config.claudeBinArgs,
     model: agent.model,
     systemPrompt: agent.systemPrompt,
+    effort: agent.effort,
     tools,
     prompt: payload.prompt,
     cwd: workspace.dir,

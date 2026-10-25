@@ -34,6 +34,7 @@ import {
   type ExecutionAgentModule,
   type PlansGatewayPort,
   type PullRequestsGatewayPort,
+  type ResolvedAgent,
   type TasksGatewayPort,
 } from '@executions/domain/ports/gateways.port';
 
@@ -249,6 +250,8 @@ export class ExecutionsService {
           drafts.map((draft): ExecutionTicket => ({
             id: crypto.randomUUID(),
             ...draft,
+            developerId: null,
+            reviewerId: null,
             status: 'pending',
             rounds: 0,
             feedback: null,
@@ -258,8 +261,10 @@ export class ExecutionsService {
             reviewNote: null,
           })),
         );
+        await this.assignTickets(execution);
         execution.setStage('tickets', 'done');
-        await this.startNextTicket(execution);
+        // Se espera el visto bueno: el usuario puede cambiar quién hace cada ticket antes de empezar.
+        execution.awaitStart();
         return;
       }
 
@@ -397,7 +402,7 @@ export class ExecutionsService {
       });
     }
 
-    const agent = await this.agents.getDefault(AGENT_OF[kind]);
+    const agent = await this.agentFor(kind, ticket);
     const plan = await this.planOf(execution);
     const task = await this.tasks.getTask(execution.issueId);
     const repoName = execution.repo.fullName;
@@ -445,6 +450,103 @@ export class ExecutionsService {
     });
   }
 
+  /** El agente asignado al ticket para esa etapa y, si ya no existe o no sirve, el que esté por defecto. */
+  private async agentFor(
+    kind: Exclude<StageKey, 'publish'>,
+    ticket?: ExecutionTicket,
+  ): Promise<ResolvedAgent> {
+    const assigned =
+      kind === 'develop'
+        ? ticket?.developerId
+        : kind === 'review'
+          ? ticket?.reviewerId
+          : null;
+    if (assigned) {
+      const agent = await this.agents.getById(assigned);
+      if (agent) return agent;
+    }
+    return this.agents.getDefault(AGENT_OF[kind]);
+  }
+
+  /**
+   * Reparte los tickets: cada uno al desarrollador de su nivel (o al que esté por defecto si no hay uno
+   * de ese nivel) y los revisores por turnos, empezando por el que está por defecto.
+   */
+  private async assignTickets(execution: Execution): Promise<void> {
+    const developers = (
+      await this.agents.listByModule('task-developer')
+    ).filter((agent) => agent.provider === 'claude');
+    const reviewers = (await this.agents.listByModule('task-reviewer')).filter(
+      (agent) => agent.provider === 'claude',
+    );
+    const fallback =
+      developers.find((agent) => agent.isDefault) ?? developers[0];
+
+    execution.tickets.forEach((ticket, index) => {
+      const ofLevel = developers.find((agent) => agent.level === ticket.level);
+      ticket.developerId = (ofLevel ?? fallback)?.id ?? null;
+      ticket.reviewerId =
+        reviewers.length > 0 ? reviewers[index % reviewers.length].id : null;
+    });
+  }
+
+  /** Cambia quién desarrolla o revisa un ticket. Solo mientras se espera el visto bueno. */
+  async assign(
+    id: string,
+    ticketId: string,
+    data: { developerId?: string; reviewerId?: string },
+  ): Promise<Execution> {
+    const execution = await this.executions.findById(id);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${id} not found`);
+    }
+    if (execution.status !== 'awaiting') {
+      throw DomainError.conflict(
+        'Tickets can only be reassigned while the execution waits to start',
+      );
+    }
+
+    const ticket = execution.ticket(ticketId);
+    if (data.developerId) {
+      await this.assertAgent(data.developerId, 'task-developer');
+      ticket.developerId = data.developerId;
+    }
+    if (data.reviewerId) {
+      await this.assertAgent(data.reviewerId, 'task-reviewer');
+      ticket.reviewerId = data.reviewerId;
+    }
+    return this.executions.save(execution);
+  }
+
+  /** El visto bueno: empieza a desarrollar los tickets, uno a uno. */
+  async begin(id: string): Promise<Execution> {
+    const execution = await this.executions.findById(id);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${id} not found`);
+    }
+    execution.begin();
+    await this.startNextTicket(execution);
+    return this.executions.save(execution);
+  }
+
+  private async assertAgent(
+    agentId: string,
+    module: ExecutionAgentModule,
+  ): Promise<void> {
+    const agent = await this.agents.getById(agentId);
+    const valid = (await this.agents.listByModule(module)).some(
+      (candidate) => candidate.id === agent?.id,
+    );
+    if (!agent || !valid) {
+      throw new DomainError(`That agent cannot work as ${module}`);
+    }
+    if (agent.provider !== 'claude') {
+      throw new DomainError(
+        `The agent "${agent.name}" uses ${agent.provider}; the runner can only run claude agents`,
+      );
+    }
+  }
+
   private toJobAgent(agent: {
     id: string;
     name: string;
@@ -452,6 +554,7 @@ export class ExecutionsService {
     model: string;
     systemPrompt: string;
     allowedTools: string[];
+    effort: string | null;
   }) {
     if (agent.provider !== 'claude') {
       throw new DomainError(
@@ -464,6 +567,7 @@ export class ExecutionsService {
       model: agent.model,
       systemPrompt: agent.systemPrompt,
       allowedTools: agent.allowedTools,
+      ...(agent.effort ? { effort: agent.effort } : {}),
     };
   }
 
