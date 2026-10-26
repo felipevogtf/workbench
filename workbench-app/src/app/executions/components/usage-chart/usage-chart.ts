@@ -22,6 +22,12 @@ const KINDS: readonly { kind: string; label: string }[] = [
     <figure class="chart">
       <div class="chart__plot" role="img" [attr.aria-label]="summary()">
         <span class="chart__max">{{ maxLabel() }}</span>
+        @if (empty()) {
+          <p class="chart__none">
+            Todavía no hay gasto medido: las ejecuciones anteriores no guardaban los tokens. Se
+            empieza a contar desde la próxima.
+          </p>
+        }
         @for (bar of bars(); track bar.date) {
           <div class="chart__col" [title]="bar.tooltip">
             <div class="chart__bar" [style.height.%]="bar.height">
@@ -94,6 +100,15 @@ const KINDS: readonly { kind: string; label: string }[] = [
       color: var(--text-color);
     }
 
+    .chart__none {
+      position: absolute;
+      inset: 2rem 0 auto 0;
+      margin: 0;
+      text-align: center;
+      font-size: 0.875rem;
+      color: var(--text-color);
+    }
+
     .chart__col {
       display: flex;
       flex: 1;
@@ -122,7 +137,7 @@ const KINDS: readonly { kind: string; label: string }[] = [
 
     .chart__part[data-kind='tickets'],
     .chart__swatch[data-kind='tickets'] {
-      background: var(--tone-info-fg, #3b82f6);
+      background: #3b82f6;
     }
 
     .chart__part[data-kind='develop'],
@@ -187,6 +202,9 @@ export class UsageChart {
   }
 
   private readonly max = computed(() => Math.max(0, ...this.days().map((day) => this.value(day))));
+
+  /** Ningún día tiene gasto medido. */
+  protected readonly empty = computed(() => this.days().every((day) => day.tokens === 0));
 
   protected readonly maxLabel = computed(() =>
     this.unit() === 'points' ? formatPoints(this.max()) : `${formatTokens(this.max())} tokens`,

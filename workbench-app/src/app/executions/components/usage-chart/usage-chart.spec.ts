@@ -96,4 +96,17 @@ describe('UsageChart', () => {
 
     expect(bar?.style.height).toBe('0%');
   });
+
+  it('explains why it is empty when no day has measured spending, and not otherwise', async () => {
+    const full = await render();
+    expect(full.querySelector('.chart__none')).toBeNull();
+
+    const fixture = TestBed.createComponent(UsageChart);
+    fixture.componentRef.setInput('days', [day('2026-10-26', 0, {})]);
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.chart__none')?.textContent,
+    ).toContain('no guardaban los tokens');
+  });
 });
