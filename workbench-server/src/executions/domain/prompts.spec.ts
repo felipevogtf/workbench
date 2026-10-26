@@ -26,6 +26,26 @@ const ticket = (files?: string[]): ExecutionTicket => ({
   questionsAsked: 0,
 });
 
+describe('the review prompt', () => {
+  const prompt = buildReviewPrompt({
+    ticket: ticket(),
+    repoName: 'org/repo',
+    from: 'abc123',
+    developerSummary: null,
+  });
+
+  it('tells the reviewer to run the tests, lint and build, without changing files', () => {
+    expect(prompt).toContain('`npm test`, `npm run lint`, `npm run build`');
+    expect(prompt).toContain('No cambies archivos');
+  });
+
+  it('does not block the approval for errors in files the ticket does not touch', () => {
+    expect(prompt).toContain('git diff --stat');
+    expect(prompt).toContain('ya estaban antes y no bloquean la aprobación');
+    expect(prompt).toContain('dilo en `doubts`');
+  });
+});
+
 describe('ticket files', () => {
   it('asks Lucy for the files of each ticket', () => {
     const prompt = buildTicketsPrompt({

@@ -128,6 +128,22 @@ export async function runJob(
     }
   }
 
+  if (job.kind === 'review') {
+    // El revisor corre pruebas, lint y build, que pueden dejar archivos (un `lint --fix`, por ejemplo): no es su trabajo
+    // cambiar nada, y lo que quede se colaría en el commit del próximo desarrollo.
+    await discardSubmoduleChanges(workspace.dir, submodules);
+    const left = (
+      await git(['status', '--porcelain'], { cwd: workspace.dir })
+    ).trim();
+    if (left) {
+      context.onLog(
+        'El revisor dejó archivos cambiados al correr los comandos: se descartan.',
+      );
+      await git(['reset', '--hard', 'HEAD'], { cwd: workspace.dir });
+      await git(['clean', '-fd'], { cwd: workspace.dir });
+    }
+  }
+
   if (job.kind !== 'develop') {
     return { result: { output }, costUsd: claude.costUsd, usage: claude.usage };
   }

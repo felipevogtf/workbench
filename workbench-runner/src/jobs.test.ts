@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { DEFAULT_CONFIG } from './config';
 import { git } from './git';
 import { runJob, type JobContext } from './jobs';
 import {
@@ -120,6 +121,56 @@ describe('runJob', () => {
     } finally {
       delete process.env.FAKE_NO_CHANGES;
     }
+  });
+
+  it('review: discards the files that running the checks left, so they do not slip into the next commit', async () => {
+    const { context, logs } = setup();
+    await runJob(job('develop'), context);
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    const headBefore = (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim();
+
+    process.env.FAKE_TOUCH = 'dist/salida.txt,README.md';
+    try {
+      await runJob(job('review'), context);
+    } finally {
+      delete process.env.FAKE_TOUCH;
+    }
+
+    assert.equal(
+      (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+      '',
+    );
+    assert.equal(existsSync(join(dir, 'dist', 'salida.txt')), false);
+    assert.equal(
+      (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim(),
+      headBefore,
+    );
+    assert.ok(logs.some((line) => line.includes('El revisor dejó archivos')));
+  });
+
+  it('review: says nothing when it left the worktree clean', async () => {
+    const { context, logs } = setup();
+    await runJob(job('develop'), context);
+
+    await runJob(job('review'), context);
+
+    assert.equal(
+      logs.some((line) => line.includes('El revisor dejó archivos')),
+      false,
+    );
+  });
+
+  it('review: may run the tests, lint and build, but only the develop job installs', () => {
+    const review = DEFAULT_CONFIG.allowedTools.review;
+    for (const command of ['test', 'run test', 'run lint', 'run build']) {
+      assert.ok(review.includes(`Bash(npm ${command}:*)` as never), command);
+    }
+    assert.equal(review.includes('Bash(npm install:*)' as never), false);
+    assert.equal(review.includes('Edit' as never), false);
   });
 
   describe('with a submodule', () => {
