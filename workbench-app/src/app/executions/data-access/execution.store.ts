@@ -79,6 +79,10 @@ export class ExecutionStore {
     return this.act((id) => this.api.assign(id, ticketId, body));
   }
 
+  async answer(ticketId: string, text: string): Promise<boolean> {
+    return this.act((id) => this.api.answer(id, ticketId, text));
+  }
+
   async retry(): Promise<boolean> {
     return this.act((id) => this.api.retry(id));
   }

@@ -34,7 +34,7 @@ const AGENTS = [
 
 describe('ExecutionPage', () => {
   let api: Record<
-    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign' | 'chat',
+    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign' | 'chat' | 'answer',
     ReturnType<typeof vi.fn>
   >;
   let ask: ReturnType<typeof vi.fn>;
@@ -50,6 +50,7 @@ describe('ExecutionPage', () => {
       begin: vi.fn(() => of(execution('e1', 'running'))),
       assign: vi.fn(() => of(execution('e1', 'awaiting'))),
       chat: vi.fn(() => of({ reply: 'Va bien' })),
+      answer: vi.fn(() => of(execution('e1', 'running'))),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -263,6 +264,60 @@ describe('ExecutionPage', () => {
       await vi.advanceTimersByTimeAsync(0);
       fixture.detectChanges();
       expect(element.textContent).toContain('Habla con Lucy');
+    });
+  });
+
+  describe('a ticket that waits for an answer', () => {
+    const waiting = () =>
+      detail('e1', 'running', {
+        tickets: [
+          ticket('a', {
+            title: 'Banner de conexión',
+            status: 'waiting',
+            question: {
+              id: 'q1',
+              from: 'David',
+              agentId: 'ag-dev',
+              text: '¿Todas las pantallas o solo el formulario?',
+              recommendation: 'Recomiendo todas las pantallas.',
+              askedAt: '2026-10-26T00:00:00Z',
+            },
+          }),
+        ],
+        jobs: [job('jt', { kind: 'tickets', agentId: 'ag-tk' })],
+      });
+
+    it('shows the question to the user, with the recommendation of Lucy, and a column of its own', async () => {
+      const fixture = await render(waiting());
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(element.querySelector('app-ticket-questions')?.textContent).toContain(
+        '¿Todas las pantallas o solo el formulario?',
+      );
+      expect(element.querySelector('app-ticket-questions')?.textContent).toContain(
+        'Recomiendo todas las pantallas.',
+      );
+      expect(element.querySelector('[data-status="waiting"] .card')).not.toBeNull();
+    });
+
+    it('sends the answer of the user to that ticket', async () => {
+      const fixture = await render(waiting());
+      const element: HTMLElement = fixture.nativeElement;
+      const box = element.querySelector('app-ticket-questions textarea') as HTMLTextAreaElement;
+
+      box.value = 'Solo en el formulario.';
+      (element.querySelector('app-ticket-questions form') as HTMLFormElement).dispatchEvent(
+        new Event('submit', { cancelable: true }),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.answer).toHaveBeenCalledWith('e1', 'a', 'Solo en el formulario.');
+    });
+
+    it('shows nothing of the sort when no ticket is waiting', async () => {
+      const fixture = await render(detail('e1', 'running', { tickets: [ticket('a')] }));
+
+      expect(fixture.nativeElement.querySelector('app-ticket-questions')).toBeNull();
     });
   });
 

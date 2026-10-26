@@ -19,8 +19,29 @@ export interface StageRun {
   finishedAt: string | null;
 }
 
+/** `waiting`: el desarrollador hizo una pregunta y el ticket espera la respuesta (de Lucy o del usuario). */
 export type TicketStatus =
-  'pending' | 'developing' | 'reviewing' | 'done' | 'failed';
+  'pending' | 'developing' | 'reviewing' | 'waiting' | 'done' | 'failed';
+
+/** Lo que un desarrollador preguntó porque no podía seguir sin una respuesta. */
+export interface TicketQuestion {
+  id: string;
+  /** Quién preguntó (su nombre para mostrar) y su agente. */
+  from: string;
+  agentId: string | null;
+  text: string;
+  /** Lo que Lucy recomienda contestar; `null` mientras decide o si no pudo. */
+  recommendation: string | null;
+  askedAt: string;
+}
+
+/** Una pregunta ya contestada, por Lucy o por el usuario: el desarrollador la recibe al retomar. */
+export interface TicketDecision {
+  at: string;
+  from: 'user' | 'lucy';
+  question: string;
+  text: string;
+}
 
 /** Trabajo de la ejecución: lo crea el agente de tickets a partir del plan. */
 export interface ExecutionTicket {
@@ -48,6 +69,12 @@ export interface ExecutionTicket {
   summary: string | null;
   /** Lo que dijo el revisor en su última revisión. */
   reviewNote: string | null;
+  /** La pregunta que espera respuesta (el ticket está en `waiting`); `null` si no hay. */
+  question: TicketQuestion | null;
+  /** Las preguntas ya contestadas, de la más antigua a la más nueva. */
+  decisions: TicketDecision[];
+  /** Cuántas preguntas ha hecho el desarrollador en este ticket (hay un tope). */
+  questionsAsked: number;
 }
 
 export interface ExecutionRepo {

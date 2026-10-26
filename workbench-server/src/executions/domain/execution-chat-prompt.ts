@@ -30,6 +30,7 @@ const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   pending: 'pendiente',
   developing: 'en desarrollo',
   reviewing: 'en revisión',
+  waiting: 'esperando una respuesta',
   done: 'hecho',
   failed: 'falló',
 };
@@ -138,6 +139,20 @@ function ticketLines(input: ExecutionChatPromptInput): string[] {
         (multi && ticket.repo ? ` · repo: ${ticket.repo}` : '') +
         ` · desarrolla: ${nameOf(ticket.developerId)} · revisa: ${nameOf(ticket.reviewerId)}` +
         ` · revisiones: ${ticket.rounds}`,
+      ...(ticket.question
+        ? [
+            `PREGUNTA SIN RESPONDER de ${ticket.question.from}: ${oneLine(ticket.question.text, MAX_SUMMARY)}` +
+              (ticket.question.recommendation
+                ? ` · tu recomendación: ${oneLine(ticket.question.recommendation, MAX_NOTE)}`
+                : ''),
+          ]
+        : []),
+      ...(ticket.decisions?.length
+        ? ticket.decisions.map(
+            (decision) =>
+              `Decisión (${decision.from === 'lucy' ? 'de ti' : 'del usuario'}): ${oneLine(decision.question, MAX_NOTE)} → ${oneLine(decision.text, MAX_NOTE)}`,
+          )
+        : []),
       ...(ticket.feedback?.length
         ? [`Correcciones pedidas por el revisor: ${ticket.feedback.join('; ')}`]
         : []),

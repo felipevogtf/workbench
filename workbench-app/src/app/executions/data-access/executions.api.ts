@@ -62,6 +62,13 @@ export class ExecutionsApi {
     return this.http.patch<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}`, body);
   }
 
+  /** El usuario contesta la pregunta de un desarrollador (o acepta la recomendación de Lucy). */
+  answer(id: string, ticketId: string, text: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}/answer`, {
+      text,
+    });
+  }
+
   /** Conversa con Lucy sobre la ejecución; ella lee su estado completo. Puede tardar. */
   chat(id: string, messages: readonly ChatMessage[]): Observable<{ reply: string }> {
     return this.http.post<{ reply: string }>(`${this.base}/executions/${id}/chat`, { messages });

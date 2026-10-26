@@ -24,6 +24,9 @@ export function ticket(id: string, extra: Partial<ExecutionTicket> = {}): Execut
     feedback: null,
     summary: null,
     reviewNote: null,
+    question: null,
+    decisions: [],
+    questionsAsked: 0,
     ...extra,
   };
 }

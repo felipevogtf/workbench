@@ -22,6 +22,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { ExecutionChat } from '../../components/execution-chat/execution-chat';
 import { TicketAssignment } from '../../components/ticket-assignment/ticket-assignment';
+import { TicketQuestions } from '../../components/ticket-questions/ticket-questions';
 import { TicketBoard } from '../../components/ticket-board/ticket-board';
 import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
@@ -67,6 +68,7 @@ const GENERAL = 'general';
     Spinner,
     ExecutionChat,
     TicketAssignment,
+    TicketQuestions,
     TicketBoard,
     TicketPanel,
   ],
@@ -142,6 +144,30 @@ export class ExecutionPage {
     this.agents
       .agents()
       .filter((agent) => agent.module === 'task-reviewer' && agent.provider === 'claude'),
+  );
+
+  /** Las tarjetas con una pregunta de un desarrollador que espera respuesta. */
+  protected readonly questions = computed(() =>
+    this.cards().filter((card) => !!card.ticket.question),
+  );
+
+  /** Lucy, quien escala las preguntas, con el nombre y la imagen con que se ve en la app. */
+  protected readonly lucy = computed(() => this.agents.assistantOf('task-tickets'));
+
+  /** Lo que el chat de Lucy necesita saber para avisar de una pregunta nueva. */
+  protected readonly chatQuestions = computed(() =>
+    this.questions().flatMap((card) =>
+      card.ticket.question
+        ? [
+            {
+              id: card.ticket.question.id,
+              from: card.ticket.question.from,
+              ticket: card.number,
+              text: card.ticket.question.text,
+            },
+          ]
+        : [],
+    ),
   );
 
   protected readonly progress = computed(() => {
@@ -232,6 +258,10 @@ export class ExecutionPage {
       tone: 'danger',
     });
     if (confirmed) await this.store.cancel();
+  }
+
+  protected answer(reply: { ticketId: string; text: string }): void {
+    void this.store.answer(reply.ticketId, reply.text);
   }
 
   protected begin(): void {

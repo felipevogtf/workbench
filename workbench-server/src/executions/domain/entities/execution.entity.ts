@@ -59,6 +59,9 @@ export class Execution {
       ticket.level ??= 'medium';
       ticket.developerId ??= null;
       ticket.reviewerId ??= null;
+      ticket.question ??= null;
+      ticket.decisions ??= [];
+      ticket.questionsAsked ??= 0;
     }
     return new Execution(props);
   }

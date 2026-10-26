@@ -493,4 +493,24 @@ describe('ChatPanel empty state and context', () => {
       expect(badge(fixture.nativeElement)?.textContent?.trim()).toBe('9+');
     });
   });
+
+  describe('a message the assistant sends on its own', () => {
+    it('joins the conversation, and counts as unread while the panel is closed', () => {
+      chat.toggle(); // cerrado
+
+      chat.receive('David me preguntó algo');
+
+      expect(chat.messages().at(-1)).toMatchObject({
+        role: 'assistant',
+        content: 'David me preguntó algo',
+      });
+      expect(chat.unread()).toBe(1);
+    });
+
+    it('is not unread when the panel is open', () => {
+      chat.receive('David me preguntó algo');
+
+      expect(chat.unread()).toBe(0);
+    });
+  });
 });

@@ -1,4 +1,10 @@
-import { extractJson, parseReview, parseTickets } from './json-output';
+import {
+  extractJson,
+  parseReview,
+  parseTickets,
+  parseDecision,
+  parseQuestion,
+} from './json-output';
 
 describe('extractJson', () => {
   it('reads plain JSON', () => {
@@ -93,5 +99,39 @@ describe('parseReview', () => {
   it('does not take an unclear verdict as approved', () => {
     expect(() => parseReview('{"approved":"yes"}')).toThrow('"approved"');
     expect(() => parseReview('{"summary":"ok"}')).toThrow('"approved"');
+  });
+});
+
+describe('parseQuestion', () => {
+  it('takes what follows PREGUNTA:, even when it goes on in the next lines', () => {
+    expect(
+      parseQuestion(
+        'No hice cambios.\nPREGUNTA: ¿A o B?\nVeo estas dos opciones.',
+      ),
+    ).toBe('¿A o B?\nVeo estas dos opciones.');
+  });
+
+  it('is case-insensitive, and null when the developer asked nothing', () => {
+    expect(parseQuestion('pregunta: ¿Sí?')).toBe('¿Sí?');
+    expect(parseQuestion('Terminé: agregué el banner.')).toBeNull();
+    expect(parseQuestion('PREGUNTA:   ')).toBeNull();
+  });
+});
+
+describe('parseDecision', () => {
+  it('tells an answer of Lucy from an escalation', () => {
+    expect(parseDecision('RESPUESTA: Va en todas las pantallas.')).toEqual({
+      kind: 'answer',
+      text: 'Va en todas las pantallas.',
+    });
+    expect(parseDecision('ESCALAR: El plan no lo dice.')).toEqual({
+      kind: 'escalate',
+      text: 'El plan no lo dice.',
+    });
+  });
+
+  it('is null without either of the two', () => {
+    expect(parseDecision('No sé.')).toBeNull();
+    expect(parseDecision('RESPUESTA:')).toBeNull();
   });
 });

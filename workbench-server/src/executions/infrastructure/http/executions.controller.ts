@@ -14,6 +14,7 @@ import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
+  AnswerQuestionDto,
   AssignTicketDto,
   ExecutionChatReplyDto,
   ExecutionChatRequestDto,
@@ -117,6 +118,17 @@ export class ExecutionsController {
     @Body() dto: AssignTicketDto,
   ): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.assign(id, ticketId, dto));
+  }
+
+  /** El usuario contesta la pregunta de un desarrollador (o acepta la recomendación de Lucy). */
+  @Post('executions/:id/tickets/:ticketId/answer')
+  @HttpCode(202)
+  async answer(
+    @Param('id') id: string,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AnswerQuestionDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.answer(id, ticketId, dto.text));
   }
 
   @Post('executions/:id/retry')

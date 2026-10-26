@@ -109,3 +109,34 @@ export function parseReview(output: string): ReviewVerdict {
     issues: list(json.issues, MAX_ISSUES, MAX_DESCRIPTION),
   };
 }
+
+const MAX_QUESTION = 1_500;
+
+/**
+ * La pregunta con que un desarrollador termina cuando no puede seguir sin una respuesta: una línea
+ * `PREGUNTA: …` (que puede seguir en las líneas siguientes). `null` si no preguntó.
+ */
+export function parseQuestion(output: string): string | null {
+  const match = /^[ \t]*PREGUNTA[ \t]*:[ \t]*([\s\S]+)$/im.exec(output);
+  const text = match?.[1].trim().slice(0, MAX_QUESTION);
+  return text || null;
+}
+
+/** Lo que Lucy decide ante una pregunta: contestarla ella (el plan lo dice) o escalarla al usuario. */
+export interface LucyDecision {
+  kind: 'answer' | 'escalate';
+  text: string;
+}
+
+/** `RESPUESTA: …` o `ESCALAR: …` (con su recomendación). Sin ninguna de las dos, `null`. */
+export function parseDecision(output: string): LucyDecision | null {
+  const match = /^[ \t]*(RESPUESTA|ESCALAR)[ \t]*:[ \t]*([\s\S]+)$/im.exec(
+    output,
+  );
+  const text = match?.[2].trim().slice(0, MAX_QUESTION);
+  if (!match || !text) return null;
+  return {
+    kind: match[1].toUpperCase() === 'RESPUESTA' ? 'answer' : 'escalate',
+    text,
+  };
+}

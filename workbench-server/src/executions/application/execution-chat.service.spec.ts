@@ -36,6 +36,9 @@ function ticket(
     headSha: null,
     summary: null,
     reviewNote: null,
+    question: null,
+    decisions: [],
+    questionsAsked: 0,
     ...extra,
   };
 }

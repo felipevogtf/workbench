@@ -122,6 +122,17 @@ export abstract class ChatConversation {
     );
   }
 
+  /**
+   * Un mensaje que el asistente manda por su cuenta, sin que se le haya preguntado (por ejemplo, que un
+   * trabajador le consultó algo): entra a la conversación y, con el panel cerrado, avisa como una respuesta
+   * sin ver.
+   */
+  receive(content: string): void {
+    this.messagesState.update((current) => [...current, { role: 'assistant', content }]);
+    if (!this.openState()) this.unreadState.update((count) => count + 1);
+    this.persist();
+  }
+
   /** Abre el chat y manda el mensaje (ej. «explícame este segmento»). */
   ask(text: string): Promise<void> {
     this.openState.set(true);

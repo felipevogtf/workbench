@@ -8,13 +8,14 @@ const COLUMNS: readonly { status: TicketStatus; label: string }[] = [
   { status: 'pending', label: 'Pendiente' },
   { status: 'developing', label: 'Desarrollando' },
   { status: 'reviewing', label: 'En revisión' },
+  { status: 'waiting', label: 'Esperando respuesta' },
   { status: 'done', label: 'Hecho' },
   { status: 'failed', label: 'Falló' },
 ];
 
 /**
  * Los tickets de una ejecución como un tablero: una columna por estado y una tarjeta por ticket, con
- * el trabajador que lo tiene asignado. «Falló» solo aparece si hay alguno.
+ * el trabajador que lo tiene asignado. «Falló» y «Esperando respuesta» solo aparecen si hay alguno.
  */
 @Component({
   selector: 'app-ticket-board',
@@ -36,7 +37,10 @@ export class TicketBoard {
     COLUMNS.map((column) => ({
       ...column,
       cards: this.cards().filter((card) => card.ticket.status === column.status),
-    })).filter((column) => column.status !== 'failed' || column.cards.length > 0),
+    })).filter(
+      (column) =>
+        (column.status !== 'failed' && column.status !== 'waiting') || column.cards.length > 0,
+    ),
   );
 
   protected isWorking(card: BoardCard): boolean {

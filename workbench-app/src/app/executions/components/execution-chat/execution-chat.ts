@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  untracked,
+} from '@angular/core';
 import { AgentsStore } from '@ai-agents/index';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
@@ -33,6 +41,8 @@ import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 })
 export class ExecutionChat {
   readonly executionId = input.required<string>();
+  /** Las preguntas de los desarrolladores que esperan respuesta: Lucy avisa de cada una nueva. */
+  readonly questions = input<{ id: string; from: string; ticket: number; text: string }[]>([]);
   /** Sobre qué se conversa, bajo el título (ej. `acme/web · workbench/…`). */
   readonly context = input('');
 
@@ -49,7 +59,27 @@ export class ExecutionChat {
     '¿Qué debería hacer ahora?',
   ];
 
+  /** Las preguntas que ya se vieron: al abrir la página las que ya había no se anuncian como nuevas. */
+  private seen: Set<string> | null = null;
+
   constructor() {
     effect(() => this.chat.bind(this.executionId()));
+
+    effect(() => {
+      const questions = this.questions();
+      untracked(() => {
+        if (this.seen === null) {
+          this.seen = new Set(questions.map((question) => question.id));
+          return;
+        }
+        for (const question of questions) {
+          if (this.seen.has(question.id)) continue;
+          this.seen.add(question.id);
+          this.chat.receive(
+            `**${question.from}** me preguntó en el ticket ${question.ticket}:\n\n> ${question.text.replace(/\n/g, '\n> ')}\n\nTe lo dejé arriba, en «necesita tu respuesta», para que contestes.`,
+          );
+        }
+      });
+    });
   }
 }

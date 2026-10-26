@@ -1,4 +1,5 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DomainError } from '@core/domain/domain.error';
 import { Execution } from '@executions/domain/entities/execution.entity';
 import {
@@ -7,10 +8,16 @@ import {
 } from '@executions/domain/entities/execution.props';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobPayload } from '@executions/domain/entities/job.props';
-import { parseReview, parseTickets } from '@executions/domain/json-output';
+import {
+  parseDecision,
+  parseQuestion,
+  parseReview,
+  parseTickets,
+} from '@executions/domain/json-output';
 import {
   buildDevelopPrompt,
   buildPullRequestDescription,
+  buildQuestionPrompt,
   buildReviewPrompt,
   buildTicketsPrompt,
   MAX_REVIEW_ROUNDS,
@@ -43,6 +50,8 @@ const MAX_SUMMARY_CHARS = 4000;
 const SUPPORTED_HOST = 'bitbucket.org';
 /** Repositorios que puede tocar una misma tarea: cada uno suma una carpeta de trabajo y una PR. */
 const MAX_REPOS = 3;
+/** Preguntas que un desarrollador puede hacer en un mismo ticket: a la tercera se falla con lo que pasó. */
+const MAX_QUESTIONS = 2;
 
 const AGENT_OF: Record<Exclude<StageKey, 'publish'>, ExecutionAgentModule> = {
   tickets: 'task-tickets',
@@ -74,7 +83,11 @@ export class ExecutionsService {
     private readonly agents: AgentsGatewayPort,
     @Inject(PULL_REQUESTS_GATEWAY_PORT)
     private readonly pullRequests: PullRequestsGatewayPort,
+    @Optional() private readonly config?: ConfigService,
   ) {}
+
+  /** Preguntas recién escaladas: Lucy las decide en segundo plano cuando ya se guardó la ejecución. */
+  private readonly toDecide = new Map<string, string>();
 
   /** Empieza a ejecutar la tarea con su último plan. Revisa todo lo que puede fallar antes de encolar. */
   async start(issueId: string): Promise<Execution> {
@@ -254,6 +267,142 @@ export class ExecutionsService {
       this.fail(execution, job, message);
     }
     await this.executions.save(execution);
+
+    const ticketId = this.toDecide.get(execution.id);
+    if (ticketId) {
+      this.toDecide.delete(execution.id);
+      void this.lucyDecides(execution.id, ticketId);
+    }
+  }
+
+  /**
+   * El usuario contesta la pregunta de un desarrollador: queda como decisión del ticket y el desarrollador
+   * retoma con ella. También sirve para aceptar lo que recomendó Lucy.
+   */
+  async answer(
+    executionId: string,
+    ticketId: string,
+    text: string,
+  ): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    if (!execution.isActive) {
+      throw DomainError.conflict('The execution is not running');
+    }
+    const ticket = execution.ticket(ticketId);
+    if (ticket.status !== 'waiting' || !ticket.question) {
+      throw DomainError.conflict('That ticket is not waiting for an answer');
+    }
+    const answer = text.trim();
+    if (!answer) throw new DomainError('The answer cannot be empty');
+
+    await this.resolveQuestion(execution, ticket, 'user', answer);
+    return this.executions.save(execution);
+  }
+
+  /** La respuesta queda como decisión y el desarrollador retoma el ticket con ella. */
+  private async resolveQuestion(
+    execution: Execution,
+    ticket: ExecutionTicket,
+    from: 'user' | 'lucy',
+    text: string,
+  ): Promise<void> {
+    ticket.decisions.push({
+      at: new Date().toISOString(),
+      from,
+      question: ticket.question?.text ?? '',
+      text,
+    });
+    ticket.question = null;
+    ticket.status = 'developing';
+    this.refreshStages(execution);
+    await this.enqueue(execution, 'develop', ticket);
+  }
+
+  /** El desarrollador preguntó: el ticket espera y, cuando se guarde, Lucy decide qué hacer con la pregunta. */
+  private async ask(
+    execution: Execution,
+    ticket: ExecutionTicket,
+    job: Job,
+    text: string,
+  ): Promise<void> {
+    const agent = job.payload.agent
+      ? await this.agents.getById(job.payload.agent.id)
+      : null;
+    ticket.questionsAsked += 1;
+    ticket.question = {
+      id: crypto.randomUUID(),
+      from:
+        agent?.displayName?.trim() ||
+        agent?.name ||
+        job.payload.agent?.name ||
+        'Un desarrollador',
+      agentId: agent?.id ?? null,
+      text,
+      recommendation: null,
+      askedAt: new Date().toISOString(),
+    };
+    ticket.status = 'waiting';
+    this.refreshStages(execution);
+    this.toDecide.set(execution.id, ticket.id);
+  }
+
+  /**
+   * Lucy lee la pregunta con el plan y el ticket: si ya están respondidos, contesta ella (solo si
+   * `EXECUTIONS_LUCY_ANSWERS=true`); si no, deja su recomendación y la pregunta espera al usuario.
+   */
+  private async lucyDecides(
+    executionId: string,
+    ticketId: string,
+  ): Promise<void> {
+    try {
+      const execution = await this.executions.findById(executionId);
+      const ticket = execution?.tickets.find((t) => t.id === ticketId);
+      const question = ticket?.question;
+      if (!execution || !ticket || !question || ticket.status !== 'waiting')
+        return;
+
+      const [task, plan, lucy] = await Promise.all([
+        this.tasks.getTask(execution.issueId),
+        this.plans.getPlan(execution.planId),
+        this.agents.getDefault('task-tickets'),
+      ]);
+      const reply = await this.agents.chat({
+        prompt: buildQuestionPrompt({
+          assistantName: lucy.displayName?.trim() || lucy.name,
+          askerName: question.from,
+          taskName: task?.name ?? execution.branch,
+          plan: plan?.content ?? null,
+          ticket,
+          question: question.text,
+        }),
+      });
+      const decision = parseDecision(reply.reply);
+
+      // Mientras Lucy pensaba, el usuario pudo contestar o cancelar: solo se sigue si todo está igual.
+      const fresh = await this.executions.findById(executionId);
+      const current = fresh?.tickets.find((t) => t.id === ticketId);
+      if (!fresh?.isActive || !current || current.question?.id !== question.id)
+        return;
+
+      if (
+        decision?.kind === 'answer' &&
+        this.config?.get('EXECUTIONS_LUCY_ANSWERS') === 'true'
+      ) {
+        await this.resolveQuestion(fresh, current, 'lucy', decision.text);
+      } else {
+        // Sin permiso para contestar, su respuesta se vuelve una recomendación para el usuario.
+        current.question.recommendation = decision?.text ?? null;
+      }
+      await this.executions.save(fresh);
+    } catch (error) {
+      // Sin Lucy la pregunta igual espera al usuario.
+      this.logger.warn(
+        `Lucy could not decide the question of ${executionId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private async advance(execution: Execution, job: Job): Promise<void> {
@@ -279,6 +428,9 @@ export class ExecutionsService {
             headSha: null,
             summary: null,
             reviewNote: null,
+            question: null,
+            decisions: [],
+            questionsAsked: 0,
           })),
         );
         await this.assignTickets(execution);
@@ -292,6 +444,12 @@ export class ExecutionsService {
         const ticket = execution.ticket(job.ticketId);
         const { headBefore, headAfter } = job.result ?? {};
         if (!headAfter || headAfter === headBefore) {
+          // No hizo cambios porque no podía seguir sin una respuesta: se la pregunta a Lucy (hasta un tope).
+          const asked = parseQuestion(output);
+          if (asked && ticket.questionsAsked < MAX_QUESTIONS) {
+            await this.ask(execution, ticket, job, asked);
+            return;
+          }
           // Casi siempre es porque no pudo hacer algo (un comando sin permiso, por ejemplo): su
           // explicación es lo que le sirve a quien lee el error.
           ticket.summary = output.slice(0, MAX_SUMMARY_CHARS) || null;

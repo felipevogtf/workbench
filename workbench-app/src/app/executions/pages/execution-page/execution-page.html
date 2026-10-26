@@ -126,6 +126,15 @@
         </ol>
       </section>
 
+      @if (questions().length > 0) {
+        <app-ticket-questions
+          [cards]="questions()"
+          [lucy]="lucy()"
+          [busy]="store.acting()"
+          (answer)="answer($event)"
+        />
+      }
+
       @if (cards().length === 0) {
         <p class="muted">
           @if (execution.status === 'running') {
@@ -154,6 +163,7 @@
 
     <app-execution-chat
       [executionId]="execution.id"
+      [questions]="chatQuestions()"
       [context]="execution.repo.fullName + ' · ' + execution.branch"
     />
 

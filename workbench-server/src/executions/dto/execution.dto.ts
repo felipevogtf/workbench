@@ -88,6 +88,14 @@ export class AssignTicketDto {
   reviewerId?: string;
 }
 
+/** La respuesta del usuario a la pregunta de un desarrollador. */
+export class AnswerQuestionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4_000)
+  text!: string;
+}
+
 /** Largo máximo de un mensaje del chat (el mismo tope que los demás chats). */
 const MAX_CHAT_MESSAGE_CHARS = 30_000;
 /** Tope de mensajes que acepta una petición (la conversación completa viaja en cada una). */

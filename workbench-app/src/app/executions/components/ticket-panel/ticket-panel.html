@@ -59,6 +59,28 @@
             </section>
           }
 
+          @if (current.ticket.question; as question) {
+            <app-alert tone="warning" heading="{{ question.from }} está esperando una respuesta">
+              <p class="question">{{ question.text }}</p>
+              @if (question.recommendation) {
+                <p class="muted">Recomendación de Lucy: {{ question.recommendation }}</p>
+              }
+            </app-alert>
+          }
+
+          @if (current.ticket.decisions.length > 0) {
+            <section class="block">
+              <h5>Decisiones</h5>
+              @for (decision of current.ticket.decisions; track decision.at) {
+                <p>
+                  <strong>{{ decision.question }}</strong
+                  ><br />
+                  {{ decision.from === 'lucy' ? 'Lucy' : 'Tú' }}: {{ decision.text }}
+                </p>
+              }
+            </section>
+          }
+
           @if (current.ticket.feedback?.length) {
             <app-alert tone="warning" heading="El revisor pidió cambios">
               <app-markdown-viewer [content]="list(current.ticket.feedback ?? [])" />

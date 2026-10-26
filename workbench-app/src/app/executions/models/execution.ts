@@ -5,7 +5,8 @@ export type ExecutionStatus = 'running' | 'awaiting' | 'completed' | 'failed' | 
 export type TicketLevel = 'simple' | 'medium' | 'complex';
 export type StageKey = 'tickets' | 'develop' | 'review' | 'publish';
 export type StageStatus = 'pending' | 'running' | 'done' | 'failed';
-export type TicketStatus = 'pending' | 'developing' | 'reviewing' | 'done' | 'failed';
+/** `waiting`: el desarrollador hizo una pregunta y el ticket espera la respuesta. */
+export type TicketStatus = 'pending' | 'developing' | 'reviewing' | 'waiting' | 'done' | 'failed';
 export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
 
 export interface StageRun {
@@ -13,6 +14,26 @@ export interface StageRun {
   status: StageStatus;
   startedAt: string | null;
   finishedAt: string | null;
+}
+
+/** Lo que un desarrollador preguntó porque no podía seguir sin una respuesta. */
+export interface TicketQuestion {
+  id: string;
+  /** Quién preguntó, con el nombre con que se ve en la app. */
+  from: string;
+  agentId: string | null;
+  text: string;
+  /** Lo que Lucy recomienda contestar; `null` mientras lo piensa o si no pudo. */
+  recommendation: string | null;
+  askedAt: string;
+}
+
+/** Una pregunta ya contestada (por Lucy o por el usuario): el desarrollador retomó con ella. */
+export interface TicketDecision {
+  at: string;
+  from: 'user' | 'lucy';
+  question: string;
+  text: string;
 }
 
 /** Trabajo en que el agente de tickets dividió el plan. */
@@ -35,6 +56,11 @@ export interface ExecutionTicket {
   feedback: string[] | null;
   summary: string | null;
   reviewNote: string | null;
+  /** La pregunta que espera respuesta; `null` si no hay. */
+  question: TicketQuestion | null;
+  /** Las preguntas ya contestadas. */
+  decisions: TicketDecision[];
+  questionsAsked: number;
   /** Commit de la rama antes y después de desarrollar el ticket. */
   startSha?: string | null;
   headSha?: string | null;
@@ -168,6 +194,7 @@ export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   pending: 'Pendiente',
   developing: 'Desarrollando',
   reviewing: 'En revisión',
+  waiting: 'Esperando respuesta',
   done: 'Hecho',
   failed: 'Falló',
 };
@@ -176,6 +203,7 @@ export const TICKET_STATUS_TONE: Record<TicketStatus, BadgeTone> = {
   pending: 'neutral',
   developing: 'info',
   reviewing: 'info',
+  waiting: 'warning',
   done: 'success',
   failed: 'danger',
 };

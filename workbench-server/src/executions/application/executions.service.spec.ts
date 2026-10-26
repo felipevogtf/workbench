@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { DomainError } from '@core/domain/domain.error';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobResult } from '@executions/domain/entities/job.props';
@@ -43,11 +44,13 @@ describe('ExecutionsService', () => {
   let agents: FakeAgents;
   let pullRequests: FakePullRequests;
   let runners: InMemoryRunners;
+  let settings: Record<string, string>;
   let service: ExecutionsService;
   let runnerJobs: RunnerJobsService;
   let runner: Runner;
 
   beforeEach(async () => {
+    settings = {};
     executions = new InMemoryExecutions();
     jobs = new InMemoryJobs();
     tasks = new FakeTasks();
@@ -62,6 +65,7 @@ describe('ExecutionsService', () => {
       plans,
       agents,
       pullRequests,
+      { get: (key: string) => settings[key] } as unknown as ConfigService,
     );
     runnerJobs = new RunnerJobsService(
       jobs,
@@ -565,6 +569,190 @@ describe('ExecutionsService', () => {
       await service.start('issue-1');
 
       expect(jobs.items.at(-1)!.payload.context).toBeUndefined();
+    });
+  });
+
+  describe('when the developer cannot go on without an answer', () => {
+    const ONE = JSON.stringify({
+      tickets: [
+        { title: 'Banner', description: 'Mostrar el banner', criteria: [] },
+      ],
+    });
+    const ASK = {
+      output:
+        'No hice cambios.\nPREGUNTA: ¿El banner va en todas las pantallas del AST o solo en el formulario?',
+      headBefore: 'aaa',
+      headAfter: 'aaa',
+    };
+    /** Deja pasar el trabajo en segundo plano de Lucy. */
+    const flush = async () => {
+      for (let i = 0; i < 20; i++)
+        await new Promise((resolve) => setImmediate(resolve));
+    };
+
+    async function asked() {
+      const execution = await service.start('issue-1');
+      await answer({ output: ONE });
+      await service.begin(execution.id);
+      await answer(ASK);
+      await flush();
+      return execution.id;
+    }
+    const ticketOf = async (id: string) =>
+      (await service.get(id)).execution.tickets[0];
+
+    it('waits on that ticket with the question, instead of failing, and queues nothing meanwhile', async () => {
+      agents.chatReply = 'ESCALAR: Recomiendo todas las pantallas del AST.';
+      const id = await asked();
+
+      const { execution } = await service.get(id);
+      const ticket = execution.tickets[0];
+      expect(execution.status).toBe('running');
+      expect(ticket.status).toBe('waiting');
+      expect(ticket.questionsAsked).toBe(1);
+      expect(ticket.question?.text).toContain(
+        '¿El banner va en todas las pantallas',
+      );
+      expect(jobs.items.filter((job) => job.isOpen)).toHaveLength(0);
+    });
+
+    it('lets Lucy read the question with the plan and leave her recommendation for the user', async () => {
+      agents.chatReply = 'ESCALAR: Recomiendo todas las pantallas del AST.';
+      const id = await asked();
+
+      expect((await ticketOf(id)).question?.recommendation).toBe(
+        'Recomiendo todas las pantallas del AST.',
+      );
+      expect(agents.chats.at(-1)).toContain(
+        '¿El banner va en todas las pantallas',
+      );
+      expect(agents.chats.at(-1)).toContain('## Pasos'); // el plan
+    });
+
+    it('keeps waiting for the user, with her answer as a recommendation, unless Lucy may answer', async () => {
+      agents.chatReply =
+        'RESPUESTA: El plan dice que va en todas las pantallas.';
+      const id = await asked();
+
+      const ticket = await ticketOf(id);
+      expect(ticket.status).toBe('waiting');
+      expect(ticket.question?.recommendation).toBe(
+        'El plan dice que va en todas las pantallas.',
+      );
+    });
+
+    it('answers by herself when the plan says so and she is allowed to', async () => {
+      settings.EXECUTIONS_LUCY_ANSWERS = 'true';
+      agents.chatReply =
+        'RESPUESTA: El plan dice que va en todas las pantallas.';
+      const id = await asked();
+
+      const ticket = await ticketOf(id);
+      expect(ticket.status).toBe('developing');
+      expect(ticket.question).toBeNull();
+      expect(ticket.decisions).toMatchObject([
+        { from: 'lucy', text: 'El plan dice que va en todas las pantallas.' },
+      ]);
+      const develop = jobs.items.at(-1)!;
+      expect(develop.kind).toBe('develop');
+      expect(develop.payload.prompt).toContain(
+        'Decisiones tomadas para este ticket',
+      );
+      expect(develop.payload.prompt).toContain(
+        'El plan dice que va en todas las pantallas.',
+      );
+    });
+
+    it('still escalates when she is allowed to answer but is not sure', async () => {
+      settings.EXECUTIONS_LUCY_ANSWERS = 'true';
+      agents.chatReply = 'ESCALAR: El plan no lo dice.';
+      const id = await asked();
+
+      expect((await ticketOf(id)).status).toBe('waiting');
+    });
+
+    it('waits for the user when Lucy fails or answers in no format', async () => {
+      agents.chatReply = 'No sé qué hacer.';
+      const id = await asked();
+
+      const ticket = await ticketOf(id);
+      expect(ticket.status).toBe('waiting');
+      expect(ticket.question?.recommendation).toBeNull();
+    });
+
+    it('resumes the developer with the answer of the user, and keeps it as a decision', async () => {
+      const id = await asked();
+      const ticket = await ticketOf(id);
+
+      await service.answer(id, ticket.id, 'Solo en el formulario del AST.');
+
+      const after = await ticketOf(id);
+      expect(after.status).toBe('developing');
+      expect(after.question).toBeNull();
+      expect(after.decisions).toHaveLength(1);
+      expect(after.decisions[0]).toMatchObject({
+        from: 'user',
+        text: 'Solo en el formulario del AST.',
+      });
+      expect(after.decisions[0].question).toContain(
+        '¿El banner va en todas las pantallas',
+      );
+      const develop = jobs.items.at(-1)!;
+      expect(develop.kind).toBe('develop');
+      expect(develop.payload.prompt).toContain(
+        'Solo en el formulario del AST.',
+      );
+    });
+
+    it('does not take an answer for a ticket that is not waiting, or an empty one', async () => {
+      const id = await asked();
+      const ticket = await ticketOf(id);
+
+      await expect(service.answer(id, ticket.id, '   ')).rejects.toThrow(
+        'empty',
+      );
+      await service.answer(id, ticket.id, 'Solo en el formulario.');
+      await expect(
+        service.answer(id, ticket.id, 'Otra vez'),
+      ).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+
+    it('fails with what happened once the developer has asked twice', async () => {
+      const id = await asked();
+      const first = await ticketOf(id);
+      await service.answer(id, first.id, 'Solo en el formulario.');
+      await answer(ASK); // vuelve a preguntar (2.ª)
+      await flush();
+      const second = await ticketOf(id);
+      expect(second.status).toBe('waiting');
+      await service.answer(id, second.id, 'Sí, solo ahí.');
+
+      await answer(ASK); // la 3.ª ya no se permite
+
+      const { execution } = await service.get(id);
+      expect(execution.status).toBe('failed');
+      expect(execution.error).toContain('made no changes');
+    });
+
+    it('lets Lucy and the user cancel the execution while the ticket waits', async () => {
+      const id = await asked();
+
+      expect((await service.cancel(id)).status).toBe('cancelled');
+    });
+
+    it('does not count it as a question when the developer made changes', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: ONE });
+      await service.begin(execution.id);
+
+      await answer({
+        ...developed('aaa', 'bbb'),
+        output: 'Hecho.\nPREGUNTA: ¿algo más?',
+      });
+
+      expect((await ticketOf(execution.id)).status).toBe('reviewing');
     });
   });
 
