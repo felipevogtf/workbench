@@ -1,7 +1,8 @@
 import { StageKey } from './execution.props';
 import type { JobUsage } from '../usage';
 
-export type JobKind = StageKey;
+/** Las etapas de la ejecución y, aparte, la revisión final que el usuario pide cuando ya terminó. */
+export type JobKind = StageKey | 'final';
 export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
 
 /** El agente tal como lo recibe el runner: ya resuelto por el servidor. */

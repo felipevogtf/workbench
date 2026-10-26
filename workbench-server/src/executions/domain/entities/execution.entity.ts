@@ -6,6 +6,8 @@ import {
   ExecutionStatus,
   ExecutionTarget,
   ExecutionTicket,
+  FinalReview,
+  FinalReviewFinding,
   STAGE_KEYS,
   StageKey,
   StageStatus,
@@ -55,6 +57,7 @@ export class Execution {
   static reconstruct(props: ExecutionProps): Execution {
     // Los tickets de antes de los niveles no traían estos datos.
     props.extraRepos ??= [];
+    props.finalReview ??= null;
     for (const ticket of props.tickets) {
       ticket.level ??= 'medium';
       ticket.developerId ??= null;
@@ -101,6 +104,9 @@ export class Execution {
   }
   get error(): string | null {
     return this.props.error;
+  }
+  get finalReview(): FinalReview | null {
+    return this.props.finalReview ?? null;
   }
   get createdAt(): Date {
     return this.props.createdAt;
@@ -237,6 +243,76 @@ export class Execution {
     for (const stage of this.props.stages) {
       if (stage.status === 'running') stage.status = 'pending';
     }
+    this.touch();
+  }
+
+  /**
+   * Una ejecución terminada vuelve a correr para corregir un ticket o sumar otros: la PR ya está abierta y la rama
+   * subida, así que lo que sigue se publica sobre la misma rama.
+   */
+  reopen(): void {
+    if (this.props.status !== 'completed') {
+      throw DomainError.conflict('Only a completed execution can be reopened');
+    }
+    this.props.status = 'running';
+    this.props.error = null;
+    this.props.finishedAt = null;
+    this.setStage('publish', 'pending');
+  }
+
+  /** Suma tickets a una ejecución que ya tiene los suyos. */
+  addTickets(tickets: ExecutionTicket[]): void {
+    this.props.tickets = [...this.props.tickets, ...tickets];
+    this.touch();
+  }
+
+  /** El usuario pidió la revisión final: solo con la ejecución terminada y de una en una. */
+  startFinalReview(): void {
+    if (this.props.status !== 'completed') {
+      throw DomainError.conflict(
+        'The final review can only be requested once the execution is completed',
+      );
+    }
+    if (this.props.finalReview?.status === 'running') {
+      throw DomainError.conflict('The final review is already running');
+    }
+    this.props.finalReview = {
+      status: 'running',
+      requestedAt: new Date().toISOString(),
+      finishedAt: null,
+      summary: null,
+      findings: [],
+      error: null,
+    };
+    this.touch();
+  }
+
+  finishFinalReview(report: {
+    summary: string;
+    findings: FinalReviewFinding[];
+  }): void {
+    const current = this.props.finalReview;
+    if (!current) return;
+    this.props.finalReview = {
+      ...current,
+      status: 'done',
+      finishedAt: new Date().toISOString(),
+      summary: report.summary || null,
+      findings: report.findings,
+      error: null,
+    };
+    this.touch();
+  }
+
+  failFinalReview(message: string): void {
+    const current = this.props.finalReview;
+    if (!current) return;
+    this.props.finalReview = {
+      ...current,
+      status: 'failed',
+      finishedAt: new Date().toISOString(),
+      error: message.slice(0, 2000),
+    };
     this.touch();
   }
 

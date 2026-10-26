@@ -4,6 +4,7 @@ import {
   parseTickets,
   parseDecision,
   parseDoubts,
+  parseFinalReview,
   parseQuestion,
 } from './json-output';
 
@@ -186,5 +187,99 @@ describe('parseDecision', () => {
   it('is null without either of the two', () => {
     expect(parseDecision('No sé.')).toBeNull();
     expect(parseDecision('RESPUESTA:')).toBeNull();
+  });
+});
+
+describe('parseFinalReview', () => {
+  const report = (findings: unknown, summary: unknown = 'Resumen') =>
+    JSON.stringify({ summary, findings });
+
+  it('reads the summary and the findings', () => {
+    expect(
+      parseFinalReview(
+        report([
+          {
+            severity: 'high',
+            file: 'docker/nginx/dsy.conf',
+            issue: 'La ruta no existe',
+            suggestion: 'Usar /secured/admin/ea',
+          },
+        ]),
+      ),
+    ).toEqual({
+      summary: 'Resumen',
+      findings: [
+        {
+          severity: 'high',
+          file: 'docker/nginx/dsy.conf',
+          issue: 'La ruta no existe',
+          suggestion: 'Usar /secured/admin/ea',
+        },
+      ],
+    });
+  });
+
+  it('accepts a report with nothing found', () => {
+    expect(parseFinalReview(report([], 'Todo en orden'))).toEqual({
+      summary: 'Todo en orden',
+      findings: [],
+    });
+  });
+
+  it('puts the most serious first and keeps the order among equals', () => {
+    const { findings } = parseFinalReview(
+      report([
+        { severity: 'low', issue: 'a' },
+        { severity: 'high', issue: 'b' },
+        { severity: 'medium', issue: 'c' },
+        { severity: 'high', issue: 'd' },
+      ]),
+    );
+
+    expect(findings.map((finding) => finding.issue)).toEqual([
+      'b',
+      'd',
+      'c',
+      'a',
+    ]);
+  });
+
+  it('cleans what the agent wrote: an unknown severity is medium, an empty file is null, and a finding without issue is dropped', () => {
+    const { findings } = parseFinalReview(
+      report([
+        {
+          severity: 'catastrófico',
+          file: '  ',
+          issue: '  Algo  ',
+          suggestion: 3,
+        },
+        { severity: 'high', issue: '' },
+        null,
+      ]),
+    );
+
+    expect(findings).toEqual([
+      { severity: 'medium', file: null, issue: 'Algo', suggestion: '' },
+    ]);
+  });
+
+  it('keeps at most twenty findings', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      severity: 'low',
+      issue: `problema ${i}`,
+    }));
+
+    expect(parseFinalReview(report(many)).findings).toHaveLength(20);
+  });
+
+  it('reads the JSON even with text around it', () => {
+    expect(
+      parseFinalReview(`Aquí está:\n\`\`\`json\n${report([])}\n\`\`\``),
+    ).toEqual({ summary: 'Resumen', findings: [] });
+  });
+
+  it('is not a report without a findings list, or without JSON', () => {
+    expect(() => parseFinalReview('{"summary":"x"}')).toThrow('"findings"');
+    expect(() => parseFinalReview('Todo bien')).toThrow('valid JSON');
   });
 });

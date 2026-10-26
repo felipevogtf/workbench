@@ -128,7 +128,7 @@ export async function runJob(
     }
   }
 
-  if (job.kind === 'review') {
+  if (job.kind === 'review' || job.kind === 'final') {
     // El revisor corre pruebas, lint y build, que pueden dejar archivos (un `lint --fix`, por ejemplo): no es su trabajo
     // cambiar nada, y lo que quede se colaría en el commit del próximo desarrollo.
     await discardSubmoduleChanges(workspace.dir, submodules);

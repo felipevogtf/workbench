@@ -6,6 +6,8 @@ export interface ExecutionTask {
   description: string | null;
   /** Repositorios de sus etiquetas, ya normalizados. */
   repoUrls: string[];
+  /** El código de su ticket de Plane (`MEL-12`); `null` en una tarea local o sin proyecto con clave. */
+  key: string | null;
 }
 
 export interface TasksGatewayPort {

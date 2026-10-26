@@ -17,7 +17,9 @@ import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
   AddNoteDto,
+  AddTicketsDto,
   AnswerQuestionDto,
+  StartExecutionDto,
   AssignTicketDto,
   ExecutionChatReplyDto,
   ExecutionChatRequestDto,
@@ -45,8 +47,11 @@ export class ExecutionsController {
   @HttpCode(202)
   async start(
     @Param('issueId') issueId: string,
+    @Body() dto: StartExecutionDto,
   ): Promise<ExecutionResponseDto> {
-    return this.toDto(await this.executions.start(issueId));
+    return this.toDto(
+      await this.executions.start(issueId, { branchType: dto.branchType }),
+    );
   }
 
   /** Historial de ejecuciones de la tarea, de la más nueva a la más antigua. */
@@ -147,6 +152,36 @@ export class ExecutionsController {
     return this.toDto(await this.executions.addNote(id, ticketId, dto.text));
   }
 
+  /** Reabre un ticket terminado de una ejecución completada, con una nota del usuario. */
+  @Post('executions/:id/tickets/:ticketId/reopen')
+  @HttpCode(202)
+  async reopenTicket(
+    @Param('id') id: string,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AddNoteDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(
+      await this.executions.reopenTicket(id, ticketId, dto.text),
+    );
+  }
+
+  /** Suma tickets (un hotfix, lo que no se consideró) a una ejecución completada. */
+  @Post('executions/:id/tickets')
+  @HttpCode(202)
+  async addTickets(
+    @Param('id') id: string,
+    @Body() dto: AddTicketsDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.addTickets(id, dto.tickets));
+  }
+
+  /** Pide la revisión de toda la rama, con la ejecución terminada. El informe llega más tarde. */
+  @Post('executions/:id/final-review')
+  @HttpCode(202)
+  async finalReview(@Param('id') id: string): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.requestFinalReview(id));
+  }
+
   @Post('executions/:id/retry')
   @HttpCode(202)
   async retry(@Param('id') id: string): Promise<ExecutionResponseDto> {
@@ -166,6 +201,7 @@ export class ExecutionsController {
       tickets: execution.tickets,
       pullRequestUrl: execution.pullRequestUrl,
       error: execution.error,
+      finalReview: execution.finalReview,
       createdAt: execution.createdAt.toISOString(),
       updatedAt: execution.updatedAt.toISOString(),
       finishedAt: execution.finishedAt?.toISOString() ?? null,

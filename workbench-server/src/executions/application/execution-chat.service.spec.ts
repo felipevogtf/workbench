@@ -140,23 +140,28 @@ describe('ExecutionChatService', () => {
     expect(answer.reply).toBe('Le dejo esto a Rebecca.');
     expect(answer.proposals).toEqual([
       {
+        kind: 'note',
         ticketId: 'a',
         ticket: 1,
         title: 'API de órdenes',
         text: 'No toques los submódulos.',
+        reopen: false,
       },
     ]);
   });
 
-  it('tells her not to propose notes for a ticket that is already done', async () => {
+  it('tells her what she may propose once the execution is completed: reopen a ticket, add tickets, the final review', async () => {
     await ask('Hola');
 
-    expect(agents.chats[0]).toContain(
-      'NO propongas notas para un ticket con estado «hecho»',
+    const prompt = agents.chats[0];
+    expect(prompt).toContain('una nota para un ticket «hecho» lo REABRE');
+    expect(prompt).toContain(
+      'TICKET <simple|medium|complex> | <título> | <descripción',
     );
+    expect(prompt).toContain('exactamente `REVISION FINAL`');
   });
 
-  it('does not turn into a button the note she wrote for a done ticket', async () => {
+  it('does not turn into a button the note she wrote for a done ticket while the execution is not completed', async () => {
     execution.ticket('a').status = 'done';
     await executions.save(execution);
     agents.chatReply = 'Hay que corregirlo.\nNOTA 1: Cambia la ruta.';
@@ -165,6 +170,96 @@ describe('ExecutionChatService', () => {
 
     expect(answer.proposals).toEqual([]);
     expect(answer.reply).toContain('NOTA 1: Cambia la ruta.');
+  });
+
+  describe('once the execution is completed', () => {
+    beforeEach(async () => {
+      execution.ticket('a').status = 'done';
+      execution.ticket('b').status = 'done';
+      execution.complete('https://bitbucket.org/acme/web/pull/7');
+      await executions.save(execution);
+    });
+
+    it('turns her note for a done ticket into a proposal that reopens it', async () => {
+      agents.chatReply = 'Lo reabro.\nNOTA 1: Cambia la ruta.';
+
+      const answer = await ask('Corrígelo');
+
+      expect(answer.proposals).toEqual([
+        expect.objectContaining({ kind: 'note', ticketId: 'a', reopen: true }),
+      ]);
+      expect(answer.reply).toBe('Lo reabro.');
+    });
+
+    it('lets her propose a new ticket and the final review', async () => {
+      agents.chatReply = [
+        'Propongo esto.',
+        'TICKET simple | Corregir la ruta | Cambiar /ea por /secured/admin/ea',
+        'REVISION FINAL',
+      ].join('\n');
+
+      const answer = await ask('Agrega un hotfix y revisa todo');
+
+      expect(answer.proposals).toEqual([
+        {
+          kind: 'ticket',
+          level: 'simple',
+          title: 'Corregir la ruta',
+          text: 'Cambiar /ea por /secured/admin/ea',
+          repo: null,
+        },
+        { kind: 'final-review' },
+      ]);
+      expect(answer.reply).toBe('Propongo esto.');
+    });
+
+    it('does not offer the final review again while one is running', async () => {
+      execution.startFinalReview();
+      await executions.save(execution);
+      agents.chatReply = 'Va en camino.\nREVISION FINAL';
+
+      const answer = await ask('Revísalo');
+
+      expect(answer.proposals).toEqual([]);
+      expect(agents.chats[0]).toContain('Se pidió y todavía está en marcha');
+    });
+
+    it('shows her the report of the final review, to talk it over with the user', async () => {
+      execution.startFinalReview();
+      execution.finishFinalReview({
+        summary: 'Falta cubrir una parte del plan',
+        findings: [
+          {
+            severity: 'high',
+            file: 'docker/nginx/dsy.conf',
+            issue: 'La ruta /ea no existe',
+            suggestion: 'Usar /secured/admin/ea',
+          },
+        ],
+      });
+      await executions.save(execution);
+
+      await ask('¿Qué encontró la revisión final?');
+
+      const prompt = agents.chats[0];
+      expect(prompt).toContain(
+        '# Revisión final (informe del revisor, ya hecho)',
+      );
+      expect(prompt).toContain('Falta cubrir una parte del plan');
+      expect(prompt).toContain(
+        '1. [high] docker/nginx/dsy.conf: La ruta /ea no existe → Usar /secured/admin/ea',
+      );
+    });
+
+    it('says so when the final review failed', async () => {
+      execution.startFinalReview();
+      execution.failFinalReview('el runner no respondió');
+      await executions.save(execution);
+
+      await ask('¿Y la revisión final?');
+
+      expect(agents.chats[0]).toContain('Falló: el runner no respondió');
+    });
   });
 
   it('returns no proposals when she only talks', async () => {

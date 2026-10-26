@@ -171,6 +171,55 @@ describe('Workspaces', () => {
     assert.ok(existsSync(join(again.dir, 'a.txt')));
   });
 
+  it('rebuilds the worktree from the branch on the remote when this clone never had it', async () => {
+    const { workspaces, bare } = setup();
+    const first = await workspaces.prepare(REPO, BRANCH);
+    writeFileSync(join(first.dir, 'a.txt'), 'trabajo\n');
+    await git(['add', '--all'], { cwd: first.dir });
+    await git(['commit', '-m', 'trabajo'], { cwd: first.dir });
+    await workspaces.push(first.dir, BRANCH);
+
+    // Otro PC (otro clon) retoma la rama: no puede partir de main, perdería el trabajo.
+    const other = new Workspaces(tempDir('other'), { 'acme/web': bare });
+    const again = await other.prepare(REPO, BRANCH);
+
+    assert.ok(existsSync(join(again.dir, 'a.txt')));
+    assert.equal(
+      (
+        await git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: again.dir })
+      ).trim(),
+      BRANCH,
+    );
+  });
+
+  it('moves a released worktree forward to what was added to its branch on the remote', async () => {
+    const { workspaces, bare } = setup();
+    const { dir } = await workspaces.prepare(REPO, BRANCH);
+    writeFileSync(join(dir, 'a.txt'), 'trabajo\n');
+    await git(['add', '--all'], { cwd: dir });
+    await git(['commit', '-m', 'trabajo'], { cwd: dir });
+    await workspaces.push(dir, BRANCH);
+    await workspaces.release(REPO, BRANCH);
+
+    // Alguien corrige a mano en la PR y sube un commit a la rama.
+    const mate = tempDir('mate');
+    await git(['clone', '--branch', BRANCH, bare, mate]);
+    writeFileSync(join(mate, 'arreglo.txt'), 'a mano\n');
+    await git(['add', '--all'], { cwd: mate });
+    await git(['commit', '-m', 'arreglo'], { cwd: mate });
+    await git(['push', 'origin', BRANCH], { cwd: mate });
+
+    const again = await workspaces.prepare(REPO, BRANCH);
+
+    assert.ok(existsSync(join(again.dir, 'a.txt')));
+    assert.ok(existsSync(join(again.dir, 'arreglo.txt')));
+    // Y se puede volver a subir sin que git rechace el push.
+    writeFileSync(join(again.dir, 'b.txt'), 'x\n');
+    await git(['add', '--all'], { cwd: again.dir });
+    await git(['commit', '-m', 'otro'], { cwd: again.dir });
+    await assert.doesNotReject(workspaces.push(again.dir, BRANCH));
+  });
+
   it('sees what was added to the remote since the last time', async () => {
     const { workspaces, bare } = setup();
     await workspaces.prepare(REPO, 'workbench/primera-1');

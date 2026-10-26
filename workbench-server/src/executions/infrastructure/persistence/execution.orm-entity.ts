@@ -10,6 +10,7 @@ import type {
   ExecutionExtraRepo,
   ExecutionRepo,
   ExecutionTicket,
+  FinalReview,
   StageRun,
 } from '@executions/domain/entities/execution.props';
 
@@ -51,6 +52,9 @@ export class ExecutionOrmEntity {
 
   @Column({ type: 'text', nullable: true })
   error!: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  final_review!: FinalReview | null;
 
   @CreateDateColumn()
   created_at!: Date;

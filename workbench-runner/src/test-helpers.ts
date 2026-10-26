@@ -100,6 +100,7 @@ export function testConfig(
       tickets: [...DEFAULT_CONFIG.allowedTools.tickets],
       develop: [...DEFAULT_CONFIG.allowedTools.develop],
       review: [...DEFAULT_CONFIG.allowedTools.review],
+      final: [...DEFAULT_CONFIG.allowedTools.final],
     },
     remoteOverrides: { 'acme/web': bare },
     copyFiles: {},

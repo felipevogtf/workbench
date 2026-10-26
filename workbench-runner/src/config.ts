@@ -33,7 +33,13 @@ export interface RunnerConfig {
 export const DEFAULT_CONFIG = {
   claudeBin: 'claude',
   maxBudgetUsd: 5,
-  timeoutMinutes: { tickets: 15, develop: 45, review: 15, publish: 5 },
+  timeoutMinutes: {
+    tickets: 15,
+    develop: 45,
+    review: 15,
+    publish: 5,
+    final: 25,
+  },
   allowedTools: {
     tickets: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
     develop: [
@@ -56,6 +62,19 @@ export const DEFAULT_CONFIG = {
       'Bash(npm run build:*)',
     ],
     review: [
+      'Read',
+      'Grep',
+      'Glob',
+      'Bash(git diff:*)',
+      'Bash(git log:*)',
+      'Bash(git show:*)',
+      'Bash(npm test:*)',
+      'Bash(npm run test:*)',
+      'Bash(npm run lint:*)',
+      'Bash(npm run build:*)',
+    ],
+    // La revisión final lee y corre lo mismo que una revisión: nunca edita.
+    final: [
       'Read',
       'Grep',
       'Glob',
@@ -148,6 +167,7 @@ export function loadConfig(
       tickets: tools.tickets ?? [...DEFAULT_CONFIG.allowedTools.tickets],
       develop: tools.develop ?? [...DEFAULT_CONFIG.allowedTools.develop],
       review: tools.review ?? [...DEFAULT_CONFIG.allowedTools.review],
+      final: tools.final ?? [...DEFAULT_CONFIG.allowedTools.final],
     },
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
     copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],

@@ -137,6 +137,7 @@ export class FakeTasks implements TasksGatewayPort {
     name: 'Vista de órdenes de carga',
     description: 'Mostrar las órdenes',
     repoUrls: ['https://bitbucket.org/acme/web'],
+    key: null,
   };
   getTask(): Promise<ExecutionTask | null> {
     return Promise.resolve(this.task);

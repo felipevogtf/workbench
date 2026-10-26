@@ -11,13 +11,17 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import type { ChatProposal } from '@executions/domain/chat-proposals';
 import {
   ExecutionRepo,
   ExecutionStatus,
   ExecutionTarget,
   ExecutionTicket,
+  FinalReview,
   StageRun,
+  TICKET_LEVELS,
 } from '@executions/domain/entities/execution.props';
+import { BRANCH_TYPES, type BranchType } from '@executions/domain/repo';
 import { JobKind, JobStatus } from '@executions/domain/entities/job.props';
 import type { ExecutionUsage } from '@executions/application/usage.service';
 
@@ -57,6 +61,8 @@ export class ExecutionResponseDto {
   tickets!: ExecutionTicket[];
   pullRequestUrl!: string | null;
   error!: string | null;
+  /** La revisión final que pidió el usuario, si la pidió. */
+  finalReview!: FinalReview | null;
   createdAt!: string;
   updatedAt!: string;
   finishedAt!: string | null;
@@ -125,20 +131,63 @@ export class ExecutionChatRequestDto {
   messages!: ExecutionChatMessageDto[];
 }
 
-/** Una instrucción que Lucy propone dejarle a un agente en un ticket; no se guarda hasta que el usuario la confirma. */
-export class NoteProposalDto {
-  ticketId!: string;
-  /** El número del ticket tal como lo ve el usuario (desde 1). */
-  ticket!: number;
-  title!: string;
-  text!: string;
-}
-
 export class ExecutionChatReplyDto {
   reply!: string;
   agentName!: string;
   model!: string;
-  proposals!: NoteProposalDto[];
+  /** Lo que Lucy propone y el usuario puede confirmar: notas, tickets nuevos o la revisión final. */
+  proposals!: ChatProposal[];
+}
+
+/** Cómo se ejecuta una tarea; todo es opcional. */
+export class StartExecutionDto {
+  /** Cómo empieza la rama (`feature/…`, `fix/…`, `hotfix/…`); sin esto se deduce del nombre de la tarea. */
+  @IsOptional()
+  @IsIn(BRANCH_TYPES)
+  branchType?: BranchType;
+}
+
+/** Un ticket nuevo para sumar a una ejecución terminada. */
+export class NewTicketDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4_000)
+  description!: string;
+
+  @IsOptional()
+  @IsIn(TICKET_LEVELS)
+  level?: (typeof TICKET_LEVELS)[number];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  criteria?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @IsString({ each: true })
+  files?: string[];
+
+  /** `organización/repo`, cuando la tarea tiene varios. */
+  @IsOptional()
+  @IsString()
+  repo?: string;
+}
+
+export class AddTicketsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => NewTicketDto)
+  tickets!: NewTicketDto[];
 }
 
 /** Una instrucción del usuario para quien trabaje el ticket la próxima vez. */

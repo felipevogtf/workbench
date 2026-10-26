@@ -152,6 +152,52 @@ describe('runJob', () => {
     assert.ok(logs.some((line) => line.includes('El revisor dejó archivos')));
   });
 
+  it('final: reviews the whole branch like a review does, and discards what it leaves', async () => {
+    const { context, logs } = setup();
+    await runJob(job('develop'), context);
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    const headBefore = (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim();
+
+    process.env.FAKE_TOUCH = 'dist/salida.txt';
+    try {
+      const outcome = await runJob(
+        { ...job('review'), kind: 'final' },
+        context,
+      );
+      assert.ok(outcome.result.output);
+      assert.equal(outcome.result.headAfter, undefined);
+    } finally {
+      delete process.env.FAKE_TOUCH;
+    }
+
+    assert.equal(
+      (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+      '',
+    );
+    assert.equal(
+      (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim(),
+      headBefore,
+    );
+    assert.ok(logs.some((line) => line.includes('El revisor dejó archivos')));
+  });
+
+  it('final: may run the checks but never edit, and has time for a whole branch', () => {
+    const tools = DEFAULT_CONFIG.allowedTools.final;
+    for (const command of ['test', 'run test', 'run lint', 'run build']) {
+      assert.ok(tools.includes(`Bash(npm ${command}:*)` as never), command);
+    }
+    assert.equal(tools.includes('Edit' as never), false);
+    assert.equal(tools.includes('Write' as never), false);
+    assert.ok(
+      DEFAULT_CONFIG.timeoutMinutes.final >
+        DEFAULT_CONFIG.timeoutMinutes.review,
+    );
+  });
+
   it('review: says nothing when it left the worktree clean', async () => {
     const { context, logs } = setup();
     await runJob(job('develop'), context);

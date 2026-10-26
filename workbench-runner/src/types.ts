@@ -1,4 +1,5 @@
-export type JobKind = 'tickets' | 'develop' | 'review' | 'publish';
+/** `final` es la revisión de toda la rama que el usuario pide cuando la ejecución ya terminó. */
+export type JobKind = 'tickets' | 'develop' | 'review' | 'publish' | 'final';
 
 /** Un trabajo tal como lo manda el servidor (`runner/jobs/claim`). */
 export interface RunnerJob {

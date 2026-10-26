@@ -148,9 +148,7 @@ describe('ExecutionsService', () => {
       const execution = await service.start('issue-1');
 
       expect(execution.status).toBe('running');
-      expect(execution.branch).toMatch(
-        /^workbench\/vista-de-ordenes-de-carga-[0-9a-f]{8}$/,
-      );
+      expect(execution.branch).toBe('feature/vista-de-ordenes-de-carga');
       expect(execution.repo).toMatchObject({
         fullName: 'acme/web',
         sshUrl: 'git@bitbucket.org:acme/web.git',
@@ -887,6 +885,378 @@ describe('ExecutionsService', () => {
       await developing();
 
       expect(jobs.items.at(-1)!.payload.prompt).toContain('DUDAS:');
+    });
+  });
+
+  describe('correcting an execution that already finished', () => {
+    /** Dos tickets desarrollados, revisados y publicados: la ejecución queda completada con su PR abierta. */
+    async function finished() {
+      const execution = await service.start('issue-1');
+      await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: APPROVED });
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: APPROVED });
+      await answer({ baseBranch: 'main' });
+      return execution.id;
+    }
+    const current = async (id: string) => (await service.get(id)).execution;
+    const HOTFIX = {
+      title: 'Hotfix de la ruta',
+      description: 'Cambiar la ruta del multipart',
+      level: 'simple' as const,
+      criteria: ['Responde 200'],
+    };
+
+    describe('reopening a ticket', () => {
+      it('sends it back to development with the note, reviews only the correction and updates the pull request', async () => {
+        const id = await finished();
+        const first = (await current(id)).tickets[0];
+        const prUrl = (await current(id)).pullRequestUrl;
+
+        await service.reopenTicket(id, first.id, '  Corrige la ruta  ');
+
+        let execution = await current(id);
+        expect(execution.status).toBe('running');
+        expect(execution.tickets[0]).toMatchObject({
+          status: 'developing',
+          rounds: 0,
+          startSha: 'bbb',
+          reviewNote: null,
+        });
+        expect(execution.tickets[0].notes?.map((n) => n.text)).toEqual([
+          'Corrige la ruta',
+        ]);
+        expect(
+          execution.stages.find((stage) => stage.key === 'publish')?.status,
+        ).toBe('pending');
+        const develop = jobs.items.at(-1)!;
+        expect(develop).toMatchObject({ kind: 'develop', ticketId: first.id });
+        expect(develop.payload.prompt).toContain('Corrige la ruta');
+
+        await answer(developed('ccc', 'ddd'));
+        const review = jobs.items.at(-1)!;
+        expect(review.kind).toBe('review');
+        // La revisión parte del estado en que se reabrió: ve la corrección y no todo el ticket otra vez.
+        expect(review.payload.prompt).toContain('git diff bbb HEAD');
+        expect(review.payload.prompt).toContain('Corrige la ruta');
+
+        await answer({ output: APPROVED });
+        expect(jobs.items.at(-1)!.kind).toBe('publish');
+        await answer({ baseBranch: 'main' });
+
+        execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.pullRequestUrl).toBe(prUrl);
+        // Subir la rama actualiza la PR abierta: no se abre otra.
+        expect(pullRequests.created).toHaveLength(1);
+      });
+
+      it('gives the corrected ticket two new reviews, not the ones it had already used', async () => {
+        const id = await finished();
+        const first = (await current(id)).tickets[0];
+        await service.reopenTicket(id, first.id, 'Corrige');
+        await answer(developed('ccc', 'ddd'));
+
+        await answer({ output: REJECTED });
+
+        const ticket = (await current(id)).tickets[0];
+        expect(ticket.status).toBe('developing');
+        expect(ticket.rounds).toBe(1);
+        expect(jobs.items.at(-1)!.kind).toBe('develop');
+      });
+
+      it('only reopens a ticket of a completed execution, that is done, with a note', async () => {
+        const running = await service.start('issue-1');
+        await answer({ output: TICKETS_OUTPUT });
+        await service.begin(running.id);
+        const ticket = (await current(running.id)).tickets[0];
+        await expect(
+          service.reopenTicket(running.id, ticket.id, 'Corrige'),
+        ).rejects.toMatchObject({ kind: 'conflict' });
+
+        await service.cancel(running.id);
+        const id = await finished();
+        const done = (await current(id)).tickets[0];
+        await expect(service.reopenTicket(id, done.id, '   ')).rejects.toThrow(
+          'empty',
+        );
+        await expect(
+          service.reopenTicket(id, 'no-existe', 'Corrige'),
+        ).rejects.toMatchObject({ kind: 'not-found' });
+        await expect(
+          service.reopenTicket('no-existe', done.id, 'Corrige'),
+        ).rejects.toMatchObject({ kind: 'not-found' });
+        expect((await current(id)).status).toBe('completed');
+      });
+    });
+
+    describe('adding tickets', () => {
+      it('develops and reviews them on the same branch, and updates the pull request', async () => {
+        const id = await finished();
+        const branch = (await current(id)).branch;
+        const prUrl = (await current(id)).pullRequestUrl;
+
+        await service.addTickets(id, [HOTFIX]);
+
+        let execution = await current(id);
+        expect(execution.status).toBe('running');
+        expect(execution.branch).toBe(branch);
+        expect(execution.tickets).toHaveLength(3);
+        expect(execution.tickets[2]).toMatchObject({
+          title: 'Hotfix de la ruta',
+          status: 'developing',
+          level: 'simple',
+          criteria: ['Responde 200'],
+        });
+        const develop = jobs.items.at(-1)!;
+        expect(develop).toMatchObject({
+          kind: 'develop',
+          ticketId: execution.tickets[2].id,
+        });
+        expect(develop.payload.prompt).toContain('Hotfix de la ruta');
+
+        await answer(developed('ccc', 'ddd'));
+        expect(jobs.items.at(-1)!.kind).toBe('review');
+        await answer({ output: APPROVED });
+        expect(jobs.items.at(-1)!.kind).toBe('publish');
+        await answer({ baseBranch: 'main' });
+
+        execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.tickets.every((t) => t.status === 'done')).toBe(true);
+        expect(execution.pullRequestUrl).toBe(prUrl);
+        expect(pullRequests.created).toHaveLength(1);
+      });
+
+      it('does not reassign the tickets that already had a worker', async () => {
+        const id = await finished();
+        const before = (await current(id)).tickets.map((t) => [
+          t.developerId,
+          t.reviewerId,
+        ]);
+
+        await service.addTickets(id, [HOTFIX]);
+
+        const after = (await current(id)).tickets.map((t) => [
+          t.developerId,
+          t.reviewerId,
+        ]);
+        expect(after.slice(0, 2)).toEqual(before);
+      });
+
+      it('adds several at once, one after the other', async () => {
+        const id = await finished();
+
+        await service.addTickets(id, [
+          HOTFIX,
+          { title: 'Otro ajuste', description: 'Ajustar otra cosa' },
+        ]);
+
+        const tickets = (await current(id)).tickets;
+        expect(tickets.map((t) => [t.title, t.status])).toEqual([
+          ['API de órdenes', 'done'],
+          ['Vista', 'done'],
+          ['Hotfix de la ruta', 'developing'],
+          ['Otro ajuste', 'pending'],
+        ]);
+        expect(tickets[3].level).toBe('medium');
+      });
+
+      it('only adds to a completed execution, at least one ticket, a valid one, and not too many', async () => {
+        const running = await service.start('issue-1');
+        await expect(
+          service.addTickets(running.id, [HOTFIX]),
+        ).rejects.toMatchObject({ kind: 'conflict' });
+        await service.cancel(running.id);
+
+        const id = await finished();
+        await expect(service.addTickets(id, [])).rejects.toThrow(
+          'at least one',
+        );
+        await expect(
+          service.addTickets(id, [{ title: '  ', description: 'x' }]),
+        ).rejects.toThrow('valid ticket');
+        await expect(
+          service.addTickets(
+            id,
+            Array.from({ length: 6 }, () => HOTFIX),
+          ),
+        ).rejects.toThrow('At most 5');
+        await expect(
+          service.addTickets('no-existe', [HOTFIX]),
+        ).rejects.toMatchObject({ kind: 'not-found' });
+        expect((await current(id)).status).toBe('completed');
+        expect((await current(id)).tickets).toHaveLength(2);
+      });
+    });
+
+    describe('the final review', () => {
+      const REPORT = JSON.stringify({
+        summary: 'Falta cubrir una parte del plan',
+        findings: [
+          { severity: 'low', issue: 'Un detalle', suggestion: 'Cámbialo' },
+          {
+            severity: 'high',
+            file: 'docker/nginx/dsy.conf',
+            issue: 'La ruta no existe',
+            suggestion: 'Usar /secured/admin/ea',
+          },
+        ],
+      });
+
+      it('is asked once the execution is completed, as a job of its own that does not move the execution', async () => {
+        const id = await finished();
+
+        await service.requestFinalReview(id);
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.finalReview).toMatchObject({
+          status: 'running',
+          findings: [],
+        });
+        const job = jobs.items.at(-1)!;
+        expect(job).toMatchObject({ kind: 'final', ticketId: null });
+        expect(job.payload.agent).not.toBeNull();
+        expect(job.payload.prompt).toContain('revisión final');
+        expect(job.payload.prompt).toContain('## Pasos');
+        expect(job.payload.prompt).toContain('git diff origin/main...HEAD');
+        expect(job.payload.prompt).toContain('API de órdenes');
+      });
+
+      it('keeps the report and leaves the execution as it was', async () => {
+        const id = await finished();
+        const before = await current(id);
+        await service.requestFinalReview(id);
+
+        await answer({ output: REPORT });
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.pullRequestUrl).toBe(before.pullRequestUrl);
+        expect(execution.stages.every((s) => s.status === 'done')).toBe(true);
+        expect(execution.finalReview).toMatchObject({
+          status: 'done',
+          summary: 'Falta cubrir una parte del plan',
+        });
+        expect(execution.finalReview?.findings.map((f) => f.severity)).toEqual([
+          'high',
+          'low',
+        ]);
+        expect(execution.finalReview?.finishedAt).not.toBeNull();
+      });
+
+      it('fails the review, not the execution, when the report is not valid', async () => {
+        const id = await finished();
+        await service.requestFinalReview(id);
+
+        await answer({ output: 'No encontré nada que decir' });
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.finalReview?.status).toBe('failed');
+        expect(execution.finalReview?.error).toContain('valid JSON');
+      });
+
+      it('fails the review, not the execution, when the job fails', async () => {
+        const id = await finished();
+        await service.requestFinalReview(id);
+
+        await answer({}, false, 'el runner murió');
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.finalReview).toMatchObject({
+          status: 'failed',
+          error: 'el runner murió',
+        });
+      });
+
+      it('can be asked again after it finished or failed, but not while it runs', async () => {
+        const id = await finished();
+        await service.requestFinalReview(id);
+        await expect(service.requestFinalReview(id)).rejects.toMatchObject({
+          kind: 'conflict',
+        });
+
+        await answer({ output: 'sin JSON' });
+        await service.requestFinalReview(id);
+        await answer({ output: REPORT });
+        await service.requestFinalReview(id);
+
+        expect((await current(id)).finalReview?.status).toBe('running');
+        expect(jobs.items.filter((job) => job.kind === 'final')).toHaveLength(
+          3,
+        );
+      });
+
+      it('is only asked of a completed execution that exists', async () => {
+        const running = await service.start('issue-1');
+        await expect(
+          service.requestFinalReview(running.id),
+        ).rejects.toMatchObject({ kind: 'conflict' });
+        await expect(
+          service.requestFinalReview('no-existe'),
+        ).rejects.toMatchObject({ kind: 'not-found' });
+      });
+
+      it('does not get in the way of retrying an execution that failed after being reopened', async () => {
+        const id = await finished();
+        await service.requestFinalReview(id);
+        await answer({ output: REPORT });
+        const first = (await current(id)).tickets[0];
+        await service.reopenTicket(id, first.id, 'Corrige');
+
+        await answer({}, false, 'falló el desarrollo');
+        expect((await current(id)).status).toBe('failed');
+        await service.retry(id);
+
+        expect((await current(id)).status).toBe('running');
+        expect(jobs.items.at(-1)).toMatchObject({
+          kind: 'develop',
+          ticketId: first.id,
+        });
+      });
+    });
+  });
+
+  describe('the name of the branch', () => {
+    it('starts with the type and keeps the code of the Plane ticket when the task is not local', async () => {
+      tasks.task = { ...tasks.task!, key: 'MEL-12' };
+
+      const execution = await service.start('issue-1');
+
+      expect(execution.branch).toBe('feature/MEL-12/vista-de-ordenes-de-carga');
+    });
+
+    it('is fix/ for a task that is about correcting something, and the user can choose another type', async () => {
+      tasks.task = { ...tasks.task!, name: 'Corregir el login' };
+      const fix = await service.start('issue-1');
+      expect(fix.branch).toBe('fix/corregir-el-login');
+      await service.cancel(fix.id);
+
+      const hotfix = await service.start('issue-1', { branchType: 'hotfix' });
+      expect(hotfix.branch).toMatch(/^hotfix\/corregir-el-login/);
+    });
+
+    it('is different for each execution of the same task, because the earlier branch is still there', async () => {
+      const first = await service.start('issue-1');
+      await service.cancel(first.id);
+      const second = await service.start('issue-1');
+      await service.cancel(second.id);
+      const third = await service.start('issue-1');
+
+      expect(first.branch).toBe('feature/vista-de-ordenes-de-carga');
+      expect(second.branch).toBe('feature/vista-de-ordenes-de-carga-2');
+      expect(third.branch).toBe('feature/vista-de-ordenes-de-carga-3');
+    });
+
+    it('never starts with workbench/', async () => {
+      const execution = await service.start('issue-1');
+
+      expect(execution.branch.startsWith('workbench/')).toBe(false);
     });
   });
 

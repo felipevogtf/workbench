@@ -6,9 +6,9 @@ import {
   type ExecutionChatMessage,
 } from '@executions/domain/execution-chat-prompt';
 import {
-  extractNoteProposals,
-  type NoteProposal,
-} from '@executions/domain/note-proposals';
+  extractProposals,
+  type ChatProposal,
+} from '@executions/domain/chat-proposals';
 import {
   EXECUTION_REPOSITORY_PORT,
   type ExecutionRepositoryPort,
@@ -35,8 +35,8 @@ export interface ExecutionChatReply {
   reply: string;
   agentName: string;
   model: string;
-  /** Notas para agentes que Lucy propone y el usuario puede confirmar. */
-  proposals: NoteProposal[];
+  /** Lo que Lucy propone (notas, tickets, la revisión final) y el usuario puede confirmar con un botón. */
+  proposals: ChatProposal[];
 }
 
 /**
@@ -117,11 +117,13 @@ export class ExecutionChatService {
     const answer = await this.limiter.run(() =>
       this.agents.chat({ prompt, workdir }),
     );
-    // Las notas que propone Lucy no van en el texto: el usuario las confirma con un botón.
-    const { reply, proposals } = extractNoteProposals(
-      answer.reply,
-      execution.tickets,
-    );
+    // Lo que propone Lucy no va en el texto: el usuario lo confirma con un botón.
+    const { reply, proposals } = extractProposals(answer.reply, {
+      tickets: execution.tickets,
+      status: execution.status,
+      finalReviewRunning: execution.finalReview?.status === 'running',
+      repos: execution.targets().map((target) => target.repo.fullName),
+    });
     return { ...answer, reply, proposals };
   }
 }

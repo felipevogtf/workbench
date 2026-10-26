@@ -125,6 +125,32 @@ export interface ExecutionTarget extends ExecutionExtraRepo {
   primary: boolean;
 }
 
+/** Cuánto importa un hallazgo de la revisión final. */
+export const FINDING_SEVERITIES = ['high', 'medium', 'low'] as const;
+export type FindingSeverity = (typeof FINDING_SEVERITIES)[number];
+
+/** Un problema que la revisión final encontró en la rama completa. */
+export interface FinalReviewFinding {
+  severity: FindingSeverity;
+  /** El archivo al que se refiere, si se refiere a uno. */
+  file: string | null;
+  issue: string;
+  suggestion: string;
+}
+
+/**
+ * La revisión de toda la rama que el usuario pide cuando la ejecución terminó: un agente revisor compara el diff
+ * completo con el plan, los criterios de los tickets y las recetas. Es un informe: no cambia nada por sí sola.
+ */
+export interface FinalReview {
+  status: 'running' | 'done' | 'failed';
+  requestedAt: string;
+  finishedAt: string | null;
+  summary: string | null;
+  findings: FinalReviewFinding[];
+  error: string | null;
+}
+
 export interface ExecutionProps {
   id: string;
   issueId: string;
@@ -139,6 +165,8 @@ export interface ExecutionProps {
   tickets: ExecutionTicket[];
   pullRequestUrl: string | null;
   error: string | null;
+  /** La revisión final pedida por el usuario; ausente si nunca se pidió. */
+  finalReview?: FinalReview | null;
   createdAt: Date;
   updatedAt: Date;
   finishedAt: Date | null;

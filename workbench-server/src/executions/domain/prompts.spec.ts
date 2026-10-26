@@ -1,6 +1,7 @@
 import { ExecutionTicket } from './entities/execution.props';
 import {
   buildDevelopPrompt,
+  buildFinalReviewPrompt,
   buildReviewPrompt,
   buildTicketsPrompt,
 } from './prompts';
@@ -153,5 +154,90 @@ describe('ticket files', () => {
     });
 
     expect(prompt).not.toContain('Archivos previstos');
+  });
+});
+
+describe('the final review prompt', () => {
+  const tickets = [
+    {
+      ...ticket(['src/a.ts']),
+      title: 'API de órdenes',
+      status: 'done' as const,
+      criteria: ['Responde 200'],
+      summary: 'Agregué el endpoint',
+      doubts: [
+        {
+          id: 'd1',
+          at: '2026-10-26T00:00:00Z',
+          from: 'Kiwi',
+          text: 'Supuse /ea',
+        },
+      ],
+    },
+  ];
+  const build = (
+    extra: Partial<Parameters<typeof buildFinalReviewPrompt>[0]> = {},
+  ) =>
+    buildFinalReviewPrompt({
+      taskName: 'Vista de órdenes',
+      plan: '## Pasos\nHacer la vista',
+      tickets,
+      targets: [{ repoName: 'acme/web', baseBranch: 'main', primary: true }],
+      ...extra,
+    });
+
+  it('gives the reviewer the plan, the tickets with their criteria, summary and doubts', () => {
+    const prompt = build();
+
+    expect(prompt).toContain('«Vista de órdenes»');
+    expect(prompt).toContain('Hacer la vista');
+    expect(prompt).toContain('1. API de órdenes (done)');
+    expect(prompt).toContain('- Responde 200');
+    expect(prompt).toContain('Resumen del desarrollador: Agregué el endpoint');
+    expect(prompt).toContain('Duda de Kiwi: Supuse /ea');
+  });
+
+  it('points at the diff of the whole branch against its base', () => {
+    expect(build()).toContain('git diff origin/main...HEAD');
+    expect(
+      build({
+        targets: [
+          { repoName: 'acme/web', baseBranch: 'develop', primary: true },
+        ],
+      }),
+    ).toContain('git diff origin/develop...HEAD');
+    // Sin la rama base conocida se supone main.
+    expect(
+      build({
+        targets: [{ repoName: 'acme/web', baseBranch: null, primary: true }],
+      }),
+    ).toContain('origin/main...HEAD');
+  });
+
+  it('lists the other repositories as read-only folders', () => {
+    const prompt = build({
+      targets: [
+        { repoName: 'acme/web', baseBranch: 'main', primary: true },
+        { repoName: 'acme/api', baseBranch: 'main', primary: false },
+      ],
+    });
+
+    expect(prompt).toContain('- acme/api: {{dir:acme/api}} (solo para leer');
+  });
+
+  it('asks for a JSON report, without changing files, and tells how to treat errors that were already there', () => {
+    const prompt = build();
+
+    expect(prompt).toContain('"findings":[{"severity":"high|medium|low"');
+    expect(prompt).toContain('No cambies archivos');
+    expect(prompt).toContain('ya estaban antes');
+    expect(prompt).toContain('`npm test`, `npm run lint`, `npm run build`');
+  });
+
+  it('shows the recipe when there is one, and nothing when there is not', () => {
+    expect(build({ recipe: '## Receta de acme/web\nPara probar' })).toContain(
+      '# Recetas del proyecto',
+    );
+    expect(build()).not.toContain('# Recetas del proyecto');
   });
 });

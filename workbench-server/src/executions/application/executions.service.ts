@@ -7,16 +7,19 @@ import {
   StageKey,
 } from '@executions/domain/entities/execution.props';
 import { Job } from '@executions/domain/entities/job.entity';
-import { JobPayload } from '@executions/domain/entities/job.props';
+import { JobKind, JobPayload } from '@executions/domain/entities/job.props';
 import {
   parseDecision,
   parseDoubts,
+  parseFinalReview,
   parseQuestion,
   parseReview,
   parseTickets,
+  type TicketDraft,
 } from '@executions/domain/json-output';
 import {
   buildDevelopPrompt,
+  buildFinalReviewPrompt,
   buildPullRequestDescription,
   buildQuestionPrompt,
   buildReviewPrompt,
@@ -24,7 +27,12 @@ import {
   MAX_REVIEW_ROUNDS,
   MAX_TICKETS,
 } from '@executions/domain/prompts';
-import { branchNameFor, parseRepo } from '@executions/domain/repo';
+import {
+  branchNameFor,
+  branchTypeOf,
+  parseRepo,
+  type BranchType,
+} from '@executions/domain/repo';
 import {
   EXECUTION_REPOSITORY_PORT,
   type ExecutionRepositoryPort,
@@ -58,10 +66,15 @@ const MAX_QUESTIONS = 2;
 /** Cuántas dudas se guardan por ticket: las más recientes. */
 const MAX_DOUBTS = 5;
 
-const AGENT_OF: Record<Exclude<StageKey, 'publish'>, ExecutionAgentModule> = {
+/** Cuántos tickets se pueden sumar de una vez a una ejecución terminada, y cuántos puede tener en total. */
+const MAX_ADDED_TICKETS = 5;
+const MAX_TICKETS_IN_TOTAL = 15;
+
+const AGENT_OF: Record<Exclude<JobKind, 'publish'>, ExecutionAgentModule> = {
   tickets: 'task-tickets',
   develop: 'task-developer',
   review: 'task-reviewer',
+  final: 'task-reviewer',
 };
 
 /**
@@ -98,7 +111,10 @@ export class ExecutionsService {
   private readonly toDecide = new Map<string, string>();
 
   /** Empieza a ejecutar la tarea con su último plan. Revisa todo lo que puede fallar antes de encolar. */
-  async start(issueId: string): Promise<Execution> {
+  async start(
+    issueId: string,
+    options: { branchType?: BranchType } = {},
+  ): Promise<Execution> {
     const task = await this.tasks.getTask(issueId);
     if (!task) throw DomainError.notFound(`Issue with id ${issueId} not found`);
 
@@ -142,7 +158,14 @@ export class ExecutionsService {
     }
 
     const id = crypto.randomUUID();
-    const branch = branchNameFor(task.name, id);
+    // Cada ejecución de la tarea lleva su propia rama: la de las anteriores sigue en el remoto con su PR.
+    const attempt = (await this.executions.findByIssueId(issueId)).length + 1;
+    const branch = branchNameFor({
+      taskName: task.name,
+      type: options.branchType ?? branchTypeOf(task.name),
+      key: task.key,
+      attempt,
+    });
     const execution = Execution.create({
       id,
       issueId,
@@ -214,7 +237,8 @@ export class ExecutionsService {
   /** Reintenta lo que falló, sin repetir lo que ya salió bien. */
   async retry(id: string): Promise<Execution> {
     const { execution, jobs } = await this.get(id);
-    const last = jobs.at(-1);
+    // La revisión final es un informe aparte: no es lo que se reintenta.
+    const last = jobs.filter((job) => job.kind !== 'final').at(-1);
     if (!last) throw DomainError.conflict('The execution has nothing to retry');
     execution.resume();
 
@@ -260,6 +284,11 @@ export class ExecutionsService {
    * lo deja como fallo de la ejecución para que el usuario lo vea y pueda reintentar.
    */
   async handleFinished(job: Job): Promise<void> {
+    // La revisión final llega con la ejecución ya terminada: no mueve su estado, solo deja su informe.
+    if (job.kind === 'final') {
+      await this.finishFinalReview(job);
+      return;
+    }
     const execution = await this.executions.findById(job.executionId);
     if (!execution?.isActive) return;
 
@@ -308,6 +337,129 @@ export class ExecutionsService {
 
     await this.resolveQuestion(execution, ticket, 'user', answer);
     return this.executions.save(execution);
+  }
+
+  /**
+   * Reabre un ticket terminado de una ejecución completada para corregirlo con una nota del usuario. Vuelve a desarrollo y
+   * revisión (la revisión ve solo la corrección) y, al terminar, se sube de nuevo la misma rama: la PR abierta se actualiza.
+   */
+  async reopenTicket(
+    executionId: string,
+    ticketId: string,
+    text: string,
+  ): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    const ticket = execution.ticket(ticketId);
+    if (execution.status !== 'completed') {
+      throw DomainError.conflict(
+        'A ticket can only be reopened once the execution is completed',
+      );
+    }
+    if (ticket.status !== 'done') {
+      throw DomainError.conflict('Only a finished ticket can be reopened');
+    }
+    const note = text.trim();
+    if (!note) throw new DomainError('The note cannot be empty');
+
+    execution.reopen();
+    ticket.notes = [
+      ...(ticket.notes ?? []),
+      { at: new Date().toISOString(), from: 'user', text: note },
+    ];
+    ticket.status = 'developing';
+    ticket.rounds = 0;
+    ticket.feedback = null;
+    ticket.reviewNote = null;
+    // La revisión compara contra el estado en que se reabrió: ve la corrección y no todo el ticket de nuevo.
+    ticket.startSha = ticket.headSha;
+    this.refreshStages(execution);
+    const job = await this.buildJob(execution, 'develop', ticket);
+    await this.executions.save(execution);
+    await this.jobs.save(job);
+    return execution;
+  }
+
+  /**
+   * Suma tickets (un hotfix, algo que no se consideró al inicio) a una ejecución completada: se desarrollan y se revisan como
+   * los demás, en la misma rama, y al terminar se sube de nuevo para que la PR abierta se actualice.
+   */
+  async addTickets(
+    executionId: string,
+    drafts: readonly Partial<TicketDraft>[],
+  ): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    if (execution.status !== 'completed') {
+      throw DomainError.conflict(
+        'Tickets can only be added once the execution is completed',
+      );
+    }
+    if (drafts.length === 0) {
+      throw new DomainError('Add at least one ticket');
+    }
+    if (
+      drafts.length > MAX_ADDED_TICKETS ||
+      execution.tickets.length + drafts.length > MAX_TICKETS_IN_TOTAL
+    ) {
+      throw new DomainError(
+        `At most ${MAX_ADDED_TICKETS} tickets can be added at once, and ${MAX_TICKETS_IN_TOTAL} in total`,
+      );
+    }
+
+    // Se normalizan igual que los que crea el agente (nivel, criterios, archivos y repositorio válidos).
+    const added = parseTickets(
+      JSON.stringify({ tickets: drafts }),
+      MAX_ADDED_TICKETS,
+      execution.targets().map((target) => target.repo.fullName),
+    ).map((draft) => this.ticketFrom(draft));
+
+    execution.addTickets(added);
+    await this.assignTickets(execution, added);
+    execution.reopen();
+    await this.startNextTicket(execution);
+    return this.executions.save(execution);
+  }
+
+  /**
+   * El usuario pide la revisión final: un agente revisor lee toda la rama contra el plan, los tickets y las recetas y deja un
+   * informe. Solo con la ejecución terminada; el informe no cambia nada por sí solo.
+   */
+  async requestFinalReview(executionId: string): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    execution.startFinalReview();
+    const job = await this.buildJob(execution, 'final');
+    await this.executions.save(execution);
+    await this.jobs.save(job);
+    return execution;
+  }
+
+  /** El revisor final terminó: su informe queda en la ejecución, que sigue como estaba. */
+  private async finishFinalReview(job: Job): Promise<void> {
+    const execution = await this.executions.findById(job.executionId);
+    if (execution?.finalReview?.status !== 'running') return;
+
+    if (job.status === 'failed') {
+      execution.failFinalReview(job.error ?? 'The final review failed');
+    } else if (job.status === 'done') {
+      try {
+        execution.finishFinalReview(parseFinalReview(job.result?.output ?? ''));
+      } catch (error) {
+        execution.failFinalReview(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    } else {
+      return;
+    }
+    await this.executions.save(execution);
   }
 
   /**
@@ -480,24 +632,7 @@ export class ExecutionsService {
           MAX_TICKETS,
           execution.targets().map((target) => target.repo.fullName),
         );
-        execution.setTickets(
-          drafts.map((draft): ExecutionTicket => ({
-            id: crypto.randomUUID(),
-            ...draft,
-            developerId: null,
-            reviewerId: null,
-            status: 'pending',
-            rounds: 0,
-            feedback: null,
-            startSha: null,
-            headSha: null,
-            summary: null,
-            reviewNote: null,
-            question: null,
-            decisions: [],
-            questionsAsked: 0,
-          })),
-        );
+        execution.setTickets(drafts.map((draft) => this.ticketFrom(draft)));
         await this.assignTickets(execution);
         execution.setStage('tickets', 'done');
         // Se espera el visto bueno: el usuario puede cambiar quién hace cada ticket antes de empezar.
@@ -576,33 +711,38 @@ export class ExecutionsService {
         const target = execution.targetOf(job.payload.repo.fullName);
         execution.setTargetBaseBranch(target.repo.fullName, baseBranch);
 
+        // Tras reabrir un ticket o sumar otros la PR ya existe: subir la rama la actualiza, no se abre otra.
         const task = await this.tasks.getTask(execution.issueId);
-        const { url } = await this.pullRequests
-          .create({
-            host: target.repo.host,
-            repo: target.repo.fullName,
-            sourceBranch: target.branch,
-            destBranch: baseBranch,
-            title: task?.name ?? target.branch,
-            description: buildPullRequestDescription({
-              taskName: task?.name ?? target.branch,
-              tickets: execution.tickets.filter(
-                (ticket) =>
-                  execution.targetOf(ticket.repo).repo.fullName ===
-                  target.repo.fullName,
-              ),
-              otherRepos: targets
-                .map((other) => other.repo.fullName)
-                .filter((name) => name !== target.repo.fullName),
-            }),
-          })
-          .catch((error: unknown) => {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            throw new DomainError(
-              `The branch was pushed but the pull request could not be opened: ${message}`,
-            );
-          });
+        const url =
+          target.pullRequestUrl ??
+          (
+            await this.pullRequests
+              .create({
+                host: target.repo.host,
+                repo: target.repo.fullName,
+                sourceBranch: target.branch,
+                destBranch: baseBranch,
+                title: task?.name ?? target.branch,
+                description: buildPullRequestDescription({
+                  taskName: task?.name ?? target.branch,
+                  tickets: execution.tickets.filter(
+                    (ticket) =>
+                      execution.targetOf(ticket.repo).repo.fullName ===
+                      target.repo.fullName,
+                  ),
+                  otherRepos: targets
+                    .map((other) => other.repo.fullName)
+                    .filter((name) => name !== target.repo.fullName),
+                }),
+              })
+              .catch((error: unknown) => {
+                const message =
+                  error instanceof Error ? error.message : String(error);
+                throw new DomainError(
+                  `The branch was pushed but the pull request could not be opened: ${message}`,
+                );
+              })
+          ).url;
 
         execution.setTargetPullRequest(target.repo.fullName, url);
 
@@ -630,6 +770,26 @@ export class ExecutionsService {
     }
   }
 
+  /** Un ticket nuevo, sin trabajo hecho, a partir de lo que dio el agente o el usuario. */
+  private ticketFrom(draft: TicketDraft): ExecutionTicket {
+    return {
+      id: crypto.randomUUID(),
+      ...draft,
+      developerId: null,
+      reviewerId: null,
+      status: 'pending',
+      rounds: 0,
+      feedback: null,
+      startSha: null,
+      headSha: null,
+      summary: null,
+      reviewNote: null,
+      question: null,
+      decisions: [],
+      questionsAsked: 0,
+    };
+  }
+
   /** Sigue con el próximo ticket sin desarrollar o, si no quedan, publica la rama. */
   private async startNextTicket(execution: Execution): Promise<void> {
     const ticket = execution.nextPendingTicket();
@@ -655,7 +815,7 @@ export class ExecutionsService {
 
   private async buildJob(
     execution: Execution,
-    kind: StageKey,
+    kind: JobKind,
     ticket?: ExecutionTicket,
     attempt = 1,
     publishRepo?: string,
@@ -706,7 +866,19 @@ export class ExecutionsService {
       prompt: '',
     };
 
-    if (kind === 'tickets') {
+    if (kind === 'final') {
+      payload.prompt = buildFinalReviewPrompt({
+        taskName: task?.name ?? execution.branch,
+        plan,
+        tickets: execution.tickets,
+        targets: execution.targets().map((each) => ({
+          repoName: each.repo.fullName,
+          baseBranch: each.baseBranch,
+          primary: each.primary,
+        })),
+        recipe,
+      });
+    } else if (kind === 'tickets') {
       payload.prompt = buildTicketsPrompt({
         taskName: task?.name ?? execution.branch,
         taskDescription: task?.description ?? null,
@@ -764,7 +936,7 @@ export class ExecutionsService {
 
   /** El agente asignado al ticket para esa etapa y, si ya no existe o no sirve, el que esté por defecto. */
   private async agentFor(
-    kind: Exclude<StageKey, 'publish'>,
+    kind: Exclude<JobKind, 'publish'>,
     ticket?: ExecutionTicket,
   ): Promise<ResolvedAgent> {
     const assigned =
@@ -784,7 +956,10 @@ export class ExecutionsService {
    * Reparte los tickets: cada uno al desarrollador de su nivel (o al que esté por defecto si no hay uno
    * de ese nivel) y los revisores por turnos, empezando por el que está por defecto.
    */
-  private async assignTickets(execution: Execution): Promise<void> {
+  private async assignTickets(
+    execution: Execution,
+    tickets: readonly ExecutionTicket[] = execution.tickets,
+  ): Promise<void> {
     const developers = (
       await this.agents.listByModule('task-developer')
     ).filter((agent) => agent.provider === 'claude');
@@ -794,7 +969,9 @@ export class ExecutionsService {
     const fallback =
       developers.find((agent) => agent.isDefault) ?? developers[0];
 
-    execution.tickets.forEach((ticket, index) => {
+    tickets.forEach((ticket) => {
+      // Los revisores se turnan por la posición del ticket en la ejecución, también al sumar tickets después.
+      const index = execution.tickets.indexOf(ticket);
       const ofLevel = developers.find((agent) => agent.level === ticket.level);
       ticket.developerId = (ofLevel ?? fallback)?.id ?? null;
       ticket.reviewerId =
@@ -892,7 +1069,7 @@ export class ExecutionsService {
   /** Marca la etapa del trabajo como fallida y la ejecución con el motivo. */
   private fail(execution: Execution, job: Job, message: string): void {
     this.refreshStages(execution);
-    execution.setStage(job.kind, 'failed');
+    if (job.kind !== 'final') execution.setStage(job.kind, 'failed');
     execution.fail(message);
   }
 

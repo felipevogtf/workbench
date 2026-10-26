@@ -1,5 +1,10 @@
 import { DomainError } from '@core/domain/domain.error';
-import { TICKET_LEVELS, TicketLevel } from './entities/execution.props';
+import {
+  FINDING_SEVERITIES,
+  FinalReviewFinding,
+  TICKET_LEVELS,
+  TicketLevel,
+} from './entities/execution.props';
 
 export interface TicketDraft {
   title: string;
@@ -27,6 +32,7 @@ const MAX_CRITERIA = 10;
 const MAX_FILES = 15;
 const MAX_FILE = 200;
 const MAX_ISSUES = 15;
+const MAX_FINDINGS = 20;
 const MAX_QUESTION = 1_500;
 
 /**
@@ -102,6 +108,43 @@ export function parseTickets(
     throw new DomainError('The agent did not create any valid ticket');
   }
   return tickets.slice(0, max);
+}
+
+/** El informe de la revisión final: un resumen y los hallazgos, los más graves primero. */
+export interface FinalReviewReport {
+  summary: string;
+  findings: FinalReviewFinding[];
+}
+
+/** El informe del revisor final. Sin una lista `findings` no es un informe. */
+export function parseFinalReview(output: string): FinalReviewReport {
+  const json = extractJson(output) as Record<string, unknown> | null;
+  if (!json || !Array.isArray(json.findings)) {
+    throw new DomainError('The final review answer has no "findings" list');
+  }
+
+  const findings = json.findings
+    .map((raw): FinalReviewFinding => {
+      const item = (raw ?? {}) as Record<string, unknown>;
+      return {
+        // Sin una gravedad válida, la del medio: ni se exagera ni se resta.
+        severity:
+          FINDING_SEVERITIES.find((severity) => severity === item.severity) ??
+          'medium',
+        file: text(item.file, MAX_FILE) || null,
+        issue: text(item.issue, MAX_DESCRIPTION),
+        suggestion: text(item.suggestion, MAX_DESCRIPTION),
+      };
+    })
+    .filter((finding) => finding.issue)
+    .sort(
+      (a, b) =>
+        FINDING_SEVERITIES.indexOf(a.severity) -
+        FINDING_SEVERITIES.indexOf(b.severity),
+    )
+    .slice(0, MAX_FINDINGS);
+
+  return { summary: text(json.summary, MAX_DESCRIPTION), findings };
 }
 
 /** El veredicto del revisor. Sin un `approved` booleano claro no se da por aprobado. */

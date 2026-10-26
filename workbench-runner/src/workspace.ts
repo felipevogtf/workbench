@@ -83,15 +83,16 @@ export class Workspaces {
 
     if (!existsSync(dir)) {
       await mkdir(resolve(dir, '..'), { recursive: true });
-      const exists = await git(
-        ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`],
-        {
-          cwd: clone,
-        },
-      ).then(
-        () => true,
-        () => false,
-      );
+      const refExists = (ref: string) =>
+        git(['rev-parse', '--verify', '--quiet', ref], { cwd: clone }).then(
+          () => true,
+          () => false,
+        );
+      const exists = await refExists(`refs/heads/${branch}`);
+      // Una rama ya subida que este clon no tiene (otro PC, o el clon se rehízo) se parte de lo que hay en el remoto, no de la
+      // rama base: si no, se perdería el trabajo hecho.
+      const remote =
+        !exists && (await refExists(`refs/remotes/origin/${branch}`));
       await git(
         exists
           ? ['worktree', 'add', dir, branch]
@@ -102,10 +103,17 @@ export class Workspaces {
               '-b',
               branch,
               dir,
-              `origin/${baseBranch}`,
+              remote ? `origin/${branch}` : `origin/${baseBranch}`,
             ],
         { cwd: clone },
       );
+      // Si la rama ya estaba en el remoto y alguien le sumó commits (una corrección a mano en la PR), se adelanta a ellos:
+      // si no, al subir de nuevo git rechazaría el push.
+      if (exists && (await refExists(`refs/remotes/origin/${branch}`))) {
+        await git(['merge', '--ff-only', `origin/${branch}`], {
+          cwd: dir,
+        }).catch(() => undefined);
+      }
       await this.setUp(repo.fullName, dir);
     }
     return { dir, baseBranch };
