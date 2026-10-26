@@ -5,6 +5,18 @@ Symfony + PHP 7.3 (FPM) + MySQL 5.7 + Nginx, todo en Docker. Los comandos de PHP
 `app` (php-fpm), `nginx`, `supervisor` (workers de messenger), `cron`, `wiremock` (mocks de integraciones) y `swagger` (UI de wiremock). La base de datos NO está en el compose: es un contenedor aparte (`miflota-db`, mysql:5.7).
 Puertos del host: 8005 (app), 3307 (MySQL), 8090 (wiremock), 8091 (swagger).
 
+## Base de datos MySQL (contenedor aparte, antes de levantar el resto)
+Revisa si ya existe: `docker ps -a --filter name=miflota-db`. Si existe pero está detenido: `docker start miflota-db`. Si no existe, créalo:
+```
+docker run -d --name miflota-db \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=miflota \
+  -p 3307:3306 \
+  -v miflota-db-data:/var/lib/mysql \
+  mysql:5.7
+```
+Espera unos 20 segundos a que MySQL termine de inicializar (`docker logs -f miflota-db`). Es la base que usa `DATABASE_URL` (usuario `root`, clave `root`, puerto 3307 del host). Si no hay base, la app falla con `SQLSTATE[HY000] [2002] Connection refused`.
+
 ## Levantar
 Archivos locales que NO vienen al clonar (están en .gitignore; si faltan, Docker crea directorios en su lugar y el contenedor falla): `.env.docker.local` (`COMPOSE_PORT=8005`, `COMPOSE_PROJECT_NAME=miflota`), `.env.local` (desde `.env.local.dist`), `docker-compose-local.yml`, y desde su `.dist`: `docker/app/zdsy.conf`, `docker/supervisor/dsy.conf`, `docker/cron/crontabs/root`.
 
