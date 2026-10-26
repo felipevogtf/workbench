@@ -86,3 +86,20 @@ Lucy es la coordinadora y el usuario habla solo con ella. El detalle completo es
    el servidor real; todo lo anterior está verificado solo con tests.
 4. **Pendiente de la etapa 2:** pedirle una explicación a un agente, hilo de mensajes guardado en el servidor, revisores que
    puedan preguntar y la etapa 3 (acciones con confirmación).
+
+## Corregir una ejecución ya terminada (opciones, 2026-10-26)
+
+Hoy un ticket «hecho» no se puede reabrir ni se pueden agregar tickets después de empezar: los tickets se crean una sola vez, al
+dividir el plan. Si el desarrollo tiene errores, se corrigen a mano en la rama de la PR. Opciones para que lo hagan los agentes:
+
+- **A. Reabrir un ticket con una nota.** El ticket vuelve a desarrollo y revisión con la corrección que redacta Lucy (el usuario confirma).
+- **B. Agregar tickets a una ejecución** (hotfix o lo que no se consideró al inicio), en la misma rama; la PR abierta se actualiza sola.
+  Requiere reabrir una ejecución completada y cambiar el paso de publicar para que, si la PR ya existe, solo suba los commits nuevos.
+- **C. Revisión final automática** de toda la rama contra el plan y las recetas, que propone tickets de corrección. Es lo que ataca
+  «no debo intervenir», pero necesita la base de B para aplicar las correcciones.
+- **D. Chequeos del runner** (lint, build, tests) antes de abrir la PR; necesita la etapa B de las recetas.
+
+**Decisión: A y B quedan para después.** Orden recomendado cuando se retomen: B (con A como caso particular), luego C con confirmación
+del usuario, luego aprobación automática con tope de rondas (por ejemplo 2).
+
+**Pendiente de desplegar:** `7ff7c43` (Lucy ya no propone notas para tickets hechos).
