@@ -42,8 +42,9 @@
         "docker compose exec -T app sh -c 'mkdir -p config/jwt && openssl genpkey -out config/jwt/private.pem -pass pass:cambia-esta-frase -aes256 -algorithm rsa -pkeyopt rsa_keygen_bits:4096 && openssl pkey -in config/jwt/private.pem -passin pass:cambia-esta-frase -out config/jwt/public.pem -pubout'",
         "docker compose exec -T app bin/console doctrine:schema:update --force",
         "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
-        "docker compose exec -T app bin/console app:import:entities",
-        "docker compose restart supervisor"
+        "docker compose exec -T app bin/console app:import:entities || true",
+        "docker compose restart supervisor",
+        "docker compose up -d"
       ],
       "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
     }
