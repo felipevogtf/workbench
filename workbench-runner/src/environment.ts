@@ -528,13 +528,21 @@ export class Environments {
 
     const warnings: string[] = [];
     for (const command of config.prepare ?? []) {
-      const step = await this.exec('sh', ['-c', fill(command, vars)], {
-        cwd: dir,
-        env,
-        timeoutMs: 20 * 60_000,
-        onLine: onLog,
-        signal,
-      });
+      const runStep = () =>
+        this.exec('sh', ['-c', fill(command, vars)], {
+          cwd: dir,
+          env,
+          timeoutMs: 20 * 60_000,
+          onLine: onLog,
+          signal,
+        });
+      let step = await runStep();
+      if (step.code !== 0 && !signal?.aborted) {
+        // Otros contenedores del proyecto usan los mismos archivos mientras tanto (un worker que escribe la caché de
+        // Symfony mientras `composer install` la limpia): el segundo intento suele pasar.
+        onLog(`El paso «${command}» falló; se reintenta una vez`);
+        step = await runStep();
+      }
       if (step.code !== 0) {
         warnings.push(
           `falló «${command}»: ${tail(step.stderr || step.stdout)}`,

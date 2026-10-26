@@ -352,6 +352,23 @@ describe('Environments', () => {
     );
   });
 
+  it('retries a preparation step once, since other containers can collide with it', async () => {
+    const { env, calls, failOn } = setup();
+    let tries = 0;
+    failOn((args) => args[0] === '-c' && ++tries === 1);
+    const dir = await worktree();
+
+    const handle = await env.ensure({
+      executionId: 'exec-1',
+      repo: REPO,
+      dir,
+      onLog: () => {},
+    });
+
+    assert.doesNotMatch(handle!.notice, /Avisos al levantarlo/);
+    assert.equal(calls.filter((c) => c.command === 'sh').length, 2);
+  });
+
   it('keeps going, with a warning, when a preparation step fails', async () => {
     const { env, failOn } = setup();
     // los pasos de preparación van por `sh -c`
