@@ -91,9 +91,10 @@
           @if (current.ticket.doubts?.length) {
             <app-alert tone="warning" heading="Dudas de los agentes">
               @for (doubt of current.ticket.doubts; track doubt.id) {
-                <p class="doubt">
-                  <strong>{{ doubt.from }}:</strong> {{ doubt.text }}
-                </p>
+                <div class="doubt">
+                  <strong>{{ doubt.from }}:</strong>
+                  <app-markdown-viewer [content]="doubt.text" />
+                </div>
               }
               <p class="muted">
                 Cuéntaselo a Lucy en el chat para decidir si hace falta corregir algo.
@@ -105,9 +106,10 @@
             <section class="block">
               <h5>Notas para el agente</h5>
               @for (note of current.ticket.notes; track note.at) {
-                <p class="note">
-                  <strong>{{ note.from === 'lucy' ? 'Lucy' : 'Tú' }}:</strong> {{ note.text }}
-                </p>
+                <div class="note">
+                  <strong>{{ note.from === 'lucy' ? 'Lucy' : 'Tú' }}:</strong>
+                  <app-markdown-viewer [content]="note.text" />
+                </div>
               } @empty {
                 <p class="muted">
                   Ninguna. Lo que escribas aquí lo verá quien trabaje el ticket la próxima vez.

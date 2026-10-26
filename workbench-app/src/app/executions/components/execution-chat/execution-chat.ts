@@ -5,11 +5,13 @@ import {
   effect,
   inject,
   input,
+  signal,
   untracked,
 } from '@angular/core';
 import { AgentsStore } from '@ai-agents/index';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Button } from '@shared/ui/button/button';
+import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
 import { NoteProposal } from '../../models/execution';
@@ -21,7 +23,7 @@ import { NoteProposal } from '../../models/execution';
  */
 @Component({
   selector: 'app-execution-chat',
-  imports: [ChatPanel, Button],
+  imports: [ChatPanel, Button, MarkdownViewer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-chat-panel
@@ -45,28 +47,37 @@ import { NoteProposal } from '../../models/execution';
           @for (proposal of chat.proposals(); track proposal) {
             <article class="proposal">
               <p class="proposal__about">Nota para el ticket {{ proposal.ticket }}</p>
-              <p class="proposal__text">{{ proposal.text }}</p>
-              <button
-                app-button
-                variant="secondary"
-                size="sm"
-                type="button"
-                [disabled]="store.acting()"
-                (click)="pass(proposal)"
-              >
-                Dejar la nota
-              </button>
-              @if (store.detail()?.status === 'failed') {
+              <div class="proposal__text" [class.proposal__text--clamped]="!isOpen(proposal)">
+                <app-markdown-viewer [content]="proposal.text" />
+              </div>
+              @if (proposal.text.length > longNote) {
+                <button type="button" class="proposal__more" (click)="toggle(proposal)">
+                  {{ isOpen(proposal) ? 'Ver menos' : 'Ver la nota completa' }}
+                </button>
+              }
+              <div class="proposal__buttons">
                 <button
                   app-button
+                  variant="secondary"
                   size="sm"
                   type="button"
                   [disabled]="store.acting()"
-                  (click)="pass(proposal, true)"
+                  (click)="pass(proposal)"
                 >
-                  Dejar la nota y reintentar
+                  Dejar la nota
                 </button>
-              }
+                @if (store.detail()?.status === 'failed') {
+                  <button
+                    app-button
+                    size="sm"
+                    type="button"
+                    [disabled]="store.acting()"
+                    (click)="pass(proposal, true)"
+                  >
+                    Dejar la nota y reintentar
+                  </button>
+                }
+              </div>
             </article>
           }
         </div>
@@ -74,9 +85,12 @@ import { NoteProposal } from '../../models/execution';
     </app-chat-panel>
   `,
   styles: `
+    /* Una nota puede ser larga: el pie no pasa de un tramo del panel y se desplaza, para no tapar la conversación. */
     .proposals {
       display: grid;
       gap: var(--space-2);
+      max-height: 40vh;
+      overflow-y: auto;
     }
 
     .proposal {
@@ -96,6 +110,29 @@ import { NoteProposal } from '../../models/execution';
     .proposal__text {
       margin: 0;
       overflow-wrap: anywhere;
+    }
+
+    /* El texto es Markdown (varios bloques): se recorta por altura, no por líneas. */
+    .proposal__text--clamped {
+      max-height: 6.5rem;
+      overflow: hidden;
+    }
+
+    .proposal__more {
+      justify-self: start;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--primary);
+      font: inherit;
+      font-size: 0.8125rem;
+      cursor: pointer;
+    }
+
+    .proposal__buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
     }
   `,
 })
@@ -138,6 +175,24 @@ export class ExecutionChat {
     this.chat.receive(
       `${left} El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`,
     );
+  }
+
+  /** Desde cuántos caracteres una nota se muestra recortada, con «Ver la nota completa». */
+  protected readonly longNote = 200;
+
+  /** Las notas propuestas que el usuario abrió completas. */
+  private readonly opened = signal<ReadonlySet<NoteProposal>>(new Set());
+
+  protected isOpen(proposal: NoteProposal): boolean {
+    return this.opened().has(proposal);
+  }
+
+  protected toggle(proposal: NoteProposal): void {
+    this.opened.update((current) => {
+      const next = new Set(current);
+      if (!next.delete(proposal)) next.add(proposal);
+      return next;
+    });
   }
 
   /** Las dudas que ya se vieron, igual que las preguntas. */

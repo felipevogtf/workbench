@@ -228,6 +228,40 @@ describe('ExecutionChat', () => {
       expect(chat.messages().at(-1)?.content).toContain('Volví a lanzar');
     });
 
+    it('renders the note as Markdown and folds a long one behind «Ver la nota completa»', async () => {
+      const long = {
+        ...proposal,
+        text: `Cierra lo pendiente en \`docker/nginx/dsy.conf\`. ${'Detalle largo. '.repeat(30)}`,
+      };
+      const { fixture, chat } = await render([]);
+      chat.toggle();
+      chat.proposals.set([long]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const element: HTMLElement = fixture.nativeElement;
+      const text = () => element.querySelector('.proposal__text');
+      const more = () => element.querySelector<HTMLButtonElement>('.proposal__more');
+
+      expect(text()?.querySelector('code')?.textContent).toBe('docker/nginx/dsy.conf');
+      expect(text()?.classList.contains('proposal__text--clamped')).toBe(true);
+      expect(more()?.textContent?.trim()).toBe('Ver la nota completa');
+
+      more()!.click();
+      fixture.detectChanges();
+      expect(text()?.classList.contains('proposal__text--clamped')).toBe(false);
+      expect(more()?.textContent?.trim()).toBe('Ver menos');
+    });
+
+    it('does not fold a short note', async () => {
+      const { fixture, chat } = await render([]);
+      chat.toggle();
+      chat.proposals.set([proposal]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('.proposal__more')).toBeNull();
+    });
+
     it('keeps the proposal when the note could not be saved', async () => {
       addNote.mockResolvedValue(false);
       const { fixture, chat } = await render([]);
