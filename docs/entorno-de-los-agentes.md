@@ -22,6 +22,11 @@ crear y modificar archivos, y elegir otros puertos si los suyos están ocupados.
 - El entorno es **de la ejecución, no del agente**: se levanta una vez y lo comparten el desarrollador, el revisor y los tickets siguientes.
   Un cambio de código se ve de inmediato (el contenedor monta el worktree); migraciones, caché y reinicios los hace quien los necesite.
 
+- **Todo vive dentro de la distro** (decidido el 2026-10-27): los clones, los worktrees y el trabajo de los agentes están en el disco propio de `wb-agents`,
+  no en `E:\`. Se descarta traer la rama a Windows con `git fetch` para subirla; el runner trabajará dentro de la distro (ver «Consecuencias»).
+- **Riesgo de red asumido** (2026-10-27): desde la distro se alcanzan los puertos 3307 y 5432 de Windows (las bases de datos que publican tus contenedores).
+  Se deja como está. Si cambia el contexto (más gente, datos reales en esas bases), se vuelve a evaluar con las alternativas de abajo.
+
 **Propuesto, a confirmar**
 - **Aislar a los agentes en una distro de WSL aparte** (`wb-agents`), con su propio Docker, sin tus llaves SSH y viendo solo la carpeta de trabajo.
   La alternativa (correr como tú, con reglas de comandos y flags prohibidos) es más rápida de armar pero su seguridad depende de que ninguna regla falle.
@@ -83,6 +88,25 @@ tu Ubuntu ni tus llaves.
    `databases-mimixer-db` y `databases-postgis-db`. Hace falta credencial, pero es una vía que no debería existir. Cerrarla con reglas de `iptables` (por usuario y
    por subred de los contenedores del agente) es posible pero **afecta a una red compartida** con tu Ubuntu, y quien tenga el grupo `docker` en la distro podría
    quitarlas. Las alternativas son el firewall de Hyper-V para WSL (afecta a todas tus distros) o una máquina virtual aparte. **Decisión pendiente.**
+
+### Consecuencias de que todo viva en la distro
+
+Esto reemplaza el diseño del hallazgo 3 (clon autoritativo en Windows). Lo que implica, y lo que hay que decidir:
+
+1. **Las credenciales de Bitbucket pasan a estar dentro de la distro.** El runner necesita clonar y subir ramas. Quien tenga el grupo `docker` en la distro
+   (el agente) puede leer cualquier archivo de ella, así que lo que se ponga ahí queda al alcance del agente. Por eso **no** se copian tus llaves SSH personales:
+   se usa una credencial **propia de este uso y acotada** (un token de acceso por repositorio con permiso de escritura, por HTTPS; o una cuenta de servicio con
+   su propia llave), y se protege la rama principal de cada repo para que solo se pueda cambiar por PR. La PR la sigue abriendo el servidor, no el runner.
+2. **El runner se muda a la distro** (propuesto): corre allá con su configuración, su `runner.lock`, su registro y Node 24, y el agente corre como otro usuario.
+   El mismo código sirve en Linux; hay que revisar `windows.ts` (arranque automático) y las pruebas.
+3. **La distro tiene que estar encendida para que haya runner.** Un servicio de `systemd` en la distro arranca el runner, y una tarea de Windows enciende la
+   distro al iniciar sesión. El botón «Ejecutar» de la app, que hoy abre el runner con el enlace `workbench-runner://`, tendría que encender la distro.
+4. **Dos runners durante la transición.** El de Windows (sin entorno) puede seguir sirviendo mientras tanto; la app ya admite varios runners y uno por defecto.
+5. **Ver el trabajo desde Windows sigue siendo posible**: la distro se abre como carpeta de red (`\\wsl.localhost\wb-agents\…`) y desde el editor con la extensión
+   de WSL. Las carpetas viejas de `E:\workbench-agent-repos` dejan de usarse para ejecuciones nuevas.
+6. **El disco de la distro crece** (un solo archivo `.vhdx` en `E:\wsl\wb-agents`) y no se encoge solo; la limpieza de worktrees viejos pasa a importar más.
+
+**A decidir antes de la etapa 2:** (a) qué tipo de credencial de Bitbucket, (b) si el runner se muda a la distro, (c) si conviven los dos runners.
 
 **Falta de esta etapa:** iniciar sesión del CLI de Claude dentro de la distro (necesita tu navegador) y correr el agente de prueba.
 
