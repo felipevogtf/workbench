@@ -24,38 +24,43 @@ describe('vbsLiteral', () => {
   });
 });
 
-describe('launcherScript', () => {
-  const script = launcherScript(RUNNER_DIR, NODE);
+// El script de arranque es de Windows y arma sus rutas con `\`: en Linux (la distro del runner) no aplica.
+describe(
+  'launcherScript',
+  { skip: process.platform !== 'win32' ? 'solo en Windows' : false },
+  () => {
+    const script = launcherScript(RUNNER_DIR, NODE);
 
-  it('goes to the runner folder, so it finds its configuration', () => {
-    assert.match(
-      script,
-      /shell\.CurrentDirectory = "C:\\Users\\Ana Pérez\\workbench\\workbench-runner"/,
-    );
-  });
+    it('goes to the runner folder, so it finds its configuration', () => {
+      assert.match(
+        script,
+        /shell\.CurrentDirectory = "C:\\Users\\Ana Pérez\\workbench\\workbench-runner"/,
+      );
+    });
 
-  it('runs node on the runner with the output in runner.log, hidden and without waiting', () => {
-    const run = script
-      .split('\r\n')
-      .find((line) => line.startsWith('shell.Run'))!;
+    it('runs node on the runner with the output in runner.log, hidden and without waiting', () => {
+      const run = script
+        .split('\r\n')
+        .find((line) => line.startsWith('shell.Run'))!;
 
-    // Entre comillas de VBScript: cada comilla del comando va duplicada.
-    assert.ok(run.includes('cmd /c ""'));
-    assert.ok(run.includes('""C:\\Program Files\\nodejs\\node.exe"" '));
-    assert.ok(run.includes('dist\\main.js""'));
-    assert.ok(
-      run.includes(
-        '>> ""C:\\Users\\Ana Pérez\\workbench\\workbench-runner\\runner.log"" 2>&1',
-      ),
-    );
-    assert.ok(run.endsWith(', 0, False'));
-  });
+      // Entre comillas de VBScript: cada comilla del comando va duplicada.
+      assert.ok(run.includes('cmd /c ""'));
+      assert.ok(run.includes('""C:\\Program Files\\nodejs\\node.exe"" '));
+      assert.ok(run.includes('dist\\main.js""'));
+      assert.ok(
+        run.includes(
+          '>> ""C:\\Users\\Ana Pérez\\workbench\\workbench-runner\\runner.log"" 2>&1',
+        ),
+      );
+      assert.ok(run.endsWith(', 0, False'));
+    });
 
-  it('uses Windows line endings', () => {
-    assert.ok(script.includes('\r\n'));
-    assert.ok(!/[^\r]\n/.test(script));
-  });
-});
+    it('uses Windows line endings', () => {
+      assert.ok(script.includes('\r\n'));
+      assert.ok(!/[^\r]\n/.test(script));
+    });
+  },
+);
 
 describe('registry', () => {
   it('opens the launcher when the workbench-runner link is opened', () => {
