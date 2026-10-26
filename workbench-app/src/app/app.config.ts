@@ -7,7 +7,7 @@ import { DASHBOARD_NAV } from '@dashboard/dashboard.nav';
 import { TASKS_NAV } from '@tasks/tasks.nav';
 import { KANBAN_NAV } from '@kanban/kanban.nav';
 import { PR_REVIEW_NAV } from '@pr-review/pr-review.nav';
-import { AI_AGENTS_NAV } from '@ai-agents/ai-agents.nav';
+import { EXECUTIONS_NAV } from '@executions/executions.nav';
 import { CREDENTIALS_NAV } from '@credentials/credentials.nav';
 import { routes } from './app.routes';
 
@@ -21,7 +21,7 @@ export const appConfig: ApplicationConfig = {
     provideNavItem(TASKS_NAV),
     provideNavItem(KANBAN_NAV),
     provideNavItem(PR_REVIEW_NAV),
-    provideNavItem(AI_AGENTS_NAV),
+    provideNavItem(EXECUTIONS_NAV),
     provideNavItem(CREDENTIALS_NAV),
   ],
 };

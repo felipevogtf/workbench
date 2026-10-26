@@ -1,0 +1,57 @@
+<div class="board">
+  @for (column of columns(); track column.status) {
+    <section class="column" [attr.data-status]="column.status" [attr.aria-label]="column.label">
+      <h5 class="column__title">
+        {{ column.label }} <span class="column__count">{{ column.cards.length }}</span>
+      </h5>
+
+      <ul class="column__cards">
+        @for (card of column.cards; track card.ticket.id) {
+          <li>
+            <button
+              type="button"
+              class="card"
+              [class.is-selected]="card.ticket.id === selectedId()"
+              (click)="open.emit(card.ticket.id)"
+            >
+              <span class="card__title">
+                <span class="card__number">{{ card.number }}</span>
+                {{ card.ticket.title }}
+              </span>
+
+              <span class="card__meta">
+                @if (card.worker; as worker) {
+                  <app-avatar [name]="worker.name" [src]="worker.avatar" size="1.5rem" />
+                  <span class="card__worker" [class.is-upcoming]="card.upcoming">
+                    {{ card.upcoming ? 'Irá con ' + worker.name : worker.name }}
+                  </span>
+                } @else {
+                  <span class="card__worker is-upcoming">Sin asignar</span>
+                }
+                @if (isWorking(card)) {
+                  <app-spinner size="0.9em" label="Trabajando" />
+                }
+              </span>
+
+              @if (card.repo || card.ticket.rounds > 0 || card.ticket.feedback?.length) {
+                <span class="card__flags">
+                  @if (card.repo) {
+                    <app-badge tone="info">{{ card.repo }}</app-badge>
+                  }
+                  @if (card.ticket.rounds > 0) {
+                    <app-badge>{{ card.ticket.rounds }} revisión(es)</app-badge>
+                  }
+                  @if (card.ticket.feedback?.length) {
+                    <app-badge tone="warning">Cambios pedidos</app-badge>
+                  }
+                </span>
+              }
+            </button>
+          </li>
+        } @empty {
+          <li class="column__empty">Nada aquí</li>
+        }
+      </ul>
+    </section>
+  }
+</div>

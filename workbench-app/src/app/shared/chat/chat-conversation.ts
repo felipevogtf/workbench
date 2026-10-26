@@ -27,6 +27,7 @@ export abstract class ChatConversation {
   private readonly errorState = signal<string | null>(null);
   private readonly draftState = signal<DraftAttachment[]>([]);
   private readonly attachErrorState = signal<string | null>(null);
+  private readonly unreadState = signal(0);
   private key: string | null = null;
   private nextDraft = 0;
 
@@ -38,6 +39,8 @@ export abstract class ChatConversation {
   readonly draftAttachments = this.draftState.asReadonly();
   /** Por qué no se pudo adjuntar algo (tipo, tamaño o cantidad); se limpia al adjuntar de nuevo. */
   readonly attachError = this.attachErrorState.asReadonly();
+  /** Respuestas que llegaron con el panel cerrado y todavía no se han visto. */
+  readonly unread = this.unreadState.asReadonly();
 
   /** Hay una pregunta sin respuesta (falló): se puede reintentar. */
   readonly canRetry = computed(() => {
@@ -67,10 +70,13 @@ export abstract class ChatConversation {
     this.errorState.set(null);
     this.draftState.set([]);
     this.attachErrorState.set(null);
+    this.unreadState.set(0);
   }
 
   toggle(): void {
     this.openState.update((open) => !open);
+    // Abrirlo es verlas.
+    if (this.openState()) this.unreadState.set(0);
   }
 
   close(): void {
@@ -116,9 +122,21 @@ export abstract class ChatConversation {
     );
   }
 
+  /**
+   * Un mensaje que el asistente manda por su cuenta, sin que se le haya preguntado (por ejemplo, que un
+   * trabajador le consultó algo): entra a la conversación y, con el panel cerrado, avisa como una respuesta
+   * sin ver.
+   */
+  receive(content: string): void {
+    this.messagesState.update((current) => [...current, { role: 'assistant', content }]);
+    if (!this.openState()) this.unreadState.update((count) => count + 1);
+    this.persist();
+  }
+
   /** Abre el chat y manda el mensaje (ej. «explícame este segmento»). */
   ask(text: string): Promise<void> {
     this.openState.set(true);
+    this.unreadState.set(0);
     return this.send(text);
   }
 
@@ -147,6 +165,7 @@ export abstract class ChatConversation {
     this.errorState.set(null);
     this.draftState.set([]);
     this.attachErrorState.set(null);
+    this.unreadState.set(0);
     this.persist();
   }
 
@@ -203,6 +222,8 @@ export abstract class ChatConversation {
       // Si mientras tanto se pasó a otra conversación, la respuesta ya no corresponde a esta.
       if (this.key === key) {
         this.messagesState.update((current) => [...current, { role: 'assistant', content: reply }]);
+        // Con el panel cerrado, la respuesta queda sin ver: el botón avisa hasta que se abra.
+        if (!this.openState()) this.unreadState.update((count) => count + 1);
       }
     } catch (error) {
       if (this.key === key) this.errorState.set(errorMessage(error));

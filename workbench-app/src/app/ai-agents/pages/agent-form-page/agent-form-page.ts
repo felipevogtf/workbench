@@ -22,10 +22,20 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { Textarea } from '@shared/ui/textarea/textarea';
 import { Toast } from '@shared/ui/toast/toast';
+import { AvatarPicker } from '../../components/avatar-picker/avatar-picker';
 import { ToolsPicker } from '../../components/tools-picker/tools-picker';
 import { AgentsStore } from '../../data-access/agents.store';
 import { ProvidersStore } from '../../data-access/providers.store';
-import { AgentModule, AgentProvider, MODULE_OPTIONS, MODULE_TOOLS } from '../../models/agent';
+import {
+  AgentEffort,
+  AgentLevel,
+  AgentModule,
+  AgentProvider,
+  EFFORT_OPTIONS,
+  LEVEL_OPTIONS,
+  MODULE_TOOLS,
+  MODULE_OPTIONS,
+} from '../../models/agent';
 
 type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
 
@@ -41,6 +51,7 @@ type RequiredField = 'name' | 'module' | 'provider' | 'model' | 'systemPrompt';
     Select,
     Textarea,
     ToolsPicker,
+    AvatarPicker,
     Button,
     Icon,
     Alert,
@@ -59,16 +70,26 @@ export class AgentFormPage {
   private readonly router = inject(Router);
   private readonly toast = inject(Toast);
 
+  protected readonly effortOptions = [...EFFORT_OPTIONS];
+  protected readonly levelOptions = [...LEVEL_OPTIONS];
+
   protected readonly moduleOptions: SelectOption[] = [...MODULE_OPTIONS];
+  /** Dónde está la lista de este menú: a donde se vuelve y se navega al guardar. */
+  protected readonly base = '/executions/agents';
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
-    module: ['pr-review', Validators.required],
+    displayName: ['', Validators.maxLength(60)],
+    effort: [''],
+    level: [''],
+    module: ['task-developer', Validators.required],
     provider: ['claude', Validators.required],
     model: ['', Validators.required],
     systemPrompt: ['', Validators.required],
   });
-  protected readonly tools = signal<string[]>([...MODULE_TOOLS['pr-review']]);
+  /** La imagen elegida (data URL); `null` = el avatar dibujado. */
+  protected readonly avatar = signal<string | null>(null);
+  protected readonly tools = signal<string[]>([...MODULE_TOOLS['task-developer']]);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -78,6 +99,9 @@ export class AgentFormPage {
   private readonly module = toSignal(this.form.controls.module.valueChanges, {
     initialValue: this.form.controls.module.value,
   });
+  /** El nivel de ticket solo lo tienen los desarrolladores. */
+  protected readonly isDeveloper = computed(() => this.module() === 'task-developer');
+
   /** Herramientas que ofrece el módulo elegido (cada módulo tiene su lista de solo lectura). */
   protected readonly toolOptions = computed(() => MODULE_TOOLS[this.module() as AgentModule]);
 
@@ -156,6 +180,15 @@ export class AgentFormPage {
       module: this.form.controls.module.value as AgentModule,
       provider: this.form.controls.provider.value as AgentProvider,
       allowedTools: this.tools(),
+      // Vacío = sin nombre para mostrar (el servidor lo guarda como nulo).
+      displayName: this.form.controls.displayName.value.trim(),
+      // Vacío = sin esfuerzo / sin nivel (el servidor los guarda como nulos).
+      effort: (this.form.controls.effort.value || null) as AgentEffort | null,
+      level: (this.form.controls.module.value === 'task-developer'
+        ? this.form.controls.level.value || null
+        : null) as AgentLevel | null,
+      // Vacío = quitar la imagen.
+      avatar: this.avatar() ?? '',
     };
     this.saving.set(true);
     try {
@@ -167,7 +200,7 @@ export class AgentFormPage {
         await this.store.create(value);
         this.toast.success('Agente creado');
       }
-      await this.router.navigate(['/agents']);
+      await this.router.navigate([this.base]);
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {
@@ -185,11 +218,15 @@ export class AgentFormPage {
       this.form.controls.module.disable();
       this.form.patchValue({
         name: agent.name,
+        displayName: agent.displayName ?? '',
+        effort: agent.effort ?? '',
+        level: agent.level ?? '',
         module: agent.module,
         provider: agent.provider,
         model: agent.model,
         systemPrompt: agent.systemPrompt,
       });
+      this.avatar.set(agent.avatar ?? null);
       this.tools.set([...agent.allowedTools]);
     } catch (error) {
       this.error.set(errorMessage(error));

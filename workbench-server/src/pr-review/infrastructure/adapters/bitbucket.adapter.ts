@@ -7,12 +7,19 @@ import {
   RemotePullRequestData,
 } from '@pr-review/domain/ports/pull-request-source.port';
 import { PullRequestCommentPort } from '@pr-review/domain/ports/pull-request-comment.port';
+import {
+  NewPullRequestData,
+  PullRequestCreationPort,
+} from '@pr-review/domain/ports/pull-request-creation.port';
 import { BitbucketApiClient } from '@pr-review/infrastructure/clients/bitbucket-api.client';
 import { BitbucketPullRequest } from '@pr-review/infrastructure/clients/bitbucket-api.types';
 
 @Injectable()
 export class BitbucketAdapter
-  implements PullRequestSourcePort, PullRequestCommentPort
+  implements
+    PullRequestSourcePort,
+    PullRequestCommentPort,
+    PullRequestCreationPort
 {
   readonly provider: GitProvider = 'bitbucket';
   private readonly logger = new Logger(BitbucketAdapter.name);
@@ -38,7 +45,9 @@ export class BitbucketAdapter
       const repo = `${workspace}/${slug}`;
       try {
         const raws = await this.client.getPullRequestsToReview(slug, me.uuid);
-        pullRequests.push(...raws.map((raw) => this.toRemote(repo, raw)));
+        pullRequests.push(
+          ...raws.map((raw) => this.toRemote(repo, raw, me.uuid)),
+        );
       } catch (error) {
         // Un repo sin acceso o sin PRs habilitadas no debe frenar a los demás.
         const status = error instanceof HttpException ? error.getStatus() : '?';
@@ -108,6 +117,43 @@ export class BitbucketAdapter
     return comment.links.html.href;
   }
 
+  async create(data: NewPullRequestData): Promise<{ url: string }> {
+    // Bitbucket no deja que el autor (el dueño del token) se revise a sí mismo.
+    const me = await this.client.getCurrentUser();
+    const reviewerUuids = data.reviewerIds.filter((uuid) => uuid !== me.uuid);
+    const body = {
+      title: data.title,
+      description: data.description,
+      sourceBranch: data.sourceBranch,
+      destBranch: data.destBranch,
+    };
+
+    try {
+      const pr = await this.client.createPullRequest(data.repo, {
+        ...body,
+        reviewerUuids,
+      });
+      return { url: pr.links.html.href };
+    } catch (error) {
+      // Un revisor inválido no debe impedir abrir la PR: se reintenta sin revisores.
+      if (
+        reviewerUuids.length === 0 ||
+        !(error instanceof HttpException) ||
+        error.getStatus() !== 400
+      ) {
+        throw error;
+      }
+      this.logger.warn(
+        `The pull request was rejected with reviewers; retrying without them`,
+      );
+      const pr = await this.client.createPullRequest(data.repo, {
+        ...body,
+        reviewerUuids: [],
+      });
+      return { url: pr.links.html.href };
+    }
+  }
+
   private async resolveRepoSlugs(): Promise<string[]> {
     const configured = (this.config.get<string>('BITBUCKET_REPOS') ?? '')
       .split(',')
@@ -122,6 +168,7 @@ export class BitbucketAdapter
   private toRemote(
     repo: string,
     raw: BitbucketPullRequest,
+    myUuid?: string,
   ): RemotePullRequestData {
     return {
       provider: this.provider,
@@ -134,6 +181,7 @@ export class BitbucketAdapter
       destBranch: raw.destination.branch.name,
       headCommit: raw.source.commit.hash,
       description: raw.description?.trim() || null,
+      authoredByMe: !!myUuid && raw.author.uuid === myUuid,
     };
   }
 }

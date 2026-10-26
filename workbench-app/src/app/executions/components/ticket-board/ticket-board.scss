@@ -1,0 +1,117 @@
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.column[data-status='failed'] {
+  border-color: var(--tone-danger-fg);
+}
+
+.column__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.column__count {
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--tone-neutral-bg);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--tone-neutral-fg);
+}
+
+.column__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0;
+  }
+}
+
+.column__empty {
+  font-size: 0.8125rem;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  font: inherit;
+  text-align: left;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible,
+  &.is-selected {
+    border-color: var(--primary);
+  }
+}
+
+.card__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--primary);
+}
+
+.card__number {
+  margin-right: 4px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.card__worker {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-upcoming {
+    opacity: 0.65;
+  }
+}
+
+.card__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}

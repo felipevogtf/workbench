@@ -54,4 +54,23 @@ describe('AgentFormPage', () => {
     expect(options(root, 'agent-model')).toEqual(['', 'auto', 'gpt-5']);
     expect(root.querySelector<HTMLSelectElement>('#agent-model')?.value).toBe('auto');
   });
+
+  describe('as a worker', () => {
+    it('offers every module, starts on the developer and goes back to the workers', async () => {
+      const root: HTMLElement = (await render()).nativeElement;
+
+      expect(options(root, 'agent-module')).toEqual([
+        'pr-review',
+        'planner',
+        'chat',
+        'task-chat',
+        'task-tickets',
+        'task-developer',
+        'task-reviewer',
+      ]);
+      expect(root.querySelector<HTMLSelectElement>('#agent-module')?.value).toBe('task-developer');
+      expect(root.querySelector('a[back]')?.getAttribute('href')).toBe('/executions/agents');
+      expect(root.textContent).toContain('Nuevo trabajador');
+    });
+  });
 });

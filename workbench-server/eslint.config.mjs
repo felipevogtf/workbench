@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint';
 
 const MODULES = [
   'ai-agents',
+  'executions',
   'kanban',
   'planner',
   'pr-review',

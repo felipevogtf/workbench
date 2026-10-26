@@ -17,7 +17,7 @@ export interface BitbucketPullRequest {
   id: number;
   description?: string | null;
   title: string;
-  author: { display_name: string };
+  author: { display_name: string; uuid?: string };
   source: { branch: { name: string }; commit: { hash: string } };
   destination: { branch: { name: string } };
   links: { html: { href: string } };

@@ -1,0 +1,150 @@
+<div class="page">
+  <app-page-header
+    heading="Runners"
+    subtitle="Programas que corren en tu PC y hacen el trabajo de las ejecuciones: clonan el repo, ejecutan a los agentes y suben la rama."
+  >
+    <button actions app-button type="button" (click)="dialogOpen.set(true)">
+      <app-icon name="plus" size="1em" /> Nuevo runner
+    </button>
+  </app-page-header>
+
+  @if (store.created(); as created) {
+    <app-card>
+      <h4 card-header>Runner «{{ created.name }}» creado</h4>
+      <div class="created stack">
+        <app-alert tone="warning" heading="Copia el token ahora">
+          Es la única vez que se muestra. Si lo pierdes, revoca el runner y crea otro.
+        </app-alert>
+
+        <div class="created__token">
+          <code>{{ created.token }}</code>
+          <button
+            app-icon-button
+            type="button"
+            label="Copiar el token"
+            (click)="copy(created.token, 'Token')"
+          >
+            <app-icon name="copy" size="1.1rem" />
+          </button>
+        </div>
+
+        <p class="muted">
+          Pon esto en <code>runner.config.json</code> (carpeta <code>workbench-runner</code>),
+          cambia <code>workDir</code> si quieres y arranca con <code>npm start</code>:
+        </p>
+        <pre class="snippet">{{ configSnippet() }}</pre>
+        <div class="created__actions">
+          <button
+            app-button
+            variant="secondary"
+            size="sm"
+            type="button"
+            (click)="copy(configSnippet(), 'Configuración')"
+          >
+            <app-icon name="copy" size="1em" /> Copiar la configuración
+          </button>
+          <button
+            app-button
+            variant="ghost"
+            size="sm"
+            type="button"
+            (click)="store.dismissCreated()"
+          >
+            Ya lo copié
+          </button>
+        </div>
+      </div>
+    </app-card>
+  }
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los runners">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="72px" />
+      <app-skeleton height="72px" />
+    </div>
+  } @else if (store.runners().length === 0) {
+    <app-empty-state icon="bot" heading="Todavía no hay runners">
+      Crea uno para tu PC: te da un token que el programa usa para conectarse y pedir trabajo.
+      <button empty-action app-button type="button" (click)="dialogOpen.set(true)">
+        Nuevo runner
+      </button>
+    </app-empty-state>
+  } @else {
+    <p class="muted">
+      El runner <strong>predeterminado</strong> toma el trabajo primero, y es el que la app intenta
+      abrir sola al pulsar «Ejecutar».
+    </p>
+    <ul class="runners" aria-label="Runners">
+      @for (runner of store.runners(); track runner.id) {
+        <li>
+          <app-card>
+            <div class="runner">
+              <div class="runner__main">
+                <span class="runner__name">{{ runner.name }}</span>
+                <span class="muted">
+                  @if (runner.host) {
+                    {{ runner.host }} ·
+                  }
+                  @if (runner.version) {
+                    v{{ runner.version }} ·
+                  }
+                  @if (runner.lastSeenAt) {
+                    visto {{ runner.lastSeenAt | timeAgo }}
+                  } @else {
+                    todavía no se conectó
+                  }
+                </span>
+              </div>
+              @if (runner.isDefault) {
+                <app-badge
+                  tone="info"
+                  title="Toma el trabajo primero y es el que se abre al pulsar Ejecutar"
+                >
+                  Predeterminado
+                </app-badge>
+              } @else {
+                <button
+                  app-button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  (click)="store.setDefault(runner)"
+                >
+                  Usar por defecto
+                </button>
+              }
+              <app-badge [tone]="runner.online ? 'success' : 'neutral'" dot>
+                {{ runner.online ? 'Conectado' : 'Desconectado' }}
+              </app-badge>
+              <button
+                app-icon-button
+                type="button"
+                tone="danger"
+                [label]="'Revocar el runner ' + runner.name"
+                (click)="remove(runner)"
+              >
+                <app-icon name="trash" size="1.1rem" />
+              </button>
+            </div>
+          </app-card>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-runner-name-dialog [(open)]="dialogOpen" [save]="create" />
+</div>

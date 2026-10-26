@@ -33,10 +33,13 @@ describe('ChatPanel', () => {
     chat.toggle();
   });
 
-  async function render(): Promise<HTMLElement> {
+  async function render(inputs: Record<string, unknown> = {}): Promise<HTMLElement> {
     const fixture = TestBed.createComponent(ChatPanel);
     fixture.componentRef.setInput('store', chat);
     fixture.componentRef.setInput('heading', 'Chat de prueba');
+    for (const [name, value] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(name, value);
+    }
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
@@ -361,5 +364,153 @@ describe('ChatPanel empty state and context', () => {
     const element = await render();
 
     expect(element.querySelector('.panel__info')).toBeNull();
+  });
+
+  describe('with an assistant', () => {
+    const lucy = { name: 'Lucy', avatar: null };
+
+    it('shows her avatar on the button instead of the chat icon, and on her answers', async () => {
+      chat.toggle(); // cerrado: se ve el botón
+      const closed = await render({ assistant: lucy });
+      expect(closed.querySelector('.fab app-avatar')).not.toBeNull();
+      expect(closed.querySelector('.fab app-icon')).toBeNull();
+      expect(closed.querySelector('.fab')?.getAttribute('aria-label')).toBe(
+        'Abrir el chat con Lucy',
+      );
+    });
+
+    it('keeps the close icon on the button while the panel is open, and names her in the panel', async () => {
+      const element = await render({ assistant: lucy });
+
+      expect(element.querySelector('.fab app-avatar')).toBeNull();
+      expect(element.querySelector('.fab app-icon')).not.toBeNull();
+      expect(element.querySelector('.panel__head app-avatar')).not.toBeNull();
+    });
+
+    it('labels her answers with her name', async () => {
+      const element = await render({ assistant: lucy });
+      const box = element.querySelector<HTMLTextAreaElement>('textarea')!;
+
+      box.value = 'hola';
+      box.dispatchEvent(new Event('input'));
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+      await settle();
+      await settle();
+
+      const [user, assistant] = Array.from(element.querySelectorAll('.msg'));
+      expect(user.querySelector('.msg__who')).toBeNull();
+      expect(assistant.querySelector('.msg__who')?.textContent).toContain('Lucy');
+    });
+
+    it('keeps the generic chat icon when there is no assistant', async () => {
+      chat.toggle();
+      const element = await render();
+
+      expect(element.querySelector('.fab app-avatar')).toBeNull();
+      expect(element.querySelector('.fab app-icon')).not.toBeNull();
+    });
+  });
+
+  describe('without attachments', () => {
+    it('has no clip, no file picker and no drop zone', async () => {
+      const element = await render({ attachments: false });
+
+      expect(element.querySelector('.composer__clip')).toBeNull();
+      expect(element.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    it('still has them by default', async () => {
+      const element = await render();
+
+      expect(element.querySelector('.composer__clip')).not.toBeNull();
+      expect(element.querySelector('input[type="file"]')).not.toBeNull();
+    });
+  });
+
+  describe('unread answers', () => {
+    const badge = (element: HTMLElement) => element.querySelector('.fab .fab__badge');
+
+    it('counts the answers that arrive while the panel is closed, and tells it on the button', async () => {
+      chat.toggle(); // se cierra
+      const element = await render({ assistant: { name: 'Lucy', avatar: null } });
+      expect(badge(element)).toBeNull();
+
+      await chat.send('hola');
+      await chat.send('otra cosa');
+      await settle();
+      element.ownerDocument.defaultView?.dispatchEvent(new Event('resize'));
+
+      expect(chat.unread()).toBe(2);
+    });
+
+    it('shows the count, pulses and says it to screen readers while there are unread answers', async () => {
+      chat.toggle();
+      const fixture = TestBed.createComponent(ChatPanel);
+      fixture.componentRef.setInput('store', chat);
+      fixture.componentRef.setInput('heading', 'Chat');
+      fixture.componentRef.setInput('assistant', { name: 'Lucy', avatar: null });
+      await fixture.whenStable();
+
+      await chat.send('hola');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const element: HTMLElement = fixture.nativeElement;
+      const fab = element.querySelector('.fab')!;
+      expect(fab.classList.contains('fab--unread')).toBe(true);
+      expect(badge(element)?.textContent?.trim()).toBe('1');
+      expect(fab.getAttribute('aria-label')).toBe('1 mensaje nuevo. Abrir el chat con Lucy');
+    });
+
+    it('does not count the answers that arrive while the panel is open', async () => {
+      await chat.send('hola'); // el panel está abierto
+      await settle();
+
+      expect(chat.unread()).toBe(0);
+    });
+
+    it('marks them as seen when the panel is opened', async () => {
+      chat.toggle(); // cerrado
+      await chat.send('hola');
+      expect(chat.unread()).toBe(1);
+
+      chat.toggle(); // abierto
+
+      expect(chat.unread()).toBe(0);
+    });
+
+    it('shows 9+ when there are more than nine', async () => {
+      chat.toggle();
+      const fixture = TestBed.createComponent(ChatPanel);
+      fixture.componentRef.setInput('store', chat);
+      fixture.componentRef.setInput('heading', 'Chat');
+      await fixture.whenStable();
+
+      for (let i = 0; i < 10; i++) await chat.send('pregunta ' + i);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(badge(fixture.nativeElement)?.textContent?.trim()).toBe('9+');
+    });
+  });
+
+  describe('a message the assistant sends on its own', () => {
+    it('joins the conversation, and counts as unread while the panel is closed', () => {
+      chat.toggle(); // cerrado
+
+      chat.receive('David me preguntó algo');
+
+      expect(chat.messages().at(-1)).toMatchObject({
+        role: 'assistant',
+        content: 'David me preguntó algo',
+      });
+      expect(chat.unread()).toBe(1);
+    });
+
+    it('is not unread when the panel is open', () => {
+      chat.receive('David me preguntó algo');
+
+      expect(chat.unread()).toBe(0);
+    });
   });
 });

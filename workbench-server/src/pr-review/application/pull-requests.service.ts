@@ -1,5 +1,6 @@
 import { DomainError } from '@core/domain/domain.error';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import { Review } from '@pr-review/domain/entities/review.entity';
 import { GitProvider } from '@pr-review/domain/entities/pull-request.props';
@@ -65,6 +66,7 @@ export class PullRequestsService {
     @Inject(TICKETS_GATEWAY_PORT)
     private readonly tickets: TicketsGatewayPort,
     private readonly reviewsService: ReviewsService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
 
   /**
@@ -199,7 +201,12 @@ export class PullRequestsService {
         await this.pullRequests.save(existing);
         result.updated++;
       } else {
-        const created = PullRequest.createFromRemote(remote);
+        // Las que abrí yo pueden entrar sin revisarse (`PR_REVIEW_OWN_PRS=skip`); se revisan a mano.
+        const created = PullRequest.createFromRemote(remote, {
+          skipReview:
+            !!remote.authoredByMe &&
+            this.config?.get<string>('PR_REVIEW_OWN_PRS') === 'skip',
+        });
         this.applyTicketKeys(created, identifiers);
         await this.pullRequests.save(created);
         result.created++;

@@ -9,6 +9,7 @@ import { KanbanModule } from '@kanban/kanban.module';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
 import { PlannerModule } from '@planner/planner.module';
+import { ExecutionsModule } from '@executions/executions.module';
 import { CredentialsModule } from '@credentials/credentials.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 
@@ -22,6 +23,7 @@ import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
     AiAgentsModule,
     PrReviewModule,
     PlannerModule,
+    ExecutionsModule,
     IssueTransferModule,
     CredentialsModule,
   ],

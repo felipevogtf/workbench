@@ -62,12 +62,12 @@ export class BitbucketApiClient {
     );
   }
 
-  /** PRs abiertas del repo donde `reviewerUuid` figura como reviewer. */
+  /** PRs abiertas del repo donde `userUuid` figura como reviewer o es el autor (las propias también se revisan). */
   async getPullRequestsToReview(
     repoSlug: string,
-    reviewerUuid: string,
+    userUuid: string,
   ): Promise<BitbucketPullRequest[]> {
-    const query = `state="OPEN" AND reviewers.uuid="${reviewerUuid}"`;
+    const query = `state="OPEN" AND (reviewers.uuid="${userUuid}" OR author.uuid="${userUuid}")`;
     return this.paginate<BitbucketPullRequest>(
       `${API}/repositories/${this.workspace}/${repoSlug}/pullrequests` +
         `?pagelen=50&q=${encodeURIComponent(query)}`,
@@ -131,6 +131,33 @@ export class BitbucketApiClient {
       this.http.post<BitbucketComment>(
         `${API}/repositories/${repoFullName}/pullrequests/${pullRequestId}/comments`,
         { content: { raw } },
+        this.options(),
+      ),
+    );
+  }
+
+  /** Abre una PR. Los revisores van por su `uuid` (no puede estar el autor entre ellos). */
+  createPullRequest(
+    repoFullName: string,
+    body: {
+      title: string;
+      description: string;
+      sourceBranch: string;
+      destBranch: string;
+      reviewerUuids: string[];
+    },
+  ): Promise<BitbucketPullRequest> {
+    return this.call(() =>
+      this.http.post<BitbucketPullRequest>(
+        `${API}/repositories/${repoFullName}/pullrequests`,
+        {
+          title: body.title,
+          description: body.description,
+          source: { branch: { name: body.sourceBranch } },
+          destination: { branch: { name: body.destBranch } },
+          reviewers: body.reviewerUuids.map((uuid) => ({ uuid })),
+          close_source_branch: false,
+        },
         this.options(),
       ),
     );

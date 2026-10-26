@@ -23,7 +23,23 @@ export class GithubAdapter
   }
 
   async getReviewRequestedPullRequests(): Promise<PullRequestSourceResult> {
-    const items = await this.client.searchReviewRequested();
+    const requested = await this.client.searchReviewRequested();
+    const authored = await this.client.searchAuthored();
+    // Una PR propia en la que además te piden review aparece en las dos listas: cuenta una vez.
+    const mine = new Set(
+      authored.map((item) => item.repository_url + item.number),
+    );
+    const items = [
+      ...requested,
+      ...authored.filter(
+        (item) =>
+          !requested.some(
+            (other) =>
+              other.repository_url === item.repository_url &&
+              other.number === item.number,
+          ),
+      ),
+    ];
 
     const pullRequests: RemotePullRequestData[] = [];
     const unreachableRepos: string[] = [];
@@ -35,7 +51,10 @@ export class GithubAdapter
       );
       try {
         const raw = await this.client.getPullRequest(repo, item.number);
-        pullRequests.push(this.toRemote(repo, raw));
+        pullRequests.push({
+          ...this.toRemote(repo, raw),
+          authoredByMe: mine.has(item.repository_url + item.number),
+        });
       } catch (error) {
         const status = error instanceof HttpException ? error.getStatus() : '?';
         this.logger.warn(`Cannot read ${repo}#${item.number} (${status})`);

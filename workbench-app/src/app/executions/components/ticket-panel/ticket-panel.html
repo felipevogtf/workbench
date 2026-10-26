@@ -1,0 +1,191 @@
+<button
+  type="button"
+  class="backdrop"
+  aria-label="Cerrar el panel"
+  (click)="dismissed.emit()"
+></button>
+
+<aside class="panel" role="dialog" [attr.aria-label]="title()">
+  <header class="panel__head">
+    <div class="panel__titles">
+      <h4 class="panel__title">{{ title() }}</h4>
+      @if (card(); as current) {
+        <div class="panel__sub">
+          <app-badge [tone]="statusTone[current.ticket.status]" dot>
+            {{ statusLabel[current.ticket.status] }}
+          </app-badge>
+          @if (current.worker; as worker) {
+            <span class="panel__worker">
+              <app-avatar [name]="worker.name" [src]="worker.avatar" size="1.5rem" />
+              {{ current.upcoming ? 'Irá con ' + worker.name : 'Asignado a ' + worker.name }}
+            </span>
+          }
+        </div>
+      }
+    </div>
+    <button app-icon-button type="button" label="Cerrar" (click)="dismissed.emit()">
+      <app-icon name="x" size="1.1rem" />
+    </button>
+  </header>
+
+  <div class="tabs" role="tablist">
+    @for (item of tabs(); track item.id) {
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.is-active]="tab() === item.id"
+        [attr.aria-selected]="tab() === item.id"
+        (click)="pick(item.id)"
+      >
+        {{ item.label }}
+      </button>
+    }
+  </div>
+
+  <div class="panel__body">
+    @switch (tab()) {
+      @case ('detail') {
+        @if (card(); as current) {
+          <section class="block">
+            <h5>Descripción</h5>
+            <app-markdown-viewer [content]="current.ticket.description" />
+          </section>
+
+          @if (current.ticket.criteria.length > 0) {
+            <section class="block">
+              <h5>Criterios de aceptación</h5>
+              <app-markdown-viewer [content]="list(current.ticket.criteria)" />
+            </section>
+          }
+
+          @if (current.ticket.question; as question) {
+            <app-alert tone="warning" heading="{{ question.from }} está esperando una respuesta">
+              <p class="question">{{ question.text }}</p>
+              @if (question.recommendation) {
+                <p class="muted">Recomendación de Lucy: {{ question.recommendation }}</p>
+              }
+            </app-alert>
+          }
+
+          @if (current.ticket.decisions.length > 0) {
+            <section class="block">
+              <h5>Decisiones</h5>
+              @for (decision of current.ticket.decisions; track decision.at) {
+                <p>
+                  <strong>{{ decision.question }}</strong
+                  ><br />
+                  {{ decision.from === 'lucy' ? 'Lucy' : 'Tú' }}: {{ decision.text }}
+                </p>
+              }
+            </section>
+          }
+
+          @if (current.ticket.feedback?.length) {
+            <app-alert tone="warning" heading="El revisor pidió cambios">
+              <app-markdown-viewer [content]="list(current.ticket.feedback ?? [])" />
+            </app-alert>
+          }
+
+          @if (current.ticket.summary) {
+            <section class="block">
+              <h5>Lo que hizo el desarrollador</h5>
+              <app-markdown-viewer [content]="current.ticket.summary" />
+            </section>
+          }
+
+          @if (current.ticket.reviewNote) {
+            <section class="block">
+              <h5>Última revisión</h5>
+              <app-markdown-viewer [content]="current.ticket.reviewNote" />
+            </section>
+          }
+
+          @if (branch()) {
+            <section class="block">
+              <h5>Rama</h5>
+              <p class="mono">{{ branch() }}</p>
+              @if (current.ticket.startSha && current.ticket.headSha) {
+                <p class="mono muted">
+                  {{ current.ticket.startSha.slice(0, 8) }} →
+                  {{ current.ticket.headSha.slice(0, 8) }}
+                </p>
+              }
+            </section>
+          }
+        }
+      }
+
+      @case ('activity') {
+        @if (events().length === 0) {
+          <p class="muted">Todavía no ha pasado nada con este ticket.</p>
+        } @else {
+          <ol class="timeline">
+            @for (event of events(); track $index) {
+              <li class="event" [attr.data-tone]="event.tone">
+                <p class="event__line">
+                  <strong>{{ event.who }}</strong> {{ event.action }}
+                  @if (event.at) {
+                    <span class="muted">· {{ event.at | timeAgo }}</span>
+                  }
+                </p>
+                @if (event.detail) {
+                  <div class="event__detail">
+                    <app-markdown-viewer [content]="event.detail" />
+                  </div>
+                }
+              </li>
+            }
+          </ol>
+        }
+      }
+
+      @case ('logs') {
+        @if (jobs().length === 0) {
+          <p class="muted">Todavía no hay trabajos.</p>
+        } @else {
+          <ul class="jobs" aria-label="Trabajos">
+            @for (job of jobs(); track job.id) {
+              <li>
+                <button
+                  type="button"
+                  class="job"
+                  [class.is-selected]="job.id === selectedJobId()"
+                  [attr.aria-pressed]="job.id === selectedJobId()"
+                  (click)="selectJob.emit(job.id)"
+                >
+                  {{ jobLabel(job) }}
+                  <app-badge
+                    [tone]="jobStatusTone[job.status]"
+                    [loading]="job.status === 'running'"
+                  >
+                    {{ jobStatusLabel[job.status] }}
+                  </app-badge>
+                </button>
+              </li>
+            }
+          </ul>
+
+          @if (selectedJob(); as job) {
+            @if (job.error) {
+              <app-alert tone="danger" heading="Este trabajo falló">{{ job.error }}</app-alert>
+            }
+            @if (logs()) {
+              <pre class="logs" tabindex="0" aria-label="Registro del trabajo">{{ logs() }}</pre>
+            } @else {
+              <p class="muted">
+                {{
+                  job.status === 'pending'
+                    ? 'En cola: el registro aparece cuando un runner lo tome.'
+                    : 'Sin registro todavía.'
+                }}
+              </p>
+            }
+          } @else {
+            <p class="muted">Elige un trabajo para ver su registro.</p>
+          }
+        }
+      }
+    }
+  </div>
+</aside>

@@ -1,0 +1,147 @@
+<!-- Desktop: tabla -->
+<div class="table-wrap">
+  <table>
+    <caption class="visually-hidden">
+      Trabajadores
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Trabajador</th>
+        <th scope="col">Módulo</th>
+        <th scope="col">Modelo</th>
+        <th scope="col">Esfuerzo</th>
+        <th scope="col"><span class="visually-hidden">Opciones</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (agent of agents(); track agent.id) {
+        <tr>
+          <td class="cell-main">
+            <a
+              class="who"
+              [routerLink]="[agent.id, 'edit']"
+              [attr.aria-label]="'Abrir a ' + label(agent)"
+            >
+              <app-avatar [name]="label(agent)" [src]="agent.avatar" size="2.5rem" />
+              <span class="who__text">
+                <span class="who__name break-anywhere">{{ label(agent) }}</span>
+                @if (agent.displayName) {
+                  <code class="who__tech break-anywhere">{{ agent.name }}</code>
+                }
+              </span>
+            </a>
+            @if (agent.isDefault) {
+              <app-badge tone="success" dot>Por defecto</app-badge>
+            }
+          </td>
+          <td>
+            <span class="chips">
+              <app-badge tone="info">{{ module(agent.module) }}</app-badge>
+              @if (level(agent); as level) {
+                <app-badge [tone]="level.tone">{{ level.label }}</app-badge>
+              }
+            </span>
+          </td>
+          <td>
+            <code class="model break-anywhere">{{ agent.model }}</code>
+          </td>
+          <td [class.muted]="!agent.effort">{{ effort(agent.effort) }}</td>
+          <td class="actions">
+            @if (!agent.isDefault) {
+              <button
+                app-button
+                size="sm"
+                variant="secondary"
+                type="button"
+                (click)="setDefault.emit(agent)"
+              >
+                <app-icon name="check" size="1em" /> Por defecto
+              </button>
+            }
+            <a
+              app-icon-button
+              [routerLink]="[agent.id, 'edit']"
+              [label]="'Abrir a ' + label(agent)"
+            >
+              <app-icon name="edit" size="1.1rem" />
+            </a>
+            <button
+              app-icon-button
+              type="button"
+              tone="danger"
+              [label]="'Eliminar a ' + label(agent)"
+              [disabled]="agent.isDefault"
+              [attr.title]="
+                agent.isDefault
+                  ? 'El trabajador por defecto no se puede eliminar'
+                  : 'Eliminar a ' + label(agent)
+              "
+              (click)="remove.emit(agent)"
+            >
+              <app-icon name="trash" size="1.1rem" />
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<!-- Móvil: tarjetas -->
+<ul class="cards">
+  @for (agent of agents(); track agent.id) {
+    <li>
+      <app-card interactive>
+        <a class="who" [routerLink]="[agent.id, 'edit']">
+          <app-avatar [name]="label(agent)" [src]="agent.avatar" size="2.5rem" />
+          <span class="who__text">
+            <span class="who__name break-anywhere">{{ label(agent) }}</span>
+            @if (agent.displayName) {
+              <code class="who__tech break-anywhere">{{ agent.name }}</code>
+            }
+          </span>
+        </a>
+        <span class="chips">
+          <app-badge tone="info">{{ module(agent.module) }}</app-badge>
+          @if (level(agent); as level) {
+            <app-badge [tone]="level.tone">{{ level.label }}</app-badge>
+          }
+          @if (agent.isDefault) {
+            <app-badge tone="success" dot>Por defecto</app-badge>
+          }
+        </span>
+        <p class="card__line">
+          <code class="break-anywhere">{{ agent.model }}</code>
+          · esfuerzo {{ effort(agent.effort).toLowerCase() }}
+        </p>
+
+        <ng-container card-footer>
+          @if (!agent.isDefault) {
+            <button
+              app-button
+              size="sm"
+              variant="secondary"
+              type="button"
+              (click)="setDefault.emit(agent)"
+            >
+              <app-icon name="check" size="1em" /> Por defecto
+            </button>
+          }
+          <a app-icon-button [routerLink]="[agent.id, 'edit']" [label]="'Abrir a ' + label(agent)">
+            <app-icon name="edit" size="1.1rem" />
+          </a>
+          <button
+            app-icon-button
+            type="button"
+            tone="danger"
+            [label]="'Eliminar a ' + label(agent)"
+            [disabled]="agent.isDefault"
+            (click)="remove.emit(agent)"
+          >
+            <app-icon name="trash" size="1.1rem" />
+          </button>
+        </ng-container>
+      </app-card>
+    </li>
+  }
+</ul>

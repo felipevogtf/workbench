@@ -1,10 +1,11 @@
 <div class="page">
   <app-page-header
-    [heading]="isEdit() ? 'Editar agente' : 'Nuevo agente'"
-    subtitle="El prompt le dice al agente cómo revisar; las herramientas son siempre de solo lectura."
+    [heading]="isEdit() ? 'Detalle del trabajador' : 'Nuevo trabajador'"
+    subtitle="El prompt le dice al agente qué hacer. Las herramientas dependen del módulo: solo el desarrollador puede editar archivos."
   >
-    <a back app-button variant="ghost" size="sm" routerLink="/agents">
-      <app-icon name="arrow-left" size="1em" /> Agentes
+    <a back app-button variant="ghost" size="sm" [routerLink]="base">
+      <app-icon name="arrow-left" size="1em" />
+      Trabajadores
     </a>
   </app-page-header>
 
@@ -19,6 +20,30 @@
       @if (error(); as message) {
         <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
       }
+
+      <app-form-field
+        label="Imagen"
+        for="agent-avatar"
+        hint="Opcional. Cualquier foto: se recorta al cuadrado y se reduce sola."
+      >
+        <app-avatar-picker
+          [name]="form.controls.displayName.value || form.controls.name.value"
+          [(value)]="avatar"
+        />
+      </app-form-field>
+
+      <app-form-field
+        label="Nombre para mostrar"
+        for="agent-display-name"
+        hint="Opcional. Así se ve en el tablero, por ejemplo «David»."
+      >
+        <app-text-input
+          inputId="agent-display-name"
+          formControlName="displayName"
+          placeholder="David"
+          [describedBy]="'agent-display-name-msg'"
+        />
+      </app-form-field>
 
       <app-form-field label="Nombre" for="agent-name" required [error]="fieldError('name')">
         <app-text-input
@@ -79,6 +104,24 @@
       </app-form-field>
 
       <app-form-field
+        label="Esfuerzo"
+        for="agent-effort"
+        hint="Cuánto se esfuerza el modelo. Más esfuerzo piensa mejor pero tarda y gasta más."
+      >
+        <app-select inputId="agent-effort" formControlName="effort" [options]="effortOptions" />
+      </app-form-field>
+
+      @if (isDeveloper()) {
+        <app-form-field
+          label="Nivel de tickets"
+          for="agent-level"
+          hint="Qué tickets toma: Lucy asigna un nivel a cada ticket y lo hace el desarrollador de ese nivel."
+        >
+          <app-select inputId="agent-level" formControlName="level" [options]="levelOptions" />
+        </app-form-field>
+      }
+
+      <app-form-field
         label="Prompt del agente"
         for="agent-prompt"
         required
@@ -101,9 +144,9 @@
       </section>
 
       <div class="form__actions">
-        <a app-button variant="secondary" routerLink="/agents">Cancelar</a>
+        <a app-button variant="secondary" [routerLink]="base">Cancelar</a>
         <button app-button type="submit" [loading]="saving()">
-          {{ isEdit() ? 'Guardar cambios' : 'Crear agente' }}
+          {{ isEdit() ? 'Guardar cambios' : 'Crear trabajador' }}
         </button>
       </div>
     </form>

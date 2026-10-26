@@ -2,7 +2,8 @@
 
 <app-chat-panel
   [store]="chat"
-  heading="Mejora el plan con la IA"
+  [heading]="'Mejora el plan con ' + (assistant()?.name ?? 'la IA')"
+  [assistant]="assistant()"
   [context]="issue().name"
   [info]="
     plan

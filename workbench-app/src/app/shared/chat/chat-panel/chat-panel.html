@@ -12,7 +12,12 @@
   >
     <header class="panel__head">
       <div class="panel__title">
-        <h4>{{ heading() }}</h4>
+        <div class="panel__line">
+          @if (assistant(); as who) {
+            <app-avatar [name]="who.name" [src]="who.avatar" size="2.25rem" />
+          }
+          <h4>{{ heading() }}</h4>
+        </div>
         @if (context()) {
           <span class="panel__context" [title]="context()">{{ context() }}</span>
         }
@@ -42,6 +47,9 @@
     <div class="panel__messages" #scroller aria-live="polite">
       @for (message of chat.messages(); track $index) {
         <article class="msg" [attr.data-role]="message.role">
+          @if (message.role === 'assistant' && assistant(); as who) {
+            <p class="msg__who">{{ who.name }}</p>
+          }
           <app-markdown-viewer [content]="message.content" [breaks]="message.role === 'user'" />
           @if (message.attachments?.length) {
             <ul class="msg__files" aria-label="Archivos adjuntos">
@@ -56,9 +64,13 @@
         </article>
       } @empty {
         <div class="empty">
-          <span class="empty__icon" aria-hidden="true">
-            <app-icon name="sparkles" size="1.4rem" />
-          </span>
+          @if (assistant(); as who) {
+            <app-avatar [name]="who.name" [src]="who.avatar" size="3rem" />
+          } @else {
+            <span class="empty__icon" aria-hidden="true">
+              <app-icon name="sparkles" size="1.4rem" />
+            </span>
+          }
           <h5 class="empty__title">{{ emptyTitle() }}</h5>
           <div class="empty__text"><ng-content select="[chat-empty]" /></div>
           @if (suggestions().length > 0) {
@@ -147,26 +159,28 @@
           (paste)="onPaste($event)"
         ></textarea>
         <div class="composer__bar">
-          <button
-            app-icon-button
-            class="composer__clip"
-            type="button"
-            label="Adjuntar archivos (PDF, imágenes, texto o CSV)"
-            [disabled]="chat.sending()"
-            (click)="picker.click()"
-          >
-            <app-icon name="paperclip" size="1.1rem" />
-          </button>
-          <input
-            #picker
-            type="file"
-            multiple
-            hidden
-            aria-hidden="true"
-            tabindex="-1"
-            [accept]="accept"
-            (change)="onPick(picker)"
-          />
+          @if (attachments()) {
+            <button
+              app-icon-button
+              class="composer__clip"
+              type="button"
+              label="Adjuntar archivos (PDF, imágenes, texto o CSV)"
+              [disabled]="chat.sending()"
+              (click)="picker.click()"
+            >
+              <app-icon name="paperclip" size="1.1rem" />
+            </button>
+            <input
+              #picker
+              type="file"
+              multiple
+              hidden
+              aria-hidden="true"
+              tabindex="-1"
+              [accept]="accept"
+              (change)="onPick(picker)"
+            />
+          }
           <span class="composer__hint">Enter envía · Mayús+Enter, nueva línea</span>
           <button
             class="panel__send"
@@ -181,7 +195,7 @@
       </form>
     </footer>
 
-    @if (dragging()) {
+    @if (attachments() && dragging()) {
       <div class="panel__drop" aria-hidden="true">
         <app-icon name="paperclip" size="1.6rem" />
         <p>Suelta los archivos para adjuntarlos</p>
@@ -193,14 +207,36 @@
 
 <button
   class="fab"
+  [class.fab--avatar]="!!assistant() && !chat.open()"
+  [class.fab--unread]="chat.unread() > 0 && !chat.open()"
   type="button"
   [attr.aria-expanded]="chat.open()"
-  [attr.aria-label]="chat.open() ? 'Cerrar el chat' : 'Abrir el chat con la IA'"
-  [title]="chat.open() ? 'Cerrar el chat' : 'Preguntarle a la IA'"
+  [attr.aria-label]="
+    chat.open()
+      ? 'Cerrar el chat'
+      : (chat.unread() > 0
+          ? chat.unread() + (chat.unread() === 1 ? ' mensaje nuevo. ' : ' mensajes nuevos. ')
+          : '') +
+        'Abrir el chat con ' +
+        (assistant()?.name ?? 'la IA')
+  "
+  [title]="chat.open() ? 'Cerrar el chat' : 'Hablar con ' + (assistant()?.name ?? 'la IA')"
   (click)="chat.toggle()"
 >
-  <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
-  @if (chat.sending() && !chat.open()) {
+  @if (assistant(); as who) {
+    @if (chat.open()) {
+      <app-icon name="x" size="1.5rem" />
+    } @else {
+      <app-avatar [name]="who.name" [src]="who.avatar" size="3.5rem" />
+    }
+  } @else {
+    <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
+  }
+  @if (chat.unread() > 0 && !chat.open()) {
+    <span class="fab__badge" aria-hidden="true">{{
+      chat.unread() > 9 ? '9+' : chat.unread()
+    }}</span>
+  } @else if (chat.sending() && !chat.open()) {
     <span class="fab__dot" aria-hidden="true"></span>
   }
 </button>

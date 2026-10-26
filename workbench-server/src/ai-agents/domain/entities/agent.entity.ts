@@ -8,6 +8,12 @@ import {
   isAgentModule,
 } from '@ai-agents/domain/modules';
 import {
+  AGENT_EFFORTS,
+  AGENT_LEVELS,
+  AgentEffort,
+  AgentLevel,
+} from '@ai-agents/domain/effort';
+import {
   AGENT_PROVIDERS,
   AgentProvider,
   DEFAULT_PROVIDER,
@@ -30,6 +36,10 @@ export class Agent {
     provider?: AgentProvider;
     allowedTools?: string[];
     isDefault?: boolean;
+    displayName?: string | null;
+    avatar?: string | null;
+    effort?: AgentEffort | null;
+    level?: AgentLevel | null;
   }): Agent {
     const now = new Date();
     const module = data.module ?? DEFAULT_MODULE;
@@ -42,6 +52,10 @@ export class Agent {
       model: data.model,
       allowedTools: data.allowedTools ?? [...MODULE_TOOLS[module]],
       isDefault: data.isDefault ?? false,
+      displayName: data.displayName?.trim() || null,
+      avatar: data.avatar || null,
+      effort: data.effort || null,
+      level: data.level || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -55,7 +69,15 @@ export class Agent {
     data: Partial<
       Pick<
         AgentProps,
-        'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+        | 'name'
+        | 'systemPrompt'
+        | 'model'
+        | 'provider'
+        | 'allowedTools'
+        | 'displayName'
+        | 'avatar'
+        | 'effort'
+        | 'level'
       >
     >,
   ): void {
@@ -65,6 +87,12 @@ export class Agent {
     if (data.model !== undefined) next.model = data.model;
     if (data.provider !== undefined) next.provider = data.provider;
     if (data.allowedTools !== undefined) next.allowedTools = data.allowedTools;
+    if (data.displayName !== undefined) {
+      next.displayName = data.displayName?.trim() || null;
+    }
+    if (data.avatar !== undefined) next.avatar = data.avatar || null;
+    if (data.effort !== undefined) next.effort = data.effort || null;
+    if (data.level !== undefined) next.level = data.level || null;
     next.updatedAt = new Date();
 
     // Valida antes de aplicar: si falla, la entidad queda intacta.
@@ -101,6 +129,22 @@ export class Agent {
       throw new DomainError(
         'Agent module must be one of: ' + AGENT_MODULES.join(', '),
       );
+    }
+
+    if (props.effort && !AGENT_EFFORTS.includes(props.effort)) {
+      throw new DomainError(
+        'Agent effort must be one of: ' + AGENT_EFFORTS.join(', '),
+      );
+    }
+    if (props.level) {
+      if (!AGENT_LEVELS.includes(props.level)) {
+        throw new DomainError(
+          'Agent level must be one of: ' + AGENT_LEVELS.join(', '),
+        );
+      }
+      if (props.module !== 'task-developer') {
+        throw new DomainError('Only a developer can have a level');
+      }
     }
 
     const allowed = MODULE_TOOLS[props.module];
@@ -145,6 +189,22 @@ export class Agent {
 
   get isDefault(): boolean {
     return this.props.isDefault;
+  }
+
+  get displayName(): string | null {
+    return this.props.displayName;
+  }
+
+  get avatar(): string | null {
+    return this.props.avatar;
+  }
+
+  get effort(): AgentEffort | null {
+    return this.props.effort;
+  }
+
+  get level(): AgentLevel | null {
+    return this.props.level;
   }
 
   get createdAt(): Date {

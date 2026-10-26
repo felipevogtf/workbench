@@ -1,0 +1,71 @@
+<app-card id="execution-panel">
+  <h4 card-header>Ejecutar con IA</h4>
+
+  <div class="exec">
+    <p class="exec__intro">
+      Agentes dividen el plan en tickets, los desarrollan y los revisan en tu PC, y dejan una rama
+      con su pull request.
+    </p>
+
+    <div class="exec__actions">
+      <button
+        app-button
+        type="button"
+        [loading]="store.starting() || launching()"
+        [disabled]="!canRun() || !!store.active() || launching()"
+        [title]="canRun() ? '' : 'Primero genera un plan de ejecución'"
+        (click)="run()"
+      >
+        <app-icon name="play" size="1em" />
+        {{ launching() ? 'Iniciando el runner…' : 'Ejecutar el plan' }}
+      </button>
+      @if (!canRun() && !store.active()) {
+        <span class="exec__muted">La tarea necesita un plan listo.</span>
+      }
+    </div>
+
+    @if (store.active(); as active) {
+      <p class="exec__progress" role="status">
+        <app-spinner size="1em" />
+        <span>{{ progress(active) }}</span>
+        <a [routerLink]="['/executions', active.id]">Ver avance</a>
+      </p>
+    }
+
+    @if (history().length > 0) {
+      <ul class="exec__list" aria-label="Ejecuciones de la tarea">
+        @for (execution of history(); track execution.id) {
+          <li>
+            <app-badge [tone]="statusTone[execution.status]" dot>
+              {{ statusLabel[execution.status] }}
+            </app-badge>
+            <span class="exec__muted">{{ execution.createdAt | timeAgo }}</span>
+            <span class="exec__muted exec__branch" [title]="execution.branch">
+              {{ execution.tickets.length }} ticket(s)
+            </span>
+            <span class="exec__row-actions">
+              @if (execution.pullRequestUrl; as url) {
+                <a
+                  app-button
+                  variant="ghost"
+                  size="sm"
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <app-icon name="git-pull-request" size="1em" /> PR
+                </a>
+              }
+              <a app-button variant="ghost" size="sm" [routerLink]="['/executions', execution.id]">
+                Ver
+              </a>
+            </span>
+          </li>
+        }
+      </ul>
+      @if (hiddenCount() > 0) {
+        <p class="exec__muted">y {{ hiddenCount() }} más antiguas.</p>
+      }
+    }
+  </div>
+</app-card>

@@ -22,6 +22,7 @@
       "@ai-agents/*": ["./src/ai-agents/*"],
       "@pr-review/*": ["./src/pr-review/*"],
       "@credentials/*": ["./src/credentials/*"],
+      "@executions/*": ["./src/executions/*"],
       "@core/*": ["./src/core/*"],
     },
     "incremental": true,

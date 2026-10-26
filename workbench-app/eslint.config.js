@@ -55,6 +55,7 @@ module.exports = tseslint.config(
                 '@kanban/*',
                 '@dashboard/*',
                 '@credentials/*',
+                '@executions/*',
               ],
               message: stateMessage,
             },
@@ -107,6 +108,33 @@ module.exports = tseslint.config(
         {
           patterns: [
             { group: ['@kanban/*', '@pr-review/*', '@credentials/*'], message: stateMessage },
+            { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
+            { group: ['@executions/*', '!@executions/index'], message: stateMessage },
+            { group: ['@core/layout/*'], message: stateMessage },
+          ],
+        },
+      ],
+    },
+  },
+  // executions no conoce a ningún otro módulo de negocio: la tarea le llega por inputs.
+  {
+    files: ['src/app/executions/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@tasks/*',
+                '@kanban/*',
+                '@pr-review/*',
+                '@credentials/*',
+                '@dashboard/*',
+              ],
+              message: stateMessage,
+            },
             { group: ['@ai-agents/*', '!@ai-agents/index'], message: stateMessage },
             { group: ['@core/layout/*'], message: stateMessage },
           ],

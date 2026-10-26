@@ -44,6 +44,10 @@
         @if (plansStore.plans().length > 0 || plansStore.requesting()) {
           <app-plan-panel [issue]="issue" />
         }
+
+        @if (hasReadyPlan() || executionsStore.executions().length > 0) {
+          <app-execution-panel [issueId]="issue.id" [canRun]="hasReadyPlan()" />
+        }
       </div>
 
       <aside class="layout__side">

@@ -17,6 +17,8 @@ export interface PullRequestRemoteData {
   destBranch: string;
   headCommit: string;
   description: string | null;
+  /** La abrió el usuario del token; es solo información de origen, no se guarda. */
+  authoredByMe?: boolean;
 }
 
 /** Lo que el provider puede cambiar de una PR después de abierta. */
@@ -34,15 +36,23 @@ export type PullRequestDetails = Pick<
 export class PullRequest {
   private constructor(private props: PullRequestProps) {}
 
-  /** Una PR nueva entra a la cola de revisión (pending). */
-  static createFromRemote(data: PullRequestRemoteData): PullRequest {
+  /**
+   * Una PR nueva entra a la cola de revisión (pending), o ya omitida (skipped) si se pide: el sync
+   * no encola las omitidas, pero se pueden revisar a mano.
+   */
+  static createFromRemote(
+    data: PullRequestRemoteData,
+    options: { skipReview?: boolean } = {},
+  ): PullRequest {
     const now = new Date();
+    const remote = { ...data };
+    delete remote.authoredByMe;
     return new PullRequest({
       id: crypto.randomUUID(),
-      ...data,
+      ...remote,
       ticketKeys: [],
       state: 'open',
-      status: 'pending',
+      status: options.skipReview ? 'skipped' : 'pending',
       queuedAt: now,
       requestedAgentId: null,
       requestedModel: null,

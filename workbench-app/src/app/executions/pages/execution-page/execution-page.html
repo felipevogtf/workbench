@@ -1,0 +1,191 @@
+<div class="page">
+  @if (store.error(); as error) {
+    <a app-button variant="ghost" size="sm" routerLink="/tasks/issues">
+      <app-icon name="arrow-left" size="1em" /> Tareas
+    </a>
+    <app-alert tone="danger" heading="No se pudo cargar la ejecución">{{ error }}</app-alert>
+  } @else if (store.detail(); as execution) {
+    <app-page-header
+      heading="Ejecución con IA"
+      [subtitle]="
+        execution.repos.length > 1
+          ? execution.repos.length + ' repositorios · ' + execution.branch
+          : execution.repo.fullName + ' · ' + execution.branch
+      "
+    >
+      <a
+        back
+        app-button
+        variant="ghost"
+        size="sm"
+        [routerLink]="['/tasks/issues', execution.issueId]"
+      >
+        <app-icon name="arrow-left" size="1em" /> Volver a la tarea
+      </a>
+
+      <ng-container actions>
+        @for (target of execution.repos; track target.repo.fullName) {
+          @if (target.pullRequestUrl; as url) {
+            <a
+              app-button
+              variant="secondary"
+              [href]="url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <app-icon name="git-pull-request" size="1em" />
+              {{
+                execution.repos.length > 1
+                  ? 'PR de ' + (target.repo.fullName.split('/').pop() ?? '')
+                  : 'Abrir la PR'
+              }}
+            </a>
+          }
+        }
+        @if (execution.status === 'awaiting') {
+          <button app-button type="button" [loading]="store.acting()" (click)="begin()">
+            <app-icon name="play" size="1em" /> Empezar el desarrollo
+          </button>
+        }
+        @if (execution.status === 'running' || execution.status === 'awaiting') {
+          <button
+            app-button
+            variant="danger"
+            type="button"
+            [disabled]="store.acting()"
+            (click)="cancel()"
+          >
+            <app-icon name="x" size="1em" /> Cancelar
+          </button>
+        }
+        @if (execution.status === 'failed') {
+          <button app-button type="button" [loading]="store.acting()" (click)="retry()">
+            <app-icon name="refresh" size="1em" /> Reintentar
+          </button>
+        }
+      </ng-container>
+    </app-page-header>
+
+    <div class="stack">
+      @if (execution.waitingForRunner) {
+        <app-alert tone="warning" heading="Esperando un runner">
+          No hay ningún runner conectado, así que el trabajo espera. Abre el runner en tu PC y
+          seguirá solo.
+          <a alert-action app-button variant="secondary" size="sm" routerLink="/executions/runners">
+            Ver runners
+          </a>
+        </app-alert>
+      }
+      @if (execution.status === 'failed' && execution.error) {
+        <app-alert tone="danger" heading="La ejecución falló">
+          <div>{{ execution.error }}</div>
+        </app-alert>
+      }
+
+      <section class="summary" aria-label="Resumen de la ejecución">
+        <div class="summary__top">
+          <app-badge [tone]="statusTone[execution.status]" dot>
+            {{ statusLabel[execution.status] }}
+          </app-badge>
+          <span class="summary__activity">
+            @if (execution.status === 'running') {
+              <app-spinner size="0.9em" />
+            }
+            {{ activity(execution) }}
+          </span>
+          <button type="button" class="summary__link" (click)="openGeneral()">
+            Registro general
+          </button>
+        </div>
+
+        <div
+          class="progress"
+          role="progressbar"
+          aria-label="Tickets hechos"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="progress().total"
+          [attr.aria-valuenow]="progress().done"
+        >
+          <div class="progress__bar" [style.width.%]="progress().percent"></div>
+        </div>
+        <p class="summary__count">{{ progress().done }} de {{ progress().total }} tickets hechos</p>
+
+        <ol class="steps">
+          @for (stage of execution.stages; track stage.key) {
+            <li [attr.data-status]="stage.status">
+              <span class="steps__icon" aria-hidden="true">
+                @if (stage.status === 'running') {
+                  <app-spinner size="0.9rem" />
+                } @else if (stageIcon[stage.status]; as icon) {
+                  <app-icon [name]="icon" size="0.9rem" />
+                }
+              </span>
+              {{ stageLabel[stage.key] }}
+            </li>
+          }
+        </ol>
+      </section>
+
+      @if (questions().length > 0) {
+        <app-ticket-questions
+          [cards]="questions()"
+          [lucy]="lucy()"
+          [busy]="store.acting()"
+          (answer)="answer($event)"
+        />
+      }
+
+      @if (cards().length === 0) {
+        <p class="muted">
+          @if (execution.status === 'running') {
+            El agente está leyendo el plan y el código para crear los tickets…
+          } @else {
+            No se llegaron a crear tickets.
+          }
+        </p>
+      } @else if (execution.status === 'awaiting') {
+        <app-ticket-assignment
+          [cards]="cards()"
+          [developers]="developers()"
+          [reviewers]="reviewers()"
+          [busy]="store.acting()"
+          (assign)="assign($event)"
+        />
+      } @else {
+        <app-ticket-board
+          [cards]="cards()"
+          [selectedId]="openId()"
+          [running]="execution.status === 'running'"
+          (open)="open($event)"
+        />
+      }
+    </div>
+
+    <app-execution-chat
+      [executionId]="execution.id"
+      [questions]="chatQuestions()"
+      [context]="execution.repo.fullName + ' · ' + execution.branch"
+    />
+
+    @if (openId()) {
+      <app-ticket-panel
+        [card]="panelCard()"
+        [title]="panelTitle()"
+        [branch]="execution.branch"
+        [jobs]="panelJobs()"
+        [events]="panelEvents()"
+        [logs]="store.logs()"
+        [selectedJobId]="store.selectedJob()?.id ?? null"
+        [workerName]="workerName"
+        (dismissed)="closePanel()"
+        (selectJob)="pickJob($event)"
+      />
+    }
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton width="50%" height="2rem" />
+      <app-skeleton height="110px" />
+      <app-skeleton height="260px" />
+    </div>
+  }
+</div>

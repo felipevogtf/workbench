@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainError } from '@core/domain/domain.error';
 import { AgentProvidersService } from '@ai-agents/application/agent-providers.service';
+import { AgentEffort, AgentLevel } from '@ai-agents/domain/effort';
 import { AgentModule } from '@ai-agents/domain/modules';
 import { AgentProvider, DEFAULT_PROVIDER } from '@ai-agents/domain/providers';
 import { Agent } from '@ai-agents/domain/entities/agent.entity';
@@ -21,12 +22,24 @@ interface CreateAgentData {
   provider?: AgentProvider;
   allowedTools?: string[];
   isDefault?: boolean;
+  displayName?: string | null;
+  avatar?: string | null;
+  effort?: AgentEffort | null;
+  level?: AgentLevel | null;
 }
 
 type UpdateAgentData = Partial<
   Pick<
     CreateAgentData,
-    'name' | 'systemPrompt' | 'model' | 'provider' | 'allowedTools'
+    | 'name'
+    | 'systemPrompt'
+    | 'model'
+    | 'provider'
+    | 'allowedTools'
+    | 'displayName'
+    | 'avatar'
+    | 'effort'
+    | 'level'
   >
 >;
 
