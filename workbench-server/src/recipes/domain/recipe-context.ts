@@ -1,4 +1,4 @@
-import type { Recipe } from './entities/recipe.entity';
+import { normalizeRepoName, type Recipe } from './entities/recipe.entity';
 
 /** Hasta cuántos saltos se siguen las dependencias (la app depende de la web, la web de la base…). */
 export const MAX_DEPENDENCY_DEPTH = 2;
@@ -21,12 +21,14 @@ export function buildRecipeContext(
   repos: readonly string[],
   recipes: readonly Recipe[],
 ): string | null {
+  // Las recetas se guardan en minúsculas; el repositorio de la tarea puede venir como lo escribió la etiqueta.
   const byRepo = new Map(recipes.map((recipe) => [recipe.repo, recipe]));
   const shown = new Set<string>();
   const missing = new Set<string>();
   const sections: string[] = [];
 
-  const visit = (repo: string, depth: number, neededBy: string | null) => {
+  const visit = (name: string, depth: number, neededBy: string | null) => {
+    const repo = normalizeRepoName(name);
     if (shown.has(repo)) return;
     const recipe = byRepo.get(repo);
     if (!recipe) {

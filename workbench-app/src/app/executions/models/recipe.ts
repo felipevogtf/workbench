@@ -17,6 +17,13 @@ export interface RecipeInput {
   dependsOn: string[];
 }
 
+/** Un repositorio al que apunta alguna etiqueta, con los nombres de las etiquetas que lo usan. */
+export interface RepositoryOption {
+  /** `organización/repo`, en minúsculas. */
+  repo: string;
+  labels: string[];
+}
+
 /** Igual que en el servidor: `organización/repo`. */
 export const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 

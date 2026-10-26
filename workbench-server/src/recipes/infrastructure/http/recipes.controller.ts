@@ -14,6 +14,7 @@ import { Recipe } from '@recipes/domain/entities/recipe.entity';
 import {
   CreateRecipeDto,
   RecipeResponseDto,
+  RepositoryOptionDto,
   UpdateRecipeDto,
 } from '@recipes/dto/recipe.dto';
 
@@ -24,6 +25,12 @@ export class RecipesController {
   @Get()
   async list(): Promise<RecipeResponseDto[]> {
     return (await this.recipes.list()).map((recipe) => this.toDto(recipe));
+  }
+
+  /** Los repositorios de las etiquetas. Va antes de `:id`, que solo acepta UUID. */
+  @Get('repositories')
+  repositories(): Promise<RepositoryOptionDto[]> {
+    return this.recipes.repositories();
   }
 
   @Get(':id')

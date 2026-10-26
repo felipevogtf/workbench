@@ -48,6 +48,13 @@ export class UpdateRecipeDto {
   dependsOn?: string[];
 }
 
+/** Un repositorio al que apunta alguna etiqueta. */
+export class RepositoryOptionDto {
+  repo!: string;
+  /** Los nombres de las etiquetas que lo usan. */
+  labels!: string[];
+}
+
 export class RecipeResponseDto {
   id!: string;
   repo!: string;

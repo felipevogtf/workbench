@@ -14,6 +14,19 @@ describe('buildRecipeContext', () => {
     expect(context).toBe('## Receta de acme/app\ndocker compose up');
   });
 
+  it('finds the recipe whatever the capitals of the repository of the task', () => {
+    const context = buildRecipeContext(
+      ['Acme/App'],
+      [
+        recipe('acme/app', 'la app', ['acme/web']),
+        recipe('acme/web', 'la web'),
+      ],
+    );
+
+    expect(context).toContain('## Receta de acme/app');
+    expect(context).toContain('## Receta de acme/web');
+  });
+
   it('is null when nothing has a recipe, and for no repositories', () => {
     expect(buildRecipeContext(['acme/app'], [])).toBeNull();
     expect(buildRecipeContext([], [recipe('acme/app', 'x')])).toBeNull();

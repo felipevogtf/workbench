@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
-import { Recipe, RecipeInput } from '../models/recipe';
+import { Recipe, RecipeInput, RepositoryOption } from '../models/recipe';
 
 @Injectable({ providedIn: 'root' })
 export class RecipesApi {
@@ -11,6 +11,11 @@ export class RecipesApi {
 
   list(): Observable<Recipe[]> {
     return this.http.get<Recipe[]>(this.base);
+  }
+
+  /** Los repositorios a los que apuntan las etiquetas: de ahí se elige para qué proyecto es la receta. */
+  repositories(): Observable<RepositoryOption[]> {
+    return this.http.get<RepositoryOption[]>(`${this.base}/repositories`);
   }
 
   create(input: RecipeInput): Observable<Recipe> {

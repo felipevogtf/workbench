@@ -16,13 +16,23 @@ const recipe = (repo: string, extra: Partial<Recipe> = {}): Recipe => ({
 });
 
 describe('RecipesStore', () => {
-  let api: Record<'list' | 'create' | 'update' | 'remove', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'list' | 'repositories' | 'create' | 'update' | 'remove',
+    ReturnType<typeof vi.fn>
+  >;
   let store: RecipesStore;
   let toast: Toast;
 
   beforeEach(() => {
     api = {
       list: vi.fn(() => of([recipe('acme/web'), recipe('acme/app')])),
+      repositories: vi.fn(() =>
+        of([
+          { repo: 'acme/app', labels: ['app'] },
+          { repo: 'acme/web', labels: ['flota', 'web'] },
+          { repo: 'acme/db', labels: ['db'] },
+        ]),
+      ),
       create: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(() => of(undefined)),
@@ -40,6 +50,29 @@ describe('RecipesStore', () => {
     expect(store.recipes().map((item) => item.repo)).toEqual(['acme/web', 'acme/app']);
     expect(store.repos()).toEqual(['acme/web', 'acme/app']);
     expect(store.loaded()).toBe(true);
+    expect(store.error()).toBeNull();
+  });
+
+  it('loads the repositories that the labels point to, and says which labels use each one', async () => {
+    await store.load();
+
+    expect(store.options().map((option) => option.repo)).toEqual([
+      'acme/app',
+      'acme/web',
+      'acme/db',
+    ]);
+    expect(store.labelsOf('acme/web')).toEqual(['flota', 'web']);
+    expect(store.labelsOf('Acme/Web')).toEqual(['flota', 'web']);
+    expect(store.labelsOf('acme/otro')).toEqual([]);
+  });
+
+  it('still loads the recipes when the repositories of the labels cannot be read', async () => {
+    api.repositories.mockReturnValue(throwError(() => new Error('falló')));
+
+    await store.load();
+
+    expect(store.recipes()).toHaveLength(2);
+    expect(store.options()).toEqual([]);
     expect(store.error()).toBeNull();
   });
 

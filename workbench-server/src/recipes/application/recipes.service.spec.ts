@@ -1,5 +1,6 @@
 import { Recipe } from '@recipes/domain/entities/recipe.entity';
 import { RecipeRepositoryPort } from '@recipes/domain/ports/recipe-repository.port';
+import { RepositoryOption } from '@recipes/domain/ports/repository-options.port';
 import { RecipesService } from './recipes.service';
 
 class InMemoryRecipes implements RecipeRepositoryPort {
@@ -22,11 +23,40 @@ class InMemoryRecipes implements RecipeRepositoryPort {
 
 describe('RecipesService', () => {
   let repository: InMemoryRecipes;
+  let options: RepositoryOption[];
   let service: RecipesService;
 
   beforeEach(() => {
     repository = new InMemoryRecipes();
-    service = new RecipesService(repository);
+    options = [];
+    service = new RecipesService(repository, {
+      list: () => Promise.resolve(options),
+    });
+  });
+
+  it('offers the repositories that the labels point to', async () => {
+    options = [{ repo: 'acme/web', labels: ['web'] }];
+
+    expect(await service.repositories()).toEqual([
+      { repo: 'acme/web', labels: ['web'] },
+    ]);
+  });
+
+  it('keeps one recipe per repository however it is written', async () => {
+    await service.create({ repo: 'Acme/Web', content: 'la web' });
+
+    expect((await service.list())[0].repo).toBe('acme/web');
+    await expect(
+      service.create({ repo: ' ACME/web ', content: 'otra' }),
+    ).rejects.toMatchObject({ kind: 'conflict' });
+  });
+
+  it('finds the recipe of a repository written with other capitals', async () => {
+    await service.create({ repo: 'acme/web', content: 'la web' });
+
+    expect(await service.contextFor(['Acme/Web'])).toContain(
+      '## Receta de acme/web',
+    );
   });
 
   it('creates a recipe and lists them by repository', async () => {

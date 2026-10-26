@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, model, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  model,
+  signal,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Button } from '@shared/ui/button/button';
 import { FormField } from '@shared/ui/form-field/form-field';
@@ -11,6 +20,7 @@ import {
   REPO_PATTERN,
   Recipe,
   RecipeInput,
+  RepositoryOption,
   parseRepos,
 } from '../../models/recipe';
 
@@ -42,6 +52,12 @@ import {
       color: var(--text-color);
     }
 
+    .note {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--tone-warning-fg);
+    }
+
     .content__head {
       display: flex;
       justify-content: flex-end;
@@ -60,17 +76,24 @@ import {
           label="Repositorio"
           for="recipe-repo"
           required
-          hint="Como en la etiqueta de la tarea: organización/repositorio."
+          hint="Elige uno de los repositorios de tus etiquetas (haz clic en el campo) o escribe organización/repositorio."
           [error]="repoInvalid() ? 'Escribe organización/repositorio, sin espacios' : null"
         >
           <app-text-input
             inputId="recipe-repo"
             formControlName="repo"
             placeholder="garage-labs/miobra-ionicv6"
-            [suggestions]="repos()"
+            [suggestions]="repoSuggestions()"
             [invalid]="repoInvalid()"
           />
         </app-form-field>
+
+        @if (unlinked()) {
+          <p class="note" role="status">
+            Ninguna etiqueta apunta a este repositorio: la receta solo se usará cuando la etiqueta
+            de una tarea tenga su enlace.
+          </p>
+        }
 
         <app-form-field
           label="Depende de"
@@ -81,7 +104,7 @@ import {
           <app-text-input
             inputId="recipe-depends"
             formControlName="dependsOn"
-            [suggestions]="repos()"
+            [suggestions]="dependencySuggestions()"
             [invalid]="dependsInvalid()"
           />
         </app-form-field>
@@ -130,8 +153,10 @@ export class RecipeDialog {
   readonly open = model(false);
   /** La receta que se edita; `null` para una nueva. */
   readonly recipe = input<Recipe | null>(null);
-  /** Los repositorios que ya tienen receta, como sugerencia. */
-  readonly repos = input<readonly string[]>([]);
+  /** Los repositorios a los que apuntan las etiquetas: de ahí se elige. */
+  readonly options = input<readonly RepositoryOption[]>([]);
+  /** Los repositorios que ya tienen receta. */
+  readonly recipeRepos = input<readonly string[]>([]);
   readonly save =
     input.required<(input: RecipeInput, existing: Recipe | null) => Promise<unknown>>();
 
@@ -141,6 +166,30 @@ export class RecipeDialog {
     repo: ['', [this.validRepo]],
     dependsOn: ['', [this.validRepos]],
     content: ['', [Validators.maxLength(20_000)]],
+  });
+
+  private readonly repoValue = toSignal(this.form.controls.repo.valueChanges, { initialValue: '' });
+
+  /** Para una receta nueva: los repositorios de las etiquetas que todavía no tienen receta. */
+  protected readonly repoSuggestions = computed(() =>
+    this.options()
+      .map((option) => option.repo)
+      .filter((repo) => !this.recipeRepos().includes(repo)),
+  );
+
+  /** Como dependencia sirve cualquier repositorio conocido: el de una etiqueta o el de otra receta. */
+  protected readonly dependencySuggestions = computed(() => [
+    ...new Set([...this.options().map((option) => option.repo), ...this.recipeRepos()]),
+  ]);
+
+  /** Escribió un repositorio válido al que no apunta ninguna etiqueta (y sí hay etiquetas con repositorio). */
+  protected readonly unlinked = computed(() => {
+    const repo = this.repoValue().trim().toLowerCase();
+    return (
+      this.options().length > 0 &&
+      REPO_PATTERN.test(repo) &&
+      !this.options().some((option) => option.repo === repo)
+    );
   });
 
   protected readonly submit = (): Promise<unknown> => {

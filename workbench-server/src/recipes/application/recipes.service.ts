@@ -5,6 +5,11 @@ import {
   RECIPE_REPOSITORY_PORT,
   type RecipeRepositoryPort,
 } from '@recipes/domain/ports/recipe-repository.port';
+import {
+  REPOSITORY_OPTIONS_PORT,
+  type RepositoryOption,
+  type RepositoryOptionsPort,
+} from '@recipes/domain/ports/repository-options.port';
 import { buildRecipeContext } from '@recipes/domain/recipe-context';
 
 @Injectable()
@@ -12,11 +17,18 @@ export class RecipesService {
   constructor(
     @Inject(RECIPE_REPOSITORY_PORT)
     private readonly recipes: RecipeRepositoryPort,
+    @Inject(REPOSITORY_OPTIONS_PORT)
+    private readonly options: RepositoryOptionsPort,
   ) {}
 
   async list(): Promise<Recipe[]> {
     const all = await this.recipes.findAll();
     return all.sort((a, b) => a.repo.localeCompare(b.repo));
+  }
+
+  /** Los repositorios a los que apuntan las etiquetas: de ahí se elige para qué proyecto es la receta. */
+  repositories(): Promise<RepositoryOption[]> {
+    return this.options.list();
   }
 
   async get(id: string): Promise<Recipe> {

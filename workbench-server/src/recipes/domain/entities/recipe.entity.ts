@@ -23,8 +23,13 @@ export interface RecipeInput {
   dependsOn?: readonly string[];
 }
 
+/** Cómo se compara un repositorio: sin espacios de los lados y en minúsculas, como lo tratan GitHub y Bitbucket. */
+export function normalizeRepoName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function repoName(value: string, field: string): string {
-  const name = value.trim();
+  const name = normalizeRepoName(value);
   if (!REPO_PATTERN.test(name)) {
     throw new DomainError(
       `${field} must look like "organization/repository", got "${value}"`,

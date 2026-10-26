@@ -16,7 +16,10 @@ const recipe = (repo: string, extra: Partial<Recipe> = {}): Recipe => ({
 });
 
 describe('RecipesPage', () => {
-  let api: Record<'list' | 'create' | 'update' | 'remove', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'list' | 'repositories' | 'create' | 'update' | 'remove',
+    ReturnType<typeof vi.fn>
+  >;
   let ask: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -29,6 +32,7 @@ describe('RecipesPage', () => {
     ask = vi.fn(() => Promise.resolve(true));
     api = {
       list: vi.fn(() => of([])),
+      repositories: vi.fn(() => of([])),
       create: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(() => of(undefined)),
@@ -66,6 +70,25 @@ describe('RecipesPage', () => {
     expect(rows[0].textContent).toContain('Depende de');
     expect(rows[0].textContent).toContain('acme/web');
     expect(rows[1].textContent).toContain('Receta vacía');
+  });
+
+  it('shows which labels each recipe is linked to, and warns about one that no label points to', async () => {
+    api.list.mockReturnValue(of([recipe('acme/app'), recipe('acme/huérfano')]));
+    api.repositories.mockReturnValue(of([{ repo: 'acme/app', labels: ['app', 'flota'] }]));
+    const element = (await render()).nativeElement as HTMLElement;
+
+    const rows = Array.from(element.querySelectorAll('.recipes li'));
+    expect(rows[0].textContent).toContain('app');
+    expect(rows[0].textContent).toContain('flota');
+    expect(rows[0].textContent).not.toContain('Sin etiqueta');
+    expect(rows[1].textContent).toContain('Sin etiqueta');
+  });
+
+  it('does not warn about the labels when none points to a repository, or they could not be read', async () => {
+    api.list.mockReturnValue(of([recipe('acme/app')]));
+    const element = (await render()).nativeElement as HTMLElement;
+
+    expect(element.textContent).not.toContain('Sin etiqueta');
   });
 
   it('opens the editor with the recipe when the user edits it', async () => {

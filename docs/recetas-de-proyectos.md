@@ -17,6 +17,13 @@ probarla con una ejecución real y la etapa B.**
   o editar con una plantilla de partida (levantar, base de datos, probar, no tocar), vista previa del Markdown y
   «Depende de» con sugerencias; el repositorio no se cambia al editar; borrar pide confirmación.
 
+**Ligada a las etiquetas (2026-10-26):** la receta se identifica por `organización/repo`, que es lo mismo que sale del enlace
+de las etiquetas de la tarea. El diálogo ofrece los repositorios de tus etiquetas (los que todavía no tienen receta, y
+cualquiera como dependencia) y avisa si escribes uno al que no apunta ninguna etiqueta; en la lista cada receta muestra
+sus etiquetas, o «Sin etiqueta» si ninguna apunta a su repositorio. El nombre se guarda y se compara en minúsculas, así
+`Garage-Labs/MiFlota-Web` y `garage-labs/miflota-web` son la misma receta. Se pueden seguir escribiendo repositorios sin
+etiqueta. Endpoint: `GET /recipes/repositories`.
+
 **Falta de la etapa A:**
 - Enlaces entre recetas (`[[miseguridad-web]]`) clicables en el editor.
 - El botón opcional «Generar borrador con IA».

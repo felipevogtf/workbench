@@ -48,6 +48,19 @@
                   <p class="recipe__excerpt recipe__excerpt--empty">Receta vacía</p>
                 }
                 <div class="recipe__meta">
+                  @if (store.labelsOf(recipe.repo).length > 0) {
+                    <span class="muted">Etiqueta</span>
+                    @for (label of store.labelsOf(recipe.repo); track label) {
+                      <app-badge tone="info">{{ label }}</app-badge>
+                    }
+                  } @else if (store.options().length > 0) {
+                    <app-badge
+                      tone="warning"
+                      title="Ninguna etiqueta apunta a este repositorio: la receta no se usará hasta que una tarea lo tenga"
+                    >
+                      Sin etiqueta
+                    </app-badge>
+                  }
                   @if (recipe.dependsOn.length > 0) {
                     <span class="muted">Depende de</span>
                     @for (dependency of recipe.dependsOn; track dependency) {
@@ -84,7 +97,8 @@
   <app-recipe-dialog
     [(open)]="dialogOpen"
     [recipe]="editing()"
-    [repos]="store.repos()"
+    [options]="store.options()"
+    [recipeRepos]="store.repos()"
     [save]="save"
   />
 </div>

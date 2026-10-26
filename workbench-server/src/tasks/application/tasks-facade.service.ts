@@ -60,6 +60,11 @@ export class TasksFacade {
     return this.labels.findByIds(ids);
   }
 
+  /** Todas las etiquetas (las que tienen enlace de repositorio dicen a cuál). */
+  findAllLabels(): Promise<Label[]> {
+    return this.labels.findAll();
+  }
+
   /** Cambia el estado de una tarea (valida que el estado exista). */
   async setIssueState(issueId: string, stateId: string | null): Promise<void> {
     await this.issuesService.setState(issueId, stateId);

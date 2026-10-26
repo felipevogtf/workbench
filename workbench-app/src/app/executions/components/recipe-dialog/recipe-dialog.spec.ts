@@ -19,7 +19,8 @@ const existing: Recipe = {
     <app-recipe-dialog
       [(open)]="open"
       [recipe]="recipe()"
-      [repos]="['acme/web', 'acme/app']"
+      [options]="options()"
+      [recipeRepos]="['acme/app']"
       [save]="save"
     />
   `,
@@ -27,6 +28,11 @@ const existing: Recipe = {
 class Host {
   readonly open = signal(false);
   readonly recipe = signal<Recipe | null>(null);
+  readonly options = signal([
+    { repo: 'acme/app', labels: ['app'] },
+    { repo: 'acme/web', labels: ['web'] },
+    { repo: 'acme/db', labels: ['db'] },
+  ]);
   save = vi.fn<(input: RecipeInput, existing: Recipe | null) => Promise<void>>(() =>
     Promise.resolve(),
   );
@@ -111,6 +117,58 @@ describe('RecipeDialog', () => {
       { repo: 'acme/app', dependsOn: ['acme/web'], content: 'Otro texto' },
       existing,
     );
+  });
+
+  describe('the repositories that the labels point to', () => {
+    const suggested = (root: HTMLElement, id: string) =>
+      [...root.querySelectorAll<HTMLOptionElement>(`#${id}-list option`)].map(
+        (option) => option.value,
+      );
+
+    it('suggests for a new recipe only the repositories that still have none', async () => {
+      const { root } = await render();
+
+      expect(suggested(root, 'recipe-repo')).toEqual(['acme/web', 'acme/db']);
+    });
+
+    it('suggests as dependencies any known repository, with recipe or without', async () => {
+      const { root } = await render();
+
+      expect(suggested(root, 'recipe-depends')).toEqual(['acme/app', 'acme/web', 'acme/db']);
+    });
+
+    it('warns when the repository written is not pointed to by any label', async () => {
+      const { fixture, root, type } = await render();
+      const warning = () => root.querySelector('.note')?.textContent ?? '';
+
+      type('recipe-repo', 'acme/web');
+      fixture.detectChanges();
+      expect(warning()).toBe('');
+
+      type('recipe-repo', 'Acme/Otro');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(warning()).toContain('Ninguna etiqueta apunta a este repositorio');
+
+      type('recipe-repo', ' ACME/WEB ');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(warning()).toBe('');
+    });
+
+    it('does not warn while it is not a repository yet, nor when there are no labels with one', async () => {
+      const { fixture, host, root, type } = await render();
+
+      type('recipe-repo', 'acme');
+      fixture.detectChanges();
+      expect(root.querySelector('.note')).toBeNull();
+
+      host.options.set([]);
+      type('recipe-repo', 'acme/otro');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(root.querySelector('.note')).toBeNull();
+    });
   });
 
   it('shows a preview of the Markdown and goes back to writing', async () => {

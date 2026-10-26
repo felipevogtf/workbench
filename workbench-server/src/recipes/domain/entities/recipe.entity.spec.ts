@@ -15,6 +15,27 @@ describe('Recipe', () => {
     expect(recipe.createdAt).toEqual(recipe.updatedAt);
   });
 
+  it('keeps the repository and the dependencies in lowercase, as GitHub and Bitbucket treat them', () => {
+    const recipe = Recipe.create({
+      repo: 'Garage-Labs/MiFlota-Web',
+      content: 'x',
+      dependsOn: ['Garage-Labs/MiCamion', 'garage-labs/micamion'],
+    });
+
+    expect(recipe.repo).toBe('garage-labs/miflota-web');
+    expect(recipe.dependsOn).toEqual(['garage-labs/micamion']);
+  });
+
+  it('does not let a recipe depend on itself written with other capitals', () => {
+    expect(() =>
+      Recipe.create({
+        repo: 'acme/app',
+        content: 'x',
+        dependsOn: ['ACME/App'],
+      }),
+    ).toThrow(/own repository/);
+  });
+
   it('accepts an empty recipe, to write it later', () => {
     expect(Recipe.create({ repo: 'acme/app', content: '' }).content).toBe('');
   });
