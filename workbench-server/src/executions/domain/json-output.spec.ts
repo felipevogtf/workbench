@@ -46,8 +46,31 @@ describe('parseTickets', () => {
         5,
       ),
     ).toEqual([
-      { title: 'A', description: 'd', level: 'medium', criteria: ['c'] },
+      {
+        title: 'A',
+        description: 'd',
+        level: 'medium',
+        criteria: ['c'],
+        files: [],
+      },
     ]);
+  });
+
+  it('keeps the files that the ticket should start from, cleaned and capped', () => {
+    const files = Array.from({ length: 20 }, (_, i) => `src/f${i}.ts`);
+    const [ticket] = parseTickets(
+      output([
+        {
+          title: 'A',
+          description: 'd',
+          files: [' src/a.ts ', '', 7, ...files],
+        },
+      ]),
+      5,
+    );
+
+    expect(ticket.files).toHaveLength(15);
+    expect(ticket.files[0]).toBe('src/a.ts');
   });
 
   it('drops tickets without a title or description', () => {

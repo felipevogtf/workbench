@@ -59,6 +59,13 @@
             </section>
           }
 
+          @if (current.ticket.files?.length) {
+            <section class="block">
+              <h5>Archivos previstos</h5>
+              <app-markdown-viewer [content]="paths(current.ticket.files)" />
+            </section>
+          }
+
           @if (current.ticket.question; as question) {
             <app-alert tone="warning" heading="{{ question.from }} está esperando una respuesta">
               <p class="question">{{ question.text }}</p>

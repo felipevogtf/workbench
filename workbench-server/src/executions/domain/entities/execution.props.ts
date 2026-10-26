@@ -49,6 +49,8 @@ export interface ExecutionTicket {
   title: string;
   description: string;
   criteria: string[];
+  /** Por dónde empezar (pista de Lucy, no un límite); ausente en las ejecuciones anteriores a este campo. */
+  files?: string[];
   /** `organización/repo` en que se desarrolla; ausente en las ejecuciones de un solo repo. */
   repo?: string;
   level: TicketLevel;

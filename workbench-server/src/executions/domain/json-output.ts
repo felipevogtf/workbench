@@ -8,6 +8,8 @@ export interface TicketDraft {
   /** Solo cuando la tarea tiene varios repositorios: en cuál se desarrolla. */
   repo?: string;
   criteria: string[];
+  /** Por dónde empezar: archivos o carpetas que Lucy espera que intervengan. Es una pista, no un límite. */
+  files: string[];
 }
 
 export interface ReviewVerdict {
@@ -20,6 +22,8 @@ const MAX_TITLE = 120;
 const MAX_DESCRIPTION = 4000;
 const MAX_CRITERION = 400;
 const MAX_CRITERIA = 10;
+const MAX_FILES = 15;
+const MAX_FILE = 200;
 const MAX_ISSUES = 15;
 
 /**
@@ -86,6 +90,7 @@ export function parseTickets(
           ? { repo: repos.find((name) => name === item.repo) ?? repos[0] }
           : {}),
         criteria: list(item.criteria, MAX_CRITERIA, MAX_CRITERION),
+        files: list(item.files, MAX_FILES, MAX_FILE),
       };
     })
     .filter((ticket) => ticket.title && ticket.description);

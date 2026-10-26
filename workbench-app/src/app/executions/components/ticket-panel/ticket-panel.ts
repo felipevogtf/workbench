@@ -80,6 +80,11 @@ export class TicketPanel {
     return items.map((item) => `- ${item}`).join('\n');
   }
 
+  /** Las rutas, en código para que los guiones bajos no se lean como énfasis. */
+  protected paths(files: readonly string[] | undefined): string {
+    return this.list((files ?? []).map((file) => `\`${file}\``));
+  }
+
   /** «Desarrollo · David (intento 2)». */
   protected jobLabel(job: JobSummary): string {
     const who = this.workerName()(job);

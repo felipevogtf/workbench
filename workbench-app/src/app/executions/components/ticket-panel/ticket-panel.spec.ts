@@ -50,6 +50,18 @@ describe('TicketPanel', () => {
     expect(element.textContent).toContain('Casi listo');
   });
 
+  it('lists the files that Lucy expects the ticket to start from, only when there are any', async () => {
+    const withFiles = boardCard(ticket('a', { files: ['src/app/my_icon.ts'] }), {
+      worker: { name: 'Maine', avatar: null },
+    });
+    const shown: HTMLElement = (await render({ card: withFiles })).nativeElement;
+    const hidden: HTMLElement = (await render({ card })).nativeElement;
+
+    expect(shown.textContent).toContain('Archivos previstos');
+    expect(shown.querySelector('code')?.textContent).toBe('src/app/my_icon.ts');
+    expect(hidden.textContent).not.toContain('Archivos previstos');
+  });
+
   it('renders the description as markdown', async () => {
     const element: HTMLElement = (await render({ card })).nativeElement;
 
