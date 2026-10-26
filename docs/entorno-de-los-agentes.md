@@ -35,7 +35,7 @@ crear y modificar archivos, y elegir otros puertos si los suyos están ocupados.
 **Abierto**
 - ¿El revisor también recibe el entorno (sin poder editar archivos)? Mi sugerencia: sí, solo si el ticket lo tiene encendido.
 - Tope de gasto y de tiempo para los trabajos con entorno: no tocarlo hasta medir con la pantalla Consumo.
-- Dónde viven los worktrees: en `E:\` (más lento visto desde WSL) o dentro de la distro. Se decide midiendo en la etapa 1.
+- ~~Dónde viven los worktrees~~ **Resuelto por la prueba: dentro de la distro**, en su disco propio (ver el resultado de la etapa 1).
 
 ## Etapas
 
@@ -55,6 +55,36 @@ Crear el entorno donde correrán los agentes y comprobar que se puede trabajar a
 
 **Hecha cuando:** desde la distro, el agente de prueba edita un archivo del worktree, corre `docker run hello-world`, y **no** puede ver `C:\`,
 tu Ubuntu ni tus llaves.
+
+**Resultado de la prueba (2026-10-27).** La distro `wb-agents` quedó creada y configurada. Lo que se hizo y lo que se midió:
+
+- **Hecho:** Ubuntu 24.04 limpia en `E:\wsl\wb-agents`; usuario `agent` sin sudo y sin llaves; `systemd` activo; discos de Windows y programas de
+  Windows desactivados (`automount` e `interop`); `E:\workbench-agent-repos` montada como `/work` (escribible); Docker Engine 29.1.3 con Compose 2.40.3
+  (el usuario `agent` corre contenedores); git 2.43, curl, build-essential, unzip, jq; nvm 0.40.1 con Node 24 LTS; CLI de Claude 2.1.310. Docker Desktop y
+  tu Ubuntu siguen igual: tus 5 contenedores no se reiniciaron en ningún momento.
+- **Aislamiento comprobado:** el agente no ve `C:`, `D:` ni `E:` (0 entradas), ni tus llaves, ni tu Ubuntu; solo ve `/work`.
+- **Fuga encontrada y cerrada:** `/mnt/wsl` es compartido entre distros y Docker Desktop publica ahí los **sockets de su Docker** y las **carpetas de tus
+  proyectos** (`/root/git_repos/…`, en lectura y escritura). Se cerró con el servicio `wb-isolate` (arranca antes que Docker): deja de compartir `/mnt/wsl`
+  en esta distro, desmonta todo eso y tapa las carpetas. Se probó antes con una carpeta inocua que el cambio **no** se propaga a tus otras distros.
+- **Red compartida:** todas las distros de WSL2 usan la misma red. Docker reparte por defecto subredes 172.16–172.31 y WSL usa 172.20.160.0/20, así que se
+  fijaron rangos propios en `/etc/docker/daemon.json` (puente `10.199.0.0/24`, redes nuevas desde `10.200.0.0/16`).
+
+**Hallazgos que cambian el diseño:**
+
+1. **Los worktrees tienen que vivir dentro de la distro.** Medido sobre `/work` (carpeta de Windows vista por 9p) frente al disco propio de la distro, con un repo
+   chico y sin `node_modules`: recorrer 709 archivos 0,63 s frente a 0,005 s, y `git status` 4,2 s frente a 0,015 s (unas 280 veces más lento).
+   Con dependencias instaladas sería inusable.
+2. **`git` no funciona sobre un worktree creado por Windows.** Su `.git` dice `gitdir: E:/workbench-agent-repos/…` y Linux lo resuelve como ruta relativa
+   («not a git repository»). Cada worktree debe crearse y usarse con el mismo git. Esto afecta al revisor, que usa `git diff`.
+3. **Consecuencia, y diseño propuesto:** el clon autoritativo y las llaves siguen en Windows. El runner crea el clon de trabajo **dentro de la distro**
+   (`git clone` local desde el clon de Windows, sin red ni llaves), el agente trabaja ahí, y al terminar el runner trae la rama a su clon de Windows con
+   `git fetch` desde la distro y la sube con sus llaves. Hay que probarlo en la etapa 2.
+4. **La red es un riesgo abierto: desde la distro se alcanzan los puertos 3307 y 5432 de tu Windows**, las bases de datos que publican tus contenedores
+   `databases-mimixer-db` y `databases-postgis-db`. Hace falta credencial, pero es una vía que no debería existir. Cerrarla con reglas de `iptables` (por usuario y
+   por subred de los contenedores del agente) es posible pero **afecta a una red compartida** con tu Ubuntu, y quien tenga el grupo `docker` en la distro podría
+   quitarlas. Las alternativas son el firewall de Hyper-V para WSL (afecta a todas tus distros) o una máquina virtual aparte. **Decisión pendiente.**
+
+**Falta de esta etapa:** iniciar sesión del CLI de Claude dentro de la distro (necesita tu navegador) y correr el agente de prueba.
 
 ### Etapa 2: un proyecto de punta a punta (miflota-web)
 
@@ -110,9 +140,8 @@ da 415, y al terminar no queda ningún contenedor ni volumen de esa ejecución.
 
 ## Estado de tu PC
 
-Se instaló la distro `wb-agents` (Ubuntu 24.04, en `E:\wsl\wb-agents`), **sin configurar y detenida**. Nada más cambió: ni tu Ubuntu, ni Docker Desktop, ni el runner.
-Solo sirve si se confirma el aislamiento en una distro; si no, se quita con `wsl --unregister wb-agents` y borrando esa carpeta.
-
+Distro `wb-agents` instalada y configurada (ver el resultado de la etapa 1), en `E:\wsl\wb-agents`. Cambios fuera de ella: ninguno en tu Ubuntu, en Docker
+Desktop ni en el runner. Si no se sigue por este camino, se quita con `wsl --unregister wb-agents` y borrando esa carpeta.
 ## Lo que ya existe y se reutiliza
 
 - Recetas de proyectos (etapa A): texto por repositorio con «Depende de», que ya llega a los prompts de Lucy, el desarrollador y el revisor.
