@@ -1,4 +1,5 @@
 import { StageKey } from './execution.props';
+import type { JobUsage } from '../usage';
 
 export type JobKind = StageKey;
 export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
@@ -57,6 +58,8 @@ export interface JobProps {
   runnerId: string | null;
   attempt: number;
   costUsd: number | null;
+  /** Tokens que gastó y cómo iba el plan mientras corría; `null` en los trabajos anteriores a medirlo. */
+  usage: JobUsage | null;
   queuedAt: Date;
   startedAt: Date | null;
   finishedAt: Date | null;

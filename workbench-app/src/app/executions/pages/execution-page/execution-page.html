@@ -110,6 +110,21 @@
         </div>
         <p class="summary__count">{{ progress().done }} de {{ progress().total }} tickets hechos</p>
 
+        @if (consumption(); as usage) {
+          <p class="summary__usage" [title]="usage.detail">
+            <app-icon name="chart-bar" size="1em" />
+            <span>
+              <strong>{{ usage.tokens }}</strong>
+              @if (usage.estimate) {
+                · {{ usage.estimate }}
+              }
+            </span>
+          </p>
+          @if (usage.measured) {
+            <p class="summary__usage summary__usage--measured">{{ usage.measured }}</p>
+          }
+        }
+
         <ol class="steps">
           @for (stage of execution.stages; track stage.key) {
             <li [attr.data-status]="stage.status">

@@ -95,6 +95,21 @@ describe('runJob', () => {
     );
   });
 
+  it('reports what each job spent and how the plan was going while it ran', async () => {
+    const { context } = setup();
+
+    const { usage } = await runJob(job('develop'), context);
+
+    assert.deepEqual(usage?.tokens, {
+      input: 110,
+      output: 55,
+      cacheWrite: 1000,
+      cacheRead: 2000,
+    });
+    assert.equal(usage?.limits?.fiveHour?.used, 0.24);
+    assert.equal(usage?.limits?.sevenDay?.used, 0.03);
+  });
+
   it('develop: reports the same commit when the agent changed nothing', async () => {
     const { context } = setup();
     process.env.FAKE_NO_CHANGES = '1';
@@ -152,10 +167,13 @@ describe('runJob', () => {
     const { context, bare } = setup();
     await runJob(job('develop'), context);
 
-    const { result } = await runJob(job('publish'), context);
+    const outcome = await runJob(job('publish'), context);
+    const { result } = outcome;
 
     assert.equal(result.baseBranch, 'main');
     assert.ok(remoteBranches(bare).includes(BRANCH));
+    // Al subir la rama se mide cómo va el plan: es lo último de una ejecución.
+    assert.equal(outcome.usage?.limits?.fiveHour?.used, 0.24);
     // La carpeta de trabajo se libera: ya no hace falta.
     assert.equal(
       existsSync(

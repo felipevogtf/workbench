@@ -1,8 +1,9 @@
 import { hostname } from 'node:os';
 import { ApiError, type ServerApi } from './api';
 import type { RunnerConfig } from './config';
+import { probeUsage } from './claude';
 import { runJob } from './jobs';
-import type { RunnerJob } from './types';
+import type { JobUsage, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
 
 export const VERSION = '0.1.0';
@@ -41,6 +42,8 @@ export class Worker {
     private readonly config: RunnerConfig,
     private readonly workspaces: Workspaces,
     private readonly log: (message: string) => void = console.log,
+    /** Cada cuánto da señal de vida; las pruebas lo acortan. */
+    private readonly heartbeatMs: number = HEARTBEAT_MS,
   ) {}
 
   stop(): void {
@@ -50,7 +53,7 @@ export class Worker {
 
   async run(): Promise<void> {
     await this.introduce();
-    const heartbeat = setInterval(() => void this.beat(), HEARTBEAT_MS);
+    const heartbeat = setInterval(() => void this.beat(), this.heartbeatMs);
     let backoff = BACKOFF_START_MS;
 
     try {
@@ -99,7 +102,10 @@ export class Worker {
 
   private async beat(): Promise<void> {
     try {
-      const stop = await this.api.heartbeat([...this.running.keys()]);
+      const { stop, probe } = await this.api.heartbeat([
+        ...this.running.keys(),
+      ]);
+      if (probe) void this.probe();
       for (const id of stop) {
         const running = this.running.get(id);
         if (running && !running.controller.signal.aborted) {
@@ -111,6 +117,25 @@ export class Worker {
       }
     } catch {
       // sin señal por un momento: el próximo latido lo reintenta
+    }
+  }
+
+  private probing = false;
+
+  /** El usuario pidió ver cómo va el plan: una llamada mínima, una a la vez. */
+  private async probe(): Promise<void> {
+    if (this.probing) return;
+    this.probing = true;
+    try {
+      const usage = await probeUsage({
+        bin: this.config.claudeBin,
+        binArgs: this.config.claudeBinArgs,
+      });
+      if (usage) await this.api.reportUsage(usage);
+    } catch {
+      // un dato de cortesía: si falla, el próximo trabajo trae otra medida
+    } finally {
+      this.probing = false;
     }
   }
 
@@ -146,8 +171,9 @@ export class Worker {
           ok: true;
           result: Awaited<ReturnType<typeof runJob>>['result'];
           costUsd: number | null;
+          usage?: JobUsage;
         }
-      | { ok: false; error: string; costUsd: number | null };
+      | { ok: false; error: string; costUsd: number | null; usage?: JobUsage };
     try {
       const done = await runJob(job, {
         config: this.config,
@@ -155,7 +181,12 @@ export class Worker {
         onLog,
         signal: controller.signal,
       });
-      outcome = { ok: true, result: done.result, costUsd: done.costUsd };
+      outcome = {
+        ok: true,
+        result: done.result,
+        costUsd: done.costUsd,
+        ...(done.usage ? { usage: done.usage } : {}),
+      };
     } catch (error) {
       const message = scrub((error as Error).message);
       onLog(`✖ ${message}`);
@@ -163,6 +194,9 @@ export class Worker {
         ok: false,
         error: message,
         costUsd: (error as { costUsd?: number | null }).costUsd ?? null,
+        ...((error as { usage?: JobUsage | null }).usage
+          ? { usage: (error as { usage: JobUsage }).usage }
+          : {}),
       };
     } finally {
       clearInterval(timer);

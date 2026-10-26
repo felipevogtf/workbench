@@ -6,6 +6,7 @@ import { Agent } from '../../../ai-agents/models/agent';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { ExecutionsApi } from '../../data-access/executions.api';
 import { ExecutionDetail } from '../../models/execution';
+import { ExecutionUsage } from '../../models/usage';
 import { detail, execution, job, ticket } from '../../testing/factories';
 import { ExecutionPage } from './execution-page';
 
@@ -264,6 +265,48 @@ describe('ExecutionPage', () => {
       await vi.advanceTimersByTimeAsync(0);
       fixture.detectChanges();
       expect(element.textContent).toContain('Habla con Lucy');
+    });
+  });
+
+  describe('what the execution spent', () => {
+    const spent = (extra: Partial<ExecutionUsage> = {}) =>
+      detail('e1', 'completed', {
+        usage: {
+          tokens: { input: 100, output: 200, cacheWrite: 3000, cacheRead: 400000, total: 403300 },
+          costUsd: 1.2,
+          measured: { fiveHour: null, sevenDay: null },
+          estimatedPoints: { fiveHour: null, sevenDay: null },
+          ...extra,
+        },
+      });
+
+    it('shows the exact tokens in the summary', async () => {
+      const fixture = await render(spent());
+
+      expect(fixture.nativeElement.querySelector('.summary__usage')?.textContent).toContain(
+        '403.300 tokens',
+      );
+    });
+
+    it('adds the share of the plan it estimates, and what the bar rose when it was measured', async () => {
+      const fixture = await render(
+        spent({
+          estimatedPoints: { fiveHour: 6.2, sevenDay: 0.8 },
+          measured: { fiveHour: { from: 0.24, to: 0.31, delta: 0.07 }, sevenDay: null },
+        }),
+      );
+      const text =
+        (fixture.nativeElement as HTMLElement).querySelector('.summary')?.textContent ?? '';
+
+      expect(text).toContain('≈ 6,2 % de tu ventana de 5 h');
+      expect(text).toContain('≈ 0,8 % de la semana');
+      expect(text).toContain('del 24 % al 31 %');
+    });
+
+    it('says nothing for an execution from before it was measured', async () => {
+      const fixture = await render(detail('e1', 'completed'));
+
+      expect(fixture.nativeElement.querySelector('.summary__usage')).toBeNull();
     });
   });
 

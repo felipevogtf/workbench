@@ -1,3 +1,4 @@
+import { NO_USAGE } from '../models/usage';
 import {
   CreatedRunner,
   Execution,
@@ -87,6 +88,7 @@ export function job(id: string, extra: Partial<JobSummary> = {}): JobSummary {
     status: 'done',
     attempt: 1,
     costUsd: 0.25,
+    tokens: null,
     error: null,
     runnerId: 'r1',
     agentId: null,
@@ -109,6 +111,7 @@ export function detail(
     jobs: [job('j1')],
     waitingForRunner: false,
     costUsd: 0.25,
+    usage: NO_USAGE,
     ...extra,
   };
 }

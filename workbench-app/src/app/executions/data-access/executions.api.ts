@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@core/api/api-base-url.token';
 import { ChatMessage } from '@shared/chat/chat.models';
+import { UsageOverview } from '../models/usage';
 import {
   CreatedRunner,
   Execution,
@@ -67,6 +68,18 @@ export class ExecutionsApi {
     return this.http.post<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}/answer`, {
       text,
     });
+  }
+
+  /** Cómo va el plan y lo que gastó el Workbench cada día (en la zona horaria de quien mira). */
+  usage(timeZone: string, days: number): Observable<UsageOverview> {
+    return this.http.get<UsageOverview>(`${this.base}/usage`, {
+      params: { tz: timeZone, days },
+    });
+  }
+
+  /** Pide medir de nuevo cómo va el plan: lo hace el runner con su próximo latido. */
+  refreshUsage(): Observable<{ requested: true }> {
+    return this.http.post<{ requested: true }>(`${this.base}/usage/refresh`, {});
   }
 
   /** Conversa con Lucy sobre la ejecución; ella lee su estado completo. Puede tardar. */

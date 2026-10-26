@@ -38,7 +38,33 @@ export interface JobResult {
   baseBranch?: string;
 }
 
+/** Tokens que gastó una llamada a Claude. */
+export interface UsageTokens {
+  input: number;
+  output: number;
+  cacheWrite: number;
+  cacheRead: number;
+}
+
+/** Una ventana del plan (5 horas o semanal): qué fracción (0 a 1) se lleva usada y cuándo se reinicia. */
+export interface UsageWindow {
+  used: number;
+  resetsAt: string;
+}
+
+export interface UsageLimits {
+  fiveHour: UsageWindow | null;
+  sevenDay: UsageWindow | null;
+}
+
+/** Lo que gastó un trabajo y cómo iba el plan mientras corría. */
+export interface JobUsage {
+  tokens: UsageTokens;
+  limits: UsageLimits | null;
+}
+
 export interface JobOutcome {
   result: JobResult;
   costUsd: number | null;
+  usage?: JobUsage;
 }

@@ -76,6 +76,22 @@ export class RunnerResultDto {
   @IsOptional()
   @IsNumber()
   costUsd?: number;
+
+  /** Tokens que gastó el trabajo y cómo iba el plan; se revisa antes de guardarlo. */
+  @IsOptional()
+  @IsObject()
+  usage?: Record<string, unknown>;
+}
+
+/** Cómo va el plan, medido por una llamada mínima del runner. */
+export class RunnerUsageDto {
+  @IsOptional()
+  @IsObject()
+  limits?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  tokens?: Record<string, unknown>;
 }
 
 /** Un trabajo tal como lo recibe el runner. */

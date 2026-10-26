@@ -10,6 +10,7 @@ import type {
   JobPayload,
   JobResult,
 } from '@executions/domain/entities/job.props';
+import type { JobUsage } from '@executions/domain/usage';
 
 @Entity('execution_jobs')
 export class JobOrmEntity {
@@ -49,6 +50,9 @@ export class JobOrmEntity {
 
   @Column({ type: 'double precision', nullable: true })
   cost_usd!: number | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  usage!: JobUsage | null;
 
   @Column({ type: 'timestamp' })
   queued_at!: Date;

@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { ExecutionChatService } from '@executions/application/execution-chat.service';
 import { ExecutionsService } from '@executions/application/executions.service';
+import { UsageService } from '@executions/application/usage.service';
+import { totalTokens } from '@executions/domain/usage';
 import { RunnersService } from '@executions/application/runners.service';
 import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
@@ -34,6 +36,7 @@ export class ExecutionsController {
     private readonly executions: ExecutionsService,
     private readonly chatService: ExecutionChatService,
     private readonly runners: RunnersService,
+    private readonly usage: UsageService,
   ) {}
 
   /** Empieza a ejecutar la tarea con su último plan. El trabajo lo hace el runner en segundo plano. */
@@ -77,6 +80,7 @@ export class ExecutionsController {
       jobs: jobs.map((job) => this.toJobDto(job)),
       waitingForRunner: waiting,
       costUsd: jobs.reduce((sum, job) => sum + (job.costUsd ?? 0), 0),
+      usage: await this.usage.ofExecution(jobs),
     };
   }
 
@@ -180,6 +184,7 @@ export class ExecutionsController {
       status: job.status,
       attempt: job.attempt,
       costUsd: job.costUsd,
+      tokens: job.usage ? totalTokens(job.usage.tokens) : null,
       error: job.error,
       runnerId: job.runnerId,
       startedAt: job.startedAt?.toISOString() ?? null,

@@ -11,6 +11,7 @@ export const EXECUTIONS_NAV: NavItem = {
   order: 15,
   children: [
     { label: 'Ejecuciones', icon: 'list-checks', path: '/executions/history' },
+    { label: 'Consumo', icon: 'chart-bar', path: '/executions/usage' },
     { label: 'Runners', icon: 'play', path: '/executions/runners' },
     { label: 'Trabajadores', icon: 'bot', path: '/executions/agents' },
   ],

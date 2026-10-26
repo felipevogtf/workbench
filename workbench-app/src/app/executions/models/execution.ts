@@ -1,4 +1,5 @@
 import type { BadgeTone } from '@shared/ui/badge/badge';
+import type { ExecutionUsage } from './usage';
 
 /** `awaiting`: los tickets están listos y asignados; se espera el visto bueno del usuario. */
 export type ExecutionStatus = 'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
@@ -106,6 +107,8 @@ export interface JobSummary {
   status: JobStatus;
   attempt: number;
   costUsd: number | null;
+  /** Tokens que gastó (entrada, salida y caché); `null` en los trabajos anteriores a medirlo. */
+  tokens: number | null;
   error: string | null;
   runnerId: string | null;
   /** El agente que hizo (o hará) el trabajo; `null` en los que no usan uno. */
@@ -125,6 +128,8 @@ export interface ExecutionDetail extends Execution {
   /** Hay trabajo en cola y ningún runner conectado para hacerlo. */
   waitingForRunner: boolean;
   costUsd: number;
+  /** Lo que gastó la ejecución: tokens exactos y lo que costó del plan (medido y estimado). */
+  usage: ExecutionUsage;
 }
 
 export interface JobLogs {

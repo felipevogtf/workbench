@@ -10,6 +10,8 @@ import {
 import type { Response } from 'express';
 import { RunnerJobsService } from '@executions/application/runner-jobs.service';
 import { RunnersService } from '@executions/application/runners.service';
+import { UsageService } from '@executions/application/usage.service';
+import { parseLimits } from '@executions/domain/usage';
 import { Runner } from '@executions/domain/entities/runner.entity';
 import {
   RunnerHeartbeatDto,
@@ -18,6 +20,7 @@ import {
   RunnerLogsDto,
   RunnerResponseDto,
   RunnerResultDto,
+  RunnerUsageDto,
 } from '@executions/dto/runner.dto';
 import { CurrentRunner, RunnerAuthGuard } from './runner-auth.guard';
 import { toRunnerDto } from './runner.mapper';
@@ -29,6 +32,7 @@ export class RunnerApiController {
   constructor(
     private readonly runners: RunnersService,
     private readonly jobs: RunnerJobsService,
+    private readonly usage: UsageService,
   ) {}
 
   /** El runner se presenta al arrancar. */
@@ -48,8 +52,17 @@ export class RunnerApiController {
   async heartbeat(
     @CurrentRunner() runner: Runner,
     @Body() dto: RunnerHeartbeatDto,
-  ): Promise<{ stop: string[] }> {
-    return { stop: await this.jobs.heartbeat(runner, dto.runningJobIds) };
+  ): Promise<{ stop: string[]; probe: boolean }> {
+    const stop = await this.jobs.heartbeat(runner, dto.runningJobIds);
+    // Si el usuario pidió actualizar cómo va el plan, el runner hace una medida mínima.
+    return { stop, probe: this.usage.takeRefreshRequest() };
+  }
+
+  /** La medida del plan que hizo el runner a pedido del usuario. */
+  @Post('usage')
+  @HttpCode(204)
+  async reportUsage(@Body() dto: RunnerUsageDto): Promise<void> {
+    await this.usage.record(parseLimits(dto.limits), 'probe');
   }
 
   /** Espera hasta ~25 s por un trabajo. 204 si no hubo ninguno. */

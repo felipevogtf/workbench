@@ -1,9 +1,12 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import type { JobUsage, UsageLimits, UsageTokens } from './types';
 
 export class ClaudeError extends Error {
   constructor(
     message: string,
     readonly costUsd: number | null = null,
+    readonly usage: JobUsage | null = null,
   ) {
     super(message);
     this.name = 'ClaudeError';
@@ -15,6 +18,8 @@ export interface ClaudeRun {
   binArgs?: string[];
   model: string;
   systemPrompt: string;
+  /** Reemplaza el prompt de sistema de Claude Code (~31.000 tokens) en vez de agregarle el nuestro. */
+  replaceSystemPrompt?: boolean;
   /** Esfuerzo con que trabaja (`--effort`); ausente = el del modelo. */
   effort?: string;
   tools: string[];
@@ -32,15 +37,18 @@ export interface ClaudeRun {
 export interface ClaudeResult {
   output: string;
   costUsd: number | null;
+  usage: JobUsage;
 }
 
 /** Un evento del modo `--output-format stream-json`, ya reducido a lo que importa. */
 export type StreamEvent =
   | { kind: 'log'; line: string }
+  | { kind: 'limits'; limits: UsageLimits }
   | {
       kind: 'result';
       output: string;
       costUsd: number | null;
+      tokens: UsageTokens;
       isError: boolean;
     };
 
@@ -89,10 +97,28 @@ export function parseStreamLine(line: string): StreamEvent | null {
     return parts.length > 0 ? { kind: 'log', line: parts.join('\n') } : null;
   }
 
+  // Cómo va el plan: cuánto de la ventana de 5 horas y de la semana se lleva usado, y cuándo se reinician.
+  if (event.type === 'rate_limit_event') {
+    const windows = event.rate_limit_info?.unifiedWindows as
+      | Record<
+          string,
+          { utilization?: unknown; resetsAt?: unknown } | undefined
+        >
+      | undefined;
+    const limits: UsageLimits = {
+      fiveHour: windowOf(windows?.five_hour),
+      sevenDay: windowOf(windows?.seven_day),
+    };
+    return limits.fiveHour || limits.sevenDay
+      ? { kind: 'limits', limits }
+      : null;
+  }
+
   if (event.type === 'result') {
     return {
       kind: 'result',
       output: typeof event.result === 'string' ? event.result : '',
+      tokens: tokensOf(event),
       costUsd:
         typeof event.total_cost_usd === 'number' ? event.total_cost_usd : null,
       isError:
@@ -101,6 +127,53 @@ export function parseStreamLine(line: string): StreamEvent | null {
     };
   }
   return null;
+}
+
+/** Una ventana del plan tal como llega (fracción usada y reinicio en segundos desde 1970), o `null`. */
+function windowOf(
+  raw: { utilization?: unknown; resetsAt?: unknown } | undefined,
+): UsageLimits['fiveHour'] {
+  if (
+    !raw ||
+    typeof raw.utilization !== 'number' ||
+    typeof raw.resetsAt !== 'number'
+  ) {
+    return null;
+  }
+  return {
+    used: raw.utilization,
+    resetsAt: new Date(raw.resetsAt * 1000).toISOString(),
+  };
+}
+
+/**
+ * Los tokens de la llamada: suma lo de cada modelo que intervino (`modelUsage`), que incluye lo que Claude
+ * Code hace por su cuenta además de la respuesta; si no viene, el total de `usage`.
+ */
+function tokensOf(event: Record<string, any>): UsageTokens {
+  const number = (value: unknown) => (typeof value === 'number' ? value : 0);
+  const models = Object.values(event.modelUsage ?? {}) as Record<
+    string,
+    unknown
+  >[];
+  if (models.length > 0) {
+    return models.reduce<UsageTokens>(
+      (sum, model) => ({
+        input: sum.input + number(model.inputTokens),
+        output: sum.output + number(model.outputTokens),
+        cacheWrite: sum.cacheWrite + number(model.cacheCreationInputTokens),
+        cacheRead: sum.cacheRead + number(model.cacheReadInputTokens),
+      }),
+      { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+    );
+  }
+  const usage = (event.usage ?? {}) as Record<string, unknown>;
+  return {
+    input: number(usage.input_tokens),
+    output: number(usage.output_tokens),
+    cacheWrite: number(usage.cache_creation_input_tokens),
+    cacheRead: number(usage.cache_read_input_tokens),
+  };
 }
 
 /** Mata el proceso y sus hijos (en Windows `kill` solo alcanza al proceso padre). */
@@ -127,7 +200,7 @@ export function claudeArgs(run: ClaudeRun): string[] {
     '--verbose',
     '--model',
     run.model,
-    '--append-system-prompt',
+    run.replaceSystemPrompt ? '--system-prompt' : '--append-system-prompt',
     run.systemPrompt,
     // Sin los hooks, servidores MCP ni ajustes del usuario: el agente solo ve lo del proyecto.
     '--setting-sources',
@@ -155,6 +228,7 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
     let buffer = '';
     let stderr = '';
     let final: Extract<StreamEvent, { kind: 'result' }> | null = null;
+    let limits: UsageLimits | null = null;
 
     const finish = (fn: () => void) => {
       if (settled) return;
@@ -186,6 +260,7 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
       const event = parseStreamLine(line);
       if (!event) return;
       if (event.kind === 'log') run.onLog(event.line);
+      else if (event.kind === 'limits') limits = event.limits;
       else final = event;
     };
 
@@ -224,6 +299,7 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
           return resolve({
             output: result.output.trim(),
             costUsd: result.costUsd,
+            usage: { tokens: result.tokens, limits },
           });
         }
         const reason =
@@ -234,6 +310,7 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
           new ClaudeError(
             `Claude falló: ${oneLine(reason, 600)}`,
             result?.costUsd ?? null,
+            result ? { tokens: result.tokens, limits } : null,
           ),
         );
       });
@@ -242,4 +319,34 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
     child.stdin.on('error', () => undefined);
     child.stdin.end(run.prompt);
   });
+}
+
+/**
+ * Una llamada mínima para saber cómo va el plan (cuánto de la ventana de 5 horas y de la semana se lleva
+ * usado). Reemplaza el prompt de sistema para que gaste unos 3.000 tokens y no 34.000. `null` si falla:
+ * es un dato de cortesía, nunca debe romper un trabajo.
+ */
+export async function probeUsage(options: {
+  bin: string;
+  binArgs?: string[];
+  model?: string;
+}): Promise<JobUsage | null> {
+  try {
+    const result = await runClaude({
+      bin: options.bin,
+      binArgs: options.binArgs,
+      model: options.model ?? 'claude-haiku-4-5-20251001',
+      systemPrompt: 'Responde solo: ok',
+      replaceSystemPrompt: true,
+      tools: [],
+      prompt: 'ok',
+      cwd: tmpdir(),
+      timeoutMs: 60_000,
+      maxBudgetUsd: 0.2,
+      onLog: () => undefined,
+    });
+    return result.usage;
+  } catch {
+    return null;
+  }
 }

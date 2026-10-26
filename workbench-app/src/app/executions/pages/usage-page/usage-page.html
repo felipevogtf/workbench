@@ -1,0 +1,102 @@
+<div class="page">
+  <app-page-header
+    heading="Consumo de Claude"
+    subtitle="Cómo va tu plan y cuánto gasta el Workbench. Las barras son de toda tu cuenta; el gráfico, solo del Workbench."
+  >
+    <button
+      actions
+      app-button
+      variant="secondary"
+      type="button"
+      [loading]="store.refreshing()"
+      (click)="refresh()"
+    >
+      <app-icon name="refresh" size="1em" /> Actualizar
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudo cargar el consumo">{{ error }}</app-alert>
+  } @else if (!store.overview()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="140px" />
+      <app-skeleton height="220px" />
+    </div>
+  } @else if (store.overview(); as overview) {
+    @if (hasData()) {
+      <div class="meters">
+        <app-usage-meter
+          title="Ventana de 5 horas"
+          [window]="overview.current.fiveHour"
+          [now]="store.now()"
+        />
+        <app-usage-meter title="Semana" [window]="overview.current.sevenDay" [now]="store.now()" />
+      </div>
+
+      <p class="freshness" [class.is-stale]="stale()">
+        @if (store.refreshing()) {
+          <app-spinner size="0.9em" /> Pidiendo una medida nueva al runner…
+        } @else {
+          Medido {{ overview.current.takenAt | timeAgo }}.
+          @if (stale()) {
+            Puede haber cambiado: pulsa «Actualizar» (el runner tiene que estar conectado).
+          }
+        }
+        El porcentaje incluye todo lo que usas con Claude, no solo el Workbench.
+      </p>
+    } @else {
+      <app-empty-state icon="clock" heading="Todavía no hay una medida del plan">
+        Se mide cada vez que corre un trabajo en el runner. Pulsa «Actualizar» con el runner
+        conectado, o ejecuta una tarea.
+        <button empty-action app-button type="button" (click)="refresh()">Actualizar</button>
+      </app-empty-state>
+    }
+
+    <section class="summary" aria-label="Lo que gastó el Workbench">
+      <div>
+        <span class="summary__label">Hoy</span>
+        <strong>{{ tokens(overview.today.tokens) }} tokens</strong>
+        @if (overview.today.estimatedPoints !== null) {
+          <span class="summary__points"
+            >{{ points(overview.today.estimatedPoints) }} de la semana</span
+          >
+        }
+      </div>
+      <div>
+        <span class="summary__label">Últimos 7 días</span>
+        <strong>{{ tokens(overview.week.tokens) }} tokens</strong>
+        @if (overview.week.estimatedPoints !== null) {
+          <span class="summary__points"
+            >{{ points(overview.week.estimatedPoints) }} de la semana</span
+          >
+        }
+      </div>
+    </section>
+
+    <section class="chart" aria-label="Gasto por día">
+      <header class="chart__head">
+        <h2>Gasto por día</h2>
+        @if (canEstimate()) {
+          <app-segmented-control
+            label="Unidad del gráfico"
+            [options]="unitOptions"
+            [value]="unit()"
+            (valueChange)="setUnit($event)"
+          />
+        }
+      </header>
+      <app-usage-chart [days]="overview.days" [unit]="unit()" />
+
+      <p class="note">
+        @if (canEstimate()) {
+          Los porcentajes son una estimación, aprendida de
+          {{ overview.calibration.sevenDay.samples }}
+          ejecuciones medidas: Anthropic solo informa el porcentaje de toda la cuenta.
+        } @else {
+          El % de la semana se estimará cuando haya al menos 2 ejecuciones medidas. Los tokens son
+          exactos.
+        }
+      </p>
+    </section>
+  }
+</div>

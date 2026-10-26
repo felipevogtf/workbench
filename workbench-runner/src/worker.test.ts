@@ -15,6 +15,8 @@ interface Call {
 }
 
 /** Un servidor de mentira con las rutas del runner: entrega los trabajos que se le den, una vez cada uno. */
+let askToProbe = false;
+
 async function fakeServer(jobs: RunnerJob[]) {
   const calls: Call[] = [];
   const queue = [...jobs];
@@ -42,7 +44,8 @@ async function fakeServer(jobs: RunnerJob[]) {
           response.end();
         }, 100);
       }
-      if (path === '/runner/heartbeat') return json({ stop: [] });
+      if (path === '/runner/heartbeat')
+        return json({ stop: [], probe: askToProbe });
       if (path.endsWith('/logs')) return json({ ok: true });
       if (path.endsWith('/result')) {
         response.writeHead(204);
@@ -141,6 +144,7 @@ describe('Worker', () => {
       config,
       new Workspaces(config.workDir, config.remoteOverrides),
       () => undefined,
+      200,
     );
 
     try {
@@ -159,6 +163,46 @@ describe('Worker', () => {
     assert.equal(result.body.ok, false);
     assert.match(result.body.error, /Sin crédito/);
     assert.equal(result.body.costUsd, 0.01);
+  });
+
+  it('measures how the plan is going when the server asks for it with the heartbeat, and reports it', async () => {
+    askToProbe = true;
+    const server = await fakeServer([]);
+    const config = testConfig(createRemote(), {
+      serverUrl: server.url,
+      token: 'wbr_secreto',
+    });
+    const worker = new Worker(
+      new ServerApi(server.url, config.token),
+      config,
+      new Workspaces(config.workDir, config.remoteOverrides),
+      () => undefined,
+      200,
+    );
+    const running = worker.run();
+
+    try {
+      await waitFor(
+        () => server.calls.some((call) => call.path === '/runner/usage'),
+        10_000,
+      ).catch(() => {
+        throw new Error(
+          'No informó el plan. Llamadas: ' +
+            server.calls.map((call) => call.path).join(', '),
+        );
+      });
+
+      const report = server.calls.find(
+        (call) => call.path === '/runner/usage',
+      )!;
+      assert.equal(report.body.limits.fiveHour.used, 0.24);
+      assert.ok(report.body.tokens.input > 0);
+    } finally {
+      askToProbe = false;
+      worker.stop();
+      await running;
+      await server.close();
+    }
   });
 });
 

@@ -28,6 +28,7 @@ import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
 import { activityOf } from '../../models/activity';
+import { describeUsage } from '../../models/usage';
 import {
   BoardCard,
   EXECUTION_STATUS_LABEL,
@@ -169,6 +170,9 @@ export class ExecutionPage {
         : [],
     ),
   );
+
+  /** Lo que gastó la ejecución, para la franja de resumen. */
+  protected readonly consumption = computed(() => describeUsage(this.store.detail()?.usage));
 
   protected readonly progress = computed(() => {
     const tickets = this.store.detail()?.tickets ?? [];

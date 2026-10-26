@@ -6,6 +6,7 @@ import {
   ClaudeError,
   claudeArgs,
   parseStreamLine,
+  probeUsage,
   runClaude,
   type ClaudeRun,
 } from './claude';
@@ -64,8 +65,94 @@ describe('parseStreamLine', () => {
       kind: 'result',
       output: 'Listo',
       costUsd: 0.5,
+      tokens: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
       isError: false,
     });
+  });
+
+  it('adds up the tokens of every model that took part, cache included', () => {
+    const event = parseStreamLine(
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        result: 'Listo',
+        modelUsage: {
+          a: {
+            inputTokens: 10,
+            outputTokens: 20,
+            cacheCreationInputTokens: 300,
+            cacheReadInputTokens: 4000,
+          },
+          b: {
+            inputTokens: 1,
+            outputTokens: 2,
+            cacheCreationInputTokens: 3,
+            cacheReadInputTokens: 4,
+          },
+        },
+      }),
+    );
+
+    assert.deepEqual(event && 'tokens' in event ? event.tokens : null, {
+      input: 11,
+      output: 22,
+      cacheWrite: 303,
+      cacheRead: 4004,
+    });
+  });
+
+  it('falls back to the total usage when there is no detail by model', () => {
+    const event = parseStreamLine(
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        result: 'Listo',
+        usage: {
+          input_tokens: 7,
+          output_tokens: 8,
+          cache_creation_input_tokens: 9,
+          cache_read_input_tokens: 10,
+        },
+      }),
+    );
+
+    assert.deepEqual(event && 'tokens' in event ? event.tokens : null, {
+      input: 7,
+      output: 8,
+      cacheWrite: 9,
+      cacheRead: 10,
+    });
+  });
+
+  it('reads how the plan is going: what is used of the 5 hours and of the week, and when each resets', () => {
+    const event = parseStreamLine(
+      JSON.stringify({
+        type: 'rate_limit_event',
+        rate_limit_info: {
+          unifiedWindows: {
+            five_hour: { utilization: 0.24, resetsAt: 1792996800 },
+            seven_day: { utilization: 0.03, resetsAt: 1793552400 },
+          },
+        },
+      }),
+    );
+
+    assert.deepEqual(event, {
+      kind: 'limits',
+      limits: {
+        fiveHour: { used: 0.24, resetsAt: '2026-10-26T06:40:00.000Z' },
+        sevenDay: { used: 0.03, resetsAt: '2026-11-01T17:00:00.000Z' },
+      },
+    });
+  });
+
+  it('ignores a rate limit event without the windows', () => {
+    assert.equal(
+      parseStreamLine(
+        JSON.stringify({ type: 'rate_limit_event', rate_limit_info: {} }),
+      ),
+      null,
+    );
   });
 
   it('marks as error a result that is not a success', () => {
@@ -128,6 +215,15 @@ describe('claudeArgs', () => {
     assert.equal(args[args.indexOf('--allowedTools') + 1], 'Read,Grep');
   });
 
+  it('appends our system prompt to the one of Claude Code, or replaces it when asked', () => {
+    assert.ok(claudeArgs(run()).includes('--append-system-prompt'));
+    assert.ok(!claudeArgs(run()).includes('--system-prompt'));
+
+    const replaced = claudeArgs(run({ replaceSystemPrompt: true }));
+    assert.ok(replaced.includes('--system-prompt'));
+    assert.ok(!replaced.includes('--append-system-prompt'));
+  });
+
   it('passes the effort of the agent, and none when it has none', () => {
     const args = claudeArgs(run({ effort: 'low' }));
     assert.equal(args[args.indexOf('--effort') + 1], 'low');
@@ -144,7 +240,16 @@ describe('runClaude', () => {
     const lines: string[] = [];
     const result = await runClaude(run({ onLog: (line) => lines.push(line) }));
 
-    assert.deepEqual(result, { output: 'Hecho', costUsd: 0.25 });
+    assert.equal(result.output, 'Hecho');
+    assert.equal(result.costUsd, 0.25);
+    // Cuánto gastó (todos los modelos que intervinieron) y cómo iba el plan mientras corría.
+    assert.deepEqual(result.usage, {
+      tokens: { input: 110, output: 55, cacheWrite: 1000, cacheRead: 2000 },
+      limits: {
+        fiveHour: { used: 0.24, resetsAt: '2026-10-26T06:40:00.000Z' },
+        sevenDay: { used: 0.03, resetsAt: '2026-11-01T17:00:00.000Z' },
+      },
+    });
     assert.deepEqual(lines, [
       'Voy a mirar el repositorio',
       '→ Read src/index.ts',
@@ -217,5 +322,30 @@ describe('runClaude', () => {
       runClaude(run({ bin: 'claude-que-no-existe', binArgs: [] })),
       /No se encontró/,
     );
+  });
+});
+
+describe('probeUsage', () => {
+  it('asks for almost nothing and brings back how the plan is going', async () => {
+    const file = join(tempDir('args'), 'args.json');
+    process.env.FAKE_CLAUDE_ARGS_FILE = file;
+    try {
+      const usage = await probeUsage({
+        bin: process.execPath,
+        binArgs: [FAKE_CLAUDE],
+      });
+
+      assert.equal(usage?.limits?.fiveHour?.used, 0.24);
+      const seen = JSON.parse(readFileSync(file, 'utf8')) as { args: string[] };
+      // Sin el prompt de sistema de Claude Code ni herramientas: gasta unos pocos miles de tokens.
+      assert.ok(seen.args.includes('--system-prompt'));
+      assert.ok(!seen.args.includes('--allowedTools'));
+    } finally {
+      delete process.env.FAKE_CLAUDE_ARGS_FILE;
+    }
+  });
+
+  it('gives null, never an error, when Claude fails', async () => {
+    assert.equal(await probeUsage({ bin: 'no-existe-este-programa' }), null);
   });
 });

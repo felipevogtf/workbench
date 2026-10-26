@@ -1,4 +1,4 @@
-import type { JobResult, RunnerJob } from './types';
+import type { JobResult, JobUsage, RunnerJob, UsageLimits } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -25,12 +25,22 @@ export class ServerApi {
     return this.post('/runner/hello', info);
   }
 
-  /** Responde los trabajos que debe detener. */
-  async heartbeat(runningJobIds: string[]): Promise<string[]> {
+  /** Responde los trabajos que debe detener y si el usuario pidió actualizar cómo va el plan. */
+  async heartbeat(
+    runningJobIds: string[],
+  ): Promise<{ stop: string[]; probe: boolean }> {
     const response = (await this.post('/runner/heartbeat', {
       runningJobIds,
-    })) as { stop?: string[] };
-    return response?.stop ?? [];
+    })) as { stop?: string[]; probe?: boolean };
+    return { stop: response?.stop ?? [], probe: response?.probe === true };
+  }
+
+  /** Cómo va el plan, medido por una llamada mínima. */
+  async reportUsage(usage: JobUsage): Promise<void> {
+    await this.post('/runner/usage', {
+      limits: usage.limits satisfies UsageLimits | null,
+      tokens: usage.tokens,
+    });
   }
 
   /** Espera por trabajo; `null` si el servidor no tuvo ninguno. */
@@ -54,8 +64,13 @@ export class ServerApi {
   async finish(
     jobId: string,
     outcome:
-      | { ok: true; result: JobResult; costUsd: number | null }
-      | { ok: false; error: string; costUsd: number | null },
+      | {
+          ok: true;
+          result: JobResult;
+          costUsd: number | null;
+          usage?: JobUsage;
+        }
+      | { ok: false; error: string; costUsd: number | null; usage?: JobUsage },
   ): Promise<void> {
     await this.post(`/runner/jobs/${jobId}/result`, {
       ...outcome,

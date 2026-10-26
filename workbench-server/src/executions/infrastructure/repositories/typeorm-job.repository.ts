@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobKind, JobStatus } from '@executions/domain/entities/job.props';
 import { JobRepositoryPort } from '@executions/domain/ports/job-repository.port';
@@ -31,6 +31,14 @@ export class TypeOrmJobRepository implements JobRepositoryPort {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findFinishedSince(since: Date): Promise<Job[]> {
+    const rows = await this.repository.find({
+      where: { finished_at: MoreThanOrEqual(since) },
+      order: { finished_at: 'ASC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async save(job: Job): Promise<Job> {
     const props = job.toProps();
     const saved = await this.repository.save({
@@ -46,6 +54,7 @@ export class TypeOrmJobRepository implements JobRepositoryPort {
       runner_id: props.runnerId,
       attempt: props.attempt,
       cost_usd: props.costUsd,
+      usage: props.usage,
       queued_at: props.queuedAt,
       started_at: props.startedAt,
       finished_at: props.finishedAt,
@@ -94,6 +103,7 @@ export class TypeOrmJobRepository implements JobRepositoryPort {
       runnerId: orm.runner_id,
       attempt: orm.attempt,
       costUsd: orm.cost_usd,
+      usage: orm.usage ?? null,
       queuedAt: orm.queued_at,
       startedAt: orm.started_at,
       finishedAt: orm.finished_at,

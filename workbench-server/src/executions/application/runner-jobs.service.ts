@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobResult } from '@executions/domain/entities/job.props';
 import { Runner } from '@executions/domain/entities/runner.entity';
@@ -11,6 +11,8 @@ import {
   type RunnerRepositoryPort,
 } from '@executions/domain/ports/runner-repository.port';
 import { ExecutionsService } from './executions.service';
+import { UsageService } from './usage.service';
+import { parseJobUsage } from '@executions/domain/usage';
 import { RunnersService } from './runners.service';
 
 /** Cuánto espera un runner por trabajo antes de que la petición responda «nada por ahora». */
@@ -24,6 +26,8 @@ export interface JobOutcome {
   result?: JobResult;
   error?: string;
   costUsd?: number | null;
+  /** Tokens y estado del plan del trabajo; llega de fuera, se revisa antes de guardarlo. */
+  usage?: unknown;
 }
 
 /** Lo que el runner hace con el servidor: pedir trabajo, informar y entregar resultados. */
@@ -37,6 +41,7 @@ export class RunnerJobsService {
     private readonly runners: RunnerRepositoryPort,
     private readonly runnersService: RunnersService,
     private readonly executions: ExecutionsService,
+    @Optional() private readonly usage?: UsageService,
   ) {}
 
   /**
@@ -115,12 +120,15 @@ export class RunnerJobsService {
     if (!job || job.status !== 'running' || job.runnerId !== runner.id) return;
 
     const cost = outcome.costUsd ?? null;
+    const usage = parseJobUsage(outcome.usage);
     if (outcome.ok) {
-      job.complete(outcome.result ?? {}, cost);
+      job.complete(outcome.result ?? {}, cost, usage);
     } else {
-      job.fail(outcome.error || 'The runner reported a failure', cost);
+      job.fail(outcome.error || 'The runner reported a failure', cost, usage);
     }
     await this.jobs.save(job);
+    // Cada trabajo trae cómo iba el plan mientras corría: queda como una medida más.
+    await this.usage?.record(usage?.limits ?? null, 'job', job.id);
     await this.executions.handleFinished(job);
   }
 

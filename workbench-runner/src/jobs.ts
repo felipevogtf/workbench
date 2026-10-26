@@ -1,4 +1,4 @@
-import { runClaude } from './claude';
+import { probeUsage, runClaude } from './claude';
 import { effectiveTools, type RunnerConfig } from './config';
 import { git } from './git';
 import type { JobOutcome, RunnerJob } from './types';
@@ -39,9 +39,15 @@ export async function runJob(
     context.onLog(
       `Rama subida (${headAfter.slice(0, 8)}), PR hacia ${workspace.baseBranch}`,
     );
+    // Lo último de una ejecución: una medida del plan para saber cuánto costó entera.
+    const usage = await probeUsage({
+      bin: context.config.claudeBin,
+      binArgs: context.config.claudeBinArgs,
+    });
     return {
       result: { baseBranch: workspace.baseBranch, headAfter },
       costUsd: null,
+      ...(usage ? { usage } : {}),
     };
   }
 
@@ -108,7 +114,7 @@ export async function runJob(
   }
 
   if (job.kind !== 'develop') {
-    return { result: { output }, costUsd: claude.costUsd };
+    return { result: { output }, costUsd: claude.costUsd, usage: claude.usage };
   }
 
   // El agente no hace commit: lo hace el runner con lo que quedó en el worktree.
@@ -138,5 +144,9 @@ export async function runJob(
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
   ).trim();
 
-  return { result: { output, headBefore, headAfter }, costUsd: claude.costUsd };
+  return {
+    result: { output, headBefore, headAfter },
+    costUsd: claude.costUsd,
+    usage: claude.usage,
+  };
 }

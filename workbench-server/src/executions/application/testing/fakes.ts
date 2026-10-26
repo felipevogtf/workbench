@@ -17,6 +17,8 @@ import type {
 } from '@executions/domain/ports/gateways.port';
 import type { JobRepositoryPort } from '@executions/domain/ports/job-repository.port';
 import type { RunnerRepositoryPort } from '@executions/domain/ports/runner-repository.port';
+import type { UsageSnapshotRepositoryPort } from '@executions/domain/ports/usage-snapshot-repository.port';
+import type { UsageSnapshot } from '@executions/domain/usage';
 
 export class InMemoryExecutions implements ExecutionRepositoryPort {
   readonly items = new Map<string, Execution>();
@@ -64,6 +66,13 @@ export class InMemoryJobs implements JobRepositoryPort {
   findRunning(): Promise<Job[]> {
     return Promise.resolve(
       this.items.filter((job) => job.status === 'running'),
+    );
+  }
+  findFinishedSince(since: Date): Promise<Job[]> {
+    return Promise.resolve(
+      this.items.filter(
+        (job) => (job.finishedAt?.getTime() ?? 0) >= since.getTime(),
+      ),
     );
   }
   save(job: Job): Promise<Job> {
@@ -219,5 +228,26 @@ export class FakePullRequests implements PullRequestsGatewayPort {
     if (this.failWith) return Promise.reject(new Error(this.failWith));
     this.created.push(request);
     return Promise.resolve({ url: 'https://bitbucket.org/acme/web/pull/7' });
+  }
+}
+
+export class InMemoryUsageSnapshots implements UsageSnapshotRepositoryPort {
+  readonly items: UsageSnapshot[] = [];
+
+  save(snapshot: UsageSnapshot): Promise<UsageSnapshot> {
+    this.items.push(snapshot);
+    return Promise.resolve(snapshot);
+  }
+  findLatest(): Promise<UsageSnapshot | null> {
+    const sorted = [...this.items].sort(
+      (a, b) => b.takenAt.getTime() - a.takenAt.getTime(),
+    );
+    return Promise.resolve(sorted[0] ?? null);
+  }
+  findFirstAtOrAfter(date: Date): Promise<UsageSnapshot | null> {
+    const later = this.items
+      .filter((item) => item.takenAt.getTime() >= date.getTime())
+      .sort((a, b) => a.takenAt.getTime() - b.takenAt.getTime());
+    return Promise.resolve(later[0] ?? null);
   }
 }

@@ -6,6 +6,8 @@ export interface JobRepositoryPort {
   findByExecutionId(executionId: string): Promise<Job[]>;
   /** Los trabajos que algún runner tiene en curso. */
   findRunning(): Promise<Job[]>;
+  /** Los trabajos que terminaron desde esa fecha, del más viejo al más nuevo (para el consumo). */
+  findFinishedSince(since: Date): Promise<Job[]>;
   save(job: Job): Promise<Job>;
   /**
    * Toma el trabajo `pending` más antiguo y lo deja `running` a nombre del runner en un solo paso, de

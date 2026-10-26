@@ -19,6 +19,7 @@ import {
   StageRun,
 } from '@executions/domain/entities/execution.props';
 import { JobKind, JobStatus } from '@executions/domain/entities/job.props';
+import type { ExecutionUsage } from '@executions/application/usage.service';
 
 export class JobSummaryDto {
   id!: string;
@@ -39,6 +40,8 @@ export class JobSummaryDto {
   review!: { approved: boolean; summary: string; issues: string[] } | null;
   startedAt!: string | null;
   finishedAt!: string | null;
+  /** Tokens que gastó (entrada, salida y caché); `null` en los trabajos anteriores a medirlo. */
+  tokens!: number | null;
 }
 
 export class ExecutionResponseDto {
@@ -70,6 +73,8 @@ export class ExecutionDetailDto extends ExecutionResponseDto {
   waitingForRunner!: boolean;
   /** Costo total de los trabajos que ya informaron el suyo. */
   costUsd!: number;
+  /** Lo que gastó la ejecución: tokens exactos y lo que costó del plan (medido y estimado). */
+  usage!: ExecutionUsage;
 }
 
 export class JobLogsDto {

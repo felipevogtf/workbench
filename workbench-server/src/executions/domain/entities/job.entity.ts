@@ -6,6 +6,7 @@ import {
   JobResult,
   JobStatus,
 } from './job.props';
+import type { JobUsage } from './../usage';
 
 /** Tope del registro que se guarda por trabajo; lo más viejo se descarta. */
 export const MAX_LOG_CHARS = 200_000;
@@ -34,6 +35,7 @@ export class Job {
       runnerId: null,
       attempt: data.attempt ?? 1,
       costUsd: null,
+      usage: null,
       queuedAt: now,
       startedAt: null,
       finishedAt: null,
@@ -82,6 +84,9 @@ export class Job {
   get costUsd(): number | null {
     return this.props.costUsd;
   }
+  get usage(): JobUsage | null {
+    return this.props.usage;
+  }
   get queuedAt(): Date {
     return this.props.queuedAt;
   }
@@ -107,21 +112,31 @@ export class Job {
     this.touch();
   }
 
-  complete(result: JobResult, costUsd: number | null): void {
+  complete(
+    result: JobResult,
+    costUsd: number | null,
+    usage: JobUsage | null = null,
+  ): void {
     this.assertRunning();
     this.props.status = 'done';
     this.props.result = result;
     this.props.costUsd = costUsd;
+    this.props.usage = usage;
     this.props.error = null;
     this.props.finishedAt = new Date();
     this.touch();
   }
 
-  fail(message: string, costUsd: number | null = null): void {
+  fail(
+    message: string,
+    costUsd: number | null = null,
+    usage: JobUsage | null = null,
+  ): void {
     this.assertRunning();
     this.props.status = 'failed';
     this.props.error = message.slice(0, 2000);
     this.props.costUsd = costUsd;
+    this.props.usage = usage;
     this.props.finishedAt = new Date();
     this.touch();
   }
