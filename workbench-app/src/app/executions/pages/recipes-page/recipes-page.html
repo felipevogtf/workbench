@@ -1,0 +1,90 @@
+<div class="page">
+  <app-page-header
+    heading="Recetas"
+    subtitle="Cómo se levanta y se prueba cada proyecto. La IA que crea los tickets, quien los desarrolla y quien los revisa leen la receta del repositorio, y la de los que dependen de él."
+  >
+    <button actions app-button type="button" (click)="openNew()">
+      <app-icon name="plus" size="1em" /> Nueva receta
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las recetas">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="88px" />
+      <app-skeleton height="88px" />
+    </div>
+  } @else if (store.recipes().length === 0) {
+    <app-empty-state icon="file-text" heading="Todavía no hay recetas">
+      Escribe la de un proyecto: cómo se levanta (Docker, puertos), cómo se llena la base de datos,
+      cómo se corren las pruebas y qué no hay que tocar. Así los agentes lo saben en vez de
+      adivinarlo.
+      <button empty-action app-button type="button" (click)="openNew()">Nueva receta</button>
+    </app-empty-state>
+  } @else {
+    <ul class="recipes" aria-label="Recetas">
+      @for (recipe of store.recipes(); track recipe.id) {
+        <li>
+          <app-card>
+            <div class="recipe">
+              <div class="recipe__main">
+                <span class="recipe__repo">{{ recipe.repo }}</span>
+                @if (excerpt(recipe)) {
+                  <p class="recipe__excerpt">{{ excerpt(recipe) }}</p>
+                } @else {
+                  <p class="recipe__excerpt recipe__excerpt--empty">Receta vacía</p>
+                }
+                <div class="recipe__meta">
+                  @if (recipe.dependsOn.length > 0) {
+                    <span class="muted">Depende de</span>
+                    @for (dependency of recipe.dependsOn; track dependency) {
+                      <app-badge tone="neutral">{{ dependency }}</app-badge>
+                    }
+                  }
+                  <span class="muted">Editada {{ recipe.updatedAt | timeAgo }}</span>
+                </div>
+              </div>
+              <button
+                app-icon-button
+                type="button"
+                [label]="'Editar la receta de ' + recipe.repo"
+                (click)="openEdit(recipe)"
+              >
+                <app-icon name="edit" size="1.1rem" />
+              </button>
+              <button
+                app-icon-button
+                type="button"
+                tone="danger"
+                [label]="'Borrar la receta de ' + recipe.repo"
+                (click)="remove(recipe)"
+              >
+                <app-icon name="trash" size="1.1rem" />
+              </button>
+            </div>
+          </app-card>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-recipe-dialog
+    [(open)]="dialogOpen"
+    [recipe]="editing()"
+    [repos]="store.repos()"
+    [save]="save"
+  />
+</div>
