@@ -88,6 +88,19 @@
             </section>
           }
 
+          @if (current.ticket.doubts?.length) {
+            <app-alert tone="warning" heading="Dudas de los agentes">
+              @for (doubt of current.ticket.doubts; track doubt.id) {
+                <p class="doubt">
+                  <strong>{{ doubt.from }}:</strong> {{ doubt.text }}
+                </p>
+              }
+              <p class="muted">
+                Cuéntaselo a Lucy en el chat para decidir si hace falta corregir algo.
+              </p>
+            </app-alert>
+          }
+
           @if (current.ticket.notes?.length || current.ticket.status !== 'done') {
             <section class="block">
               <h5>Notas para el agente</h5>

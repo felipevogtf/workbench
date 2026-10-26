@@ -81,6 +81,49 @@ describe('ExecutionChat', () => {
     expect(chat.unread()).toBe(0);
   });
 
+  describe('the doubts that the agents leave', () => {
+    const doubt = (id: string, text = 'Supuse que va solo en el formulario.') => ({
+      id,
+      from: 'David',
+      ticket: 2,
+      text,
+    });
+
+    async function renderWith(doubts: ReturnType<typeof doubt>[]) {
+      const fixture = TestBed.createComponent(ExecutionChat);
+      fixture.componentRef.setInput('executionId', 'e1');
+      fixture.componentRef.setInput('doubts', doubts);
+      await fixture.whenStable();
+      return { fixture, chat: TestBed.inject(ExecutionChatStore) };
+    }
+
+    it('comments a doubt that arrives while the page is open, as unread, inviting to talk it over', async () => {
+      const { fixture, chat } = await renderWith([]);
+
+      fixture.componentRef.setInput('doubts', [doubt('d1')]);
+      await fixture.whenStable();
+
+      expect(chat.messages()).toHaveLength(1);
+      expect(chat.messages()[0].content).toContain('David');
+      expect(chat.messages()[0].content).toContain('ticket 2');
+      expect(chat.messages()[0].content).toContain('Supuse que va solo en el formulario.');
+      expect(chat.messages()[0].content).toContain('¿Lo dejamos así?');
+      expect(chat.unread()).toBe(1);
+    });
+
+    it('does not comment again a doubt it already commented, nor the ones there when the page opened', async () => {
+      const { fixture, chat } = await renderWith([doubt('viejo')]);
+      expect(chat.messages()).toHaveLength(0);
+
+      fixture.componentRef.setInput('doubts', [doubt('viejo'), doubt('d1')]);
+      await fixture.whenStable();
+      fixture.componentRef.setInput('doubts', [doubt('viejo'), doubt('d1')]);
+      await fixture.whenStable();
+
+      expect(chat.messages()).toHaveLength(1);
+    });
+  });
+
   describe('when the execution fails', () => {
     const state = (status: string, error: string | null = null) => detail.set({ status, error });
 

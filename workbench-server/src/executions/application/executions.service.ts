@@ -10,6 +10,7 @@ import { Job } from '@executions/domain/entities/job.entity';
 import { JobPayload } from '@executions/domain/entities/job.props';
 import {
   parseDecision,
+  parseDoubts,
   parseQuestion,
   parseReview,
   parseTickets,
@@ -52,6 +53,8 @@ const SUPPORTED_HOST = 'bitbucket.org';
 const MAX_REPOS = 3;
 /** Preguntas que un desarrollador puede hacer en un mismo ticket: a la tercera se falla con lo que pasó. */
 const MAX_QUESTIONS = 2;
+/** Cuántas dudas se guardan por ticket: las más recientes. */
+const MAX_DOUBTS = 5;
 
 const AGENT_OF: Record<Exclude<StageKey, 'publish'>, ExecutionAgentModule> = {
   tickets: 'task-tickets',
@@ -349,6 +352,39 @@ export class ExecutionsService {
     await this.enqueue(execution, 'develop', ticket);
   }
 
+  /** El nombre con que se ve al agente de un trabajo (David, Maine…), no el técnico. */
+  private agentLabel(
+    agent: { displayName?: string | null; name: string } | null,
+    job: Job,
+  ): string {
+    return (
+      agent?.displayName?.trim() ||
+      agent?.name ||
+      job.payload.agent?.name ||
+      'Un agente'
+    );
+  }
+
+  /** Lo que un agente dejó dudoso sin detenerse: queda en el ticket para que Lucy se lo comente al usuario. */
+  private async addDoubt(
+    ticket: ExecutionTicket,
+    job: Job,
+    text: string,
+  ): Promise<void> {
+    const agent = job.payload.agent
+      ? await this.agents.getById(job.payload.agent.id)
+      : null;
+    ticket.doubts = [
+      ...(ticket.doubts ?? []),
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        from: this.agentLabel(agent, job),
+        text,
+      },
+    ].slice(-MAX_DOUBTS);
+  }
+
   /** El desarrollador preguntó: el ticket espera y, cuando se guarde, Lucy decide qué hacer con la pregunta. */
   private async ask(
     execution: Execution,
@@ -362,11 +398,7 @@ export class ExecutionsService {
     ticket.questionsAsked += 1;
     ticket.question = {
       id: crypto.randomUUID(),
-      from:
-        agent?.displayName?.trim() ||
-        agent?.name ||
-        job.payload.agent?.name ||
-        'Un desarrollador',
+      from: this.agentLabel(agent, job),
       agentId: agent?.id ?? null,
       text,
       recommendation: null,
@@ -489,6 +521,8 @@ export class ExecutionsService {
         ticket.startSha ??= headBefore ?? null;
         ticket.headSha = headAfter;
         ticket.summary = output.slice(0, MAX_SUMMARY_CHARS) || null;
+        const doubt = parseDoubts(output);
+        if (doubt) await this.addDoubt(ticket, job, doubt);
         ticket.feedback = null;
         ticket.status = 'reviewing';
         this.refreshStages(execution);
@@ -501,6 +535,7 @@ export class ExecutionsService {
         const verdict = parseReview(output);
         ticket.rounds += 1;
         ticket.reviewNote = verdict.summary || null;
+        if (verdict.doubts) await this.addDoubt(ticket, job, verdict.doubts);
 
         if (verdict.approved) {
           ticket.status = 'done';

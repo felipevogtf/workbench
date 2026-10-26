@@ -156,6 +156,18 @@ export class ExecutionPage {
   protected readonly lucy = computed(() => this.agents.assistantOf('task-tickets'));
 
   /** Lo que el chat de Lucy necesita saber para avisar de una pregunta nueva. */
+  /** Las dudas que dejaron los agentes al avanzar: Lucy las comenta en su chat. */
+  protected readonly chatDoubts = computed(() =>
+    this.cards().flatMap((card) =>
+      (card.ticket.doubts ?? []).map((doubt) => ({
+        id: doubt.id,
+        from: doubt.from,
+        ticket: card.number,
+        text: doubt.text,
+      })),
+    ),
+  );
+
   protected readonly chatQuestions = computed(() =>
     this.questions().flatMap((card) =>
       card.ticket.question

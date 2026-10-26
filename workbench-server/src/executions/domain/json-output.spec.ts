@@ -3,6 +3,7 @@ import {
   parseReview,
   parseTickets,
   parseDecision,
+  parseDoubts,
   parseQuestion,
 } from './json-output';
 
@@ -110,18 +111,47 @@ describe('parseReview', () => {
   it('reads an approval', () => {
     expect(
       parseReview('{"approved":true,"summary":"Bien","issues":[]}'),
-    ).toEqual({ approved: true, summary: 'Bien', issues: [] });
+    ).toEqual({ approved: true, summary: 'Bien', issues: [], doubts: '' });
+  });
+
+  it('reads what the reviewer left in doubt', () => {
+    expect(
+      parseReview(
+        '{"approved":true,"summary":"Bien","issues":[],"doubts":" No pude probar el modo oscuro "}',
+      ).doubts,
+    ).toBe('No pude probar el modo oscuro');
   });
 
   it('reads a rejection with its issues', () => {
     expect(
       parseReview('{"approved":false,"summary":"Falta","issues":["a","b"]}'),
-    ).toEqual({ approved: false, summary: 'Falta', issues: ['a', 'b'] });
+    ).toEqual({
+      approved: false,
+      summary: 'Falta',
+      issues: ['a', 'b'],
+      doubts: '',
+    });
   });
 
   it('does not take an unclear verdict as approved', () => {
     expect(() => parseReview('{"approved":"yes"}')).toThrow('"approved"');
     expect(() => parseReview('{"summary":"ok"}')).toThrow('"approved"');
+  });
+});
+
+describe('parseDoubts', () => {
+  it('takes what follows DUDAS:, even when it goes on in the next lines', () => {
+    expect(
+      parseDoubts(
+        'Agregué el banner.\nDUDAS: Supuse que va en el AST.\nNo lo probé.',
+      ),
+    ).toBe('Supuse que va en el AST.\nNo lo probé.');
+  });
+
+  it('is case-insensitive, and null when there are no doubts', () => {
+    expect(parseDoubts('dudas: ¿Está bien?')).toBe('¿Está bien?');
+    expect(parseDoubts('Terminé sin dudas.')).toBeNull();
+    expect(parseDoubts('DUDAS:   ')).toBeNull();
   });
 });
 

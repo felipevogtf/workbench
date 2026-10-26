@@ -16,6 +16,8 @@ export interface ReviewVerdict {
   approved: boolean;
   summary: string;
   issues: string[];
+  /** Lo que el revisor dejó dudoso sin que impida aprobar; vacío si nada. */
+  doubts: string;
 }
 
 const MAX_TITLE = 120;
@@ -25,6 +27,7 @@ const MAX_CRITERIA = 10;
 const MAX_FILES = 15;
 const MAX_FILE = 200;
 const MAX_ISSUES = 15;
+const MAX_QUESTION = 1_500;
 
 /**
  * El JSON de la respuesta de un agente: dentro de un bloque ```json o, si no, entre la primera llave y
@@ -112,10 +115,9 @@ export function parseReview(output: string): ReviewVerdict {
     approved: json.approved,
     summary: text(json.summary, MAX_DESCRIPTION),
     issues: list(json.issues, MAX_ISSUES, MAX_DESCRIPTION),
+    doubts: text(json.doubts, MAX_QUESTION),
   };
 }
-
-const MAX_QUESTION = 1_500;
 
 /**
  * La pregunta con que un desarrollador termina cuando no puede seguir sin una respuesta: una línea
@@ -125,6 +127,16 @@ export function parseQuestion(output: string): string | null {
   const match = /^[ \t]*PREGUNTA[ \t]*:[ \t]*([\s\S]+)$/im.exec(output);
   const text = match?.[1].trim().slice(0, MAX_QUESTION);
   return text || null;
+}
+
+/**
+ * Lo que el desarrollador dejó dudoso aunque avanzó (un supuesto, algo sin probar): una línea `DUDAS: …` que puede
+ * seguir en las líneas siguientes. `null` si no dejó ninguna.
+ */
+export function parseDoubts(output: string): string | null {
+  const match = /^[ \t]*DUDAS[ \t]*:[ \t]*([\s\S]+)$/im.exec(output);
+  const doubt = match?.[1].trim().slice(0, MAX_QUESTION);
+  return doubt || null;
 }
 
 /** Lo que Lucy decide ante una pregunta: contestarla ella (el plan lo dice) o escalarla al usuario. */

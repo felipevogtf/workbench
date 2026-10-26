@@ -154,6 +154,24 @@ describe('ExecutionChatService', () => {
     expect((await ask('¿Por qué falló?')).proposals).toEqual([]);
   });
 
+  it('shows her the doubts that the agents left, to talk them over with the user', async () => {
+    execution.ticket('a').doubts = [
+      {
+        id: 'd1',
+        at: '2026-10-26T00:00:00Z',
+        from: 'Rebecca',
+        text: 'Supuse que va en el AST',
+      },
+    ];
+    await executions.save(execution);
+
+    await ask('Hola');
+
+    expect(agents.chats[0]).toContain(
+      'Duda de Rebecca (sin resolver con el usuario): Supuse que va en el AST',
+    );
+  });
+
   it('shows her the notes already left on a ticket', async () => {
     execution.ticket('a').notes = [
       { at: '2026-10-26T00:00:00Z', from: 'user', text: 'Usa el componente X' },

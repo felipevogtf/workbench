@@ -756,6 +756,74 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('what the agents leave in doubt', () => {
+    const ONE = JSON.stringify({
+      tickets: [
+        { title: 'Banner', description: 'Mostrar el banner', criteria: [] },
+      ],
+    });
+    const ticketOf = async (id: string) =>
+      (await service.get(id)).execution.tickets[0];
+
+    async function developing() {
+      const execution = await service.start('issue-1');
+      await answer({ output: ONE });
+      await service.begin(execution.id);
+      return execution.id;
+    }
+
+    it('keeps the developer doubt on the ticket without stopping the execution', async () => {
+      const id = await developing();
+
+      await answer({
+        ...developed('aaa', 'bbb'),
+        output:
+          'Agregué el banner.\nDUDAS: Supuse que va solo en el formulario.',
+      });
+
+      const { execution } = await service.get(id);
+      expect(execution.status).toBe('running');
+      expect(execution.tickets[0].status).toBe('reviewing');
+      expect(execution.tickets[0].doubts).toEqual([
+        {
+          id: expect.any(String) as string,
+          at: expect.any(String) as string,
+          from: expect.any(String) as string,
+          text: 'Supuse que va solo en el formulario.',
+        },
+      ]);
+    });
+
+    it('keeps the reviewer doubt too', async () => {
+      const id = await developing();
+      await answer(developed('aaa', 'bbb'));
+
+      await answer({
+        output:
+          '{"approved":true,"summary":"ok","issues":[],"doubts":"No pude probar el modo oscuro"}',
+      });
+
+      const ticket = await ticketOf(id);
+      expect(ticket.status).toBe('done');
+      expect(ticket.doubts?.map((doubt) => doubt.text)).toEqual([
+        'No pude probar el modo oscuro',
+      ]);
+    });
+
+    it('leaves nothing when nobody doubted', async () => {
+      const id = await developing();
+      await answer(developed('aaa', 'bbb'));
+
+      expect((await ticketOf(id)).doubts).toBeUndefined();
+    });
+
+    it('gives the developer the instruction to report doubts', async () => {
+      await developing();
+
+      expect(jobs.items.at(-1)!.payload.prompt).toContain('DUDAS:');
+    });
+  });
+
   describe('notes for the agents', () => {
     const ONE = JSON.stringify({
       tickets: [

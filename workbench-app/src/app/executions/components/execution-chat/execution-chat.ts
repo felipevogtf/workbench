@@ -103,6 +103,8 @@ export class ExecutionChat {
   readonly executionId = input.required<string>();
   /** Las preguntas de los desarrolladores que esperan respuesta: Lucy avisa de cada una nueva. */
   readonly questions = input<{ id: string; from: string; ticket: number; text: string }[]>([]);
+  /** Las dudas que dejaron los agentes al avanzar sin detenerse: Lucy comenta cada una nueva. */
+  readonly doubts = input<{ id: string; from: string; ticket: number; text: string }[]>([]);
   /** Sobre qué se conversa, bajo el título (ej. `acme/web · workbench/…`). */
   readonly context = input('');
 
@@ -138,6 +140,9 @@ export class ExecutionChat {
     );
   }
 
+  /** Las dudas que ya se vieron, igual que las preguntas. */
+  private seenDoubts: Set<string> | null = null;
+
   /** El estado en que se vio la ejecución; `undefined` = todavía no se ha visto. */
   private status: string | undefined;
 
@@ -158,6 +163,24 @@ export class ExecutionChat {
         this.chat.receive(
           `**La ejecución falló.**\n\n> ${error}\n\nSi quieres, platicamos qué hacer: te recomiendo algo y, cuando lo decidamos, dejo la nota para el agente.`,
         );
+      });
+    });
+
+    // Una duda no detiene nada: Lucy la comenta para que el usuario decida si hay que corregir al agente.
+    effect(() => {
+      const doubts = this.doubts();
+      untracked(() => {
+        if (this.seenDoubts === null) {
+          this.seenDoubts = new Set(doubts.map((doubt) => doubt.id));
+          return;
+        }
+        for (const doubt of doubts) {
+          if (this.seenDoubts.has(doubt.id)) continue;
+          this.seenDoubts.add(doubt.id);
+          this.chat.receive(
+            `**${doubt.from}** avanzó en el ticket ${doubt.ticket}, pero dejó una duda:\n\n> ${doubt.text.replace(/\n/g, '\n> ')}\n\nNo detuvo nada. ¿Lo dejamos así? Si no, platicamos qué corregir y le dejo una nota.`,
+          );
+        }
       });
     });
 

@@ -43,6 +43,15 @@ export interface TicketDecision {
   text: string;
 }
 
+/** Algo que un agente dejó dudoso sin detenerse (un supuesto, algo sin probar); Lucy se lo comenta al usuario. */
+export interface TicketDoubt {
+  id: string;
+  at: string;
+  /** Quién la dejó (el nombre con que se ve al agente). */
+  from: string;
+  text: string;
+}
+
 /** Una instrucción para quien trabaje el ticket, del usuario o de Lucy: entra a su prompt la próxima vez. */
 export interface TicketNote {
   at: string;
@@ -84,6 +93,8 @@ export interface ExecutionTicket {
   decisions: TicketDecision[];
   /** Instrucciones dejadas para este ticket; ausente en los anteriores a este campo. */
   notes?: TicketNote[];
+  /** Dudas que dejaron los agentes al avanzar; ausente en los anteriores a este campo. */
+  doubts?: TicketDoubt[];
   /** Cuántas preguntas ha hecho el desarrollador en este ticket (hay un tope). */
   questionsAsked: number;
 }

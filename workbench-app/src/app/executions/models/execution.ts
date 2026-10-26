@@ -36,6 +36,15 @@ export interface TicketNote {
   text: string;
 }
 
+/** Algo que un agente dejó dudoso sin detenerse (un supuesto, algo sin probar). */
+export interface TicketDoubt {
+  id: string;
+  at: string;
+  /** Quién la dejó, con el nombre con que se ve al agente. */
+  from: string;
+  text: string;
+}
+
 /** Una nota que Lucy propone dejarle a un agente; no se guarda hasta que el usuario la confirma. */
 export interface NoteProposal {
   ticketId: string;
@@ -63,6 +72,8 @@ export interface ExecutionTicket {
   files?: string[];
   /** Instrucciones dejadas para quien trabaje el ticket; ausente en los anteriores a este campo. */
   notes?: TicketNote[];
+  /** Dudas que dejaron los agentes al avanzar; ausente en los anteriores a este campo. */
+  doubts?: TicketDoubt[];
   /** `organización/repo` en que se desarrolla; ausente si la tarea tiene un solo repositorio. */
   repo?: string;
   level: TicketLevel;

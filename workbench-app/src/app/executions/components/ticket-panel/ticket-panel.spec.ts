@@ -62,6 +62,24 @@ describe('TicketPanel', () => {
     expect(hidden.textContent).not.toContain('Archivos previstos');
   });
 
+  it('shows the doubts that the agents left, only when there are any', async () => {
+    const withDoubts = boardCard(
+      ticket('a', {
+        doubts: [
+          { id: 'd1', at: '2026-10-26T01:00:00Z', from: 'David', text: 'Supuse que va en el AST' },
+        ],
+      }),
+      { worker: { name: 'Maine', avatar: null } },
+    );
+    const shown: HTMLElement = (await render({ card: withDoubts })).nativeElement;
+    const hidden: HTMLElement = (await render({ card })).nativeElement;
+
+    expect(shown.textContent).toContain('Dudas de los agentes');
+    expect(shown.textContent).toContain('David:');
+    expect(shown.textContent).toContain('Supuse que va en el AST');
+    expect(hidden.textContent).not.toContain('Dudas de los agentes');
+  });
+
   describe('notes for the agent', () => {
     const noteForm = (element: HTMLElement) => ({
       box: element.querySelector<HTMLTextAreaElement>('.note-form textarea'),
