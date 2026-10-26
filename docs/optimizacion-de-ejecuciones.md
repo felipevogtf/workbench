@@ -22,33 +22,33 @@ Se agregaron 4 tests (el runner pasa de 72 a 76). Para la ejecución que falló:
   `git fetch` por trabajo.
 - El runner **no corre `npm install`**: lo instala el agente cuando se le ocurre. De cinco worktrees medidos, tres
   tienen `node_modules` de 580 a 760 MB y dos no instalaron nada.
-- El runner ya borra los worktrees que nadie tocó en una semana; los de ejecuciones cerradas se quedan hasta entonces.
+- Al publicar la PR el runner borra el worktree de esa rama (`release`), y cada vez que arranca borra los que nadie
+  tocó en una semana (`sweep`). Quedan los de ejecuciones fallidas o canceladas, hasta esa semana.
 - Cada agente arranca de cero y vuelve a explorar el código.
 
-## 1. Archivos sugeridos por Lucy en cada ticket (servidor)
+## 1. Archivos sugeridos por Lucy en cada ticket — hecho (commit `13852ee`)
 
-Que el desarrollador no gaste lecturas buscando por dónde empezar.
+Que el desarrollador no gaste lecturas buscando por dónde empezar. El prompt de `tickets` ya le pedía a Lucy decir qué
+archivos toca cada ticket, pero solo dentro de la descripción.
 
-- Campo opcional `files` en el ticket: migración, entidad de dominio, DTO y parser de `json-output.ts`.
-- Se pide en el prompt de `tickets` y se inyecta en los de desarrollo y revisión como **pista, no como límite**:
-  «empieza por estos archivos; si necesitas otros, léelos».
-- Los submódulos siguen vedados aunque aparezcan en la lista.
-- Tests del parser, de los prompts y del servicio.
+- Campo opcional `files` en el ticket (hasta 15 rutas). Los tickets se guardan como `jsonb`: no hay migración y los
+  anteriores siguen funcionando sin él.
+- Se pide en el prompt de `tickets` y llega a los prompts de desarrollo y revisión como **pista, no como límite**
+  («si el ticket necesita otros, léelos y cámbialos»). El panel del ticket lo muestra en «Archivos previstos».
+- Los submódulos siguen vedados aunque aparezcan en la lista: el runner descarta esos cambios de todos modos.
+- Tests del parser, de los prompts y del panel (servidor 571, front 540).
 
-## 2. Diff para el revisor (servidor y runner)
+## 2. Diff para el revisor — cerrado sin cambios
 
-- Primero se verifica qué recibe hoy el prompt de revisión (`prompts.ts`, `executions.service.ts`).
-- Si no incluye el diff, el runner lo calcula entre `headBefore` y `headAfter` y lo manda con el trabajo de
-  revisión, con un tope de tamaño para no desbordar el prompt.
-- Si ya lo incluye, este punto se cierra sin cambios.
+El prompt de revisión ya le indica al revisor `git diff <commit anterior> HEAD` para ver los cambios del ticket. Pegarle
+el diff entero ahorraría una llamada a una herramienta, pero obligaría al runner a calcularlo y mandarlo, y el revisor
+igual tiene que leer el código de alrededor. No compensa; queda como está.
 
-## 3. Limpieza de worktrees (runner)
+## 3. Limpieza de worktrees — cerrado sin cambios
 
-- Hoy la limpieza solo borra lo que lleva una semana sin tocarse. Se añade borrar el worktree de una ejecución
-  apenas termina (completada o cancelada), reutilizando esa misma limpieza. Una fallida se conserva, porque se puede
-  reintentar sobre el mismo worktree.
-- Es seguro porque la rama ya está subida.
-- Tests: se borra el worktree de una ejecución cerrada y se conserva el de una activa.
+Ya existe: `release` borra el worktree al publicar la PR y `sweep` borra los abandonados a la semana. Borrar al
+cancelar necesitaría un aviso del servidor al runner para ahorrar espacio que hoy sobra (350 GB libres), y una fallida
+se conserva a propósito porque se puede reintentar sobre el mismo worktree.
 
 ## 4. Comunicación en los dos sentidos entre Lucy y los agentes (servidor y front, al final)
 
