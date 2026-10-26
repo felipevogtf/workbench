@@ -1,6 +1,31 @@
-# Etapa 2: Lucy habla con los agentes y ellos con Lucy (anotado, sin implementar)
+# Etapa 2: Lucy habla con los agentes y ellos con Lucy
 
-Acordado el 2026-10-25. Nada de esto está construido todavía; lo que ya existe está al final.
+Acordado el 2026-10-25. **Estado al 2026-10-26: construido el flujo 1 (pasos 2 y 3 del orden sugerido); falta
+el hilo compartido, las notas de Lucy a un agente y la etapa 3.** Lo que ya existía está al final.
+
+## Estado
+
+**Hecho y probado (en el servidor, con tests; todavía sin una pregunta real de un desarrollador):**
+- El desarrollador termina con una línea `PREGUNTA: …` cuando no puede seguir sin una respuesta y no hizo
+  cambios. El ticket pasa a **«Esperando respuesta»** (columna propia en el tablero) y no se encola nada más.
+  Tope de **2 preguntas por ticket**; la tercera falla como antes («no hizo cambios»).
+- **Lucy decide en segundo plano**, con el plan y el ticket: `RESPUESTA:` o `ESCALAR:`. Por defecto **siempre
+  escala**: su respuesta se muestra como *recomendación*. Para que conteste sola cuando el plan lo dice, poner
+  `EXECUTIONS_LUCY_ANSWERS=true` en el `server.env`.
+- El usuario ve la pregunta en un bloque «Lucy necesita tu respuesta» sobre el tablero, con la recomendación, y
+  puede **usarla** o **escribir la suya**. Además Lucy lo avisa en su chat (aviso de «sin leer»).
+- La respuesta queda como **decisión del ticket** (visible en su panel) y el desarrollador retoma con ella; los
+  revisores también la ven.
+- Lucy, en su chat, ve las preguntas pendientes y las decisiones.
+
+**Falta:**
+- El **hilo de mensajes guardado en el servidor** (hoy el chat vive solo en el navegador; el aviso de pregunta
+  nueva se pierde al recargar, aunque el bloque de la pregunta sigue ahí).
+- **Notas de Lucy (o del usuario) a un agente** para su próxima vuelta, y «pedir una explicación».
+- Que **los revisores** también puedan preguntar.
+- La **etapa 3**: Lucy propone acciones y el usuario las aprueba.
+
+## Qué falta hoy (antes de esta etapa)
 
 ## Qué falta hoy
 
