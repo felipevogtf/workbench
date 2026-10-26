@@ -262,6 +262,41 @@ describe('ExecutionChatService', () => {
     });
   });
 
+  it('tells the user when she promised a button but did not write the line that makes it', async () => {
+    agents.chatReply = 'Sí, hay que corregirlo. Confirma la nota con el botón.';
+
+    const answer = await ask('Corrígelo');
+
+    expect(answer.proposals).toEqual([]);
+    expect(answer.reply).toContain('Confirma la nota con el botón.');
+    expect(answer.reply).toContain('No pude armar el botón de esa propuesta');
+  });
+
+  it('does not warn when the button does exist, even if she wrote the line with bold', async () => {
+    agents.chatReply =
+      'Confirma la nota con el botón.\n**NOTA 1:** No toques los submódulos.';
+
+    const answer = await ask('Dile que no toque los submódulos');
+
+    expect(answer.proposals).toHaveLength(1);
+    expect(answer.reply).toBe('Confirma la nota con el botón.');
+  });
+
+  it('does not warn about a button of the screen that is not a proposal', async () => {
+    agents.chatReply = 'Usa el botón Reintentar de la pantalla.';
+
+    const answer = await ask('¿Qué hago?');
+
+    expect(answer.reply).toBe('Usa el botón Reintentar de la pantalla.');
+  });
+
+  it('tells her that the line is what makes the button, and where to put it', async () => {
+    await ask('Hola');
+
+    expect(agents.chats[0]).toContain('Esa línea es lo que crea el botón');
+    expect(agents.chats[0]).toContain('sin viñetas ni negritas');
+  });
+
   it('returns no proposals when she only talks', async () => {
     agents.chatReply = 'Falló por el revisor.';
 

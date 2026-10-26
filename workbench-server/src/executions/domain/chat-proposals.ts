@@ -77,7 +77,7 @@ export function extractProposals(
   for (const line of reply.split(/\r?\n/)) {
     const proposal =
       proposals.length < MAX_PROPOSALS
-        ? proposalOf(line, context, completed)
+        ? proposalOf(unformatted(line), context, completed)
         : null;
     // Dos pedidos de revisión final serían la misma.
     if (
@@ -91,7 +91,40 @@ export function extractProposals(
     proposals.push(proposal);
   }
 
-  return { reply: kept.join('\n').trim(), proposals };
+  return { reply: withoutEmptyFences(kept.join('\n')).trim(), proposals };
+}
+
+/**
+ * La línea sin el formato con que los modelos suelen envolverla: viñeta, número o cita (`- `, `1. `, `> `), negritas o comillas invertidas
+ * (`**NOTA 2:** …`, `` `NOTA 2: …` ``). Así una propuesta bien escrita no se pierde por cómo se vea.
+ */
+function unformatted(line: string): string {
+  let text = line.trim().replace(/^(?:(?:[-*+>]|\d+[.)])[ \t]+)+/, '');
+  // Si toda la línea va entre marcas (`…`, **…**), se quitan las de las dos puntas.
+  const wrap = /^([*_`]{1,3})(?=(?:NOTA|TICKET|REVISI[OÓ]N)\b)/i.exec(text);
+  if (wrap) {
+    text = text.slice(wrap[1].length);
+    if (text.endsWith(wrap[1])) text = text.slice(0, -wrap[1].length);
+  }
+  // `NOTA 2**: …` y `NOTA 2:** …`: las marcas pegadas a la palabra clave.
+  return text
+    .replace(/^(NOTA[ \t]+\d+)[*_`]+/i, '$1')
+    .replace(/^(NOTA[ \t]+\d+[ \t]*:)[*_`]+/i, '$1');
+}
+
+/** Si Lucy puso sus líneas dentro de un bloque de código, al sacarlas queda el bloque vacío: se quita. */
+function withoutEmptyFences(text: string): string {
+  return text.replace(/```[a-z]*[ \t]*\r?\n?[ \t]*```/gi, '');
+}
+
+/**
+ * Lucy dice que hay un botón para confirmar, pero no escribió la línea que lo crea. Pasa: el modelo se olvida de ponerla. Se
+ * detecta por lo que dice y no por la línea, que no existe.
+ */
+export function promisesAButton(reply: string): boolean {
+  return /(?:confirm\w*[^.\n]{0,40}\bbot[oó]n|\bbot[oó]n\s+(?:de\s+abajo|para\s+confirmar)|con\s+el\s+bot[oó]n\s+(?:de\s+abajo|que\s+te))/i.test(
+    reply,
+  );
 }
 
 function proposalOf(

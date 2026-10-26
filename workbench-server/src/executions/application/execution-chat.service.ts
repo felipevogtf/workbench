@@ -7,6 +7,7 @@ import {
 } from '@executions/domain/execution-chat-prompt';
 import {
   extractProposals,
+  promisesAButton,
   type ChatProposal,
 } from '@executions/domain/chat-proposals';
 import {
@@ -27,6 +28,10 @@ import {
   JOB_REPOSITORY_PORT,
   type JobRepositoryPort,
 } from '@executions/domain/ports/job-repository.port';
+
+/** Lo que se agrega cuando Lucy habla de un botón que no se pudo armar. */
+const MISSING_BUTTON =
+  '\n\n_No pude armar el botón de esa propuesta. Pídemela de nuevo («ponla en su línea»), o hazlo desde el panel del ticket._';
 
 /** Cuántas preguntas se contestan a la vez; las demás esperan su turno. */
 const CONCURRENCY = 2;
@@ -124,6 +129,9 @@ export class ExecutionChatService {
       finalReviewRunning: execution.finalReview?.status === 'running',
       repos: execution.targets().map((target) => target.repo.fullName),
     });
-    return { ...answer, reply, proposals };
+    // Si prometió un botón y no escribió la línea que lo crea, se le dice al usuario en vez de dejarlo esperando.
+    const missing =
+      proposals.length === 0 && promisesAButton(reply) ? MISSING_BUTTON : '';
+    return { ...answer, reply: `${reply}${missing}`, proposals };
   }
 }

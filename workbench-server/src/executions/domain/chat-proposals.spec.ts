@@ -1,5 +1,9 @@
 import { ExecutionStatus, ExecutionTicket } from './entities/execution.props';
-import { extractProposals, ProposalContext } from './chat-proposals';
+import {
+  extractProposals,
+  promisesAButton,
+  ProposalContext,
+} from './chat-proposals';
 
 const ticket = (
   id: string,
@@ -222,5 +226,99 @@ describe('extractProposals — final review', () => {
 
     expect(proposals).toEqual([]);
     expect(reply).toContain('REVISION FINAL');
+  });
+});
+
+describe('extractProposals — however the model formats the line', () => {
+  const text = 'Cambia la ruta a /secured/admin/ea';
+
+  it.each([
+    ['a bullet', `- NOTA 2: ${text}`],
+    ['a numbered item', `1. NOTA 2: ${text}`],
+    ['a quote', `> NOTA 2: ${text}`],
+    ['bold around the whole line', `**NOTA 2: ${text}**`],
+    ['bold around the keyword and the colon', `**NOTA 2:** ${text}`],
+    ['bold around the keyword', `**NOTA 2**: ${text}`],
+    ['backticks around the whole line', `\`NOTA 2: ${text}\``],
+    ['a bullet with bold', `- **NOTA 2:** ${text}`],
+  ])('still finds the note when it comes with %s', (_how, line) => {
+    const { reply, proposals } = extractProposals(
+      `Listo, confirma abajo.\n${line}`,
+      context(),
+    );
+
+    expect(proposals).toEqual([
+      expect.objectContaining({ kind: 'note', ticketId: 'b', text }),
+    ]);
+    expect(reply).toBe('Listo, confirma abajo.');
+  });
+
+  it('keeps the code that the note itself mentions', () => {
+    const { proposals } = extractProposals(
+      'NOTA 1: Usa `/secured/admin/ea` en el map',
+      context(),
+    );
+
+    expect(proposals).toEqual([
+      expect.objectContaining({ text: 'Usa `/secured/admin/ea` en el map' }),
+    ]);
+  });
+
+  it('finds a new ticket and the final review written with bold or inside backticks', () => {
+    const { proposals } = extractProposals(
+      [
+        '**TICKET simple | Corregir la ruta | Cambiar /ea**',
+        '`REVISION FINAL`',
+        '- **REVISION FINAL**',
+      ].join('\n'),
+      context('completed'),
+    );
+
+    expect(proposals).toEqual([
+      expect.objectContaining({ kind: 'ticket', title: 'Corregir la ruta' }),
+      { kind: 'final-review' },
+    ]);
+  });
+
+  it('does not leave an empty code block behind when the lines were inside one', () => {
+    const { reply, proposals } = extractProposals(
+      'Va aquí:\n```\nNOTA 1: Cambia la ruta\n```\nAvísame.',
+      context(),
+    );
+
+    expect(proposals).toHaveLength(1);
+    expect(reply).not.toContain('```');
+    expect(reply).toContain('Va aquí:');
+    expect(reply).toContain('Avísame.');
+  });
+
+  it('leaves a code block that has something else inside untouched', () => {
+    const { reply } = extractProposals(
+      'Así queda:\n```\nmap $uri $multipart_allowed {}\n```',
+      context(),
+    );
+
+    expect(reply).toContain('map $uri $multipart_allowed {}');
+  });
+});
+
+describe('promisesAButton', () => {
+  it.each([
+    'Confirma la nota con el botón.',
+    'Confirma la nota con el botón de abajo.',
+    'Para aplicarla, confirma con el botón que te aparece.',
+    'Aprieta el botón de abajo para confirmar.',
+    'Tienes el botón para confirmar.',
+  ])('is true for «%s»', (reply) => {
+    expect(promisesAButton(reply)).toBe(true);
+  });
+
+  it.each([
+    'Usa el botón Reintentar de la pantalla.',
+    'El ticket falló por el revisor.',
+    'Te explico qué pasó y qué sigue.',
+    '',
+  ])('is false for «%s»', (reply) => {
+    expect(promisesAButton(reply)).toBe(false);
   });
 });
