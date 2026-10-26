@@ -73,20 +73,16 @@ Lucy es la coordinadora y el usuario habla solo con ella. El detalle completo es
   con su persona), el hilo de mensajes guardado en el servidor (hoy el chat vive solo en el navegador) y que los
   revisores también puedan preguntar. La etapa 3 (Lucy propone acciones y el usuario las aprueba) queda fuera.
 
-## Pendiente para mañana (2026-10-27)
+## Estado al 2026-10-26 (tarde)
 
-1. **Desplegar `a5f813f`.** Ya está en `main`, pero el servidor de `personal_server` tiene hasta `e5710b6`. Falta la instrucción
-   nueva de Lucy (proponer la nota solo al cerrar la conversación), el aviso en su chat cuando la ejecución falla y el botón
-   «Dejar la nota y reintentar». Comando: `ssh personal_server 'cd ~/git_repos/workbench && git pull && cd deploy/prod && docker compose up -d --build'`.
-2. **Dudas sin fallo.** Hoy un desarrollador que avanza con un supuesto lo deja enterrado en su resumen, y solo `PREGUNTA:`
-   detiene el ticket (y únicamente si no hizo cambios). Propuesta:
-   - el desarrollador y el revisor cierran su resumen con una línea `DUDAS: …` cuando hicieron un supuesto o algo quedó sin
-     probar;
-   - el servidor la guarda en el ticket (campo nuevo, jsonb: sin migración) y Lucy la comenta en su chat sin detener la
-     ejecución («David avanzó suponiendo X; ¿lo dejamos así?»);
-   - si el usuario no está de acuerdo, conversan y ella propone la nota como siempre.
-   Incluye prompts, parseo, aviso en el chat, panel del ticket y tests.
-3. **Probar con una ejecución real**: Reintentar la que falló por el submódulo `src/mipedido`, con una nota en el ticket, para
-   ver los submódulos, las notas, los archivos previstos y el chat funcionando juntos.
-4. **Lo que sigue de la etapa 2:** pedirle una explicación a un agente, hilo de mensajes guardado en el servidor, revisores que
+1. **Despliegue: hecho.** El servidor y el front están en `66a4bde`: instrucción nueva de Lucy (propone la nota solo al
+   cerrar la conversación), aviso en su chat cuando la ejecución falla, botón «Dejar la nota y reintentar» y las dudas.
+2. **Dudas sin fallo: hecho** (`66a4bde`). El desarrollador cierra su resumen con una línea `DUDAS: …` y el revisor usa un
+   campo `doubts`, cuando hicieron un supuesto o algo quedó sin probar. Se guarda en el ticket (hasta 5, sin migración),
+   se muestra en el panel («Dudas de los agentes») y Lucy comenta cada una nueva en su chat sin detener la ejecución,
+   invitando a conversar y, si hace falta, a dejar una nota. También la ve en su contexto. Servidor 592 tests, front 555.
+3. **Pendiente: probar con una ejecución real.** Reintentar la que falló por el submódulo `src/mipedido`, con una nota en el
+   ticket, para ver juntos los submódulos, las notas, los archivos previstos, las dudas y el chat. No se probó nada contra
+   el servidor real; todo lo anterior está verificado solo con tests.
+4. **Pendiente de la etapa 2:** pedirle una explicación a un agente, hilo de mensajes guardado en el servidor, revisores que
    puedan preguntar y la etapa 3 (acciones con confirmación).
