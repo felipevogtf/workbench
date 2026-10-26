@@ -153,6 +153,23 @@ El runner levanta el entorno de **un** proyecto y el agente lo usa.
 **Hecha cuando:** Pilar, en una ejecución real de miflota-web, valida con `nginx -t` y `curl` que `/secured/admin/ea` deja pasar un multipart y otra ruta
 da 415, y al terminar no queda ningún contenedor ni volumen de esa ejecución.
 
+**Construido (2026-10-26)** en `workbench-runner/src/environment.ts` y `curl.ts`; configuración de ejemplo en `runner.config.example.json`:
+
+- **Configuración:** `services` (bases de datos compartidas por ejecución), `environments["org/repo"]` (compose, puertos, base y schemas, archivos locales con
+  plantilla `{{port.app}}`, `{{db.port}}`, `{{schema}}`…, pasos de preparación, direcciones a esperar), `secretsDir`, `portRange`, `environmentIdleMinutes`.
+  Los archivos locales salen de `secretsDir/<proyecto>/` y se excluyen de los commits (`info/exclude`).
+- **Ciclo de vida:** se levanta en el primer trabajo del desarrollador o revisor sobre ese repo; se reutiliza; se borra al publicar, al terminar la revisión final,
+  a las 2 h sin uso o al arrancar el runner (huérfanos). Borra contenedores, redes, volúmenes **e imágenes** de la ejecución.
+- **Robustez:** un reintento de `docker compose up` (construcciones en paralelo chocan a veces) y de cada paso de preparación (un worker escribe la caché de Symfony
+  mientras `composer install` la limpia). Si el entorno no se puede levantar, el agente trabaja sin él y el prompt le dice que no dé nada por probado. Los archivos que
+  crean los contenedores quedan a nombre de root: el runner los devuelve (`chown` con una imagen alpine) antes de usar git.
+- **Permisos del agente con entorno:** `docker compose exec/ps/logs` (y `restart` solo el desarrollador) sobre su proyecto, que `COMPOSE_PROJECT_NAME` y `COMPOSE_FILE`
+  ya fijan, y `wb-curl`: solo localhost (`--connect-to ::127.0.0.1:`, sin proxy, sin `.curlrc`) y solo escribe en `/dev/null`. El runner las suma; no pasan por el servidor.
+  Límite conocido: `docker compose exec` entra a contenedores que montan el worktree y tienen salida a la red de la distro.
+- **Medido en la distro (miseguridad-web):** primera vez ~3,5 min (construye PHP 7.3 y baja imágenes); con caché ~1 min; 58 tablas, app 200, borrado sin restos.
+- **Falta:** probar miflota-web (config y receta de `nginx -t`/`curl`), una ejecución real con agentes sobre miseguridad y el criterio de Pilar.
+- **Costo mientras no exista la etapa 3:** todo trabajo de desarrollo o revisión en un repo con entorno configurado lo levanta, aunque el ticket sea solo de texto.
+
 ### Etapa 3: bajo demanda
 
 - Campo nuevo en el ticket: «necesita entorno». Lucy lo marca al dividir el plan, viendo qué proyectos tienen entorno configurado; no puede pedir uno que no existe.

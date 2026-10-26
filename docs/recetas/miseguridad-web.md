@@ -70,4 +70,4 @@ El repo no tiene migraciones: el esquema sale de las entidades. `AppFixtures` es
 - El cron en local corre imports cada hora; si no se quiere, `docker compose stop cron`.
 
 ## Si eres un agente
-Es probable que no puedas ejecutar Docker desde tu entorno. Si no puedes correr estos comandos, no des nada por probado: dilo en tus dudas.
+Si tu prompt trae una sección «Entorno de pruebas», el runner ya levantó este proyecto en contenedores propios de tu ejecución, con sus puertos, la base de datos, las dependencias y el esquema listos: **no ejecutes `docker compose up` ni sigas los pasos de «Levantar» y «Preparar la base de datos»**. Usa `docker compose exec -T app …` para los comandos (phpunit, consola de Symfony) y `wb-curl` para probar rutas. Las pruebas usan la base `miseguridad-test`, que ya existe. Si esa sección no está o dice que no se pudo levantar, no des nada por probado: dilo en tus dudas.
