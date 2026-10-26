@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { AgentsApi } from '../../../ai-agents/data-access/agents.api';
@@ -23,14 +23,18 @@ const proposal = {
 
 describe('ExecutionChat', () => {
   let addNote: ReturnType<typeof vi.fn<(ticketId: string, text: string) => Promise<boolean>>>;
+  let retry: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
+  let detail: WritableSignal<{ status: string; error: string | null } | null>;
 
   beforeEach(() => {
     addNote = vi.fn(() => Promise.resolve(true));
+    retry = vi.fn(() => Promise.resolve(true));
+    detail = signal(null);
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         ExecutionChatStore,
-        { provide: ExecutionStore, useValue: { acting: signal(false), addNote } },
+        { provide: ExecutionStore, useValue: { acting: signal(false), addNote, retry, detail } },
         { provide: ExecutionsApi, useValue: { chat: () => of({ reply: 'ok' }) } },
         { provide: AgentsApi, useValue: { list: () => of([]) } },
       ],
@@ -77,6 +81,47 @@ describe('ExecutionChat', () => {
     expect(chat.unread()).toBe(0);
   });
 
+  describe('when the execution fails', () => {
+    const state = (status: string, error: string | null = null) => detail.set({ status, error });
+
+    it('says so in the chat, with the error, when it fails while the page is open', async () => {
+      state('running');
+      const { fixture, chat } = await render([]);
+
+      state('failed', 'git commit falló: modified content');
+      await fixture.whenStable();
+
+      expect(chat.messages()).toHaveLength(1);
+      expect(chat.messages()[0].content).toContain('La ejecución falló');
+      expect(chat.messages()[0].content).toContain('git commit falló');
+      expect(chat.unread()).toBe(1);
+    });
+
+    it('does not say it again for the same failure, but does after a retry fails again', async () => {
+      state('running');
+      const { fixture, chat } = await render([]);
+
+      state('failed', 'uno');
+      await fixture.whenStable();
+      state('failed', 'uno');
+      await fixture.whenStable();
+      expect(chat.messages()).toHaveLength(1);
+
+      state('running');
+      await fixture.whenStable();
+      state('failed', 'dos');
+      await fixture.whenStable();
+      expect(chat.messages()).toHaveLength(2);
+    });
+
+    it('stays quiet about an execution that was already failed when the page opened', async () => {
+      state('failed', 'viejo');
+      const { chat } = await render([]);
+
+      expect(chat.messages()).toHaveLength(0);
+    });
+  });
+
   describe('the notes that Lucy proposes for an agent', () => {
     const buttons = (fixture: { nativeElement: HTMLElement }) => [
       ...fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.proposal button'),
@@ -112,6 +157,32 @@ describe('ExecutionChat', () => {
       expect(addNote).toHaveBeenCalledWith('t2', 'No toques los submódulos.');
       expect(chat.proposals()).toEqual([]);
       expect(chat.messages().at(-1)?.content).toContain('ticket 2');
+    });
+
+    it('offers to retry too only when the execution failed, and does it after leaving the note', async () => {
+      detail.set({ status: 'running', error: null });
+      const { fixture, chat } = await render([]);
+      chat.toggle();
+      chat.proposals.set([proposal]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(buttons(fixture)).toHaveLength(1);
+
+      detail.set({ status: 'failed', error: 'x' });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const both = buttons(fixture);
+      expect(both.map((button) => button.textContent?.trim())).toEqual([
+        'Dejar la nota',
+        'Dejar la nota y reintentar',
+      ]);
+
+      both[1].click();
+      await fixture.whenStable();
+
+      expect(addNote).toHaveBeenCalledWith('t2', 'No toques los submódulos.');
+      expect(retry).toHaveBeenCalledTimes(1);
+      expect(chat.messages().at(-1)?.content).toContain('Volví a lanzar');
     });
 
     it('keeps the proposal when the note could not be saved', async () => {

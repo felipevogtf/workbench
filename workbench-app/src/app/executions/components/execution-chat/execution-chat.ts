@@ -56,6 +56,17 @@ import { NoteProposal } from '../../models/execution';
               >
                 Dejar la nota
               </button>
+              @if (store.detail()?.status === 'failed') {
+                <button
+                  app-button
+                  size="sm"
+                  type="button"
+                  [disabled]="store.acting()"
+                  (click)="pass(proposal, true)"
+                >
+                  Dejar la nota y reintentar
+                </button>
+              }
             </article>
           }
         </div>
@@ -113,16 +124,42 @@ export class ExecutionChat {
   private seen: Set<string> | null = null;
 
   /** El usuario confirma la nota que propuso Lucy: queda en el ticket y el agente la verá la próxima vez. */
-  protected async pass(proposal: NoteProposal): Promise<void> {
+  protected async pass(proposal: NoteProposal, retry = false): Promise<void> {
     if (!(await this.store.addNote(proposal.ticketId, proposal.text))) return;
     this.chat.proposals.update((all) => all.filter((other) => other !== proposal));
+    const left = `Listo: dejé la nota en el ticket ${proposal.ticket} «${proposal.title}».`;
+
+    if (retry && (await this.store.retry())) {
+      this.chat.receive(`${left} Volví a lanzar la ejecución: el agente la verá al retomarla.`);
+      return;
+    }
     this.chat.receive(
-      `Listo: dejé la nota en el ticket ${proposal.ticket} «${proposal.title}». El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`,
+      `${left} El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`,
     );
   }
 
+  /** El estado en que se vio la ejecución; `undefined` = todavía no se ha visto. */
+  private status: string | undefined;
+
   constructor() {
     effect(() => this.chat.bind(this.executionId()));
+
+    // Si la ejecución falla con la página abierta, Lucy lo dice en su chat para platicar qué hacer. Sin llamar al
+    // modelo: es el error tal cual, y la conversación empieza cuando el usuario responde.
+    effect(() => {
+      const detail = this.store.detail();
+      untracked(() => {
+        if (!detail) return;
+        const failedNow =
+          detail.status === 'failed' && this.status !== undefined && this.status !== 'failed';
+        this.status = detail.status;
+        if (!failedNow) return;
+        const error = (detail.error ?? 'sin detalle').replace(/\s+/g, ' ').slice(0, 300);
+        this.chat.receive(
+          `**La ejecución falló.**\n\n> ${error}\n\nSi quieres, platicamos qué hacer: te recomiendo algo y, cuando lo decidamos, dejo la nota para el agente.`,
+        );
+      });
+    });
 
     effect(() => {
       const questions = this.questions();
