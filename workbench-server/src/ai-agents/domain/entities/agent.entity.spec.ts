@@ -81,6 +81,35 @@ describe('Agent', () => {
     ]);
   });
 
+  it('lets the execution reviewer run the tests, lint and build, but not edit or install', () => {
+    const checks = [
+      'Bash(npm test:*)',
+      'Bash(npm run test:*)',
+      'Bash(npm run lint:*)',
+      'Bash(npm run build:*)',
+    ];
+    const reviewer = Agent.create({
+      ...valid,
+      module: 'task-reviewer',
+      allowedTools: ['Read', 'Bash(git diff:*)', ...checks],
+    });
+    expect(reviewer.allowedTools).toEqual([
+      'Read',
+      'Bash(git diff:*)',
+      ...checks,
+    ]);
+
+    for (const tool of ['Edit', 'Write', 'Bash(npm install:*)']) {
+      expect(() =>
+        Agent.create({
+          ...valid,
+          module: 'task-reviewer',
+          allowedTools: [tool],
+        }),
+      ).toThrow(/not allowed/);
+    }
+  });
+
   it('rejects a tool that its module does not allow', () => {
     expect(() =>
       Agent.create({

@@ -66,6 +66,7 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(npm run lint:*)',
     'Bash(npm run build:*)',
   ],
+  // Revisa corriendo las pruebas, el lint y el build; no edita ni instala (el runner descarta lo que deje).
   'task-reviewer': [
     'Read',
     'Grep',
@@ -73,6 +74,10 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(git diff:*)',
     'Bash(git log:*)',
     'Bash(git show:*)',
+    'Bash(npm test:*)',
+    'Bash(npm run test:*)',
+    'Bash(npm run lint:*)',
+    'Bash(npm run build:*)',
   ],
   // El chat conversa sobre el código de una PR: puede leerlo y comparar ramas, nada más.
   chat: [

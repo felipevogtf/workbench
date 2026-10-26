@@ -115,7 +115,8 @@ export function agentLabel(agent: Pick<Agent, 'name' | 'displayName'>): string {
 
 /**
  * Herramientas que el backend permite a un agente de cada módulo (de solo lectura, salvo el
- * desarrollador de la ejecución de tareas, que además edita archivos y corre pruebas).
+ * desarrollador de la ejecución de tareas, que además edita archivos y corre pruebas, y el
+ * revisor, que corre pruebas, lint y build sin editar).
  * Espejo de `MODULE_TOOLS` en workbench-server; si el backend rechaza otra, devuelve un 400
  * con la lista real.
  */
@@ -128,5 +129,5 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
   // prettier-ignore
   'task-developer': ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git restore:*)', 'Bash(git checkout --:*)', 'Bash(npm install:*)', 'Bash(npm i:*)', 'Bash(npm ci:*)', 'Bash(npm test:*)', 'Bash(npm run test:*)', 'Bash(npm run lint:*)', 'Bash(npm run build:*)'],
   // prettier-ignore
-  'task-reviewer': ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
+  'task-reviewer': ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)', 'Bash(npm test:*)', 'Bash(npm run test:*)', 'Bash(npm run lint:*)', 'Bash(npm run build:*)'],
 };
