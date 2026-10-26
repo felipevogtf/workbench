@@ -102,7 +102,7 @@
             </app-alert>
           }
 
-          @if (current.ticket.notes?.length || current.ticket.status !== 'done') {
+          @if (current.ticket.notes?.length || current.ticket.status !== 'done' || reopenable()) {
             <section class="block">
               <h5>Notas para el agente</h5>
               @for (note of current.ticket.notes; track note.at) {
@@ -115,18 +115,37 @@
                   Ninguna. Lo que escribas aquí lo verá quien trabaje el ticket la próxima vez.
                 </p>
               }
-              @if (current.ticket.status !== 'done') {
-                <form class="note-form" (submit)="$event.preventDefault(); sendNote(box)">
+              @if (current.ticket.status !== 'done' || reopenable()) {
+                <form
+                  class="note-form"
+                  (submit)="
+                    $event.preventDefault(); sendNote(box, current.ticket.status === 'done')
+                  "
+                >
                   <textarea
                     #box
                     rows="2"
                     aria-label="Nota para el agente de este ticket"
-                    placeholder="Por ejemplo: no toques los submódulos"
+                    [placeholder]="
+                      current.ticket.status === 'done'
+                        ? 'Qué hay que corregir en este ticket'
+                        : 'Por ejemplo: no toques los submódulos'
+                    "
                     [disabled]="busy()"
                   ></textarea>
                   <button app-button size="sm" type="submit" [disabled]="busy()">
-                    Dejar la nota
+                    {{
+                      current.ticket.status === 'done'
+                        ? 'Reabrir el ticket con esta nota'
+                        : 'Dejar la nota'
+                    }}
                   </button>
+                  @if (current.ticket.status === 'done') {
+                    <p class="muted">
+                      Vuelve a desarrollo y revisión con tu nota (la revisión ve solo la corrección)
+                      y, al terminar, se actualiza la misma PR.
+                    </p>
+                  }
                 </form>
               }
             </section>

@@ -35,7 +35,17 @@ const AGENTS = [
 
 describe('ExecutionPage', () => {
   let api: Record<
-    'get' | 'logs' | 'cancel' | 'retry' | 'begin' | 'assign' | 'chat' | 'answer',
+    | 'get'
+    | 'logs'
+    | 'cancel'
+    | 'retry'
+    | 'begin'
+    | 'assign'
+    | 'chat'
+    | 'answer'
+    | 'reopenTicket'
+    | 'addTickets'
+    | 'requestFinalReview',
     ReturnType<typeof vi.fn>
   >;
   let ask: ReturnType<typeof vi.fn>;
@@ -52,6 +62,9 @@ describe('ExecutionPage', () => {
       assign: vi.fn(() => of(execution('e1', 'awaiting'))),
       chat: vi.fn(() => of({ reply: 'Va bien' })),
       answer: vi.fn(() => of(execution('e1', 'running'))),
+      reopenTicket: vi.fn(() => of(execution('e1', 'running'))),
+      addTickets: vi.fn(() => of(execution('e1', 'running'))),
+      requestFinalReview: vi.fn(() => of(execution('e1', 'completed'))),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -540,6 +553,106 @@ describe('ExecutionPage', () => {
       await fixture.whenStable();
 
       expect(fixture.nativeElement.querySelector('app-ticket-panel')).toBeNull();
+    });
+  });
+
+  describe('correcting a finished execution', () => {
+    const finding = {
+      severity: 'high' as const,
+      file: 'docker/nginx/dsy.conf',
+      issue: 'La ruta /ea no existe',
+      suggestion: 'Usar /secured/admin/ea',
+    };
+    const review = (extra: Record<string, unknown> = {}) => ({
+      status: 'done',
+      requestedAt: '2026-10-26T10:00:00Z',
+      finishedAt: '2026-10-26T10:05:00Z',
+      summary: 'Falta cubrir una parte del plan',
+      findings: [finding],
+      error: null,
+      ...extra,
+    });
+    const completed = (extra: Record<string, unknown> = {}) =>
+      detail('e1', 'completed', {
+        tickets: [ticket('a', { title: 'Uno', status: 'done' })],
+        ...extra,
+      } as never);
+    const press = (element: HTMLElement, text: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent?.includes(text))!
+        .click();
+
+    it('offers the final review once the execution is completed, and not while it runs', async () => {
+      const finished: HTMLElement = (await render(completed())).nativeElement;
+      expect(finished.querySelector('app-final-review-panel')).not.toBeNull();
+
+      const running: HTMLElement = (await render(busy())).nativeElement;
+      expect(running.querySelector('app-final-review-panel')).toBeNull();
+    });
+
+    it('asks for the final review when the user presses the button', async () => {
+      const fixture = await render(completed());
+
+      press(fixture.nativeElement, 'Pedir la revisión final');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.requestFinalReview).toHaveBeenCalledWith('e1');
+    });
+
+    it('shows the report once it arrives, and keeps showing it for a failed review', async () => {
+      const done: HTMLElement = (await render(completed({ finalReview: review() }))).nativeElement;
+      expect(done.textContent).toContain('Falta cubrir una parte del plan');
+      expect(done.textContent).toContain('La ruta /ea no existe');
+
+      const failed: HTMLElement = (
+        await render(completed({ finalReview: review({ status: 'failed', error: 'sin runner' }) }))
+      ).nativeElement;
+      expect(failed.textContent).toContain('sin runner');
+    });
+
+    it('turns a finding into a correction ticket', async () => {
+      const fixture = await render(completed({ finalReview: review() }));
+
+      press(fixture.nativeElement, 'Corregir con un ticket');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.addTickets).toHaveBeenCalledWith('e1', [
+        {
+          title: 'Corregir: La ruta /ea no existe',
+          description:
+            'La ruta /ea no existe\n\nQué cambiar: Usar /secured/admin/ea\n\nArchivo: docker/nginx/dsy.conf',
+          level: 'medium',
+          files: ['docker/nginx/dsy.conf'],
+        },
+      ]);
+    });
+
+    it('reopens a done ticket from its panel with the note', async () => {
+      const fixture = await render(completed());
+      const card = fixture.nativeElement.querySelector('.card') as HTMLButtonElement;
+      card.click();
+      await vi.advanceTimersByTimeAsync(0);
+      await fixture.whenStable();
+
+      const box = fixture.nativeElement.querySelector('.note-form textarea') as HTMLTextAreaElement;
+      box.value = 'Cambia la ruta';
+      press(fixture.nativeElement, 'Reabrir el ticket con esta nota');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.reopenTicket).toHaveBeenCalledWith('e1', 'a', 'Cambia la ruta');
+    });
+
+    it('does not offer to reopen a ticket while the execution is still running', async () => {
+      const fixture = await render(busy());
+      const element: HTMLElement = fixture.nativeElement;
+      const card = [...element.querySelectorAll<HTMLButtonElement>('.card')].find((each) =>
+        each.textContent?.includes('Uno'),
+      ) as HTMLButtonElement;
+      card.click();
+      await vi.advanceTimersByTimeAsync(0);
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.textContent).not.toContain('Reabrir el ticket con esta nota');
     });
   });
 });

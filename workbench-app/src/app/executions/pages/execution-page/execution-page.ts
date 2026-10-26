@@ -24,6 +24,7 @@ import { ExecutionChat } from '../../components/execution-chat/execution-chat';
 import { TicketAssignment } from '../../components/ticket-assignment/ticket-assignment';
 import { TicketQuestions } from '../../components/ticket-questions/ticket-questions';
 import { TicketBoard } from '../../components/ticket-board/ticket-board';
+import { FinalReviewPanel } from '../../components/final-review-panel/final-review-panel';
 import { TicketPanel } from '../../components/ticket-panel/ticket-panel';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
@@ -34,6 +35,7 @@ import {
   EXECUTION_STATUS_LABEL,
   EXECUTION_STATUS_TONE,
   ExecutionDetail,
+  FinalReviewFinding,
   JobSummary,
   STAGE_LABEL,
   StageStatus,
@@ -71,6 +73,7 @@ const GENERAL = 'general';
     TicketAssignment,
     TicketQuestions,
     TicketBoard,
+    FinalReviewPanel,
     TicketPanel,
   ],
   providers: [ExecutionStore, ExecutionChatStore],
@@ -205,7 +208,9 @@ export class ExecutionPage {
   protected readonly panelJobs = computed(() => {
     const jobs = this.store.detail()?.jobs ?? [];
     return this.openId() === GENERAL
-      ? jobs.filter((job) => job.kind === 'tickets' || job.kind === 'publish')
+      ? jobs.filter(
+          (job) => job.kind === 'tickets' || job.kind === 'publish' || job.kind === 'final',
+        )
       : jobs.filter((job) => job.ticketId === this.openId());
   });
 
@@ -280,6 +285,36 @@ export class ExecutionPage {
   protected leaveNote(text: string): void {
     const ticketId = this.panelCard()?.ticket.id;
     if (ticketId) void this.store.addNote(ticketId, text);
+  }
+
+  /** El usuario reabre el ticket abierto (ya hecho) con una nota de lo que hay que corregir. */
+  protected reopen(text: string): void {
+    const ticketId = this.panelCard()?.ticket.id;
+    if (ticketId) void this.store.reopenTicket(ticketId, text);
+  }
+
+  /** Pide la revisión de toda la rama. */
+  protected requestFinalReview(): void {
+    void this.store.requestFinalReview();
+  }
+
+  /** Convierte un hallazgo de la revisión final en un ticket de corrección. */
+  protected fixFinding(finding: FinalReviewFinding): void {
+    const issue = finding.issue.replace(/\s+/g, ' ').trim();
+    void this.store.addTickets([
+      {
+        title: `Corregir: ${issue}`.slice(0, 120),
+        description: [
+          finding.issue,
+          finding.suggestion ? `Qué cambiar: ${finding.suggestion}` : '',
+          finding.file ? `Archivo: ${finding.file}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
+        level: 'medium',
+        ...(finding.file ? { files: [finding.file] } : {}),
+      },
+    ]);
   }
 
   protected answer(reply: { ticketId: string; text: string }): void {

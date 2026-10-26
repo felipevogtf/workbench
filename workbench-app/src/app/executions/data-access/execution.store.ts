@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
-import { ExecutionDetail, isExecutionActive } from '../models/execution';
+import { ExecutionDetail, NewTicketInput, isExecutionActive } from '../models/execution';
 import { ExecutionsApi } from './executions.api';
 
 export const EXECUTION_POLL_INTERVAL_MS = 3000;
@@ -33,7 +33,8 @@ export class ExecutionStore {
 
   readonly active = computed(() => {
     const detail = this.detailState();
-    return !!detail && isExecutionActive(detail);
+    // La revisión final corre con la ejecución ya terminada: se sigue consultando hasta que llegue su informe.
+    return !!detail && (isExecutionActive(detail) || detail.finalReview?.status === 'running');
   });
 
   /** El trabajo cuyo registro se muestra: el elegido o, si no, el último. */
@@ -86,6 +87,21 @@ export class ExecutionStore {
   /** Deja una nota para quien trabaje el ticket la próxima vez. */
   async addNote(ticketId: string, text: string): Promise<boolean> {
     return this.act((id) => this.api.addNote(id, ticketId, text));
+  }
+
+  /** Reabre un ticket terminado con una nota: vuelve a desarrollo y revisión. */
+  async reopenTicket(ticketId: string, text: string): Promise<boolean> {
+    return this.act((id) => this.api.reopenTicket(id, ticketId, text));
+  }
+
+  /** Suma tickets a una ejecución terminada. */
+  async addTickets(tickets: readonly NewTicketInput[]): Promise<boolean> {
+    return this.act((id) => this.api.addTickets(id, tickets));
+  }
+
+  /** Pide la revisión final de toda la rama. */
+  async requestFinalReview(): Promise<boolean> {
+    return this.act((id) => this.api.requestFinalReview(id));
   }
 
   async retry(): Promise<boolean> {

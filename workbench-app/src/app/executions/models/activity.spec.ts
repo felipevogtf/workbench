@@ -5,6 +5,15 @@ const who = (job: { agentId: string | null }) =>
   job.agentId === 'dev' ? 'David' : job.agentId === 'rev' ? 'Maine' : 'Lucy';
 
 describe('activityOf', () => {
+  it('does not put the final review in the story of a ticket', () => {
+    const events = activityOf(
+      [job('f', { kind: 'final', agentId: 'rev', startedAt: '2026-10-26T10:00:00Z' })],
+      who,
+    );
+
+    expect(events).toEqual([]);
+  });
+
   it('tells who created the tickets', () => {
     const events = activityOf([job('t', { kind: 'tickets', agentId: 'tk' })], who);
 

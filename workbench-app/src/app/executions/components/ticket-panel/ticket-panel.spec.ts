@@ -279,4 +279,63 @@ describe('TicketPanel', () => {
 
     expect(closed).toBe(3);
   });
+
+  describe('reopening a done ticket', () => {
+    const done = boardCard(ticket('a', { status: 'done', title: 'API' }), {
+      worker: { name: 'Maine', avatar: null },
+    });
+    const form = (element: HTMLElement) => ({
+      box: element.querySelector<HTMLTextAreaElement>('.note-form textarea'),
+      button: element.querySelector<HTMLButtonElement>('.note-form button'),
+    });
+
+    it('offers to reopen it with a note once the execution is completed', async () => {
+      const fixture = await render({ card: done, reopenable: true });
+      const element: HTMLElement = fixture.nativeElement;
+      const reopened: string[] = [];
+      const noted: string[] = [];
+      fixture.componentInstance.reopened.subscribe((text) => reopened.push(text));
+      fixture.componentInstance.noteAdded.subscribe((text) => noted.push(text));
+
+      const { box, button } = form(element);
+      expect(button!.textContent).toContain('Reabrir el ticket con esta nota');
+      expect(element.textContent).toContain('se actualiza la misma PR');
+      box!.value = '  Cambia la ruta  ';
+      button!.click();
+
+      expect(reopened).toEqual(['Cambia la ruta']);
+      expect(noted).toEqual([]);
+      expect(box!.value).toBe('');
+    });
+
+    it('does not offer it while the execution is not completed, but still shows the notes it has', async () => {
+      const withNote = boardCard(
+        ticket('a', {
+          status: 'done',
+          notes: [{ at: '2026-10-26T00:00:00Z', from: 'user', text: 'Usa el componente X' }],
+        }),
+        { worker: { name: 'Maine', avatar: null } },
+      );
+      const element: HTMLElement = (await render({ card: withNote })).nativeElement;
+
+      expect(form(element).box).toBeNull();
+      expect(element.textContent).toContain('Usa el componente X');
+    });
+
+    it('keeps leaving a plain note on a ticket that is not done, even when the execution is completed', async () => {
+      const fixture = await render({ card, reopenable: true });
+      const reopened: string[] = [];
+      const noted: string[] = [];
+      fixture.componentInstance.reopened.subscribe((text) => reopened.push(text));
+      fixture.componentInstance.noteAdded.subscribe((text) => noted.push(text));
+
+      const { box, button } = form(fixture.nativeElement);
+      expect(button!.textContent).toContain('Dejar la nota');
+      box!.value = 'No toques los submódulos';
+      button!.click();
+
+      expect(noted).toEqual(['No toques los submódulos']);
+      expect(reopened).toEqual([]);
+    });
+  });
 });

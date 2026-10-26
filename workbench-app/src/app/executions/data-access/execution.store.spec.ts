@@ -6,7 +6,17 @@ import { ExecutionStore } from './execution.store';
 import { ExecutionsApi } from './executions.api';
 
 describe('ExecutionStore', () => {
-  let api: Record<'get' | 'logs' | 'cancel' | 'retry' | 'addNote', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    | 'get'
+    | 'logs'
+    | 'cancel'
+    | 'retry'
+    | 'addNote'
+    | 'reopenTicket'
+    | 'addTickets'
+    | 'requestFinalReview',
+    ReturnType<typeof vi.fn>
+  >;
   let store: ExecutionStore;
   let toast: Toast;
 
@@ -18,6 +28,9 @@ describe('ExecutionStore', () => {
       cancel: vi.fn(() => of(execution('e1', 'cancelled'))),
       retry: vi.fn(() => of(execution('e1', 'running'))),
       addNote: vi.fn(() => of(execution('e1', 'running'))),
+      reopenTicket: vi.fn(() => of(execution('e1', 'running'))),
+      addTickets: vi.fn(() => of(execution('e1', 'running'))),
+      requestFinalReview: vi.fn(() => of(execution('e1', 'completed'))),
     };
     TestBed.configureTestingModule({
       providers: [ExecutionStore, { provide: ExecutionsApi, useValue: api }],
@@ -152,5 +165,79 @@ describe('ExecutionStore', () => {
 
     expect(await store.addNote('t1', 'Hola')).toBe(false);
     expect(error).toHaveBeenCalled();
+  });
+
+  describe('correcting a finished execution', () => {
+    it('reopens a ticket with the note and loads the execution again', async () => {
+      await store.load('e1');
+      api.get.mockClear();
+
+      expect(await store.reopenTicket('t1', 'Corrige la ruta')).toBe(true);
+
+      expect(api.reopenTicket).toHaveBeenCalledWith('e1', 't1', 'Corrige la ruta');
+      expect(api.get).toHaveBeenCalledWith('e1');
+    });
+
+    it('adds tickets and loads the execution again', async () => {
+      await store.load('e1');
+      const tickets = [
+        { title: 'Hotfix', description: 'Cambiar la ruta', level: 'simple' as const },
+      ];
+
+      expect(await store.addTickets(tickets)).toBe(true);
+
+      expect(api.addTickets).toHaveBeenCalledWith('e1', tickets);
+    });
+
+    it('asks for the final review', async () => {
+      await store.load('e1');
+
+      expect(await store.requestFinalReview()).toBe(true);
+
+      expect(api.requestFinalReview).toHaveBeenCalledWith('e1');
+    });
+
+    it('tells the user when it could not be done, and says it did not happen', async () => {
+      await store.load('e1');
+      api.reopenTicket.mockReturnValue(throwError(() => new Error('That ticket is already done')));
+      api.addTickets.mockReturnValue(throwError(() => new Error('At most 5 tickets')));
+      api.requestFinalReview.mockReturnValue(throwError(() => new Error('already running')));
+      const error = vi.spyOn(toast, 'error');
+
+      expect(await store.reopenTicket('t1', 'x')).toBe(false);
+      expect(await store.addTickets([{ title: 'a', description: 'b' }])).toBe(false);
+      expect(await store.requestFinalReview()).toBe(false);
+      expect(error).toHaveBeenCalledTimes(3);
+    });
+
+    it('keeps polling after the execution finished, until the report of the final review arrives', async () => {
+      const review = (status: string) => ({
+        status,
+        requestedAt: '2026-10-26T10:00:00Z',
+        finishedAt: null,
+        summary: null,
+        findings: [],
+        error: null,
+      });
+      api.get.mockReturnValue(
+        of(detail('e1', 'completed', { finalReview: review('running') } as never)),
+      );
+      await store.load('e1');
+      expect(store.active()).toBe(true);
+
+      api.get.mockClear();
+      await vi.advanceTimersByTimeAsync(3100);
+      expect(api.get).toHaveBeenCalled();
+
+      api.get.mockReturnValue(
+        of(detail('e1', 'completed', { finalReview: review('done') } as never)),
+      );
+      await vi.advanceTimersByTimeAsync(3100);
+      expect(store.active()).toBe(false);
+
+      api.get.mockClear();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(api.get).not.toHaveBeenCalled();
+    });
   });
 });

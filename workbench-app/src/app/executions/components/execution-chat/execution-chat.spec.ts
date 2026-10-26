@@ -5,6 +5,7 @@ import { AgentsApi } from '../../../ai-agents/data-access/agents.api';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
 import { ExecutionsApi } from '../../data-access/executions.api';
+import { ChatProposal } from '../../models/execution';
 import { ExecutionChat } from './execution-chat';
 
 const ask = (id: string, text = '¿Todas las pantallas o solo el formulario?') => ({
@@ -15,6 +16,8 @@ const ask = (id: string, text = '¿Todas las pantallas o solo el formulario?') =
 });
 
 const proposal = {
+  kind: 'note' as const,
+  reopen: false,
   ticketId: 't2',
   ticket: 2,
   title: 'Pantalla',
@@ -24,17 +27,38 @@ const proposal = {
 describe('ExecutionChat', () => {
   let addNote: ReturnType<typeof vi.fn<(ticketId: string, text: string) => Promise<boolean>>>;
   let retry: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
-  let detail: WritableSignal<{ status: string; error: string | null } | null>;
+  let reopenTicket: ReturnType<typeof vi.fn<(ticketId: string, text: string) => Promise<boolean>>>;
+  let addTickets: ReturnType<typeof vi.fn<(tickets: unknown[]) => Promise<boolean>>>;
+  let requestFinalReview: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
+  let detail: WritableSignal<{
+    status: string;
+    error: string | null;
+    finalReview?: unknown;
+  } | null>;
 
   beforeEach(() => {
     addNote = vi.fn(() => Promise.resolve(true));
     retry = vi.fn(() => Promise.resolve(true));
+    reopenTicket = vi.fn(() => Promise.resolve(true));
+    addTickets = vi.fn(() => Promise.resolve(true));
+    requestFinalReview = vi.fn(() => Promise.resolve(true));
     detail = signal(null);
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         ExecutionChatStore,
-        { provide: ExecutionStore, useValue: { acting: signal(false), addNote, retry, detail } },
+        {
+          provide: ExecutionStore,
+          useValue: {
+            acting: signal(false),
+            addNote,
+            retry,
+            reopenTicket,
+            addTickets,
+            requestFinalReview,
+            detail,
+          },
+        },
         { provide: ExecutionsApi, useValue: { chat: () => of({ reply: 'ok' }) } },
         { provide: AgentsApi, useValue: { list: () => of([]) } },
       ],
@@ -228,7 +252,7 @@ describe('ExecutionChat', () => {
       expect(chat.messages().at(-1)?.content).toContain('Volví a lanzar');
     });
 
-    it('renders the note as Markdown and folds a long one behind «Ver la nota completa»', async () => {
+    it('renders the note as Markdown and folds a long one behind «Ver el texto completo»', async () => {
       const long = {
         ...proposal,
         text: `Cierra lo pendiente en \`docker/nginx/dsy.conf\`. ${'Detalle largo. '.repeat(30)}`,
@@ -244,7 +268,7 @@ describe('ExecutionChat', () => {
 
       expect(text()?.querySelector('code')?.textContent).toBe('docker/nginx/dsy.conf');
       expect(text()?.classList.contains('proposal__text--clamped')).toBe(true);
-      expect(more()?.textContent?.trim()).toBe('Ver la nota completa');
+      expect(more()?.textContent?.trim()).toBe('Ver el texto completo');
 
       more()!.click();
       fixture.detectChanges();
@@ -274,6 +298,188 @@ describe('ExecutionChat', () => {
       await fixture.whenStable();
 
       expect(chat.proposals()).toEqual([proposal]);
+    });
+  });
+
+  describe('what Lucy proposes once the execution is completed', () => {
+    const buttons = (fixture: { nativeElement: HTMLElement }) =>
+      [...fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.proposal button')].filter(
+        (button) => !button.classList.contains('proposal__more'),
+      );
+
+    async function open(proposals: ChatProposal[]) {
+      const { fixture, chat } = await render([]);
+      chat.toggle();
+      chat.proposals.set(proposals);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      return { fixture, chat };
+    }
+
+    it('reopens a done ticket with the note, only when the user confirms', async () => {
+      const reopening = { ...proposal, reopen: true };
+      const { fixture, chat } = await open([reopening]);
+
+      expect(fixture.nativeElement.textContent).toContain('Reabrir el ticket 2 con esta nota');
+      expect(reopenTicket).not.toHaveBeenCalled();
+      expect(buttons(fixture).map((button) => button.textContent?.trim())).toEqual([
+        'Reabrir el ticket con esta nota',
+      ]);
+
+      buttons(fixture)[0].click();
+      await fixture.whenStable();
+
+      expect(reopenTicket).toHaveBeenCalledWith('t2', 'No toques los submódulos.');
+      expect(addNote).not.toHaveBeenCalled();
+      expect(chat.proposals()).toEqual([]);
+      expect(chat.messages().at(-1)?.content).toContain('reabrí el ticket 2');
+    });
+
+    it('does not offer to retry together with reopening', async () => {
+      detail.set({ status: 'failed', error: 'x' });
+      const { fixture } = await open([{ ...proposal, reopen: true }]);
+
+      expect(buttons(fixture)).toHaveLength(1);
+    });
+
+    it('adds the ticket she proposes, with its level and repository, when the user confirms', async () => {
+      const ticket = {
+        kind: 'ticket' as const,
+        title: 'Corregir la ruta',
+        text: 'Cambiar /ea por /secured/admin/ea',
+        level: 'simple' as const,
+        repo: 'acme/api',
+      };
+      const { fixture, chat } = await open([ticket]);
+
+      expect(fixture.nativeElement.textContent).toContain(
+        'Ticket nuevo (simple): Corregir la ruta',
+      );
+      expect(addTickets).not.toHaveBeenCalled();
+
+      buttons(fixture)[0].click();
+      await fixture.whenStable();
+
+      expect(addTickets).toHaveBeenCalledWith([
+        {
+          title: 'Corregir la ruta',
+          description: 'Cambiar /ea por /secured/admin/ea',
+          level: 'simple',
+          repo: 'acme/api',
+        },
+      ]);
+      expect(chat.proposals()).toEqual([]);
+      expect(chat.messages().at(-1)?.content).toContain('sumé el ticket «Corregir la ruta»');
+    });
+
+    it('does not send a repository when the proposal has none', async () => {
+      const { fixture } = await open([
+        { kind: 'ticket', title: 'Ajuste', text: 'Hacerlo', level: 'medium', repo: null },
+      ]);
+
+      buttons(fixture)[0].click();
+      await fixture.whenStable();
+
+      expect(addTickets).toHaveBeenCalledWith([
+        { title: 'Ajuste', description: 'Hacerlo', level: 'medium' },
+      ]);
+    });
+
+    it('asks for the final review when the user confirms', async () => {
+      const { fixture, chat } = await open([{ kind: 'final-review' }]);
+
+      expect(fixture.nativeElement.textContent).toContain('Revisión final de toda la rama');
+      expect(requestFinalReview).not.toHaveBeenCalled();
+
+      buttons(fixture)[0].click();
+      await fixture.whenStable();
+
+      expect(requestFinalReview).toHaveBeenCalledTimes(1);
+      expect(chat.proposals()).toEqual([]);
+      expect(chat.messages().at(-1)?.content).toContain('Pedí la revisión final');
+    });
+
+    it('keeps what she proposed when it could not be done', async () => {
+      requestFinalReview.mockResolvedValue(false);
+      addTickets.mockResolvedValue(false);
+      reopenTicket.mockResolvedValue(false);
+      const proposals: ChatProposal[] = [
+        { kind: 'final-review' },
+        { kind: 'ticket', title: 'T', text: 'x', level: 'simple', repo: null },
+        { ...proposal, reopen: true },
+      ];
+      const { fixture, chat } = await open(proposals);
+
+      for (const button of buttons(fixture)) {
+        button.click();
+        await fixture.whenStable();
+      }
+
+      expect(chat.proposals()).toEqual(proposals);
+    });
+  });
+
+  describe('when the final review finishes', () => {
+    const review = (status: string, extra: Record<string, unknown> = {}) => ({
+      status,
+      requestedAt: '2026-10-26T00:00:00Z',
+      finishedAt: null,
+      summary: null,
+      findings: [],
+      error: null,
+      ...extra,
+    });
+    const state = (finalReview?: unknown) =>
+      detail.set({ status: 'completed', error: null, finalReview });
+
+    it('tells in the chat, with the summary and how many findings, when it finishes with the page open', async () => {
+      state(review('running'));
+      const { fixture, chat } = await render([]);
+
+      state(
+        review('done', {
+          summary: 'Falta cubrir una parte del plan',
+          findings: [{ severity: 'high', file: null, issue: 'x', suggestion: 'y' }],
+        }),
+      );
+      await fixture.whenStable();
+
+      expect(chat.messages()).toHaveLength(1);
+      expect(chat.messages()[0].content).toContain('La revisión final terminó');
+      expect(chat.messages()[0].content).toContain('Falta cubrir una parte del plan');
+      expect(chat.messages()[0].content).toContain('Encontró 1 hallazgo;');
+      expect(chat.unread()).toBe(1);
+    });
+
+    it('says it found nothing when the report is empty', async () => {
+      state(review('running'));
+      const { fixture, chat } = await render([]);
+
+      state(review('done', { summary: 'Todo en orden' }));
+      await fixture.whenStable();
+
+      expect(chat.messages()[0].content).toContain('No encontró problemas');
+    });
+
+    it('says so when it fails, with the error', async () => {
+      state(review('running'));
+      const { fixture, chat } = await render([]);
+
+      state(review('failed', { error: 'el runner no respondió' }));
+      await fixture.whenStable();
+
+      expect(chat.messages()[0].content).toContain('La revisión final falló');
+      expect(chat.messages()[0].content).toContain('el runner no respondió');
+    });
+
+    it('stays quiet about a report that was already there when the page opened, and about one still running', async () => {
+      state(review('done', { summary: 'Viejo' }));
+      const { fixture, chat } = await render([]);
+      expect(chat.messages()).toHaveLength(0);
+
+      state(review('running'));
+      await fixture.whenStable();
+      expect(chat.messages()).toHaveLength(0);
     });
   });
 });

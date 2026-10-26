@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ChatConversation } from '@shared/chat/chat-conversation';
 import { ChatAttachment, ChatMessage } from '@shared/chat/chat.models';
-import { NoteProposal } from '../models/execution';
+import { ChatProposal } from '../models/execution';
 import { ExecutionsApi } from './executions.api';
 
 /**
@@ -19,8 +19,8 @@ export class ExecutionChatStore extends ChatConversation {
     return Promise.reject(new Error('Este chat no acepta archivos'));
   }
 
-  /** Las notas que Lucy propone dejarle a un agente en su última respuesta, a la espera del usuario. */
-  readonly proposals = signal<NoteProposal[]>([]);
+  /** Lo que Lucy propone en su última respuesta (notas, tickets, la revisión final), a la espera de que el usuario lo confirme. */
+  readonly proposals = signal<ChatProposal[]>([]);
 
   protected async request(executionId: string, messages: ChatMessage[]): Promise<string> {
     this.proposals.set([]);

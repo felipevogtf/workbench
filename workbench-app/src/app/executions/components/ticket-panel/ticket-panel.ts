@@ -13,7 +13,7 @@ import {
   JOB_STATUS_LABEL,
   JOB_STATUS_TONE,
   JobSummary,
-  STAGE_LABEL,
+  JOB_LABEL,
   TICKET_STATUS_LABEL,
   TICKET_STATUS_TONE,
 } from '../../models/execution';
@@ -47,11 +47,15 @@ export class TicketPanel {
 
   /** Mientras se guarda algo, para no mandar dos veces la misma nota. */
   readonly busy = input(false);
+  /** La ejecución terminó: un ticket hecho se puede reabrir con una nota. */
+  readonly reopenable = input(false);
 
   readonly dismissed = output();
   readonly selectJob = output<string>();
   /** El usuario deja una nota para el agente de este ticket. */
   readonly noteAdded = output<string>();
+  /** El usuario reabre este ticket (ya hecho) con una nota de lo que hay que corregir. */
+  readonly reopened = output<string>();
 
   private readonly picked = signal<PanelTab | null>(null);
   /** Sin ticket no hay detalle ni historia: solo el registro. */
@@ -81,10 +85,11 @@ export class TicketPanel {
     this.picked.set(tab);
   }
 
-  protected sendNote(box: HTMLTextAreaElement): void {
+  protected sendNote(box: HTMLTextAreaElement, reopen: boolean): void {
     const text = box.value.trim();
     if (!text) return;
-    this.noteAdded.emit(text);
+    if (reopen) this.reopened.emit(text);
+    else this.noteAdded.emit(text);
     box.value = '';
   }
 
@@ -102,6 +107,6 @@ export class TicketPanel {
   protected jobLabel(job: JobSummary): string {
     const who = this.workerName()(job);
     const retry = job.attempt > 1 ? ` (intento ${job.attempt})` : '';
-    return `${STAGE_LABEL[job.kind]}${who ? ` · ${who}` : ''}${retry}`;
+    return `${JOB_LABEL[job.kind]}${who ? ` · ${who}` : ''}${retry}`;
   }
 }

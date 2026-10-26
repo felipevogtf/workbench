@@ -99,7 +99,38 @@ dividir el plan. Si el desarrollo tiene errores, se corrigen a mano en la rama d
   «no debo intervenir», pero necesita la base de B para aplicar las correcciones.
 - **D. Chequeos del runner** (lint, build, tests) antes de abrir la PR; necesita la etapa B de las recetas.
 
-**Decisión: A y B quedan para después.** Orden recomendado cuando se retomen: B (con A como caso particular), luego C con confirmación
-del usuario, luego aprobación automática con tope de rondas (por ejemplo 2).
+**Actualización (2026-10-27): A, B y una forma de C se construyeron** (ver la sección siguiente). Queda para después la aprobación
+automática con tope de rondas.
 
 **Pendiente de desplegar:** `7ff7c43` (Lucy ya no propone notas para tickets hechos).
+
+## Construido: corregir una ejecución terminada, revisión final y ramas (2026-10-27)
+
+**A. Reabrir un ticket con una nota.** En una ejecución *completada*, un ticket «hecho» vuelve a desarrollo y revisión con la nota
+del usuario (que entra al prompt del desarrollador y del revisor). La revisión parte del estado en que se reabrió, así que ve solo la
+corrección, y el ticket arranca con 2 revisiones nuevas. Al terminar se sube de nuevo la misma rama: la PR abierta se actualiza y no
+se abre otra. Se hace desde el panel del ticket («Reabrir el ticket con esta nota») o desde una propuesta de Lucy.
+
+**B. Agregar tickets a una ejecución completada** (un hotfix, lo que no se consideró): hasta 5 de una vez y 15 en total. Se desarrollan y
+se revisan como los demás, en la misma rama, y la PR abierta se actualiza. Los trabajadores solo se asignan a los nuevos.
+
+**Revisión final bajo demanda** (con la ejecución completada, nunca sola): un revisor lee toda la rama contra el plan, los criterios de
+los tickets y las recetas, corre `npm test/lint/build` sin editar nada y deja un informe con resumen y hallazgos (gravedad, archivo,
+qué está mal, qué cambiar). El informe queda en la ejecución (columna `final_review`), no mueve su estado y, si falla, falla solo la
+revisión. Cada hallazgo tiene un botón «Corregir con un ticket» (usa B). Lucy avisa en su chat cuando termina y conoce el informe.
+Cubre el repositorio principal; los demás de una tarea con varios repos los lee como consulta, sin poder hacer su diff.
+
+**Lucy propone, el usuario confirma** (nada se ejecuta solo): `NOTA <n>: …` (reabre el ticket si está hecho y la ejecución completada),
+`TICKET <nivel> | título | descripción [| repo]` y `REVISION FINAL`, cada una como una tarjeta con su botón en el chat.
+
+**Runner:** nuevo tipo de trabajo `final`, que se comporta como una revisión (herramientas de solo lectura más `npm test/lint/build`,
+descarta lo que deje, tiempo de 25 minutos). Al retomar una rama ya publicada, si el clon no la tiene se parte de la del remoto y no
+de la base, y si alguien le sumó commits a mano (una corrección en la PR) el worktree se adelanta a ellos para que el push no sea rechazado.
+
+**Nombres de rama:** ya no `workbench/<tarea>-<id>`. Ahora `feature|fix|hotfix/<tarea>` y, si la tarea viene de Plane (no es local),
+`feature/MEL-12/<tarea>` con el código de su ticket (clave del proyecto + número). El tipo se deduce del título de la tarea (palabras como
+*hotfix*, *fix*, *bug*, *corregir*, *arreglar*, *falla*; en otro caso *feature*) y se puede forzar con `branchType` al ejecutar (la app
+todavía no tiene un selector). Si la tarea ya tuvo ejecuciones, la rama lleva `-2`, `-3`… porque la anterior sigue en el remoto con su PR.
+
+**Todavía no hay:** un selector del tipo de rama en la app, la revisión final de varios repositorios con diff de cada uno, ni la aprobación
+automática de correcciones con tope de rondas. Servidor 705 tests, front 626, runner 83.

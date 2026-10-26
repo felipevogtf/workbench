@@ -174,6 +174,16 @@
           (open)="open($event)"
         />
       }
+
+      @if (execution.status === 'completed' || execution.finalReview) {
+        <app-final-review-panel
+          [review]="execution.finalReview ?? null"
+          [completed]="execution.status === 'completed'"
+          [busy]="store.acting()"
+          (requested)="requestFinalReview()"
+          (fix)="fixFinding($event)"
+        />
+      }
     </div>
 
     <app-execution-chat
@@ -194,7 +204,9 @@
         [selectedJobId]="store.selectedJob()?.id ?? null"
         [workerName]="workerName"
         [busy]="store.acting()"
+        [reopenable]="execution.status === 'completed'"
         (noteAdded)="leaveNote($event)"
+        (reopened)="reopen($event)"
         (dismissed)="closePanel()"
         (selectJob)="pickJob($event)"
       />

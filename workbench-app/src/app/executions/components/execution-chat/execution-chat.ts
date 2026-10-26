@@ -14,7 +14,9 @@ import { Button } from '@shared/ui/button/button';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
-import { NoteProposal } from '../../models/execution';
+import { ChatProposal, NoteProposal } from '../../models/execution';
+
+const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as const;
 
 /**
  * Chat flotante con Lucy sobre una ejecución: ella conoce el estado completo (tickets, quién los tiene,
@@ -39,20 +41,20 @@ import { NoteProposal } from '../../models/execution';
       <p chat-empty>
         Conoce la tarea, el plan, los tickets, quién trabaja en cada uno y los errores. Te explica
         lo que pasó y te recomienda qué hacer. Si quieres que un trabajador sepa algo, ella te
-        propone una nota para su ticket y tú la confirmas; lo demás lo haces con los botones de la
-        pantalla.
+        propone una nota para su ticket y tú la confirmas. Con la ejecución terminada también puede
+        proponerte reabrir un ticket, sumar tickets nuevos o pedir la revisión final.
       </p>
       @if (chat.proposals().length > 0) {
         <div chat-actions class="proposals">
           @for (proposal of chat.proposals(); track proposal) {
             <article class="proposal">
-              <p class="proposal__about">Nota para el ticket {{ proposal.ticket }}</p>
+              <p class="proposal__about">{{ headingOf(proposal) }}</p>
               <div class="proposal__text" [class.proposal__text--clamped]="!isOpen(proposal)">
-                <app-markdown-viewer [content]="proposal.text" />
+                <app-markdown-viewer [content]="bodyOf(proposal)" />
               </div>
-              @if (proposal.text.length > longNote) {
+              @if (bodyOf(proposal).length > longNote) {
                 <button type="button" class="proposal__more" (click)="toggle(proposal)">
-                  {{ isOpen(proposal) ? 'Ver menos' : 'Ver la nota completa' }}
+                  {{ isOpen(proposal) ? 'Ver menos' : 'Ver el texto completo' }}
                 </button>
               }
               <div class="proposal__buttons">
@@ -62,17 +64,17 @@ import { NoteProposal } from '../../models/execution';
                   size="sm"
                   type="button"
                   [disabled]="store.acting()"
-                  (click)="pass(proposal)"
+                  (click)="confirm(proposal)"
                 >
-                  Dejar la nota
+                  {{ confirmLabel(proposal) }}
                 </button>
-                @if (store.detail()?.status === 'failed') {
+                @if (offersRetry(proposal) && store.detail()?.status === 'failed') {
                   <button
                     app-button
                     size="sm"
                     type="button"
                     [disabled]="store.acting()"
-                    (click)="pass(proposal, true)"
+                    (click)="confirm(proposal, true)"
                   >
                     Dejar la nota y reintentar
                   </button>
@@ -162,44 +164,105 @@ export class ExecutionChat {
   /** Las preguntas que ya se vieron: al abrir la página las que ya había no se anuncian como nuevas. */
   private seen: Set<string> | null = null;
 
-  /** El usuario confirma la nota que propuso Lucy: queda en el ticket y el agente la verá la próxima vez. */
-  protected async pass(proposal: NoteProposal, retry = false): Promise<void> {
-    if (!(await this.store.addNote(proposal.ticketId, proposal.text))) return;
-    this.chat.proposals.update((all) => all.filter((other) => other !== proposal));
-    const left = `Listo: dejé la nota en el ticket ${proposal.ticket} «${proposal.title}».`;
-
-    if (retry && (await this.store.retry())) {
-      this.chat.receive(`${left} Volví a lanzar la ejecución: el agente la verá al retomarla.`);
-      return;
-    }
-    this.chat.receive(
-      `${left} El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`,
-    );
+  /** Cómo se llama lo que propone Lucy, en la tarjeta. */
+  protected headingOf(proposal: ChatProposal): string {
+    if (proposal.kind === 'final-review') return 'Revisión final de toda la rama';
+    if (proposal.kind === 'ticket')
+      return `Ticket nuevo (${LEVEL[proposal.level]}): ${proposal.title}`;
+    return proposal.reopen
+      ? `Reabrir el ticket ${proposal.ticket} con esta nota`
+      : `Nota para el ticket ${proposal.ticket}`;
   }
 
-  /** Desde cuántos caracteres una nota se muestra recortada, con «Ver la nota completa». */
+  /** El texto de la tarjeta (Markdown). */
+  protected bodyOf(proposal: ChatProposal): string {
+    return proposal.kind === 'final-review'
+      ? 'Un revisor lee toda la rama contra el plan, los tickets y las recetas, y deja un informe. No cambia nada por sí sola y gasta una llamada grande.'
+      : proposal.text;
+  }
+
+  protected confirmLabel(proposal: ChatProposal): string {
+    if (proposal.kind === 'final-review') return 'Pedir la revisión final';
+    if (proposal.kind === 'ticket') return 'Agregar el ticket';
+    return proposal.reopen ? 'Reabrir el ticket con esta nota' : 'Dejar la nota';
+  }
+
+  /** Solo una nota para un ticket que se trabajará de nuevo se puede dejar junto con reintentar. */
+  protected offersRetry(proposal: ChatProposal): boolean {
+    return proposal.kind === 'note' && !proposal.reopen;
+  }
+
+  /** El usuario confirma lo que propuso Lucy: recién ahí se hace. */
+  protected async confirm(proposal: ChatProposal, retry = false): Promise<void> {
+    const message = await this.run(proposal, retry);
+    if (message === null) return;
+    this.chat.proposals.update((all) => all.filter((other) => other !== proposal));
+    this.chat.receive(message);
+  }
+
+  /** Hace lo propuesto y devuelve lo que Lucy le cuenta al usuario; `null` si no se pudo. */
+  private async run(proposal: ChatProposal, retry: boolean): Promise<string | null> {
+    if (proposal.kind === 'final-review') {
+      return (await this.store.requestFinalReview())
+        ? 'Pedí la revisión final: un revisor está leyendo toda la rama. Te aviso aquí cuando termine.'
+        : null;
+    }
+    if (proposal.kind === 'ticket') {
+      const added = await this.store.addTickets([
+        {
+          title: proposal.title,
+          description: proposal.text,
+          level: proposal.level,
+          ...(proposal.repo ? { repo: proposal.repo } : {}),
+        },
+      ]);
+      return added
+        ? `Listo: sumé el ticket «${proposal.title}». Se desarrolla y se revisa como los demás, en la misma rama, y al terminar se actualiza la PR.`
+        : null;
+    }
+    return this.runNote(proposal, retry);
+  }
+
+  private async runNote(proposal: NoteProposal, retry: boolean): Promise<string | null> {
+    const label = `el ticket ${proposal.ticket} «${proposal.title}»`;
+    if (proposal.reopen) {
+      return (await this.store.reopenTicket(proposal.ticketId, proposal.text))
+        ? `Listo: reabrí ${label}. Vuelve a desarrollo y revisión con tu nota y, al terminar, se actualiza la misma PR.`
+        : null;
+    }
+    if (!(await this.store.addNote(proposal.ticketId, proposal.text))) return null;
+    const left = `Listo: dejé la nota en ${label}.`;
+    if (retry && (await this.store.retry())) {
+      return `${left} Volví a lanzar la ejecución: el agente la verá al retomarla.`;
+    }
+    return `${left} El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`;
+  }
+
+  /** Desde cuántos caracteres un texto se muestra recortado, con «Ver el texto completo». */
   protected readonly longNote = 200;
 
-  /** Las notas propuestas que el usuario abrió completas. */
-  private readonly opened = signal<ReadonlySet<NoteProposal>>(new Set());
+  /** Las propuestas que el usuario abrió completas. */
+  private readonly opened = signal<ReadonlySet<ChatProposal>>(new Set());
 
-  protected isOpen(proposal: NoteProposal): boolean {
+  protected isOpen(proposal: ChatProposal): boolean {
     return this.opened().has(proposal);
   }
 
-  protected toggle(proposal: NoteProposal): void {
+  protected toggle(proposal: ChatProposal): void {
     this.opened.update((current) => {
       const next = new Set(current);
       if (!next.delete(proposal)) next.add(proposal);
       return next;
     });
   }
-
   /** Las dudas que ya se vieron, igual que las preguntas. */
   private seenDoubts: Set<string> | null = null;
 
   /** El estado en que se vio la ejecución; `undefined` = todavía no se ha visto. */
   private status: string | undefined;
+
+  /** El estado en que se vio la revisión final (`null` = no pedida); `undefined` = todavía no se ha visto. */
+  private finalStatus: string | null | undefined;
 
   constructor() {
     effect(() => this.chat.bind(this.executionId()));
@@ -218,6 +281,37 @@ export class ExecutionChat {
         this.chat.receive(
           `**La ejecución falló.**\n\n> ${error}\n\nSi quieres, platicamos qué hacer: te recomiendo algo y, cuando lo decidamos, dejo la nota para el agente.`,
         );
+      });
+    });
+
+    // La revisión final tarda: cuando termina con la página abierta, Lucy lo cuenta en su chat. Sin llamar al modelo.
+    effect(() => {
+      const detail = this.store.detail();
+      untracked(() => {
+        if (!detail) return;
+        const review = detail.finalReview ?? null;
+        const before = this.finalStatus;
+        this.finalStatus = review?.status ?? null;
+        if (before !== 'running' || !review) return;
+
+        if (review.status === 'failed') {
+          this.chat.receive(
+            `**La revisión final falló.**\n\n> ${(review.error ?? 'sin detalle').replace(/\s+/g, ' ').slice(0, 300)}\n\nPuedes pedirla de nuevo desde la sección «Revisión final».`,
+          );
+        } else if (review.status === 'done') {
+          const found = review.findings.length;
+          this.chat.receive(
+            [
+              '**La revisión final terminó.**',
+              review.summary ?? '',
+              found === 0
+                ? 'No encontró problemas.'
+                : `Encontró ${found} hallazgo${found === 1 ? '' : 's'}; los ves en «Revisión final». Si quieres, platicamos cuáles corregir y los convierto en tickets.`,
+            ]
+              .filter(Boolean)
+              .join('\n\n'),
+          );
+        }
       });
     });
 

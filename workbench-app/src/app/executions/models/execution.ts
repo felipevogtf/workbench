@@ -5,6 +5,8 @@ import type { ExecutionUsage } from './usage';
 export type ExecutionStatus = 'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
 export type TicketLevel = 'simple' | 'medium' | 'complex';
 export type StageKey = 'tickets' | 'develop' | 'review' | 'publish';
+/** Los trabajos son las etapas y, aparte, la revisión final que el usuario pide cuando la ejecución terminó. */
+export type JobKind = StageKey | 'final';
 export type StageStatus = 'pending' | 'running' | 'done' | 'failed';
 /** `waiting`: el desarrollador hizo una pregunta y el ticket espera la respuesta. */
 export type TicketStatus = 'pending' | 'developing' | 'reviewing' | 'waiting' | 'done' | 'failed';
@@ -45,13 +47,64 @@ export interface TicketDoubt {
   text: string;
 }
 
-/** Una nota que Lucy propone dejarle a un agente; no se guarda hasta que el usuario la confirma. */
+/** Cuánto importa un hallazgo de la revisión final. */
+export type FindingSeverity = 'high' | 'medium' | 'low';
+
+/** Un problema que la revisión final encontró en la rama completa. */
+export interface FinalReviewFinding {
+  severity: FindingSeverity;
+  file: string | null;
+  issue: string;
+  suggestion: string;
+}
+
+/** El informe de la revisión de toda la rama; no cambia nada por sí solo. */
+export interface FinalReview {
+  status: 'running' | 'done' | 'failed';
+  requestedAt: string;
+  finishedAt: string | null;
+  summary: string | null;
+  findings: FinalReviewFinding[];
+  error: string | null;
+}
+
+/** Una nota para el agente de un ticket; si el ticket ya está hecho, confirmarla lo reabre. */
 export interface NoteProposal {
+  kind: 'note';
   ticketId: string;
   /** El número del ticket tal como lo ve el usuario (desde 1). */
   ticket: number;
   title: string;
   text: string;
+  reopen: boolean;
+}
+
+/** Un ticket nuevo (un hotfix, algo que no se consideró) para sumar a una ejecución terminada. */
+export interface NewTicketProposal {
+  kind: 'ticket';
+  title: string;
+  /** La descripción del ticket. */
+  text: string;
+  level: TicketLevel;
+  repo: string | null;
+}
+
+/** Pedir la revisión final de toda la rama. */
+export interface FinalReviewProposal {
+  kind: 'final-review';
+}
+
+/** Lo que Lucy propone y el usuario puede confirmar con un botón. */
+export type ChatProposal = NoteProposal | NewTicketProposal | FinalReviewProposal;
+
+/** Un ticket nuevo que el usuario manda sumar a una ejecución terminada. */
+export interface NewTicketInput {
+  title: string;
+  description: string;
+  level?: TicketLevel;
+  criteria?: string[];
+  files?: string[];
+  repo?: string;
 }
 
 /** Una pregunta ya contestada (por Lucy o por el usuario): el desarrollador retomó con ella. */
@@ -121,6 +174,8 @@ export interface Execution {
   tickets: ExecutionTicket[];
   pullRequestUrl: string | null;
   error: string | null;
+  /** La revisión final que pidió el usuario; ausente o `null` si nunca la pidió. */
+  finalReview?: FinalReview | null;
   createdAt: string;
   updatedAt: string;
   finishedAt: string | null;
@@ -133,7 +188,7 @@ export interface ExecutionListItem extends Execution {
 
 export interface JobSummary {
   id: string;
-  kind: StageKey;
+  kind: JobKind;
   ticketId: string | null;
   status: JobStatus;
   attempt: number;
@@ -201,6 +256,11 @@ export const STAGE_LABEL: Record<StageKey, string> = {
   develop: 'Desarrollo',
   review: 'Revisión',
   publish: 'Rama y PR',
+};
+
+export const JOB_LABEL: Record<JobKind, string> = {
+  ...STAGE_LABEL,
+  final: 'Revisión final',
 };
 
 export const STAGE_HINT: Record<StageKey, string> = {

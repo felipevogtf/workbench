@@ -35,7 +35,8 @@ export function activityOf(
       }
       continue;
     }
-    if (job.kind === 'publish') continue;
+    // La revisión final es un informe aparte: no es parte de la historia de un ticket.
+    if (job.kind === 'publish' || job.kind === 'final') continue;
 
     const label = job.kind === 'develop' ? 'el desarrollo' : 'la revisión';
     const retry = job.attempt > 1 ? ` (intento ${job.attempt})` : '';

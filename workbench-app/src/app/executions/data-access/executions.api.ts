@@ -10,7 +10,8 @@ import {
   ExecutionDetail,
   ExecutionListItem,
   JobLogs,
-  NoteProposal,
+  ChatProposal,
+  NewTicketInput,
   Runner,
 } from '../models/execution';
 
@@ -87,11 +88,28 @@ export class ExecutionsApi {
   chat(
     id: string,
     messages: readonly ChatMessage[],
-  ): Observable<{ reply: string; proposals: NoteProposal[] }> {
-    return this.http.post<{ reply: string; proposals: NoteProposal[] }>(
+  ): Observable<{ reply: string; proposals: ChatProposal[] }> {
+    return this.http.post<{ reply: string; proposals: ChatProposal[] }>(
       `${this.base}/executions/${id}/chat`,
       { messages },
     );
+  }
+
+  /** Reabre un ticket terminado de una ejecución completada, con una nota del usuario. */
+  reopenTicket(id: string, ticketId: string, text: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}/reopen`, {
+      text,
+    });
+  }
+
+  /** Suma tickets (un hotfix, lo que no se consideró) a una ejecución completada. */
+  addTickets(id: string, tickets: readonly NewTicketInput[]): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/tickets`, { tickets });
+  }
+
+  /** Pide la revisión de toda la rama; el informe llega más tarde. */
+  requestFinalReview(id: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/final-review`, {});
   }
 
   /** Deja una nota para quien trabaje el ticket la próxima vez. */
