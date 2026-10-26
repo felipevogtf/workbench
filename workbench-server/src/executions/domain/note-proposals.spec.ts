@@ -1,8 +1,11 @@
 import { ExecutionTicket } from './entities/execution.props';
 import { extractNoteProposals } from './note-proposals';
 
-const ticket = (id: string, title: string): ExecutionTicket =>
-  ({ id, title }) as ExecutionTicket;
+const ticket = (
+  id: string,
+  title: string,
+  status: ExecutionTicket['status'] = 'pending',
+): ExecutionTicket => ({ id, title, status }) as ExecutionTicket;
 
 const TICKETS = [ticket('a', 'API'), ticket('b', 'Pantalla')];
 
@@ -49,6 +52,16 @@ describe('extractNoteProposals', () => {
 
     expect(proposals).toEqual([]);
     expect(reply).toBe('NOTA 9: Hola\nNOTA 0: Hola');
+  });
+
+  it('does not offer a note for a ticket that is already done, and leaves the line in the reply', () => {
+    const { reply, proposals } = extractNoteProposals(
+      'Hay que corregirlo.\nNOTA 1: Cambia la ruta.\nNOTA 2: Otra cosa.',
+      [ticket('a', 'API', 'done'), ticket('b', 'Pantalla', 'reviewing')],
+    );
+
+    expect(proposals.map((proposal) => proposal.ticketId)).toEqual(['b']);
+    expect(reply).toBe('Hay que corregirlo.\nNOTA 1: Cambia la ruta.');
   });
 
   it('does not take as a proposal a NOTA that is in the middle of a sentence', () => {

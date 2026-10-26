@@ -148,6 +148,25 @@ describe('ExecutionChatService', () => {
     ]);
   });
 
+  it('tells her not to propose notes for a ticket that is already done', async () => {
+    await ask('Hola');
+
+    expect(agents.chats[0]).toContain(
+      'NO propongas notas para un ticket con estado «hecho»',
+    );
+  });
+
+  it('does not turn into a button the note she wrote for a done ticket', async () => {
+    execution.ticket('a').status = 'done';
+    await executions.save(execution);
+    agents.chatReply = 'Hay que corregirlo.\nNOTA 1: Cambia la ruta.';
+
+    const answer = await ask('Corrígelo');
+
+    expect(answer.proposals).toEqual([]);
+    expect(answer.reply).toContain('NOTA 1: Cambia la ruta.');
+  });
+
   it('returns no proposals when she only talks', async () => {
     agents.chatReply = 'Falló por el revisor.';
 
