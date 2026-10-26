@@ -501,17 +501,25 @@ export class Environments {
       if (port.env) processEnv[port.env] = String(ports[port.name]);
 
     const env = { ...process.env, ...processEnv };
-    const up = await this.exec(
-      'docker',
-      ['compose', ...(config.up ?? ['up', '-d', '--build'])],
-      {
-        cwd: dir,
-        env,
-        timeoutMs: 30 * 60_000,
-        onLine: onLog,
-        signal,
-      },
-    );
+    const startUp = () =>
+      this.exec(
+        'docker',
+        ['compose', ...(config.up ?? ['up', '-d', '--build'])],
+        {
+          cwd: dir,
+          env,
+          timeoutMs: 30 * 60_000,
+          onLine: onLog,
+          signal,
+        },
+      );
+    let up = await startUp();
+    if (up.code !== 0 && !signal?.aborted) {
+      // Construir varias imágenes a la vez a veces choca en Docker («failed to prepare extraction snapshot»): con lo ya
+      // construido en caché, el segundo intento suele pasar.
+      onLog('docker compose up falló; se reintenta una vez');
+      up = await startUp();
+    }
     if (up.code !== 0) {
       throw new Error(
         `docker compose up falló: ${tail(up.stderr || up.stdout)}`,
@@ -695,6 +703,25 @@ export class Environments {
     if (ids.length > 0) await this.exec('docker', ['rm', '-f', '-v', ...ids]);
     await this.removeNetworks(`${tag}-`);
     await this.removeVolumes(`${tag}-`);
+    await this.removeImages(`${tag}-`);
+  }
+
+  /** Las imágenes que compose construyó para esta ejecución (llevan el nombre de su proyecto); las capas siguen en caché. */
+  private async removeImages(prefix: string) {
+    const list = await this.exec('docker', [
+      'images',
+      '--format',
+      '{{.Repository}}',
+    ]);
+    const names = [
+      ...new Set(
+        list.stdout
+          .split(/\r?\n/)
+          .map((n) => n.trim())
+          .filter((n) => n.startsWith(prefix)),
+      ),
+    ];
+    if (names.length > 0) await this.exec('docker', ['rmi', '-f', ...names]);
   }
 
   private async removeNetworks(prefix: string) {

@@ -332,6 +332,26 @@ describe('Environments', () => {
     assert.equal(calls.length, before);
   });
 
+  it('tries `up` a second time when the first one fails, since builds sometimes collide', async () => {
+    const { env, calls, failOn } = setup();
+    let ups = 0;
+    failOn((args) => args[0] === 'compose' && args[1] === 'up' && ++ups === 1);
+    const dir = await worktree();
+
+    const handle = await env.ensure({
+      executionId: 'exec-1',
+      repo: REPO,
+      dir,
+      onLog: () => {},
+    });
+
+    assert.ok(handle!.processEnv.COMPOSE_PROJECT_NAME, 'quedó arriba');
+    assert.equal(
+      calls.filter((c) => c.args[0] === 'compose' && c.args[1] === 'up').length,
+      2,
+    );
+  });
+
   it('keeps going, with a warning, when a preparation step fails', async () => {
     const { env, failOn } = setup();
     // los pasos de preparación van por `sh -c`
@@ -380,6 +400,7 @@ describe('Environments', () => {
     assert.deepEqual(removal.args, ['rm', '-f', '-v', 'aaa', 'bbb']);
     assert.ok(calls.some((c) => c.args[0] === 'network' && c.args[1] === 'ls'));
     assert.ok(calls.some((c) => c.args[0] === 'volume' && c.args[1] === 'ls'));
+    assert.ok(calls.some((c) => c.args[0] === 'images'));
   });
 
   it('removes the orphans of a previous run when it starts, only the ones with its mark', async () => {
