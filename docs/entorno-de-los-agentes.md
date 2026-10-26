@@ -32,6 +32,14 @@ crear y modificar archivos, y elegir otros puertos si los suyos están ocupados.
   otra versión o una configuración distinta (`sql_mode`, charset) usa su propio contenedor. En la configuración: `services` define la base una vez, y cada proyecto
   declara solo `database: { service, schema }`. Como se borra en cada ejecución hay que volver a poblarla; si tarda demasiado, se puede guardar una copia ya poblada.
 
+- **Permisos del agente: lista cerrada de comandos** (no un shell libre), decidido el 2026-10-27. Los proyectos corren sus comandos **dentro de sus contenedores**
+  (`docker compose exec app …`: `composer install`, `phpunit`, migraciones). Se amplía la lista si se queda corta.
+- **El revisor también recibe el entorno** y puede correr las pruebas que necesite, sin poder editar archivos.
+- **Secretos de proyecto** en `/home/agent/secrets/<proyecto>/` (carpeta `700`, archivos `600`), fuera de los worktrees. Se copió el `client_secret.json` de
+  miseguridad-web desde el clon del usuario. Ojo: es el cliente de Google `mi-sso`, cuyos orígenes incluyen `https://miseguridad.dsy.cl` (además de dos de test y
+  `http://localhost`), así que **no es solo de pruebas** y el agente puede leerlo. Mitigación posible: un cliente aparte para local con solo `http://localhost`.
+  Hoy `copyFiles` solo copia archivos desde dentro del repositorio; hay que ampliarlo para leer de esa carpeta de secretos.
+
 **Propuesto, a confirmar**
 - **Aislar a los agentes en una distro de WSL aparte** (`wb-agents`), con su propio Docker, sin tus llaves SSH y viendo solo la carpeta de trabajo.
   La alternativa (correr como tú, con reglas de comandos y flags prohibidos) es más rápida de armar pero su seguridad depende de que ninguna regla falle.
