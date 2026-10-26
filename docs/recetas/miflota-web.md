@@ -91,4 +91,4 @@ El esquema sale de las entidades, no de migraciones. `app:ini-sessions` crea la 
 - Permisos de `var/`: `docker compose exec app chmod -R a+rwX var`.
 
 ## Si eres un agente
-Es probable que no puedas ejecutar Docker desde tu entorno. Si no puedes correr estos comandos, no des nada por probado: dilo en tus dudas.
+Si tu prompt trae «Entorno de pruebas», el runner ya levantó este proyecto en contenedores propios de tu ejecución (puertos, base, dependencias y esquema listos): **no ejecutes `docker compose up` ni los pasos de «Levantar» y «Preparar la base de datos»**. Usa `docker compose exec -T app …` (phpunit, consola de Symfony) y `wb-curl` para probar rutas. Si algo no queda montado en el contenedor o no hay entorno, no lo des por probado: dilo en tus dudas.
