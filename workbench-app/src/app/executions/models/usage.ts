@@ -40,6 +40,16 @@ export interface DayUsage {
   estimatedPoints: number | null;
 }
 
+/** Lo que gastó un agente en el período; con `agentId` nulo van juntos los trabajos sin agente (subir la rama, medir el plan). */
+export interface AgentUsage {
+  agentId: string | null;
+  agentName: string | null;
+  jobs: number;
+  tokens: number;
+  costUsd: number;
+  estimatedPoints: number | null;
+}
+
 export interface UsageOverview {
   current: {
     fiveHour: UsageWindow | null;
@@ -53,6 +63,7 @@ export interface UsageOverview {
     sevenDay: { costPerPoint: number | null; samples: number };
   };
   days: DayUsage[];
+  byAgent: AgentUsage[];
   today: { tokens: number; costUsd: number; estimatedPoints: number | null };
   week: { tokens: number; costUsd: number; estimatedPoints: number | null };
 }

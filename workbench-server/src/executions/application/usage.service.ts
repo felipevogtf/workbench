@@ -60,6 +60,18 @@ export interface DayUsage {
   estimatedPoints: number | null;
 }
 
+/** Lo que gastó un agente en el período (los trabajos sin agente, como subir la rama, van juntos con `agentId` nulo). */
+export interface AgentUsage {
+  agentId: string | null;
+  /** Su nombre técnico, para reconocerlo si el agente ya no existe. */
+  agentName: string | null;
+  jobs: number;
+  tokens: number;
+  costUsd: number;
+  /** Puntos porcentuales de la semana que habría costado; `null` sin calibración. */
+  estimatedPoints: number | null;
+}
+
 export interface UsageOverview {
   current: {
     fiveHour: UsageWindow | null;
@@ -70,6 +82,8 @@ export interface UsageOverview {
   refreshing: boolean;
   calibration: Calibration;
   days: DayUsage[];
+  /** Lo mismo que el gráfico, repartido por agente, de mayor a menor gasto. */
+  byAgent: AgentUsage[];
   today: { tokens: number; costUsd: number; estimatedPoints: number | null };
   week: { tokens: number; costUsd: number; estimatedPoints: number | null };
 }
@@ -299,6 +313,7 @@ export class UsageService {
         estimatedPoints: null,
       });
     }
+    const perAgent = new Map<string, AgentUsage>();
     for (const job of jobs) {
       const entry = job.finishedAt
         ? perDay.get(dayOf(job.finishedAt, timeZone))
@@ -308,9 +323,31 @@ export class UsageService {
       entry.tokens += tokens;
       entry.costUsd += job.costUsd ?? 0;
       entry.byKind[job.kind] = (entry.byKind[job.kind] ?? 0) + tokens;
+
+      // Lo mismo, por agente: lo que gastó cada trabajador en el período.
+      const agent = job.payload.agent;
+      const key = agent?.id ?? 'none';
+      const mine = perAgent.get(key) ?? {
+        agentId: agent?.id ?? null,
+        agentName: agent?.name ?? null,
+        jobs: 0,
+        tokens: 0,
+        costUsd: 0,
+        estimatedPoints: null,
+      };
+      mine.jobs += 1;
+      mine.tokens += tokens;
+      mine.costUsd += job.costUsd ?? 0;
+      perAgent.set(key, mine);
     }
 
     const weekly = calibration.sevenDay.costPerPoint;
+    const byAgent = [...perAgent.values()]
+      .map((agent) => ({
+        ...agent,
+        estimatedPoints: weekly ? agent.costUsd / weekly : null,
+      }))
+      .sort((a, b) => b.tokens - a.tokens);
     const series = [...perDay.values()].map((day) => ({
       ...day,
       estimatedPoints: weekly ? day.costUsd / weekly : null,
@@ -344,6 +381,7 @@ export class UsageService {
         (!latest || latest.takenAt.getTime() < this.refreshAskedAt),
       calibration,
       days: series,
+      byAgent,
       today: sum(series.filter((day) => day.date === today)),
       week: sum(series.slice(-7)),
     };

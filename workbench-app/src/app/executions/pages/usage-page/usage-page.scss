@@ -66,3 +66,16 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.agents {
+  margin-top: var(--space-6);
+
+  h2 {
+    margin: 0 0 var(--space-1);
+    font-size: 1.0625rem;
+  }
+
+  .note {
+    margin: 0 0 var(--space-3);
+  }
+}

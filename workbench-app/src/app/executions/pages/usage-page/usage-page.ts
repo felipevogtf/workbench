@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { AgentsStore } from '@ai-agents/index';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { EmptyState } from '@shared/ui/empty-state/empty-state';
@@ -15,6 +16,7 @@ import { SegmentedControl } from '@shared/ui/segmented-control/segmented-control
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { TimeAgoPipe } from '@shared/pipes/time-ago';
+import { UsageByAgent } from '../../components/usage-by-agent/usage-by-agent';
 import { ChartUnit, UsageChart } from '../../components/usage-chart/usage-chart';
 import { UsageMeter } from '../../components/usage-meter/usage-meter';
 import { UsageStore, USAGE_STALE_SECONDS } from '../../data-access/usage.store';
@@ -36,6 +38,7 @@ import { formatPoints, formatTokens } from '../../models/usage';
     Skeleton,
     Spinner,
     TimeAgoPipe,
+    UsageByAgent,
     UsageChart,
     UsageMeter,
   ],
@@ -46,6 +49,7 @@ import { formatPoints, formatTokens } from '../../models/usage';
 })
 export class UsagePage {
   protected readonly store = inject(UsageStore);
+  protected readonly agents = inject(AgentsStore);
 
   protected readonly unit = signal<ChartUnit>('tokens');
   protected readonly unitOptions = [
@@ -70,6 +74,7 @@ export class UsagePage {
   });
 
   constructor() {
+    void this.agents.load();
     void this.store.load(inject(DestroyRef));
   }
 

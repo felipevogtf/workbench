@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { AgentsApi } from '../../../ai-agents/data-access/agents.api';
+import { Agent } from '../../../ai-agents/models/agent';
 import { ExecutionsApi } from '../../data-access/executions.api';
 import { UsageOverview } from '../../models/usage';
 import { UsagePage } from './usage-page';
@@ -36,11 +38,27 @@ function overview(extra: Partial<UsageOverview> = {}): UsageOverview {
         estimatedPoints: null,
       },
     ],
+    byAgent: [],
     today: { tokens: 500, costUsd: 0.2, estimatedPoints: null },
     week: { tokens: 1500, costUsd: 0.6, estimatedPoints: null },
     ...extra,
   };
 }
+
+const DAVID: Agent = {
+  id: 'ag-david',
+  name: 'default-task-developer',
+  systemPrompt: 'x',
+  module: 'task-developer',
+  provider: 'claude',
+  model: 'm',
+  allowedTools: [],
+  isDefault: true,
+  displayName: 'David',
+  avatar: null,
+  createdAt: '2026-10-25T00:00:00Z',
+  updatedAt: '2026-10-25T00:00:00Z',
+};
 
 describe('UsagePage', () => {
   let api: { usage: ReturnType<typeof vi.fn>; refreshUsage: ReturnType<typeof vi.fn> };
@@ -50,7 +68,12 @@ describe('UsagePage', () => {
       usage: vi.fn(() => of(overview())),
       refreshUsage: vi.fn(() => of({ requested: true })),
     };
-    TestBed.configureTestingModule({ providers: [{ provide: ExecutionsApi, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ExecutionsApi, useValue: api },
+        { provide: AgentsApi, useValue: { list: () => of([DAVID]) } },
+      ],
+    });
   });
 
   async function render() {
@@ -184,5 +207,42 @@ describe('UsagePage', () => {
     expect(element.querySelector('app-alert')?.textContent).toContain(
       'No se pudo cargar el consumo',
     );
+  });
+
+  describe('by worker', () => {
+    const rows = [
+      {
+        agentId: 'ag-david',
+        agentName: 'default-task-developer',
+        jobs: 5,
+        tokens: 1200,
+        costUsd: 0.8,
+        estimatedPoints: null,
+      },
+      {
+        agentId: null,
+        agentName: null,
+        jobs: 2,
+        tokens: 300,
+        costUsd: 0.01,
+        estimatedPoints: null,
+      },
+    ];
+
+    it('shows what each worker spent, with their names, under the chart', async () => {
+      api.usage.mockReturnValue(of(overview({ byAgent: rows })));
+
+      const element: HTMLElement = (await render()).nativeElement;
+
+      expect(element.querySelector('.agents h2')?.textContent).toContain('Por trabajador');
+      expect(element.querySelector('app-usage-by-agent')?.textContent).toContain('David');
+      expect(element.querySelector('app-usage-by-agent')?.textContent).toContain('1.200');
+    });
+
+    it('does not show the section when nobody spent anything yet', async () => {
+      const element: HTMLElement = (await render()).nativeElement;
+
+      expect(element.querySelector('app-usage-by-agent')).toBeNull();
+    });
   });
 });

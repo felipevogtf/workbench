@@ -98,5 +98,13 @@
         }
       </p>
     </section>
+
+    @if (overview.byAgent.length > 0) {
+      <section class="agents" aria-label="Gasto por trabajador">
+        <h2>Por trabajador</h2>
+        <p class="note">Los últimos {{ overview.days.length }} días, solo del Workbench.</p>
+        <app-usage-by-agent [rows]="overview.byAgent" [agents]="agents.agents()" />
+      </section>
+    }
   }
 </div>

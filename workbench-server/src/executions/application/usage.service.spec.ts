@@ -33,7 +33,13 @@ const tokens = (input: number, output = 0, cacheWrite = 0, cacheRead = 0) => ({
 function job(
   executionId: string,
   kind: JobKind,
-  data: { start: string; end: string; cost: number; usage?: JobUsage | null },
+  data: {
+    start: string;
+    end: string;
+    cost: number;
+    usage?: JobUsage | null;
+    agent?: { id: string; name: string };
+  },
 ): Job {
   const result = Job.create({
     executionId,
@@ -51,6 +57,12 @@ function job(
   props.finishedAt = new Date(data.end);
   props.costUsd = data.cost;
   props.usage = data.usage ?? null;
+  if (data.agent) {
+    props.payload = {
+      ...props.payload,
+      agent: { ...data.agent, model: 'm', systemPrompt: 'x', allowedTools: [] },
+    };
+  }
   return result;
 }
 
@@ -364,6 +376,98 @@ describe('UsageService', () => {
       expect(overview.calibration.sevenDay.costPerPoint).toBeCloseTo(0.375);
       expect(overview.today.costUsd).toBeCloseTo(1);
       expect(overview.today.estimatedPoints).toBeCloseTo(1 / 0.375);
+    });
+
+    it('spends by agent, from the one that spent most, with the jobs that have no agent together', async () => {
+      const done = (
+        id: string,
+        kind: 'develop' | 'review' | 'publish',
+        cost: number,
+        input: number,
+        agent?: { id: string; name: string },
+      ) =>
+        job(id, kind, {
+          start: '2026-10-26T11:00:00Z',
+          end: '2026-10-26T11:30:00Z',
+          cost,
+          usage: { tokens: tokens(input), limits: null },
+          agent,
+        });
+      const david = { id: 'ag-david', name: 'default-task-developer' };
+      const maine = { id: 'ag-maine', name: 'default-task-reviewer' };
+      jobs.items.push(
+        done('e1', 'develop', 0.5, 1000, david),
+        done('e1', 'review', 0.1, 300, maine),
+        done('e2', 'develop', 0.4, 800, david),
+        done('e2', 'publish', 0.01, 50),
+      );
+
+      const overview = await service.overview('UTC', 1, NOW);
+
+      expect(
+        overview.byAgent.map((a) => [a.agentId, a.agentName, a.jobs, a.tokens]),
+      ).toEqual([
+        ['ag-david', 'default-task-developer', 2, 1800],
+        ['ag-maine', 'default-task-reviewer', 1, 300],
+        [null, null, 1, 50],
+      ]);
+      expect(overview.byAgent[0].costUsd).toBeCloseTo(0.9);
+      expect(overview.byAgent.every((a) => a.estimatedPoints === null)).toBe(
+        true,
+      );
+    });
+
+    it('leaves out of the agents what is outside the period, and the jobs that were not measured', async () => {
+      jobs.items.push(
+        job('e1', 'develop', {
+          start: '2026-10-10T10:00:00Z',
+          end: '2026-10-10T10:30:00Z',
+          cost: 1,
+          usage: { tokens: tokens(5000), limits: null },
+          agent: { id: 'ag-david', name: 'd' },
+        }),
+        job('e2', 'develop', {
+          start: '2026-10-26T10:00:00Z',
+          end: '2026-10-26T10:30:00Z',
+          cost: 1,
+          agent: { id: 'ag-david', name: 'd' },
+        }),
+      );
+
+      expect((await service.overview('UTC', 7, NOW)).byAgent).toEqual([]);
+    });
+
+    it('puts the spending of each agent in points of the week when it can estimate them', async () => {
+      const week = (
+        id: string,
+        hour: number,
+        cost: number,
+        points: number,
+        agent: { id: string; name: string },
+      ) => {
+        jobs.items.push(
+          job(id, 'develop', {
+            start: `2026-10-26T0${hour}:00:00Z`,
+            end: `2026-10-26T0${hour}:05:00Z`,
+            cost,
+            usage: { tokens: tokens(1), limits: limits(0.1, 0.1) },
+            agent,
+          }),
+        );
+        return service.record(
+          limits(0.1, 0.1 + points / 100),
+          'probe',
+          null,
+          new Date(`2026-10-26T0${hour}:06:00Z`),
+        );
+      };
+      await week('e1', 1, 0.5, 1, { id: 'ag-a', name: 'a' });
+      await week('e2', 2, 0.5, 2, { id: 'ag-b', name: 'b' });
+
+      const overview = await service.overview('UTC', 1, NOW);
+
+      // La mediana de 0,50 y 0,25 por punto es 0,375.
+      expect(overview.byAgent[0].estimatedPoints).toBeCloseTo(0.5 / 0.375);
     });
 
     it('falls back to UTC when the time zone is unknown', async () => {
