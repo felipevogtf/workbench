@@ -79,6 +79,15 @@ export interface NewPullRequest {
   description: string;
 }
 
+export interface RecipesGatewayPort {
+  /**
+   * Las recetas de estos repositorios (cómo se levantan y se prueban) y de los que dependen, listas para
+   * ponerlas en el prompt de un agente; `null` si ninguno tiene receta.
+   */
+  contextFor(repos: readonly string[]): Promise<string | null>;
+}
+export const RECIPES_GATEWAY_PORT = Symbol('EXECUTIONS_RECIPES_GATEWAY_PORT');
+
 export interface PullRequestsGatewayPort {
   /** Abre la PR y devuelve su enlace. */
   create(request: NewPullRequest): Promise<{ url: string }>;

@@ -85,6 +85,7 @@
       "^@ai-agents/(.*)$": "<rootDir>/ai-agents/$1",
       "^@pr-review/(.*)$": "<rootDir>/pr-review/$1",
       "^@credentials/(.*)$": "<rootDir>/credentials/$1",
+      "^@recipes/(.*)$": "<rootDir>/recipes/$1",
       "^@executions/(.*)$": "<rootDir>/executions/$1",
       "^@core/(.*)$": "<rootDir>/core/$1"
     },

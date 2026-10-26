@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PlannerModule } from '@planner/planner.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
+import { RecipesModule } from '@recipes/recipes.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { ExecutionChatService } from './application/execution-chat.service';
 import { ExecutionsService } from './application/executions.service';
@@ -14,6 +15,7 @@ import {
   AGENTS_GATEWAY_PORT,
   PLANS_GATEWAY_PORT,
   PULL_REQUESTS_GATEWAY_PORT,
+  RECIPES_GATEWAY_PORT,
   REPOSITORIES_GATEWAY_PORT,
   TASKS_GATEWAY_PORT,
 } from './domain/ports/gateways.port';
@@ -23,6 +25,7 @@ import { RUNNER_REPOSITORY_PORT } from './domain/ports/runner-repository.port';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
 import { PlansGatewayAdapter } from './infrastructure/adapters/plans-gateway.adapter';
 import { PullRequestsGatewayAdapter } from './infrastructure/adapters/pull-requests-gateway.adapter';
+import { RecipesGatewayAdapter } from './infrastructure/adapters/recipes-gateway.adapter';
 import { RepositoriesGatewayAdapter } from './infrastructure/adapters/repositories-gateway.adapter';
 import { TasksGatewayAdapter } from './infrastructure/adapters/tasks-gateway.adapter';
 import { ExecutionsController } from './infrastructure/http/executions.controller';
@@ -52,6 +55,7 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
     PlannerModule,
     AiAgentsModule,
     PrReviewModule,
+    RecipesModule,
   ],
   controllers: [
     ExecutionsController,
@@ -73,6 +77,7 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
     { provide: TASKS_GATEWAY_PORT, useClass: TasksGatewayAdapter },
     { provide: PLANS_GATEWAY_PORT, useClass: PlansGatewayAdapter },
     { provide: AGENTS_GATEWAY_PORT, useClass: AgentsGatewayAdapter },
+    { provide: RECIPES_GATEWAY_PORT, useClass: RecipesGatewayAdapter },
     {
       provide: REPOSITORIES_GATEWAY_PORT,
       useClass: RepositoriesGatewayAdapter,

@@ -37,11 +37,13 @@ import {
   AGENTS_GATEWAY_PORT,
   PLANS_GATEWAY_PORT,
   PULL_REQUESTS_GATEWAY_PORT,
+  RECIPES_GATEWAY_PORT,
   TASKS_GATEWAY_PORT,
   type AgentsGatewayPort,
   type ExecutionAgentModule,
   type PlansGatewayPort,
   type PullRequestsGatewayPort,
+  type RecipesGatewayPort,
   type ResolvedAgent,
   type TasksGatewayPort,
 } from '@executions/domain/ports/gateways.port';
@@ -87,6 +89,9 @@ export class ExecutionsService {
     @Inject(PULL_REQUESTS_GATEWAY_PORT)
     private readonly pullRequests: PullRequestsGatewayPort,
     @Optional() private readonly config?: ConfigService,
+    @Optional()
+    @Inject(RECIPES_GATEWAY_PORT)
+    private readonly recipes?: RecipesGatewayPort,
   ) {}
 
   /** Preguntas recién escaladas: Lucy las decide en segundo plano cuando ya se guardó la ejecución. */
@@ -694,6 +699,7 @@ export class ExecutionsService {
     const plan = await this.planOf(execution);
     const task = await this.tasks.getTask(execution.issueId);
     const repoName = target.repo.fullName;
+    const recipe = await this.recipeOf([repoName, ...otherRepos]);
     const payload: JobPayload = {
       ...base,
       agent: this.toJobAgent(agent),
@@ -707,6 +713,7 @@ export class ExecutionsService {
         plan,
         repoName,
         otherRepos,
+        recipe,
       });
     } else if (ticket) {
       const index = execution.tickets.indexOf(ticket) + 1;
@@ -718,6 +725,7 @@ export class ExecutionsService {
           plan,
           repoName,
           otherRepos,
+          recipe,
         });
         payload.commitMessage = `${ticket.title}\n\nTicket ${index}/${execution.tickets.length} de la ejecución ${execution.id.slice(0, 8)} del workbench.`;
       } else {
@@ -727,6 +735,7 @@ export class ExecutionsService {
           from: ticket.startSha ?? 'HEAD~1',
           developerSummary: ticket.summary,
           otherRepos,
+          recipe,
         });
         payload.reviewFrom = ticket.startSha ?? undefined;
       }
@@ -739,6 +748,18 @@ export class ExecutionsService {
       payload,
       attempt,
     });
+  }
+
+  /** Las recetas de los repositorios del trabajo; sin ellas se sigue: son una ayuda, no una condición. */
+  private async recipeOf(repos: readonly string[]): Promise<string | null> {
+    try {
+      return (await this.recipes?.contextFor(repos)) ?? null;
+    } catch (error) {
+      this.logger.warn(
+        `The recipes could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   /** El agente asignado al ticket para esa etapa y, si ya no existe o no sirve, el que esté por defecto. */

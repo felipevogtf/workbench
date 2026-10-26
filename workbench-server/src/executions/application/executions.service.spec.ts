@@ -45,12 +45,19 @@ describe('ExecutionsService', () => {
   let pullRequests: FakePullRequests;
   let runners: InMemoryRunners;
   let settings: Record<string, string>;
+  /** Lo que devuelve la fake de recetas y a qué repositorios se las pidieron. */
+  let recipeText: string | null;
+  let recipeError: Error | null;
+  let recipeRequests: string[][];
   let service: ExecutionsService;
   let runnerJobs: RunnerJobsService;
   let runner: Runner;
 
   beforeEach(async () => {
     settings = {};
+    recipeText = null;
+    recipeError = null;
+    recipeRequests = [];
     executions = new InMemoryExecutions();
     jobs = new InMemoryJobs();
     tasks = new FakeTasks();
@@ -66,6 +73,13 @@ describe('ExecutionsService', () => {
       agents,
       pullRequests,
       { get: (key: string) => settings[key] } as unknown as ConfigService,
+      {
+        contextFor: (repos: readonly string[]) => {
+          recipeRequests.push([...repos]);
+          if (recipeError) return Promise.reject(recipeError);
+          return Promise.resolve(recipeText);
+        },
+      },
     );
     runnerJobs = new RunnerJobsService(
       jobs,
@@ -753,6 +767,58 @@ describe('ExecutionsService', () => {
       });
 
       expect((await ticketOf(execution.id)).status).toBe('reviewing');
+    });
+  });
+
+  describe('the recipes of the project', () => {
+    const ONE = JSON.stringify({
+      tickets: [
+        { title: 'Banner', description: 'Mostrar el banner', criteria: [] },
+      ],
+    });
+    const RECIPE = '## Receta de acme/web\nPara probar: docker compose up';
+
+    it('gives Lucy the recipe when she splits the plan', async () => {
+      recipeText = RECIPE;
+
+      await service.start('issue-1');
+
+      const prompt = jobs.items.at(-1)!.payload.prompt;
+      expect(prompt).toContain('# Recetas del proyecto');
+      expect(prompt).toContain('Para probar: docker compose up');
+      expect(recipeRequests[0]).toEqual(['acme/web']);
+    });
+
+    it('gives it to the developer and the reviewer too', async () => {
+      recipeText = RECIPE;
+      const execution = await service.start('issue-1');
+      await answer({ output: ONE });
+      await service.begin(execution.id);
+      expect(jobs.items.at(-1)!.payload.prompt).toContain('Para probar:');
+
+      await answer(developed('aaa', 'bbb'));
+
+      const review = jobs.items.at(-1)!;
+      expect(review.kind).toBe('review');
+      expect(review.payload.prompt).toContain('Para probar: docker compose up');
+    });
+
+    it('adds nothing when there is no recipe', async () => {
+      await service.start('issue-1');
+
+      expect(jobs.items.at(-1)!.payload.prompt).not.toContain(
+        '# Recetas del proyecto',
+      );
+    });
+
+    it('goes on without the recipe when it cannot be read', async () => {
+      recipeError = new Error('db caída');
+
+      await service.start('issue-1');
+
+      const job = jobs.items.at(-1)!;
+      expect(job.kind).toBe('tickets');
+      expect(job.payload.prompt).not.toContain('# Recetas del proyecto');
     });
   });
 

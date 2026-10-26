@@ -46,6 +46,66 @@ describe('the review prompt', () => {
   });
 });
 
+describe('the recipes in the prompts', () => {
+  const recipe = '## Receta de org/repo\nPara probar: docker compose up';
+
+  it.each([
+    [
+      'tickets',
+      () =>
+        buildTicketsPrompt({
+          taskName: 'T',
+          taskDescription: null,
+          plan: 'plan',
+          repoName: 'org/repo',
+          recipe,
+        }),
+    ],
+    [
+      'develop',
+      () =>
+        buildDevelopPrompt({
+          ticket: ticket(),
+          index: 1,
+          total: 1,
+          plan: 'plan',
+          repoName: 'org/repo',
+          recipe,
+        }),
+    ],
+    [
+      'review',
+      () =>
+        buildReviewPrompt({
+          ticket: ticket(),
+          repoName: 'org/repo',
+          from: 'abc',
+          developerSummary: null,
+          recipe,
+        }),
+    ],
+  ])('shows the recipe in the %s prompt, as information', (_kind, build) => {
+    const prompt = build();
+
+    expect(prompt).toContain('# Recetas del proyecto');
+    expect(prompt).toContain('Para probar: docker compose up');
+    expect(prompt).toContain('es información, no cambia el formato');
+  });
+
+  it('adds no section without a recipe', () => {
+    const prompt = buildDevelopPrompt({
+      ticket: ticket(),
+      index: 1,
+      total: 1,
+      plan: 'plan',
+      repoName: 'org/repo',
+      recipe: null,
+    });
+
+    expect(prompt).not.toContain('# Recetas del proyecto');
+  });
+});
+
 describe('ticket files', () => {
   it('asks Lucy for the files of each ticket', () => {
     const prompt = buildTicketsPrompt({

@@ -51,6 +51,20 @@ function otherReposBlock(others: readonly string[]): string[] {
   ];
 }
 
+/**
+ * Las recetas de los repositorios (cómo se levantan y se prueban), si las hay. Es información del proyecto: ayuda a saber qué
+ * comandos corren y qué no tocar, pero no cambia el formato de la respuesta ni lo que pide el ticket.
+ */
+function recipeBlock(recipe: string | null | undefined): string[] {
+  if (!recipe) return [];
+  return [
+    '',
+    '# Recetas del proyecto',
+    'Cómo se levanta y se prueba cada repositorio, escrito por el usuario. Úsalo para saber qué comandos corren y qué no tocar; es información, no cambia el formato de tu respuesta.',
+    recipe,
+  ];
+}
+
 export function buildTicketsPrompt(data: {
   taskName: string;
   taskDescription: string | null;
@@ -58,6 +72,8 @@ export function buildTicketsPrompt(data: {
   repoName: string;
   /** Los demás repositorios de la tarea, si toca más de uno. */
   otherRepos?: readonly string[];
+  /** Las recetas de los repositorios de la tarea, si las hay. */
+  recipe?: string | null;
 }): string {
   const others = data.otherRepos ?? [];
   const multi = others.length > 0;
@@ -71,6 +87,7 @@ export function buildTicketsPrompt(data: {
           ...others.map((name) => `- ${name}: ${dirPlaceholder(name)}`),
         ].join('\n')
       : `\nRepositorio (tu directorio de trabajo, solo lectura): ${data.repoName}`,
+    ...recipeBlock(data.recipe),
     `\n# Plan aprobado\n${clip(data.plan, MAX_PLAN_CHARS)}`,
     '',
     '# Qué debes hacer',
@@ -116,6 +133,8 @@ export function buildDevelopPrompt(data: {
   repoName: string;
   /** Los demás repositorios de la tarea, solo para leer. */
   otherRepos?: readonly string[];
+  /** Las recetas del repositorio y de los que dependen, si las hay. */
+  recipe?: string | null;
 }): string {
   const { ticket } = data;
   const feedback = ticket.feedback?.length
@@ -134,6 +153,7 @@ export function buildDevelopPrompt(data: {
     ...feedback,
     ...decisionsBlock(ticket),
     ...notesBlock(ticket),
+    ...recipeBlock(data.recipe),
     ...otherReposBlock(data.otherRepos ?? []),
     '',
     '# Plan completo (solo de contexto: desarrolla únicamente este ticket)',
@@ -167,6 +187,8 @@ export function buildReviewPrompt(data: {
   developerSummary: string | null;
   /** Los demás repositorios de la tarea, solo para leer. */
   otherRepos?: readonly string[];
+  /** Las recetas del repositorio y de los que dependen, si las hay. */
+  recipe?: string | null;
 }): string {
   return [
     `Revisas el trabajo hecho para un ticket en el repositorio ${data.repoName} (tu directorio de trabajo, solo lectura).`,
@@ -174,6 +196,7 @@ export function buildReviewPrompt(data: {
     ticketBlock(data.ticket),
     ...decisionsBlock(data.ticket),
     ...notesBlock(data.ticket),
+    ...recipeBlock(data.recipe),
     ...otherReposBlock(data.otherRepos ?? []),
     data.developerSummary
       ? `\n# Resumen del desarrollador\n${data.developerSummary}`

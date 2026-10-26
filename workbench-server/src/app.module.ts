@@ -11,6 +11,7 @@ import { PrReviewModule } from '@pr-review/pr-review.module';
 import { PlannerModule } from '@planner/planner.module';
 import { ExecutionsModule } from '@executions/executions.module';
 import { CredentialsModule } from '@credentials/credentials.module';
+import { RecipesModule } from '@recipes/recipes.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
     ExecutionsModule,
     IssueTransferModule,
     CredentialsModule,
+    RecipesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
