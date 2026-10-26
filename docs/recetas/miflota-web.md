@@ -13,7 +13,48 @@ docker compose --env-file .env.docker.local -f docker-compose.yml -f docker-comp
 ```
 `make up` usa otros archivos: no sirve para local.
 
-Desde un contenedor, lo que corre en el host se alcanza con `host.docker.internal`, no con 127.0.0.1. Por ejemplo `DATABASE_URL=mysql://root:root@host.docker.internal:3307/miflota?serverVersion=5.7`; `COMMAND_BASE_URL` y `PREVSIS_BASE_URL` apuntan a wiremock en `http://host.docker.internal:8090`.
+### Contenido de los archivos locales
+Desde un contenedor, 127.0.0.1 es el propio contenedor: lo que corre en el host se alcanza con `host.docker.internal`. El valor por defecto de `MIMIXER_BASE_URL` en `.env` (127.0.0.1:8001) NO funciona desde el contenedor.
+
+`.env.docker.local`:
+```
+COMPOSE_PORT=8005
+COMPOSE_PROJECT_NAME=miflota
+```
+
+`docker-compose-local.yml` (monta el `~/.ssh` para que Composer acceda a repos privados, y define `host.docker.internal`; si `cron` o `supervisor` deben llegar al host, agrega el mismo `extra_hosts` a esos servicios):
+```yaml
+version: '3'
+services:
+  app:
+    volumes:
+      - ~/.ssh:/root/.ssh
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+```
+
+`.env.local` (sobrescribe a `.env`; parte de `cp .env.local.dist .env.local` y completa):
+```
+DATABASE_URL=mysql://root:root@host.docker.internal:3307/miflota?serverVersion=5.7
+COMMAND_BASE_URL=http://host.docker.internal:8090/
+PREVSIS_BASE_URL=http://host.docker.internal:8090
+PREVSIS_USERNAME=test
+PREVSIS_PASSWORD=test
+MICAMION_BASE_URL=http://host.docker.internal:8081/
+MIMIXER_BASE_URL=http://host.docker.internal:8001/api/1/
+MIMIXER_TOKEN=qwerty
+INTEGRATION_API_KEY=change-this-integration-api-key
+DSY_ADMIN_USER_PASS=
+S3_KEY=
+S3_SECRET=
+S3_BUCKET=test.dsarhoya.cl
+S3_REGION=sa-east-1
+SES_KEY=
+SES_SECRET=
+SES_REGION=
+DSY_CATCH_EMAIL_TO=tu-correo@dominio.cl
+```
+`DSY_ADMIN_USER_PASS` es la clave del superadmin `dsy` y debe ser el hash sha1 de la clave que quieras usar (`echo -n 'miclave' | sha1sum`); las fixtures no definen contraseñas para los demás usuarios. Las claves de AWS (S3, SES) no hacen falta para levantar: déjalas vacías salvo que pruebes S3/SES/SNS. `COMMAND_BASE_URL` y `PREVSIS_BASE_URL` van a wiremock, que sirve los stubs de `docker/wiremock/stubs/mappings/`. MiCamión y MiMixer son otras apps: solo funcionan si las tienes levantadas en el host.
 
 ## Preparar la base de datos
 ```
