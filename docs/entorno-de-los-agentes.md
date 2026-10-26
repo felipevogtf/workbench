@@ -27,6 +27,11 @@ crear y modificar archivos, y elegir otros puertos si los suyos están ocupados.
 - **Riesgo de red asumido** (2026-10-27): desde la distro se alcanzan los puertos 3307 y 5432 de Windows (las bases de datos que publican tus contenedores).
   Se deja como está. Si cambia el contexto (más gente, datos reales en esas bases), se vuelve a evaluar con las alternativas de abajo.
 
+- **Bases de datos:** una por motor y versión, **compartida entre los proyectos de una misma ejecución**, con un schema por proyecto (como ya trabajas tú), propia de
+  la distro y borrada al terminar la ejecución. Nunca se comparte con tus contenedores de Docker Desktop ni entre ejecuciones. Un proyecto que necesite otro motor,
+  otra versión o una configuración distinta (`sql_mode`, charset) usa su propio contenedor. En la configuración: `services` define la base una vez, y cada proyecto
+  declara solo `database: { service, schema }`. Como se borra en cada ejecución hay que volver a poblarla; si tarda demasiado, se puede guardar una copia ya poblada.
+
 **Propuesto, a confirmar**
 - **Aislar a los agentes en una distro de WSL aparte** (`wb-agents`), con su propio Docker, sin tus llaves SSH y viendo solo la carpeta de trabajo.
   La alternativa (correr como tú, con reglas de comandos y flags prohibidos) es más rápida de armar pero su seguridad depende de que ninguna regla falle.
