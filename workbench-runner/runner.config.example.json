@@ -12,7 +12,7 @@
       "image": "mysql:5.7",
       "containerPort": 3306,
       "env": { "MYSQL_ROOT_PASSWORD": "root" },
-      "ready": ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot", "--silent"],
+      "ready": ["mysql", "-h127.0.0.1", "-uroot", "-proot", "-e", "SELECT 1"],
       "createSchema": ["mysql", "-uroot", "-proot", "-e", "CREATE DATABASE IF NOT EXISTS `{{schema}}`"]
     }
   },
