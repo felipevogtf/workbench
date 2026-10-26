@@ -29,6 +29,22 @@ export interface TicketQuestion {
   askedAt: string;
 }
 
+/** Una instrucción para quien trabaje el ticket, dejada por el usuario o por Lucy. */
+export interface TicketNote {
+  at: string;
+  from: 'user' | 'lucy';
+  text: string;
+}
+
+/** Una nota que Lucy propone dejarle a un agente; no se guarda hasta que el usuario la confirma. */
+export interface NoteProposal {
+  ticketId: string;
+  /** El número del ticket tal como lo ve el usuario (desde 1). */
+  ticket: number;
+  title: string;
+  text: string;
+}
+
 /** Una pregunta ya contestada (por Lucy o por el usuario): el desarrollador retomó con ella. */
 export interface TicketDecision {
   at: string;
@@ -45,6 +61,8 @@ export interface ExecutionTicket {
   criteria: string[];
   /** Por dónde empezar (pista de Lucy, no un límite); ausente en las ejecuciones anteriores a este campo. */
   files?: string[];
+  /** Instrucciones dejadas para quien trabaje el ticket; ausente en los anteriores a este campo. */
+  notes?: TicketNote[];
   /** `organización/repo` en que se desarrolla; ausente si la tarea tiene un solo repositorio. */
   repo?: string;
   level: TicketLevel;

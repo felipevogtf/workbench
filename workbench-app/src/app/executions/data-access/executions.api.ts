@@ -10,6 +10,7 @@ import {
   ExecutionDetail,
   ExecutionListItem,
   JobLogs,
+  NoteProposal,
   Runner,
 } from '../models/execution';
 
@@ -83,8 +84,21 @@ export class ExecutionsApi {
   }
 
   /** Conversa con Lucy sobre la ejecución; ella lee su estado completo. Puede tardar. */
-  chat(id: string, messages: readonly ChatMessage[]): Observable<{ reply: string }> {
-    return this.http.post<{ reply: string }>(`${this.base}/executions/${id}/chat`, { messages });
+  chat(
+    id: string,
+    messages: readonly ChatMessage[],
+  ): Observable<{ reply: string; proposals: NoteProposal[] }> {
+    return this.http.post<{ reply: string; proposals: NoteProposal[] }>(
+      `${this.base}/executions/${id}/chat`,
+      { messages },
+    );
+  }
+
+  /** Deja una nota para quien trabaje el ticket la próxima vez. */
+  addNote(id: string, ticketId: string, text: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/tickets/${ticketId}/notes`, {
+      text,
+    });
   }
 
   listRunners(): Observable<Runner[]> {

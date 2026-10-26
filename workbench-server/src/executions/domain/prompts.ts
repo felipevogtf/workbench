@@ -133,6 +133,7 @@ export function buildDevelopPrompt(data: {
     ticketBlock(ticket),
     ...feedback,
     ...decisionsBlock(ticket),
+    ...notesBlock(ticket),
     ...otherReposBlock(data.otherRepos ?? []),
     '',
     '# Plan completo (solo de contexto: desarrolla únicamente este ticket)',
@@ -170,6 +171,7 @@ export function buildReviewPrompt(data: {
     '',
     ticketBlock(data.ticket),
     ...decisionsBlock(data.ticket),
+    ...notesBlock(data.ticket),
     ...otherReposBlock(data.otherRepos ?? []),
     data.developerSummary
       ? `\n# Resumen del desarrollador\n${data.developerSummary}`
@@ -222,6 +224,25 @@ export function buildPullRequestDescription(data: {
     '',
     'Revisa el código con el cuidado de siempre: lo escribió una IA.',
   ].join('\n');
+}
+
+/** Cuántas notas entran al prompt: las más recientes. */
+const MAX_NOTES = 10;
+
+/** Las instrucciones que el usuario o Lucy dejaron para este ticket. */
+function notesBlock(ticket: ExecutionTicket): string[] {
+  if (!ticket.notes?.length) return [];
+  return [
+    '',
+    '# Notas para este ticket',
+    'El usuario o Lucy dejaron estas instrucciones para quien trabaje el ticket. Síguelas (no cambian el formato de tu respuesta):',
+    ...ticket.notes
+      .slice(-MAX_NOTES)
+      .map(
+        (note) =>
+          `- (${note.from === 'lucy' ? 'de Lucy' : 'del usuario'}) ${note.text.replace(/\s+/g, ' ')}`,
+      ),
+  ];
 }
 
 /** Las preguntas que ya se contestaron en este ticket: lo decidido no se vuelve a discutir. */

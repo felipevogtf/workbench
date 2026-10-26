@@ -192,6 +192,8 @@
         [logs]="store.logs()"
         [selectedJobId]="store.selectedJob()?.id ?? null"
         [workerName]="workerName"
+        [busy]="store.acting()"
+        (noteAdded)="leaveNote($event)"
         (dismissed)="closePanel()"
         (selectJob)="pickJob($event)"
       />

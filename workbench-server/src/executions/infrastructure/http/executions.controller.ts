@@ -16,6 +16,7 @@ import { Execution } from '@executions/domain/entities/execution.entity';
 import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
+  AddNoteDto,
   AnswerQuestionDto,
   AssignTicketDto,
   ExecutionChatReplyDto,
@@ -133,6 +134,17 @@ export class ExecutionsController {
     @Body() dto: AnswerQuestionDto,
   ): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.answer(id, ticketId, dto.text));
+  }
+
+  /** El usuario deja una nota para quien trabaje el ticket la próxima vez. */
+  @Post('executions/:id/tickets/:ticketId/notes')
+  @HttpCode(201)
+  async addNote(
+    @Param('id') id: string,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AddNoteDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.addNote(id, ticketId, dto.text));
   }
 
   @Post('executions/:id/retry')

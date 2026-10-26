@@ -62,6 +62,57 @@ describe('TicketPanel', () => {
     expect(hidden.textContent).not.toContain('Archivos previstos');
   });
 
+  describe('notes for the agent', () => {
+    const noteForm = (element: HTMLElement) => ({
+      box: element.querySelector<HTMLTextAreaElement>('.note-form textarea'),
+      button: element.querySelector<HTMLButtonElement>('.note-form button'),
+    });
+
+    it('lists the notes already left and lets the user add another', async () => {
+      const withNotes = boardCard(
+        ticket('a', {
+          notes: [{ at: '2026-10-26T01:00:00Z', from: 'user', text: 'Usa el componente X' }],
+        }),
+        { worker: { name: 'Maine', avatar: null } },
+      );
+      const fixture = await render({ card: withNotes });
+      const emitted: string[] = [];
+      fixture.componentInstance.noteAdded.subscribe((text) => emitted.push(text));
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(element.textContent).toContain('Usa el componente X');
+
+      const { box, button } = noteForm(element);
+      box!.value = '  No toques los submódulos  ';
+      button!.click();
+
+      expect(emitted).toEqual(['No toques los submódulos']);
+      expect(box!.value).toBe('');
+    });
+
+    it('sends nothing for an empty note', async () => {
+      const fixture = await render({ card });
+      const emitted: string[] = [];
+      fixture.componentInstance.noteAdded.subscribe((text) => emitted.push(text));
+
+      const { box, button } = noteForm(fixture.nativeElement);
+      box!.value = '   ';
+      button!.click();
+
+      expect(emitted).toEqual([]);
+    });
+
+    it('does not offer to add a note to a ticket that is done', async () => {
+      const done = boardCard(ticket('a', { status: 'done' }), {
+        worker: { name: 'Maine', avatar: null },
+      });
+      const element: HTMLElement = (await render({ card: done })).nativeElement;
+
+      expect(noteForm(element).box).toBeNull();
+      expect(element.textContent).not.toContain('Notas para el agente');
+    });
+  });
+
   it('renders the description as markdown', async () => {
     const element: HTMLElement = (await render({ card })).nativeElement;
 

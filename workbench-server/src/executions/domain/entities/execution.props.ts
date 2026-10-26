@@ -43,6 +43,13 @@ export interface TicketDecision {
   text: string;
 }
 
+/** Una instrucción para quien trabaje el ticket, del usuario o de Lucy: entra a su prompt la próxima vez. */
+export interface TicketNote {
+  at: string;
+  from: 'user' | 'lucy';
+  text: string;
+}
+
 /** Trabajo de la ejecución: lo crea el agente de tickets a partir del plan. */
 export interface ExecutionTicket {
   id: string;
@@ -75,6 +82,8 @@ export interface ExecutionTicket {
   question: TicketQuestion | null;
   /** Las preguntas ya contestadas, de la más antigua a la más nueva. */
   decisions: TicketDecision[];
+  /** Instrucciones dejadas para este ticket; ausente en los anteriores a este campo. */
+  notes?: TicketNote[];
   /** Cuántas preguntas ha hecho el desarrollador en este ticket (hay un tope). */
   questionsAsked: number;
 }

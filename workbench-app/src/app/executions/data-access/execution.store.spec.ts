@@ -6,7 +6,7 @@ import { ExecutionStore } from './execution.store';
 import { ExecutionsApi } from './executions.api';
 
 describe('ExecutionStore', () => {
-  let api: Record<'get' | 'logs' | 'cancel' | 'retry', ReturnType<typeof vi.fn>>;
+  let api: Record<'get' | 'logs' | 'cancel' | 'retry' | 'addNote', ReturnType<typeof vi.fn>>;
   let store: ExecutionStore;
   let toast: Toast;
 
@@ -17,6 +17,7 @@ describe('ExecutionStore', () => {
       logs: vi.fn((id: string) => of({ logs: `registro de ${id}`, status: 'done' })),
       cancel: vi.fn(() => of(execution('e1', 'cancelled'))),
       retry: vi.fn(() => of(execution('e1', 'running'))),
+      addNote: vi.fn(() => of(execution('e1', 'running'))),
     };
     TestBed.configureTestingModule({
       providers: [ExecutionStore, { provide: ExecutionsApi, useValue: api }],
@@ -132,5 +133,24 @@ describe('ExecutionStore', () => {
 
     expect(error).toHaveBeenCalled();
     expect(store.acting()).toBe(false);
+  });
+
+  it('leaves a note on a ticket of the execution and loads it again', async () => {
+    await store.load('e1');
+    api.get.mockClear();
+
+    expect(await store.addNote('t1', 'No toques los submódulos')).toBe(true);
+
+    expect(api.addNote).toHaveBeenCalledWith('e1', 't1', 'No toques los submódulos');
+    expect(api.get).toHaveBeenCalledWith('e1');
+  });
+
+  it('tells the user when the note could not be left', async () => {
+    api.addNote.mockReturnValue(throwError(() => new Error('That ticket is already done')));
+    const error = vi.spyOn(toast, 'error');
+    await store.load('e1');
+
+    expect(await store.addNote('t1', 'Hola')).toBe(false);
+    expect(error).toHaveBeenCalled();
   });
 });

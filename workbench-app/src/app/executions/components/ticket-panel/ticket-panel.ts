@@ -3,6 +3,7 @@ import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Alert } from '@shared/ui/alert/alert';
 import { Avatar } from '@shared/ui/avatar/avatar';
 import { Badge } from '@shared/ui/badge/badge';
+import { Button } from '@shared/ui/button/button';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
@@ -25,7 +26,7 @@ export type PanelTab = 'detail' | 'activity' | 'logs';
  */
 @Component({
   selector: 'app-ticket-panel',
-  imports: [TimeAgoPipe, Alert, Avatar, Badge, Icon, IconButton, MarkdownViewer],
+  imports: [TimeAgoPipe, Alert, Avatar, Badge, Button, Icon, IconButton, MarkdownViewer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:keydown.escape)': 'dismissed.emit()' },
   templateUrl: './ticket-panel.html',
@@ -44,8 +45,13 @@ export class TicketPanel {
   /** Cómo se muestra el agente que hizo un trabajo. */
   readonly workerName = input<(job: JobSummary) => string>(() => '');
 
+  /** Mientras se guarda algo, para no mandar dos veces la misma nota. */
+  readonly busy = input(false);
+
   readonly dismissed = output();
   readonly selectJob = output<string>();
+  /** El usuario deja una nota para el agente de este ticket. */
+  readonly noteAdded = output<string>();
 
   private readonly picked = signal<PanelTab | null>(null);
   /** Sin ticket no hay detalle ni historia: solo el registro. */
@@ -73,6 +79,13 @@ export class TicketPanel {
 
   protected pick(tab: PanelTab): void {
     this.picked.set(tab);
+  }
+
+  protected sendNote(box: HTMLTextAreaElement): void {
+    const text = box.value.trim();
+    if (!text) return;
+    this.noteAdded.emit(text);
+    box.value = '';
   }
 
   /** Una lista de textos como lista de Markdown (los criterios y las correcciones traen formato). */

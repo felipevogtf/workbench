@@ -756,6 +756,84 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('notes for the agents', () => {
+    const ONE = JSON.stringify({
+      tickets: [
+        { title: 'Banner', description: 'Mostrar el banner', criteria: [] },
+      ],
+    });
+    const NOTE = 'No toques los submódulos: todo cambio ahí se descarta.';
+
+    /** Los tickets ya están creados y se espera el visto bueno. */
+    async function awaiting() {
+      const execution = await service.start('issue-1');
+      await answer({ output: ONE });
+      return execution.id;
+    }
+    const ticketOf = async (id: string) =>
+      (await service.get(id)).execution.tickets[0];
+
+    it('keeps the note on the ticket', async () => {
+      const id = await awaiting();
+      const ticket = await ticketOf(id);
+
+      await service.addNote(id, ticket.id, `  ${NOTE}  `);
+
+      expect((await ticketOf(id)).notes).toEqual([
+        { at: expect.any(String) as string, from: 'user', text: NOTE },
+      ]);
+    });
+
+    it('gives the developer the note when the ticket is worked on', async () => {
+      const id = await awaiting();
+      const ticket = await ticketOf(id);
+      await service.addNote(id, ticket.id, NOTE);
+
+      await service.begin(id);
+
+      const develop = jobs.items.at(-1)!;
+      expect(develop.kind).toBe('develop');
+      expect(develop.payload.prompt).toContain('# Notas para este ticket');
+      expect(develop.payload.prompt).toContain(`(del usuario) ${NOTE}`);
+    });
+
+    it('gives the note to the reviewer too', async () => {
+      const id = await awaiting();
+      const ticket = await ticketOf(id);
+      await service.addNote(id, ticket.id, NOTE);
+      await service.begin(id);
+
+      await answer(developed('aaa', 'bbb'));
+
+      const review = jobs.items.at(-1)!;
+      expect(review.kind).toBe('review');
+      expect(review.payload.prompt).toContain(NOTE);
+    });
+
+    it('does not take an empty note, one for a ticket that is done, or one for an unknown ticket', async () => {
+      const id = await awaiting();
+      const ticket = await ticketOf(id);
+
+      await expect(service.addNote(id, ticket.id, '   ')).rejects.toThrow(
+        'empty',
+      );
+      await expect(
+        service.addNote(id, 'no-existe', NOTE),
+      ).rejects.toMatchObject({ kind: 'not-found' });
+      await expect(
+        service.addNote('no-existe', ticket.id, NOTE),
+      ).rejects.toMatchObject({ kind: 'not-found' });
+
+      await service.begin(id);
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: '{"approved":true,"summary":"ok","issues":[]}' });
+      expect((await ticketOf(id)).status).toBe('done');
+      await expect(service.addNote(id, ticket.id, NOTE)).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+  });
+
   describe('assigning the tickets to workers', () => {
     const worker = (
       id: string,

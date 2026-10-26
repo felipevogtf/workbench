@@ -9,7 +9,10 @@ import {
 } from '@angular/core';
 import { AgentsStore } from '@ai-agents/index';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
+import { Button } from '@shared/ui/button/button';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
+import { ExecutionStore } from '../../data-access/execution.store';
+import { NoteProposal } from '../../models/execution';
 
 /**
  * Chat flotante con Lucy sobre una ejecución: ella conoce el estado completo (tickets, quién los tiene,
@@ -18,7 +21,7 @@ import { ExecutionChatStore } from '../../data-access/execution-chat.store';
  */
 @Component({
   selector: 'app-execution-chat',
-  imports: [ChatPanel],
+  imports: [ChatPanel, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-chat-panel
@@ -33,10 +36,56 @@ import { ExecutionChatStore } from '../../data-access/execution-chat.store';
     >
       <p chat-empty>
         Conoce la tarea, el plan, los tickets, quién trabaja en cada uno y los errores. Te explica
-        lo que pasó y te recomienda qué hacer, pero no cambia nada: para eso usas los botones de la
+        lo que pasó y te recomienda qué hacer. Si quieres que un trabajador sepa algo, ella te
+        propone una nota para su ticket y tú la confirmas; lo demás lo haces con los botones de la
         pantalla.
       </p>
+      @if (chat.proposals().length > 0) {
+        <div chat-actions class="proposals">
+          @for (proposal of chat.proposals(); track proposal) {
+            <article class="proposal">
+              <p class="proposal__about">Nota para el ticket {{ proposal.ticket }}</p>
+              <p class="proposal__text">{{ proposal.text }}</p>
+              <button
+                app-button
+                variant="secondary"
+                size="sm"
+                type="button"
+                [disabled]="store.acting()"
+                (click)="pass(proposal)"
+              >
+                Dejar la nota
+              </button>
+            </article>
+          }
+        </div>
+      }
     </app-chat-panel>
+  `,
+  styles: `
+    .proposals {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .proposal {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--border-radius);
+    }
+
+    .proposal__about {
+      margin: 0;
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .proposal__text {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
   `,
 })
 export class ExecutionChat {
@@ -47,6 +96,7 @@ export class ExecutionChat {
   readonly context = input('');
 
   protected readonly chat = inject(ExecutionChatStore);
+  protected readonly store = inject(ExecutionStore);
   private readonly agents = inject(AgentsStore);
 
   /** Quien contesta: el agente que crea los tickets, con el nombre y la imagen con que se ve en el tablero. */
@@ -61,6 +111,15 @@ export class ExecutionChat {
 
   /** Las preguntas que ya se vieron: al abrir la página las que ya había no se anuncian como nuevas. */
   private seen: Set<string> | null = null;
+
+  /** El usuario confirma la nota que propuso Lucy: queda en el ticket y el agente la verá la próxima vez. */
+  protected async pass(proposal: NoteProposal): Promise<void> {
+    if (!(await this.store.addNote(proposal.ticketId, proposal.text))) return;
+    this.chat.proposals.update((all) => all.filter((other) => other !== proposal));
+    this.chat.receive(
+      `Listo: dejé la nota en el ticket ${proposal.ticket} «${proposal.title}». El agente la verá la próxima vez que lo trabaje; si el ticket falló, usa **Reintentar**.`,
+    );
+  }
 
   constructor() {
     effect(() => this.chat.bind(this.executionId()));

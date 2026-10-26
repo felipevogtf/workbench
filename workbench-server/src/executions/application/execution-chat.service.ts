@@ -6,6 +6,10 @@ import {
   type ExecutionChatMessage,
 } from '@executions/domain/execution-chat-prompt';
 import {
+  extractNoteProposals,
+  type NoteProposal,
+} from '@executions/domain/note-proposals';
+import {
   EXECUTION_REPOSITORY_PORT,
   type ExecutionRepositoryPort,
 } from '@executions/domain/ports/execution-repository.port';
@@ -31,6 +35,8 @@ export interface ExecutionChatReply {
   reply: string;
   agentName: string;
   model: string;
+  /** Notas para agentes que Lucy propone y el usuario puede confirmar. */
+  proposals: NoteProposal[];
 }
 
 /**
@@ -108,6 +114,14 @@ export class ExecutionChatService {
     const workdir = code?.repos.some((repo) => repo.used)
       ? code.path
       : undefined;
-    return this.limiter.run(() => this.agents.chat({ prompt, workdir }));
+    const answer = await this.limiter.run(() =>
+      this.agents.chat({ prompt, workdir }),
+    );
+    // Las notas que propone Lucy no van en el texto: el usuario las confirma con un botón.
+    const { reply, proposals } = extractNoteProposals(
+      answer.reply,
+      execution.tickets,
+    );
+    return { ...answer, reply, proposals };
   }
 }

@@ -88,6 +88,35 @@
             </section>
           }
 
+          @if (current.ticket.notes?.length || current.ticket.status !== 'done') {
+            <section class="block">
+              <h5>Notas para el agente</h5>
+              @for (note of current.ticket.notes; track note.at) {
+                <p class="note">
+                  <strong>{{ note.from === 'lucy' ? 'Lucy' : 'Tú' }}:</strong> {{ note.text }}
+                </p>
+              } @empty {
+                <p class="muted">
+                  Ninguna. Lo que escribas aquí lo verá quien trabaje el ticket la próxima vez.
+                </p>
+              }
+              @if (current.ticket.status !== 'done') {
+                <form class="note-form" (submit)="$event.preventDefault(); sendNote(box)">
+                  <textarea
+                    #box
+                    rows="2"
+                    aria-label="Nota para el agente de este ticket"
+                    placeholder="Por ejemplo: no toques los submódulos"
+                    [disabled]="busy()"
+                  ></textarea>
+                  <button app-button size="sm" type="submit" [disabled]="busy()">
+                    Dejar la nota
+                  </button>
+                </form>
+              }
+            </section>
+          }
+
           @if (current.ticket.feedback?.length) {
             <app-alert tone="warning" heading="El revisor pidió cambios">
               <app-markdown-viewer [content]="list(current.ticket.feedback ?? [])" />

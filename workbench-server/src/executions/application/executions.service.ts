@@ -302,6 +302,34 @@ export class ExecutionsService {
     return this.executions.save(execution);
   }
 
+  /**
+   * El usuario deja una instrucción para quien trabaje el ticket (por ejemplo «no toques los submódulos»).
+   * No interrumpe un trabajo en curso: entra al prompt la próxima vez que se desarrolle o revise, incluido un
+   * reintento.
+   */
+  async addNote(
+    executionId: string,
+    ticketId: string,
+    text: string,
+  ): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    const ticket = execution.ticket(ticketId);
+    if (ticket.status === 'done') {
+      throw DomainError.conflict('That ticket is already done');
+    }
+    const note = text.trim();
+    if (!note) throw new DomainError('The note cannot be empty');
+
+    ticket.notes = [
+      ...(ticket.notes ?? []),
+      { at: new Date().toISOString(), from: 'user', text: note },
+    ];
+    return this.executions.save(execution);
+  }
+
   /** La respuesta queda como decisión y el desarrollador retoma el ticket con ella. */
   private async resolveQuestion(
     execution: Execution,

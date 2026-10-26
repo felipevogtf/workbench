@@ -125,8 +125,26 @@ export class ExecutionChatRequestDto {
   messages!: ExecutionChatMessageDto[];
 }
 
+/** Una instrucción que Lucy propone dejarle a un agente en un ticket; no se guarda hasta que el usuario la confirma. */
+export class NoteProposalDto {
+  ticketId!: string;
+  /** El número del ticket tal como lo ve el usuario (desde 1). */
+  ticket!: number;
+  title!: string;
+  text!: string;
+}
+
 export class ExecutionChatReplyDto {
   reply!: string;
   agentName!: string;
   model!: string;
+  proposals!: NoteProposalDto[];
+}
+
+/** Una instrucción del usuario para quien trabaje el ticket la próxima vez. */
+export class AddNoteDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2_000)
+  text!: string;
 }

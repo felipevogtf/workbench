@@ -130,6 +130,43 @@ describe('ExecutionChatService', () => {
     expect(prompt).toContain('No puedes cambiar la ejecución desde aquí');
   });
 
+  it('lets her propose a note for an agent, which comes back apart from her text', async () => {
+    agents.chatReply =
+      'Le dejo esto a Rebecca.\nNOTA 1: No toques los submódulos.';
+
+    const answer = await ask('Dile a Rebecca que no toque los submódulos');
+
+    expect(agents.chats[0]).toContain('NOTA <número del ticket>');
+    expect(answer.reply).toBe('Le dejo esto a Rebecca.');
+    expect(answer.proposals).toEqual([
+      {
+        ticketId: 'a',
+        ticket: 1,
+        title: 'API de órdenes',
+        text: 'No toques los submódulos.',
+      },
+    ]);
+  });
+
+  it('returns no proposals when she only talks', async () => {
+    agents.chatReply = 'Falló por el revisor.';
+
+    expect((await ask('¿Por qué falló?')).proposals).toEqual([]);
+  });
+
+  it('shows her the notes already left on a ticket', async () => {
+    execution.ticket('a').notes = [
+      { at: '2026-10-26T00:00:00Z', from: 'user', text: 'Usa el componente X' },
+    ];
+    await executions.save(execution);
+
+    await ask('Hola');
+
+    expect(agents.chats[0]).toContain(
+      'Nota para el agente (del usuario): Usa el componente X',
+    );
+  });
+
   it('keeps the earlier turns of the conversation, with who said each one', async () => {
     await service.reply(execution.id, [
       { role: 'user', content: 'Primera pregunta' },

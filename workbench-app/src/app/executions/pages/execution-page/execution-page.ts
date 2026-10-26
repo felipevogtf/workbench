@@ -264,6 +264,12 @@ export class ExecutionPage {
     if (confirmed) await this.store.cancel();
   }
 
+  /** Una nota del usuario para quien trabaje el ticket abierto. */
+  protected leaveNote(text: string): void {
+    const ticketId = this.panelCard()?.ticket.id;
+    if (ticketId) void this.store.addNote(ticketId, text);
+  }
+
   protected answer(reply: { ticketId: string; text: string }): void {
     void this.store.answer(reply.ticketId, reply.text);
   }
