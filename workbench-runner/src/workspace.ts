@@ -188,8 +188,12 @@ export class Workspaces {
       const path = join(root, name);
       const info = await stat(path).catch(() => null);
       if (info && now - info.mtimeMs > WORKTREE_MAX_AGE_MS) {
-        await rm(path, { recursive: true, force: true });
-        removed.push(name);
+        // Una carpeta con archivos de root (de un contenedor) no se puede borrar: se deja para otra vuelta.
+        const gone = await rm(path, { recursive: true, force: true }).then(
+          () => true,
+          () => false,
+        );
+        if (gone) removed.push(name);
       }
     }
     // Lo que quedó apuntando a carpetas borradas se limpia en cada clon.

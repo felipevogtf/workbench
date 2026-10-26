@@ -1,6 +1,52 @@
 {
   "serverUrl": "http://personal-task-manager:4321/api",
   "token": "wbr_pega-aqui-el-token-que-te-dio-la-app",
-  "workDir": "E:\\workbench-agent-repos",
-  "maxBudgetUsd": 5
+  "workDir": "/home/agent/work",
+  "maxBudgetUsd": 5,
+
+  "secretsDir": "/home/agent/secrets",
+  "portRange": [20000, 29999],
+  "environmentIdleMinutes": 120,
+  "services": {
+    "mysql57": {
+      "image": "mysql:5.7",
+      "containerPort": 3306,
+      "env": { "MYSQL_ROOT_PASSWORD": "root" },
+      "ready": ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot", "--silent"],
+      "createSchema": ["mysql", "-uroot", "-proot", "-e", "CREATE DATABASE IF NOT EXISTS `{{schema}}`"]
+    }
+  },
+  "environments": {
+    "garage-labs/miseguridad-web": {
+      "composeFiles": [
+        "docker-compose.yml",
+        "docker-compose-local.yml",
+        "docker-compose-wiremock.yml"
+      ],
+      "envFile": ".env.docker.local",
+      "ports": [
+        { "name": "app", "env": "COMPOSE_PORT" },
+        { "name": "wiremock", "service": "wiremock", "container": 8080 },
+        { "name": "swagger", "service": "swagger", "container": 8080 }
+      ],
+      "database": { "service": "mysql57", "schema": "miseguridad", "testSchema": "miseguridad-test" },
+      "files": [
+        { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
+        { "from": ".env.local", "to": ".env.local", "template": true },
+        { "from": ".env.test.local", "to": ".env.test.local", "template": true },
+        { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" },
+        { "from": "client_secret.json", "to": "client_secret.json" }
+      ],
+      "prepare": [
+        "docker compose exec -T app composer install --no-interaction",
+        "docker compose exec -T app sh -c 'mkdir -p config/jwt && openssl genpkey -out config/jwt/private.pem -pass pass:cambia-esta-frase -aes256 -algorithm rsa -pkeyopt rsa_keygen_bits:4096 && openssl pkey -in config/jwt/private.pem -passin pass:cambia-esta-frase -out config/jwt/public.pem -pubout'",
+        "docker compose exec -T app bin/console doctrine:schema:update --force",
+        "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
+        "docker compose exec -T app bin/console app:import:entities",
+        "docker compose restart supervisor"
+      ],
+      "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
+    }
+  },
+  "copyFiles": {}
 }

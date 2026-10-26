@@ -6,6 +6,7 @@ import { ServerApi } from './api';
 import { acquireLock } from './lock';
 import { install, remove, userStartupDir } from './windows';
 import { loadConfig } from './config';
+import { Environments } from './environment';
 import { VERSION, Worker } from './worker';
 import { Workspaces } from './workspace';
 
@@ -127,10 +128,28 @@ async function main(): Promise<number> {
       `Se borraron ${removed.length} carpeta(s) de trabajo abandonadas`,
     );
 
+  // Los entornos de prueba solo existen si la configuración define alguno.
+  let environments: Environments | undefined;
+  if (Object.keys(config.environment.environments).length > 0) {
+    environments = new Environments({
+      workDir: config.workDir,
+      ...config.environment,
+    });
+    // Un runner que arranca no tiene ejecuciones en curso: lo que haya con nuestra marca quedó huérfano.
+    const orphans = await environments.sweepOrphans();
+    if (orphans > 0)
+      console.log(
+        `Se borraron ${orphans} contenedor(es) de entornos huérfanos`,
+      );
+  }
+
   const worker = new Worker(
     new ServerApi(config.serverUrl, config.token),
     config,
     workspaces,
+    console.log,
+    undefined,
+    environments,
   );
   const stop = () => {
     console.log('\nDeteniendo…');

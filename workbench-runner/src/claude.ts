@@ -27,6 +27,8 @@ export interface ClaudeRun {
   addDirs?: string[];
   prompt: string;
   cwd: string;
+  /** Variables que se suman a las del runner (por ejemplo, el proyecto de Docker del agente). */
+  env?: Record<string, string>;
   timeoutMs: number;
   maxBudgetUsd: number;
   /** Cada línea de registro legible (qué lee, qué edita, qué dice). */
@@ -221,6 +223,7 @@ export function runClaude(run: ClaudeRun): Promise<ClaudeResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(run.bin, [...(run.binArgs ?? []), ...claudeArgs(run)], {
       cwd: run.cwd,
+      env: run.env ? { ...process.env, ...run.env } : process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 

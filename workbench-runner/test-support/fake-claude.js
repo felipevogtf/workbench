@@ -17,6 +17,7 @@ async function main() {
       JSON.stringify({
         args: process.argv.slice(2),
         cwd: process.cwd(),
+        compose: process.env.COMPOSE_PROJECT_NAME ?? null,
         prompt,
       }),
     );

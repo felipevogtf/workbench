@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { homedir } from 'node:os';
+import type { EnvironmentsConfig } from './environment';
 import type { JobKind } from './types';
 
 export interface RunnerConfig {
@@ -28,6 +30,8 @@ export interface RunnerConfig {
    * que el repo no versiona y se parte de una plantilla. Rutas relativas a la raíz del repo.
    */
   copyFiles: Record<string, { from: string; to: string }[]>;
+  /** Entornos de prueba (contenedores) que el runner levanta por ejecución. Vacío = no levanta nada. */
+  environment: Omit<EnvironmentsConfig, 'workDir'>;
 }
 
 export const DEFAULT_CONFIG = {
@@ -171,5 +175,56 @@ export function loadConfig(
     },
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
     copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],
+    environment: environmentFrom(raw),
+  };
+}
+
+/** `services`, `environments` y sus ajustes: se validan al leer para que un error salga al arrancar, no a mitad de una ejecución. */
+function environmentFrom(
+  raw: Record<string, unknown>,
+): RunnerConfig['environment'] {
+  const services = (raw.services ?? {}) as EnvironmentsConfig['services'];
+  const environments = (raw.environments ??
+    {}) as EnvironmentsConfig['environments'];
+
+  const range = (raw.portRange ?? [20000, 29999]) as unknown;
+  if (
+    !Array.isArray(range) ||
+    range.length !== 2 ||
+    !range.every(
+      (port) => Number.isInteger(port) && port > 1024 && port < 65536,
+    ) ||
+    range[0] >= range[1]
+  )
+    fail('portRange debe ser [desde, hasta] con puertos entre 1025 y 65535');
+
+  for (const [repo, env] of Object.entries(environments)) {
+    if (!Array.isArray(env.composeFiles) || env.composeFiles.length === 0)
+      fail(`environments["${repo}"].composeFiles es obligatorio`);
+    if (!Array.isArray(env.ports))
+      fail(`environments["${repo}"].ports es obligatorio`);
+    for (const port of env.ports) {
+      if (!port.name || (!port.env && !(port.service && port.container)))
+        fail(
+          `environments["${repo}"].ports: cada puerto necesita name y env, o service y container`,
+        );
+    }
+    if (env.database && !services[env.database.service])
+      fail(
+        `environments["${repo}"].database usa el servicio «${env.database.service}», que no está en services`,
+      );
+  }
+
+  const idle = Number(raw.environmentIdleMinutes ?? 120);
+  return {
+    secretsDir: resolve(
+      typeof raw.secretsDir === 'string' && raw.secretsDir.trim()
+        ? raw.secretsDir.trim()
+        : `${homedir()}/secrets`,
+    ),
+    portRange: range as [number, number],
+    idleMinutes: idle > 0 ? idle : 120,
+    services,
+    environments,
   };
 }

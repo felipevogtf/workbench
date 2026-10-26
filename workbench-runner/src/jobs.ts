@@ -1,5 +1,6 @@
 import { probeUsage, runClaude } from './claude';
 import { effectiveTools, type RunnerConfig } from './config';
+import { environmentTools, type Environments } from './environment';
 import { git } from './git';
 import {
   discardSubmoduleChanges,
@@ -15,6 +16,8 @@ const MAX_OUTPUT_CHARS = 60_000;
 export interface JobContext {
   config: RunnerConfig;
   workspaces: Workspaces;
+  /** Si está, los proyectos con entorno configurado se levantan en contenedores para desarrollar y revisar. */
+  environments?: Environments;
   onLog: (line: string) => void;
   signal: AbortSignal;
 }
@@ -40,7 +43,10 @@ export async function runJob(
     const headAfter = (
       await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
     ).trim();
+    // Lo que crearon los contenedores se devuelve al runner antes de borrar el worktree, y con él se baja el entorno.
+    await context.environments?.reclaim(job.executionId, workspace.dir);
     await context.workspaces.release(payload.repo, payload.branch);
+    await context.environments?.tearDown(job.executionId, context.onLog);
     context.onLog(
       `Rama subida (${headAfter.slice(0, 8)}), PR hacia ${workspace.baseBranch}`,
     );
@@ -76,20 +82,39 @@ export async function runJob(
       `Se descartaron cambios que habían quedado en los submódulos: ${leftovers.join(', ')}`,
     );
   }
+  // El entorno de pruebas del proyecto, si tiene uno configurado. Quien planifica no lo necesita.
+  const environment =
+    job.kind === 'tickets'
+      ? null
+      : await context.environments?.ensure({
+          executionId: job.executionId,
+          repo: payload.repo,
+          dir: workspace.dir,
+          onLog: context.onLog,
+          signal: context.signal,
+        });
   const prompt =
     payload.prompt.replace(
       /\{\{dir:([^}]+)\}\}/g,
       (placeholder, name: string) =>
         consult.find((other) => other.fullName === name)?.dir ?? placeholder,
-    ) + submoduleNotice(submodules, job.kind);
+    ) +
+    submoduleNotice(submodules, job.kind) +
+    (environment?.notice ?? '');
 
   const headBefore = (
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
   ).trim();
-  const tools = effectiveTools(
-    agent.allowedTools,
-    context.config.allowedTools[job.kind],
-  );
+  const tools = [
+    ...effectiveTools(
+      agent.allowedTools,
+      context.config.allowedTools[job.kind],
+    ),
+    // Con el entorno arriba, el agente puede usar sus contenedores (y solo ellos): lo decide el runner, no el servidor.
+    ...(environment?.processEnv.COMPOSE_PROJECT_NAME
+      ? environmentTools(job.kind)
+      : []),
+  ];
   const dropped = agent.allowedTools.filter((tool) => !tools.includes(tool));
   if (dropped.length > 0) {
     context.onLog(
@@ -97,21 +122,31 @@ export async function runJob(
     );
   }
 
-  const claude = await runClaude({
-    bin: context.config.claudeBin,
-    binArgs: context.config.claudeBinArgs,
-    model: agent.model,
-    systemPrompt: agent.systemPrompt,
-    effort: agent.effort,
-    tools,
-    addDirs: consult.map((other) => other.dir),
-    prompt,
-    cwd: workspace.dir,
-    timeoutMs: context.config.timeoutMinutes[job.kind] * 60_000,
-    maxBudgetUsd: context.config.maxBudgetUsd,
-    onLog: context.onLog,
-    signal: context.signal,
-  });
+  let claude: Awaited<ReturnType<typeof runClaude>>;
+  try {
+    claude = await runClaude({
+      bin: context.config.claudeBin,
+      binArgs: context.config.claudeBinArgs,
+      model: agent.model,
+      systemPrompt: agent.systemPrompt,
+      effort: agent.effort,
+      tools,
+      addDirs: consult.map((other) => other.dir),
+      prompt,
+      cwd: workspace.dir,
+      env: environment?.processEnv,
+      timeoutMs: context.config.timeoutMinutes[job.kind] * 60_000,
+      maxBudgetUsd: context.config.maxBudgetUsd,
+      onLog: context.onLog,
+      signal: context.signal,
+    });
+  } finally {
+    // Los contenedores dejan archivos a nombre de root: se devuelven al runner antes de tocar el worktree con git.
+    await context.environments?.reclaim(job.executionId, workspace.dir);
+    // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno.
+    if (job.kind === 'final')
+      await context.environments?.tearDown(job.executionId, context.onLog);
+  }
   const output = claude.output.slice(0, MAX_OUTPUT_CHARS);
 
   // Los repos de consulta no se tocan: si el agente cambió algo ahí, se descarta.

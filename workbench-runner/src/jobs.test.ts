@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { DEFAULT_CONFIG } from './config';
+import type { Environments } from './environment';
 import { git } from './git';
 import { runJob, type JobContext } from './jobs';
 import {
@@ -328,6 +329,101 @@ describe('runJob', () => {
 
     const seen = JSON.parse(readFileSync(argsFile, 'utf8')) as { cwd: string };
     assert.ok(existsSync(join(seen.cwd, 'feature.txt')));
+  });
+
+  describe('with a test environment', () => {
+    /** Un entorno de mentira: anota qué se le pidió y entrega lo que se le diga. */
+    function fakeEnvironments(up = true) {
+      const events: string[] = [];
+      const environments = {
+        async ensure() {
+          events.push('ensure');
+          return up
+            ? {
+                notice: '## Entorno de pruebas — Arriba',
+                processEnv: { COMPOSE_PROJECT_NAME: 'wb-12345678-web' },
+              }
+            : {
+                notice: '## Entorno de pruebas — No se pudo',
+                processEnv: {},
+              };
+        },
+        async reclaim() {
+          events.push('reclaim');
+        },
+        async tearDown() {
+          events.push('tearDown');
+        },
+      } as unknown as Environments;
+      return { environments, events };
+    }
+
+    async function run(kind: JobKind, up = true) {
+      const { context } = setup();
+      const { environments, events } = fakeEnvironments(up);
+      const argsFile = join(tempDir('args'), 'args.json');
+      process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+      try {
+        await runJob(job(kind), { ...context, environments });
+      } finally {
+        delete process.env.FAKE_CLAUDE_ARGS_FILE;
+      }
+      const seen = JSON.parse(readFileSync(argsFile, 'utf8')) as {
+        args: string[];
+        prompt: string;
+        compose: string | null;
+      };
+      return {
+        events,
+        seen,
+        tools: seen.args[seen.args.indexOf('--allowedTools') + 1],
+      };
+    }
+
+    it('develop: tells the agent about it, runs it in its Docker project and lets it use its containers', async () => {
+      const { seen, tools, events } = await run('develop');
+
+      assert.match(seen.prompt, /Entorno de pruebas — Arriba/);
+      assert.equal(seen.compose, 'wb-12345678-web');
+      assert.ok(tools.includes('Bash(docker compose exec:*)'));
+      assert.ok(tools.includes('Bash(docker compose restart:*)'));
+      assert.ok(!tools.includes('Bash(docker:*)'));
+      assert.deepEqual(events, ['ensure', 'reclaim']);
+    });
+
+    it('review: gets it too, without restarting services', async () => {
+      const { tools } = await run('review');
+      assert.ok(tools.includes('Bash(docker compose exec:*)'));
+      assert.ok(!tools.includes('Bash(docker compose restart:*)'));
+    });
+
+    it('the final review is the last user of the environment and takes it down', async () => {
+      const { events } = await run('final');
+      assert.deepEqual(events, ['ensure', 'reclaim', 'tearDown']);
+    });
+
+    it('tickets: the planner never gets one', async () => {
+      const { events, seen } = await run('tickets');
+      assert.ok(!events.includes('ensure') && !events.includes('tearDown'));
+      assert.equal(seen.compose, null);
+    });
+
+    it('when it could not be brought up the agent works without containers and is told so', async () => {
+      const { seen, tools } = await run('develop', false);
+      assert.match(seen.prompt, /No se pudo/);
+      assert.equal(seen.compose, null);
+      assert.ok(!tools.includes('Bash(docker compose exec:*)'));
+    });
+
+    it('publish: gives the files back, removes the worktree and then takes the environment down', async () => {
+      const { context } = setup();
+      await runJob(job('develop'), context);
+      const { environments, events } = fakeEnvironments();
+
+      await runJob(job('publish'), { ...context, environments });
+
+      assert.deepEqual(events, ['reclaim', 'tearDown']);
+    });
   });
 
   it('gives the agent only the tools that the server asks for and this runner allows', async () => {

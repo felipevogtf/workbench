@@ -104,6 +104,13 @@ export function testConfig(
     },
     remoteOverrides: { 'acme/web': bare },
     copyFiles: {},
+    environment: {
+      secretsDir: tempDir('secrets'),
+      portRange: [20000, 29999],
+      idleMinutes: 120,
+      services: {},
+      environments: {},
+    },
     ...overrides,
   };
 }

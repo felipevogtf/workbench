@@ -2,6 +2,7 @@ import { hostname } from 'node:os';
 import { ApiError, type ServerApi } from './api';
 import type { RunnerConfig } from './config';
 import { probeUsage } from './claude';
+import type { Environments } from './environment';
 import { runJob } from './jobs';
 import type { JobUsage, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
@@ -44,6 +45,8 @@ export class Worker {
     private readonly log: (message: string) => void = console.log,
     /** Cada cuánto da señal de vida; las pruebas lo acortan. */
     private readonly heartbeatMs: number = HEARTBEAT_MS,
+    /** Los entornos de prueba (contenedores) de las ejecuciones; sin él, el runner no levanta nada. */
+    private readonly environments?: Environments,
   ) {}
 
   stop(): void {
@@ -101,6 +104,8 @@ export class Worker {
   }
 
   private async beat(): Promise<void> {
+    // Un entorno que nadie usa hace rato (ejecución cancelada o caída) no se queda gastando recursos.
+    void this.environments?.sweepIdle().catch(() => undefined);
     try {
       const { stop, probe } = await this.api.heartbeat([
         ...this.running.keys(),
@@ -178,6 +183,7 @@ export class Worker {
       const done = await runJob(job, {
         config: this.config,
         workspaces: this.workspaces,
+        environments: this.environments,
         onLog,
         signal: controller.signal,
       });
