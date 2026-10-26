@@ -7,6 +7,7 @@ import { runJob, type JobContext } from './jobs';
 import {
   REPO,
   createRemote,
+  createRemoteWithSubmodule,
   remoteBranches,
   tempDir,
   testConfig,
@@ -119,6 +120,100 @@ describe('runJob', () => {
     } finally {
       delete process.env.FAKE_NO_CHANGES;
     }
+  });
+
+  describe('with a submodule', () => {
+    const SUBMODULE_FILE = 'src/mipedido/style.scss';
+
+    function setupWithSubmodule() {
+      const bare = createRemoteWithSubmodule();
+      const config = testConfig(bare);
+      const logs: string[] = [];
+      const context: JobContext = {
+        config,
+        workspaces: new Workspaces(config.workDir, config.remoteOverrides),
+        onLog: (line) => logs.push(line),
+        signal: new AbortController().signal,
+      };
+      const dir = join(
+        config.workDir,
+        'worktrees',
+        'web__workbench__vista-1234abcd',
+      );
+      return { context, logs, dir };
+    }
+
+    it('develop: discards what the agent changed inside it and commits the rest', async () => {
+      const { context, logs, dir } = setupWithSubmodule();
+      process.env.FAKE_TOUCH = SUBMODULE_FILE;
+      try {
+        const { result } = await runJob(job('develop'), context);
+        assert.notEqual(result.headBefore, result.headAfter);
+      } finally {
+        delete process.env.FAKE_TOUCH;
+      }
+
+      assert.equal(
+        (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+        '',
+      );
+      assert.equal(
+        readFileSync(join(dir, SUBMODULE_FILE), 'utf8'),
+        '.a { color: blue; }\n',
+      );
+      assert.ok(logs.some((line) => line.includes('submódulos')));
+    });
+
+    it('develop: reports no changes instead of failing when only the submodule changed', async () => {
+      const { context, dir } = setupWithSubmodule();
+      process.env.FAKE_TOUCH = SUBMODULE_FILE;
+      process.env.FAKE_NO_CHANGES = '1';
+      try {
+        const { result } = await runJob(job('develop'), context);
+        assert.equal(result.headBefore, result.headAfter);
+      } finally {
+        delete process.env.FAKE_TOUCH;
+        delete process.env.FAKE_NO_CHANGES;
+      }
+      assert.equal(
+        (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+        '',
+      );
+    });
+
+    it('discards what an earlier attempt left in it before the agent starts', async () => {
+      const { context, logs, dir } = setupWithSubmodule();
+      await runJob(job('review'), context);
+      writeFileSync(join(dir, SUBMODULE_FILE), 'sobras\n');
+
+      await runJob(job('review'), context);
+
+      assert.equal(
+        readFileSync(join(dir, SUBMODULE_FILE), 'utf8'),
+        '.a { color: blue; }\n',
+      );
+      assert.ok(
+        logs.some((line) => line.includes('quedado en los submódulos')),
+      );
+    });
+
+    it('tells the agent not to touch it', async () => {
+      const { context } = setupWithSubmodule();
+      const argsFile = join(tempDir('args'), 'args.json');
+      process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+      try {
+        await runJob(job('develop'), context);
+      } finally {
+        delete process.env.FAKE_CLAUDE_ARGS_FILE;
+      }
+
+      const { prompt } = JSON.parse(readFileSync(argsFile, 'utf8')) as {
+        prompt: string;
+      };
+      assert.match(prompt, /Submódulos de este repositorio/);
+      assert.match(prompt, /- src\/mipedido/);
+      assert.match(prompt, /NO las modifiques/);
+    });
   });
 
   it('review: runs after develop on the same branch and sees its work', async () => {

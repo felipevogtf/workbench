@@ -10,6 +10,10 @@ Object.assign(process.env, {
   GIT_AUTHOR_EMAIL: 'test@example.com',
   GIT_COMMITTER_NAME: 'Test',
   GIT_COMMITTER_EMAIL: 'test@example.com',
+  // Un submódulo que vive en una carpeta local: git lo rechaza salvo que se permita el protocolo file.
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_KEY_0: 'protocol.file.allow',
+  GIT_CONFIG_VALUE_0: 'always',
 });
 
 export const FAKE_CLAUDE = join(
@@ -41,6 +45,29 @@ export function createRemote(): string {
   run(seed, 'remote', 'add', 'origin', bare);
   run(seed, 'push', 'origin', 'main');
   run(bare, 'symbolic-ref', 'HEAD', 'refs/heads/main');
+  return bare;
+}
+
+/** Un remoto como el de `createRemote`, pero con `src/mipedido` como submódulo (otro repositorio). */
+export function createRemoteWithSubmodule(): string {
+  const bare = createRemote();
+  const root = tempDir('submodule');
+  const subBare = join(root, 'mipedido.git');
+  const seed = join(root, 'seed');
+  mkdirSync(seed);
+  run(root, 'init', '--bare', '--initial-branch=main', subBare);
+  run(seed, 'init', '--initial-branch=main');
+  writeFileSync(join(seed, 'style.scss'), '.a { color: blue; }\n');
+  run(seed, 'add', '--all');
+  run(seed, 'commit', '-m', 'estilos');
+  run(seed, 'remote', 'add', 'origin', subBare);
+  run(seed, 'push', 'origin', 'main');
+
+  const work = join(root, 'work');
+  run(root, 'clone', bare, work);
+  run(work, 'submodule', 'add', subBare, 'src/mipedido');
+  run(work, 'commit', '-m', 'agrega el submódulo');
+  run(work, 'push', 'origin', 'main');
   return bare;
 }
 

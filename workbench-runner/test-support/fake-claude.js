@@ -70,6 +70,15 @@ async function main() {
     process.exit(1);
   }
 
+  // FAKE_TOUCH: rutas (separadas por coma) que escribe, relativas a donde trabaja; sirve para tocar un submódulo.
+  for (const target of (process.env.FAKE_TOUCH ?? '')
+    .split(',')
+    .filter(Boolean)) {
+    const file = path.join(process.cwd(), target);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, 'cambiado por el agente\n');
+  }
+
   let result = 'Hecho';
   if (prompt.includes('Divide el plan')) {
     result =

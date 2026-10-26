@@ -1,6 +1,11 @@
 import { probeUsage, runClaude } from './claude';
 import { effectiveTools, type RunnerConfig } from './config';
 import { git } from './git';
+import {
+  discardSubmoduleChanges,
+  submoduleNotice,
+  submodulePaths,
+} from './submodules';
 import type { JobOutcome, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
 
@@ -62,11 +67,21 @@ export async function runJob(
     const prepared = await context.workspaces.prepare(other, other.branch);
     consult.push({ fullName: other.fullName, dir: prepared.dir });
   }
-  const prompt = payload.prompt.replace(
-    /\{\{dir:([^}]+)\}\}/g,
-    (placeholder, name: string) =>
-      consult.find((other) => other.fullName === name)?.dir ?? placeholder,
-  );
+  // Los submódulos son de otros repos: se empieza sin cambios en ellos (por si un intento anterior los dejó) y el
+  // agente sabe que no debe tocarlos.
+  const submodules = await submodulePaths(workspace.dir);
+  const leftovers = await discardSubmoduleChanges(workspace.dir, submodules);
+  if (leftovers.length > 0) {
+    context.onLog(
+      `Se descartaron cambios que habían quedado en los submódulos: ${leftovers.join(', ')}`,
+    );
+  }
+  const prompt =
+    payload.prompt.replace(
+      /\{\{dir:([^}]+)\}\}/g,
+      (placeholder, name: string) =>
+        consult.find((other) => other.fullName === name)?.dir ?? placeholder,
+    ) + submoduleNotice(submodules, job.kind);
 
   const headBefore = (
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
@@ -115,6 +130,15 @@ export async function runJob(
 
   if (job.kind !== 'develop') {
     return { result: { output }, costUsd: claude.costUsd, usage: claude.usage };
+  }
+
+  // Lo que el agente haya cambiado dentro de un submódulo no es de este repo: se descarta, y el commit lleva solo
+  // lo que sí lo es (si no, git se queja de «contenido modificado» que no puede agregar).
+  const touched = await discardSubmoduleChanges(workspace.dir, submodules);
+  if (touched.length > 0) {
+    context.onLog(
+      `El agente cambió submódulos (${touched.join(', ')}), que son de otros repositorios: se descartan.`,
+    );
   }
 
   // El agente no hace commit: lo hace el runner con lo que quedó en el worktree.
