@@ -50,7 +50,7 @@ Ya existe: `release` borra el worktree al publicar la PR y `sweep` borra los aba
 cancelar necesitaría un aviso del servidor al runner para ahorrar espacio que hoy sobra (350 GB libres), y una fallida
 se conserva a propósito porque se puede reintentar sobre el mismo worktree.
 
-## 4. Comunicación en los dos sentidos entre Lucy y los agentes (servidor y front, al final)
+## 4. Comunicación en los dos sentidos entre Lucy y los agentes — notas hechas, el resto pendiente
 
 Lucy es la coordinadora y el usuario habla solo con ella. El detalle completo está en
 `etapa-2-lucy-y-los-agentes.md`.
@@ -60,10 +60,15 @@ Lucy es la coordinadora y el usuario habla solo con ella. El detalle completo es
   (máximo 2 preguntas por ticket). Lucy contesta `RESPUESTA:` o `ESCALAR:`; por defecto siempre escala y el usuario
   ve su recomendación (`EXECUTIONS_LUCY_ANSWERS=true` la deja contestar sola). La respuesta queda como decisión del
   ticket y el desarrollador retoma con ella; los revisores también la ven.
-- **Lucy → agente: lo que se construye en este punto.** Los agentes solo existen mientras corre su trabajo, así que
-  hablarles es dejar una **nota para su próxima vuelta** en un ticket (Lucy la propone desde su chat y el usuario
-  confirma; se guarda como decisión y entra al prompt del agente) o **pedirles una explicación** (una llamada corta
-  con su persona). Esto es lo que habría resuelto el caso de los submódulos.
-- **También entra aquí lo que falta de la etapa 2:** el hilo de mensajes guardado en el servidor (hoy el chat vive
-  solo en el navegador) y que los revisores también puedan preguntar. La etapa 3 (Lucy propone acciones y el usuario
-  las aprueba) queda fuera.
+- **Lucy → agente: notas, hecho** (commit `e5710b6`). Los agentes solo existen mientras corre su trabajo, así que
+  hablarles es dejar una **nota para su próxima vuelta** en el ticket:
+  - el usuario la escribe en el panel del ticket («Notas para el agente»);
+  - Lucy la propone desde su chat con una línea `NOTA <n>: …` que el servidor separa de su texto; el usuario la
+    confirma con un botón «Dejar la nota» y recién ahí se guarda;
+  - la nota entra al prompt del desarrollador y del revisor la próxima vez que se trabaje el ticket, incluido un
+    reintento, y Lucy la ve en su contexto. No interrumpe un trabajo en curso ni se acepta en un ticket ya hecho.
+  - Endpoint: `POST /executions/:id/tickets/:ticketId/notes`. Servidor 584 tests, front 548.
+  - Esto es lo que habría resuelto el caso de los submódulos.
+- **Sigue pendiente de la etapa 2** (no se hizo en este punto): pedirle una explicación a un agente (una llamada corta
+  con su persona), el hilo de mensajes guardado en el servidor (hoy el chat vive solo en el navegador) y que los
+  revisores también puedan preguntar. La etapa 3 (Lucy propone acciones y el usuario las aprueba) queda fuera.
