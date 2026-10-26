@@ -72,3 +72,21 @@ Lucy es la coordinadora y el usuario habla solo con ella. El detalle completo es
 - **Sigue pendiente de la etapa 2** (no se hizo en este punto): pedirle una explicación a un agente (una llamada corta
   con su persona), el hilo de mensajes guardado en el servidor (hoy el chat vive solo en el navegador) y que los
   revisores también puedan preguntar. La etapa 3 (Lucy propone acciones y el usuario las aprueba) queda fuera.
+
+## Pendiente para mañana (2026-10-27)
+
+1. **Desplegar `a5f813f`.** Ya está en `main`, pero el servidor de `personal_server` tiene hasta `e5710b6`. Falta la instrucción
+   nueva de Lucy (proponer la nota solo al cerrar la conversación), el aviso en su chat cuando la ejecución falla y el botón
+   «Dejar la nota y reintentar». Comando: `ssh personal_server 'cd ~/git_repos/workbench && git pull && cd deploy/prod && docker compose up -d --build'`.
+2. **Dudas sin fallo.** Hoy un desarrollador que avanza con un supuesto lo deja enterrado en su resumen, y solo `PREGUNTA:`
+   detiene el ticket (y únicamente si no hizo cambios). Propuesta:
+   - el desarrollador y el revisor cierran su resumen con una línea `DUDAS: …` cuando hicieron un supuesto o algo quedó sin
+     probar;
+   - el servidor la guarda en el ticket (campo nuevo, jsonb: sin migración) y Lucy la comenta en su chat sin detener la
+     ejecución («David avanzó suponiendo X; ¿lo dejamos así?»);
+   - si el usuario no está de acuerdo, conversan y ella propone la nota como siempre.
+   Incluye prompts, parseo, aviso en el chat, panel del ticket y tests.
+3. **Probar con una ejecución real**: Reintentar la que falló por el submódulo `src/mipedido`, con una nota en el ticket, para
+   ver los submódulos, las notas, los archivos previstos y el chat funcionando juntos.
+4. **Lo que sigue de la etapa 2:** pedirle una explicación a un agente, hilo de mensajes guardado en el servidor, revisores que
+   puedan preguntar y la etapa 3 (acciones con confirmación).
