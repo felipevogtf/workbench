@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DomainError } from '@core/domain/domain.error';
 import { Execution } from '@executions/domain/entities/execution.entity';
+import { ExecutionTarget } from '@executions/domain/entities/execution.props';
 import {
   ExecutionTicket,
   StageKey,
@@ -707,7 +708,7 @@ export class ExecutionsService {
           throw new DomainError('The runner did not report the base branch');
         }
         // Cada repositorio sube su rama y abre su PR, uno tras otro.
-        const targets = execution.targets();
+        const targets = this.publishTargets(execution);
         const target = execution.targetOf(job.payload.repo.fullName);
         execution.setTargetBaseBranch(target.repo.fullName, baseBranch);
 
@@ -764,10 +765,28 @@ export class ExecutionsService {
           return;
         }
         execution.setStage('publish', 'done');
-        execution.complete(execution.pullRequestUrl ?? url);
+        execution.complete(
+          execution.targetOf(targets[0].repo.fullName).pullRequestUrl ?? url,
+        );
         return;
       }
     }
+  }
+
+  /**
+   * Los repositorios que llevan cambios: uno sin tickets (p. ej. el primario que solo se consultó) no tiene
+   * nada que subir y Bitbucket rechaza una PR sin diferencias.
+   */
+  private publishTargets(execution: Execution): ExecutionTarget[] {
+    const targets = execution.targets();
+    const withChanges = targets.filter((target) =>
+      execution.tickets.some((ticket) => {
+        return (
+          execution.targetOf(ticket.repo).repo.fullName === target.repo.fullName
+        );
+      }),
+    );
+    return withChanges.length > 0 ? withChanges : targets;
   }
 
   /** Un ticket nuevo, sin trabajo hecho, a partir de lo que dio el agente o el usuario. */
@@ -796,7 +815,15 @@ export class ExecutionsService {
     if (!ticket) {
       this.refreshStages(execution);
       execution.setStage('publish', 'running');
-      await this.enqueue(execution, 'publish');
+      await this.jobs.save(
+        await this.buildJob(
+          execution,
+          'publish',
+          undefined,
+          1,
+          this.publishTargets(execution)[0].repo.fullName,
+        ),
+      );
       return;
     }
 

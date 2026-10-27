@@ -196,8 +196,12 @@ export class BitbucketApiClient {
 
   private toHttpException(err: AxiosError): HttpException {
     const status = err.response?.status ?? HttpStatus.BAD_GATEWAY;
+    // Bitbucket explica el motivo en el cuerpo ({"error": {"message": …}}); el mensaje de axios no.
+    const body = err.response?.data as
+      { error?: { message?: string } } | undefined;
+    const reason = body?.error?.message ?? err.message;
     return new HttpException(
-      `Bitbucket API error (${status}): ${err.message}`,
+      `Bitbucket API error (${status}): ${reason}`,
       status,
     );
   }
