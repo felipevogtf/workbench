@@ -192,6 +192,21 @@ describe('a group of tasks', () => {
   });
 });
 
+describe('test files of the developer', () => {
+  it('tells the developer where to put them and how to remove one of its own', () => {
+    const prompt = buildDevelopPrompt({
+      ticket: ticket(),
+      index: 1,
+      total: 1,
+      plan: 'plan',
+      repoName: 'org/repo',
+    });
+
+    expect(prompt).toContain('`.wb-scratch/`');
+    expect(prompt).toContain('`git rm <ruta>`');
+  });
+});
+
 describe('ticket files', () => {
   it('asks Lucy for the files of each ticket', () => {
     const prompt = buildTicketsPrompt({

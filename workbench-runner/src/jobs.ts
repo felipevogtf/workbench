@@ -2,6 +2,7 @@ import { probeUsage, runClaude } from './claude';
 import { effectiveTools, type RunnerConfig } from './config';
 import { environmentTools, type Environments } from './environment';
 import { git } from './git';
+import { clearScratch, ignoreScratch } from './scratch';
 import {
   discardSubmoduleChanges,
   submoduleNotice,
@@ -58,6 +59,7 @@ export async function runJob(
     payload.repo,
     payload.branch,
   );
+  if (job.kind !== 'publish') await ignoreScratch(workspace.dir);
 
   if (job.kind === 'publish') {
     context.onLog('Subiendo la rama…');
@@ -198,6 +200,7 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
       signal: context.signal,
     });
   } finally {
+    await clearScratch(workspace.dir);
     // Los contenedores dejan archivos a nombre de root: se devuelven al runner antes de tocar el worktree con git.
     await context.environments?.reclaim(job.executionId, workspace.dir);
     for (const other of consult) {

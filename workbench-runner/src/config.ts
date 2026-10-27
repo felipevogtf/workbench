@@ -58,6 +58,7 @@ export const DEFAULT_CONFIG = {
       'Bash(git log:*)',
       'Bash(git restore:*)',
       'Bash(git checkout --:*)',
+      'Bash(git rm:*)',
       'Bash(npm install:*)',
       'Bash(npm i:*)',
       'Bash(npm ci:*)',

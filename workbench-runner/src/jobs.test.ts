@@ -219,6 +219,30 @@ describe('runJob', () => {
     );
   });
 
+  it('develop: test files in the scratch folder never reach the commit and are removed afterwards', async () => {
+    const { context } = setup();
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    process.env.FAKE_TOUCH = '.wb-scratch/x.png';
+    try {
+      const { result } = await runJob(job('develop'), context);
+      assert.notEqual(result.headBefore, result.headAfter);
+    } finally {
+      delete process.env.FAKE_TOUCH;
+    }
+
+    assert.equal(existsSync(join(dir, '.wb-scratch')), false);
+    const tracked = await git(['ls-files'], { cwd: dir });
+    assert.ok(!tracked.includes('.wb-scratch'));
+    assert.equal(
+      (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+      '',
+    );
+  });
+
   it('final: reviews the whole branch like a review does, and discards what it leaves', async () => {
     const { context, logs } = setup();
     await runJob(job('develop'), context);
