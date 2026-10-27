@@ -70,7 +70,10 @@ const MAX_DOUBTS = 5;
 const MAX_ADDED_TICKETS = 5;
 const MAX_TICKETS_IN_TOTAL = 15;
 
-const AGENT_OF: Record<Exclude<JobKind, 'publish'>, ExecutionAgentModule> = {
+const AGENT_OF: Record<
+  Exclude<JobKind, 'publish' | 'chat'>,
+  ExecutionAgentModule
+> = {
   tickets: 'task-tickets',
   develop: 'task-developer',
   review: 'task-reviewer',
@@ -205,7 +208,9 @@ export class ExecutionsService {
     if (!execution) {
       throw DomainError.notFound(`Execution with id ${id} not found`);
     }
-    return { execution, jobs: await this.jobs.findByExecutionId(id) };
+    // Las preguntas del chat de Lucy que contestó el runner no son parte de la ejecución.
+    const jobs = await this.jobs.findByExecutionId(id);
+    return { execution, jobs: jobs.filter((job) => job.kind !== 'chat') };
   }
 
   async getJob(id: string): Promise<Job> {
@@ -234,7 +239,9 @@ export class ExecutionsService {
     const { execution, jobs } = await this.get(id);
     // La revisión final es un informe aparte: no es lo que se reintenta.
     const last = jobs.filter((job) => job.kind !== 'final').at(-1);
-    if (!last) throw DomainError.conflict('The execution has nothing to retry');
+    if (!last || last.kind === 'chat') {
+      throw DomainError.conflict('The execution has nothing to retry');
+    }
     execution.resume();
 
     // La PR falló pero la rama ya está subida: solo se repite la apertura de la PR.
@@ -298,6 +305,8 @@ export class ExecutionsService {
    * lo deja como fallo de la ejecución para que el usuario lo vea y pueda reintentar.
    */
   async handleFinished(job: Job): Promise<void> {
+    // Una pregunta del chat no mueve la ejecución: quien la hizo espera la respuesta y la lee del trabajo.
+    if (job.kind === 'chat') return;
     // La revisión final llega con la ejecución ya terminada: no mueve su estado, solo deja su informe.
     if (job.kind === 'final') {
       await this.finishFinalReview(job);
@@ -873,7 +882,7 @@ export class ExecutionsService {
 
   private async buildJob(
     execution: Execution,
-    kind: JobKind,
+    kind: Exclude<JobKind, 'chat'>,
     ticket?: ExecutionTicket,
     attempt = 1,
     publishRepo?: string,
@@ -980,6 +989,39 @@ export class ExecutionsService {
     });
   }
 
+  /**
+   * Una pregunta del chat de Lucy para que la conteste el runner, dentro de la rama de la ejecución (con su trabajo y,
+   * si el proyecto tiene entorno, con las dependencias instaladas). En el prompt, `{{dir:organización/repo}}` es la carpeta
+   * de cada uno de los otros repos de la tarea.
+   */
+  async queueChat(
+    execution: Execution,
+    agent: ResolvedAgent,
+    prompt: string,
+  ): Promise<Job> {
+    const [target, ...others] = execution.targets();
+    const job = Job.create({
+      executionId: execution.id,
+      kind: 'chat',
+      payload: {
+        agent: this.toJobAgent(agent),
+        prompt,
+        repo: { sshUrl: target.repo.sshUrl, fullName: target.repo.fullName },
+        branch: target.branch,
+        ...(others.length > 0
+          ? {
+              context: others.map((other) => ({
+                sshUrl: other.repo.sshUrl,
+                fullName: other.repo.fullName,
+                branch: other.branch,
+              })),
+            }
+          : {}),
+      },
+    });
+    return this.jobs.save(job);
+  }
+
   /** Las recetas de los repositorios del trabajo; sin ellas se sigue: son una ayuda, no una condición. */
   private async recipeOf(repos: readonly string[]): Promise<string | null> {
     try {
@@ -994,7 +1036,7 @@ export class ExecutionsService {
 
   /** El agente asignado al ticket para esa etapa y, si ya no existe o no sirve, el que esté por defecto. */
   private async agentFor(
-    kind: Exclude<JobKind, 'publish'>,
+    kind: Exclude<JobKind, 'publish' | 'chat'>,
     ticket?: ExecutionTicket,
   ): Promise<ResolvedAgent> {
     const assigned =
@@ -1131,7 +1173,9 @@ export class ExecutionsService {
   /** Marca la etapa del trabajo como fallida y la ejecución con el motivo. */
   private fail(execution: Execution, job: Job, message: string): void {
     this.refreshStages(execution);
-    if (job.kind !== 'final') execution.setStage(job.kind, 'failed');
+    if (job.kind !== 'final' && job.kind !== 'chat') {
+      execution.setStage(job.kind, 'failed');
+    }
     execution.fail(message);
   }
 

@@ -137,6 +137,13 @@ export class Workspaces {
     }
   }
 
+  /** Si la rama de la ejecución ya tiene su carpeta de trabajo en este equipo. */
+  async has(repo: { fullName: string }, branch: string): Promise<boolean> {
+    const clone = this.inside('repos', repo.fullName.replace('/', '__'));
+    const dir = await this.worktreeOf(clone, branch);
+    return dir !== null && existsSync(dir);
+  }
+
   /** Sube la rama al remoto (por SSH, con las llaves de este PC). */
   async push(dir: string, branch: string): Promise<void> {
     await git(['push', '--set-upstream', 'origin', branch], { cwd: dir });

@@ -49,6 +49,11 @@ export async function runJob(
     `▶ ${job.kind} (intento ${job.attempt}) en ${payload.repo.fullName}, rama ${payload.branch}`,
   );
 
+  // Una pregunta del chat sobre una ejecución que ya terminó vuelve a armar la carpeta de trabajo y su entorno: lo que ella
+  // creó se retira al terminar, para no dejar contenedores ni carpetas que nadie más va a usar.
+  const hadWorkspace =
+    job.kind !== 'chat' ||
+    (await context.workspaces.has(payload.repo, payload.branch));
   const workspace = await context.workspaces.prepare(
     payload.repo,
     payload.branch,
@@ -161,7 +166,7 @@ export async function runJob(
     // Los contenedores dejan archivos a nombre de root: se devuelven al runner antes de tocar el worktree con git.
     await context.environments?.reclaim(job.executionId, workspace.dir);
     // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno.
-    if (job.kind === 'final')
+    if (job.kind === 'final' || (job.kind === 'chat' && !hadWorkspace))
       await context.environments?.tearDown(job.executionId, context.onLog);
   }
   const output = claude.output.slice(0, MAX_OUTPUT_CHARS);
@@ -180,7 +185,7 @@ export async function runJob(
     }
   }
 
-  if (job.kind === 'review' || job.kind === 'final') {
+  if (job.kind === 'review' || job.kind === 'final' || job.kind === 'chat') {
     // El revisor corre pruebas, lint y build, que pueden dejar archivos (un `lint --fix`, por ejemplo): no es su trabajo
     // cambiar nada, y lo que quede se colaría en el commit del próximo desarrollo.
     await discardSubmoduleChanges(workspace.dir, submodules);
@@ -194,6 +199,10 @@ export async function runJob(
       await git(['reset', '--hard', 'HEAD'], { cwd: workspace.dir });
       await git(['clean', '-fd'], { cwd: workspace.dir });
     }
+  }
+
+  if (job.kind === 'chat' && !hadWorkspace) {
+    await context.workspaces.release(payload.repo, payload.branch);
   }
 
   if (job.kind !== 'develop') {

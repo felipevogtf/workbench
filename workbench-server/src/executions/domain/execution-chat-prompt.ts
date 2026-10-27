@@ -60,6 +60,11 @@ export interface ExecutionChatPromptInput {
   messages: readonly ExecutionChatMessage[];
   /** Los repos de la tarea que Lucy puede leer (rama principal); vacío si no hay código a la mano. */
   repos?: readonly ReadableRepo[];
+  /**
+   * Lucy contesta en el runner, dentro de la rama de la ejecución, y no en la caché del servidor: ve el trabajo hecho y las
+   * dependencias instaladas. Cambia solo la sección de código; `repos` no se usa.
+   */
+  onRunner?: boolean;
 }
 
 /** El código que Lucy puede leer, y la advertencia de que no incluye el trabajo en curso. */
@@ -97,6 +102,27 @@ function codeLines(
       : []),
     `OJO: es la rama principal. No incluye el trabajo de esta ejecución, que vive en la rama ${branches} en el PC del usuario hasta que se publica: lo que se hizo lo sabes por los resúmenes de los tickets.`,
     'Lee el código solo cuando la pregunta lo necesite (¿es factible?, ¿dónde vive algo?, ¿qué habría que tocar?). Para el estado de la ejecución usa el contexto de arriba.',
+    '',
+  ];
+}
+
+/** El código tal como lo ve Lucy cuando contesta en el runner: la rama de la ejecución, no la principal. */
+function runnerCodeLines(execution: Execution): string[] {
+  const [primary, ...others] = execution.targets();
+  return [
+    '# Código',
+    `Estás dentro de la carpeta de ${primary.repo.fullName}, en la rama ${primary.branch} de esta ejecución: tiene todo el trabajo hecho hasta ahora y, si el proyecto tiene entorno de pruebas, sus dependencias ya instaladas (\`vendor/\`, \`node_modules/\`). Es solo lectura: puedes leer lo que necesites y correr comandos que comprueben algo, pero no cambies archivos.`,
+    ...(others.length > 0
+      ? [
+          'Los otros repositorios de la tarea, también para leer:',
+          ...others.map(
+            (other) =>
+              `- {{dir:${other.repo.fullName}}} — ${other.repo.fullName}, rama ${other.branch}`,
+          ),
+        ]
+      : []),
+    'Si algo se puede comprobar leyendo el código (también el de las dependencias) o con un comando, compruébalo en vez de decir que no pudiste ni mandarle la duda al usuario o a un agente.',
+    'Lee el código solo cuando la pregunta lo necesite. Para el estado de la ejecución usa el contexto de arriba.',
     '',
   ];
 }
@@ -289,7 +315,9 @@ export function buildExecutionChatPrompt(
     ...ticketLines(input),
     ...failureLines(input.jobs),
     ...finalReviewLines(input.execution),
-    ...codeLines(input.repos ?? [], input.execution),
+    ...(input.onRunner
+      ? runnerCodeLines(input.execution)
+      : codeLines(input.repos ?? [], input.execution)),
     '# Plan aprobado',
     plan?.trim() ? clip(plan, MAX_PLAN) : '(el plan ya no existe)',
     '',

@@ -101,6 +101,7 @@ export function testConfig(
       develop: [...DEFAULT_CONFIG.allowedTools.develop],
       review: [...DEFAULT_CONFIG.allowedTools.review],
       final: [...DEFAULT_CONFIG.allowedTools.final],
+      chat: [...DEFAULT_CONFIG.allowedTools.chat],
     },
     remoteOverrides: { 'acme/web': bare },
     copyFiles: {},

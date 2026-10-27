@@ -1,5 +1,9 @@
-/** `final` es la revisión de toda la rama que el usuario pide cuando la ejecución ya terminó. */
-export type JobKind = 'tickets' | 'develop' | 'review' | 'publish' | 'final';
+/**
+ * `final` es la revisión de toda la rama que el usuario pide cuando la ejecución ya terminó; `chat` es una pregunta del
+ * usuario a Lucy, que contesta mirando la rama de la ejecución sin cambiarla.
+ */
+export type JobKind =
+  'tickets' | 'develop' | 'review' | 'publish' | 'final' | 'chat';
 
 /** Un trabajo tal como lo manda el servidor (`runner/jobs/claim`). */
 export interface RunnerJob {

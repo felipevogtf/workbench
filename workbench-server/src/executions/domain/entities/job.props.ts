@@ -1,8 +1,11 @@
 import { StageKey } from './execution.props';
 import type { JobUsage } from '../usage';
 
-/** Las etapas de la ejecución y, aparte, la revisión final que el usuario pide cuando ya terminó. */
-export type JobKind = StageKey | 'final';
+/**
+ * Las etapas de la ejecución y, aparte, la revisión final que el usuario pide cuando ya terminó y las preguntas del chat de
+ * Lucy que contesta el runner (`chat`): esas no son parte de la ejecución, solo usan su rama.
+ */
+export type JobKind = StageKey | 'final' | 'chat';
 export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
 
 /** El agente tal como lo recibe el runner: ya resuelto por el servidor. */

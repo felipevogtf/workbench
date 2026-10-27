@@ -151,3 +151,16 @@ y necesita confirmación explícita.
   `awaiting` ya sirve de modelo para el nuevo estado de espera).
 - Decisiones y feedback inyectados en el prompt del desarrollador (`ticket.feedback`), que es el mecanismo que
   se extiende con `ticket.decisions`.
+
+## El chat de Lucy contesta en el runner (2026-10-27)
+
+Antes Lucy contestaba en el servidor, con una caché de los repos en la rama principal: no veía el trabajo de la ejecución ni `vendor/`, y por eso
+decía «no pude confirmar» cosas que los agentes sí habían revisado.
+
+- **Con un runner conectado**, cada pregunta del chat es un trabajo `chat` que corre en la **rama de la ejecución**, con el entorno de pruebas del
+  proyecto (dependencias instaladas, `docker compose exec`, `wb-curl`). Solo lectura: lo que deje cambiado se descarta. Los otros repos de la tarea
+  quedan a la vista, como en un desarrollo.
+- **Si el runner no la toma en 30 s** (hace un trabajo a la vez) **o falla**, contesta como antes, desde el servidor. Espera la respuesta hasta 12 min
+  (puede tener que levantar el entorno).
+- Si la ejecución ya terminó (sin carpeta de trabajo), el runner la rearma para contestar y, al terminar, retira la carpeta y baja el entorno que creó.
+- Los trabajos `chat` no aparecen en la ejecución ni cuentan para su costo; sí quedan en la tabla `execution_jobs` (y en el consumo del plan).

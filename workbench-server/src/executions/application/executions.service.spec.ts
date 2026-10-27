@@ -143,6 +143,32 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('questions to Lucy answered by a runner', () => {
+    it('queue a job on the branch that does not move the execution nor show up in it', async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: '{"tickets":[]}' }).catch(() => undefined);
+      const before = await executions.findById(execution.id);
+      const stages = before?.stages.map((stage) => stage.status);
+
+      const lucy = await agents.getDefault('task-tickets');
+      const chat = await service.queueChat(execution, lucy, 'Pregunta');
+      const claimed = (await runnerJobs.claim(runner, 0)) as Job;
+      expect(claimed.id).toBe(chat.id);
+      expect(claimed.kind).toBe('chat');
+      expect(claimed.payload.branch).toBe(execution.branch);
+      expect(claimed.payload.prompt).toBe('Pregunta');
+      await runnerJobs.finish(runner, claimed.id, {
+        ok: true,
+        result: { output: 'Respuesta' },
+      });
+
+      const after = await executions.findById(execution.id);
+      expect(after?.stages.map((stage) => stage.status)).toEqual(stages);
+      const { jobs: listed } = await service.get(execution.id);
+      expect(listed.some((job) => job.kind === 'chat')).toBe(false);
+    });
+  });
+
   describe('start', () => {
     it('queues the tickets job with the plan, the repo and a branch of its own', async () => {
       const execution = await service.start('issue-1');

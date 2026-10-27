@@ -1,6 +1,9 @@
 import { Execution } from '@executions/domain/entities/execution.entity';
 import { ExecutionTicket } from '@executions/domain/entities/execution.props';
+import { Job } from '@executions/domain/entities/job.entity';
 import { ExecutionChatService } from './execution-chat.service';
+import type { ExecutionsService } from './executions.service';
+import type { RunnersService } from './runners.service';
 import {
   FakeAgents,
   FakePlans,
@@ -48,6 +51,8 @@ describe('ExecutionChatService', () => {
   let agents: FakeAgents;
   let plans: FakePlans;
   let repositories: FakeRepositories;
+  let jobs: InMemoryJobs;
+  let runnerOnline: boolean;
   let service: ExecutionChatService;
   let execution: Execution;
 
@@ -56,13 +61,35 @@ describe('ExecutionChatService', () => {
     agents = new FakeAgents();
     plans = new FakePlans();
     repositories = new FakeRepositories();
+    jobs = new InMemoryJobs();
+    runnerOnline = false;
+    const queue = {
+      queueChat: (target: Execution, _agent: unknown, prompt: string) =>
+        jobs.save(
+          Job.create({
+            executionId: target.id,
+            kind: 'chat',
+            payload: {
+              agent: null,
+              prompt,
+              repo: { sshUrl: REPO.sshUrl, fullName: REPO.fullName },
+              branch: target.branch,
+            },
+          }),
+        ),
+    } as unknown as ExecutionsService;
+    const runners = {
+      anyOnline: () => Promise.resolve(runnerOnline),
+    } as unknown as RunnersService;
     service = new ExecutionChatService(
       executions,
-      new InMemoryJobs(),
+      jobs,
       new FakeTasks(),
       plans,
       agents,
       repositories,
+      queue,
+      runners,
     );
 
     execution = Execution.create({
@@ -415,6 +442,72 @@ describe('ExecutionChatService', () => {
 
       expect(agents.chatWorkdirs).toEqual([undefined]);
       expect(agents.chats[0]).toContain('No hay código disponible');
+    });
+  });
+  describe('on the runner', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      runnerOnline = true;
+    });
+    afterEach(() => jest.useRealTimers());
+
+    /** Hace de runner: toma la pregunta y la termina como se le diga. */
+    async function runnerTakes(finish: (job: Job) => void) {
+      // La pregunta llega a la cola después de unas esperas; se deja correr hasta que esté.
+      for (let turn = 0; turn < 20 && jobs.items.length === 0; turn++) {
+        await jest.advanceTimersByTimeAsync(0);
+      }
+      const job = await jobs.claimNext('runner-1');
+      if (job) finish(job);
+      await jest.advanceTimersByTimeAsync(1_000);
+    }
+
+    it('answers inside the branch of the execution when a runner takes the question', async () => {
+      const reply = ask('¿Qué campo usa la imagen?');
+      await runnerTakes((job) =>
+        job.complete({ output: 'Es un FileType.' }, null),
+      );
+
+      const answer = await reply;
+
+      expect(answer.reply).toBe('Es un FileType.');
+      expect(agents.chats).toHaveLength(0);
+      expect(repositories.asked).toHaveLength(0);
+      const [asked] = jobs.items;
+      expect(asked.kind).toBe('chat');
+      expect(asked.payload.prompt).toContain('¿Qué campo usa la imagen?');
+      expect(asked.payload.prompt).toContain(
+        'en la rama workbench/vista-1234abcd de esta ejecución',
+      );
+      expect(asked.payload.prompt).not.toContain('es la rama principal');
+    });
+
+    it('answers from the server when no runner takes the question in time', async () => {
+      agents.chatReply = 'Contesto desde el servidor.';
+      const reply = ask('Hola');
+
+      await jest.advanceTimersByTimeAsync(31_000);
+      const answer = await reply;
+
+      expect(answer.reply).toBe('Contesto desde el servidor.');
+      expect(jobs.items[0].status).toBe('cancelled');
+      expect(repositories.asked).toEqual(['issue-1']);
+    });
+
+    it('answers from the server when the runner fails', async () => {
+      agents.chatReply = 'Contesto desde el servidor.';
+      const reply = ask('Hola');
+      await runnerTakes((job) => job.fail('Se cayó'));
+
+      expect((await reply).reply).toBe('Contesto desde el servidor.');
+    });
+
+    it('does not use the runner when none is connected', async () => {
+      runnerOnline = false;
+      agents.chatReply = 'Contesto desde el servidor.';
+
+      expect((await ask('Hola')).reply).toBe('Contesto desde el servidor.');
+      expect(jobs.items).toHaveLength(0);
     });
   });
 });

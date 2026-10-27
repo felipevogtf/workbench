@@ -190,6 +190,35 @@ describe('runJob', () => {
     assert.ok(logs.some((line) => line.includes('El revisor dejó archivos')));
   });
 
+  it('chat: answers from the branch without changing it and discards what it leaves', async () => {
+    const { context } = setup();
+    await runJob(job('develop'), context);
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    const headBefore = (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim();
+
+    process.env.FAKE_TOUCH = 'dist/salida.txt';
+    try {
+      const outcome = await runJob(job('chat'), context);
+      assert.ok(outcome.result.output);
+      assert.equal(outcome.result.headAfter, undefined);
+    } finally {
+      delete process.env.FAKE_TOUCH;
+    }
+
+    assert.equal(
+      (await git(['rev-parse', 'HEAD'], { cwd: dir })).trim(),
+      headBefore,
+    );
+    assert.equal(
+      (await git(['status', '--porcelain'], { cwd: dir })).trim(),
+      '',
+    );
+  });
+
   it('final: reviews the whole branch like a review does, and discards what it leaves', async () => {
     const { context, logs } = setup();
     await runJob(job('develop'), context);
@@ -437,6 +466,38 @@ describe('runJob', () => {
     it('the final review is the last user of the environment and takes it down', async () => {
       const { events } = await run('final');
       assert.deepEqual(events, ['ensure', 'reclaim', 'tearDown']);
+    });
+
+    it('chat: on a running execution it gets the environment and leaves it for the next job', async () => {
+      const { context } = setup();
+      const { environments, events } = fakeEnvironments();
+      await runJob(job('develop'), context);
+
+      await runJob(job('chat'), { ...context, environments });
+
+      assert.deepEqual(events, ['ensure', 'reclaim']);
+    });
+
+    it('chat: on a finished execution it rebuilds what it needs and removes it afterwards', async () => {
+      const { context } = setup();
+      const { environments, events } = fakeEnvironments();
+      const dir = join(
+        context.config.workDir,
+        'worktrees',
+        'web__workbench__vista-1234abcd',
+      );
+
+      await runJob(job('chat'), { ...context, environments });
+
+      assert.deepEqual(events, ['ensure', 'reclaim', 'tearDown']);
+      assert.ok(!existsSync(dir));
+    });
+
+    it('chat: reads the environment like a review and never restarts anything', async () => {
+      const { tools } = await run('chat');
+      assert.ok(tools.includes('Bash(docker compose exec:*)'));
+      assert.ok(tools.includes('Bash(wb-curl:*)'));
+      assert.ok(!tools.includes('Bash(docker compose restart:*)'));
     });
 
     it('tickets: the planner never gets one', async () => {

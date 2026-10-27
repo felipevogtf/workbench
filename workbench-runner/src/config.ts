@@ -43,6 +43,7 @@ export const DEFAULT_CONFIG = {
     review: 15,
     publish: 5,
     final: 25,
+    chat: 15,
   },
   allowedTools: {
     tickets: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
@@ -89,6 +90,15 @@ export const DEFAULT_CONFIG = {
       'Bash(npm run test:*)',
       'Bash(npm run lint:*)',
       'Bash(npm run build:*)',
+    ],
+    // Lucy, al contestar en el chat, lee lo mismo que un revisor: nunca edita.
+    chat: [
+      'Read',
+      'Grep',
+      'Glob',
+      'Bash(git diff:*)',
+      'Bash(git log:*)',
+      'Bash(git show:*)',
     ],
   },
   remoteOverrides: {},
@@ -172,6 +182,7 @@ export function loadConfig(
       develop: tools.develop ?? [...DEFAULT_CONFIG.allowedTools.develop],
       review: tools.review ?? [...DEFAULT_CONFIG.allowedTools.review],
       final: tools.final ?? [...DEFAULT_CONFIG.allowedTools.final],
+      chat: tools.chat ?? [...DEFAULT_CONFIG.allowedTools.chat],
     },
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
     copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],

@@ -172,7 +172,7 @@ export function environmentTools(kind: JobKind): string[] {
   ];
   return kind === 'develop'
     ? [...common, 'Bash(docker compose restart:*)']
-    : kind === 'review' || kind === 'final'
+    : kind === 'review' || kind === 'final' || kind === 'chat'
       ? common
       : [];
 }
