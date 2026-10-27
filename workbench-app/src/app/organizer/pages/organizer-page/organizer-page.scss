@@ -65,20 +65,51 @@
   overflow-y: auto;
 }
 
-// Cada sección es un título que se pliega, separado por una línea fina; sin tarjetas.
-.section {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border);
+// Cada sección es una caja con borde y un título que se pliega.
+.section,
+.attachment {
+  align-self: stretch;
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  background: var(--background);
+}
 
+.section {
   summary {
     font-size: 0.875rem;
     font-weight: 600;
+    text-align: left;
     cursor: pointer;
-    list-style-position: inside;
   }
 
   &[open] > summary {
     margin-bottom: var(--space-3);
+  }
+}
+
+// El plan se ve como un adjunto: al tocarlo se abre completo en el panel lateral.
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  small {
+    color: var(--text-color);
   }
 }
 

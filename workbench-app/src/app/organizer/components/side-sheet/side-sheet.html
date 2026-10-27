@@ -1,0 +1,10 @@
+<button class="backdrop" type="button" aria-label="Cerrar el panel" (click)="closed.emit()"></button>
+<aside class="sheet" role="dialog" [attr.aria-label]="heading()">
+  <header class="sheet__head">
+    <h4>{{ heading() }}</h4>
+    <button app-icon-button type="button" label="Cerrar el panel" (click)="closed.emit()">
+      <app-icon name="x" size="1.1rem" />
+    </button>
+  </header>
+  <div class="sheet__body"><ng-content /></div>
+</aside>

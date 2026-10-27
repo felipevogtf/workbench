@@ -7,7 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
@@ -17,12 +17,12 @@ import { MAX_GROUP_MEMBERS, OrganizerMember } from '../../models/organizer';
 const MAX_SUGGESTIONS = 8;
 
 /**
- * Las tareas del grupo, en el orden en que se hacen (se mueven con las flechas), y un buscador para sumar otras. Cada cambio
+ * Las tareas del grupo, en el orden en que se hacen (se reordenan arrastrando), y un buscador para sumar otras. Cada cambio
  * se avisa con la lista completa y ordenada: quien lo guarda es la pantalla.
  */
 @Component({
   selector: 'app-members-panel',
-  imports: [RouterLink, Icon, IconButton],
+  imports: [CdkDrag, CdkDropList, Icon, IconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './members-panel.html',
   styleUrl: './members-panel.scss',
@@ -35,6 +35,8 @@ export class MembersPanel {
 
   /** Los ids de las tareas del grupo, en el orden nuevo. */
   readonly changed = output<string[]>();
+  /** Se pidió ver una tarea del grupo. */
+  readonly opened = output<string>();
 
   protected readonly maxMembers = MAX_GROUP_MEMBERS;
   protected readonly search = signal('');
@@ -81,12 +83,10 @@ export class MembersPanel {
     this.changed.emit(this.members().flatMap((member) => (member.id === id ? [] : [member.id])));
   }
 
-  /** Cambia de lugar una tarea (`-1` la sube, `1` la baja). */
-  protected move(index: number, step: -1 | 1): void {
+  protected drop(event: CdkDragDrop<unknown>): void {
+    if (event.previousIndex === event.currentIndex) return;
     const ids = this.members().map((member) => member.id);
-    const target = index + step;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
+    moveItemInArray(ids, event.previousIndex, event.currentIndex);
     this.changed.emit(ids);
   }
 }

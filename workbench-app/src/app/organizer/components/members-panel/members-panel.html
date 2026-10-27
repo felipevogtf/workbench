@@ -2,51 +2,30 @@
   @if (members().length === 0) {
     <p class="muted">Sin tareas todavía. Busca abajo las que quieras planificar juntas.</p>
   } @else {
-    <ol class="members" aria-label="Tareas del grupo, en el orden en que se hacen">
-      @for (member of members(); track member.id; let index = $index; let last = $last) {
-        <li class="member">
+    <ol
+      class="members"
+      aria-label="Tareas del grupo, en el orden en que se hacen; arrastra para reordenar"
+      cdkDropList
+      (cdkDropListDropped)="drop($event)"
+    >
+      @for (member of members(); track member.id; let index = $index) {
+        <li class="member" cdkDrag [cdkDragDisabled]="saving()">
           <span class="member__order" aria-hidden="true">{{ index + 1 }}</span>
-          <a
-            class="member__text"
-            target="_blank"
-            rel="noopener"
-            [routerLink]="['/tasks/issues', member.id]"
-            [title]="'Abrir ' + (member.key || member.name) + ' en otra pestaña'"
-          >
+          <button class="member__text" type="button" (click)="opened.emit(member.id)">
             @if (member.key) {
               <strong>{{ member.key }}</strong>
             }
             {{ member.name }}
-          </a>
-          <span class="member__actions">
-            <button
-              app-icon-button
-              type="button"
-              label="Subir"
-              [disabled]="saving() || index === 0"
-              (click)="move(index, -1)"
-            >
-              <app-icon name="arrow-up" size="1em" />
-            </button>
-            <button
-              app-icon-button
-              type="button"
-              label="Bajar"
-              [disabled]="saving() || last"
-              (click)="move(index, 1)"
-            >
-              <app-icon name="arrow-down" size="1em" />
-            </button>
-            <button
-              app-icon-button
-              type="button"
-              label="Quitar del grupo"
-              [disabled]="saving()"
-              (click)="remove(member.id)"
-            >
-              <app-icon name="x" size="1em" />
-            </button>
-          </span>
+          </button>
+          <button
+            app-icon-button
+            type="button"
+            label="Quitar del grupo"
+            [disabled]="saving()"
+            (click)="remove(member.id)"
+          >
+            <app-icon name="x" size="1em" />
+          </button>
         </li>
       }
     </ol>

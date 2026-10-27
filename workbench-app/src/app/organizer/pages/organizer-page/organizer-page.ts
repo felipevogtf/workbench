@@ -13,6 +13,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AgentsStore } from '@ai-agents/index';
 import { ExecutionPanel, IssueExecutionsStore } from '@executions/index';
 import { IssuesStore } from '@tasks/index';
+import { PLAN_STATUS_LABEL } from '@tasks/models/plan';
 import { PlanPanel } from '@tasks/components/plan-panel/plan-panel';
 import { PlansStore } from '@tasks/data-access/plans.store';
 import { TaskChatStore } from '@tasks/data-access/task-chat.store';
@@ -24,7 +25,9 @@ import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
+import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { MembersPanel } from '../../components/members-panel/members-panel';
+import { SideSheet } from '../../components/side-sheet/side-sheet';
 import { OrganizerStore } from '../../data-access/organizer.store';
 
 /**
@@ -39,7 +42,9 @@ import { OrganizerStore } from '../../data-access/organizer.store';
     ChatPanel,
     PlanPanel,
     ExecutionPanel,
+    MarkdownViewer,
     MembersPanel,
+    SideSheet,
     Alert,
     Button,
     Icon,
@@ -73,6 +78,14 @@ export class OrganizerPage {
     return session ? (this.issues.issueById().get(session.groupIssueId) ?? null) : null;
   });
   protected readonly assistant = computed(() => this.agents.assistantOf('task-chat'));
+  protected readonly statusLabel = PLAN_STATUS_LABEL;
+  /** Lo que está abierto en el panel lateral: una tarea del grupo o el plan. */
+  protected readonly sheet = signal<{ kind: 'task'; id: string } | { kind: 'plan' } | null>(null);
+  protected readonly sheetTask = computed(() => {
+    const open = this.sheet();
+    return open?.kind === 'task' ? (this.issues.issueById().get(open.id) ?? null) : null;
+  });
+  protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
   protected readonly notes = signal('');
   protected readonly notesChanged = computed(
     () => this.notes().trim() !== (this.session()?.notes ?? '').trim(),

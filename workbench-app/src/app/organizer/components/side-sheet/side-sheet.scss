@@ -1,0 +1,48 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: default;
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100vw);
+  height: 100%;
+  border-left: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.18);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+
+  h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}
+
+.sheet__body {
+  flex: 1;
+  padding: var(--space-4);
+  overflow-y: auto;
+}
