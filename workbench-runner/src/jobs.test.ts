@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { DEFAULT_CONFIG } from './config';
 import type { Environments } from './environment';
 import { git } from './git';
-import { runJob, type JobContext } from './jobs';
+import { commitIdentity, runJob, type JobContext } from './jobs';
 import {
   REPO,
   createRemote,
@@ -95,6 +95,43 @@ describe('runJob', () => {
     assert.equal(
       (await git(['status', '--porcelain'], { cwd: dir })).trim(),
       '',
+    );
+  });
+
+  it('develop: signs the commit with the name of the agent that did the work, and «(IA)» at the end', async () => {
+    const { context } = setup();
+    const developer = job('develop');
+    developer.payload.agent = {
+      ...developer.payload.agent!,
+      displayName: 'Rebecca',
+    };
+
+    await runJob(developer, context);
+
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    assert.equal(
+      (await git(['log', '-1', '--format=%an|%cn'], { cwd: dir })).trim(),
+      'Rebecca (IA)|Rebecca (IA)',
+    );
+  });
+
+  it('develop: uses the name of the agent when it has no display name', async () => {
+    const { context } = setup();
+
+    await runJob(job('develop'), context);
+
+    const dir = join(
+      context.config.workDir,
+      'worktrees',
+      'web__workbench__vista-1234abcd',
+    );
+    assert.equal(
+      (await git(['log', '-1', '--format=%an'], { cwd: dir })).trim(),
+      'agente-develop (IA)',
     );
   });
 
@@ -577,5 +614,23 @@ describe('runJob', () => {
     broken.payload.agent = null;
 
     await assert.rejects(runJob(broken, context), /agente/);
+  });
+});
+
+describe('commitIdentity', () => {
+  it('adds «(IA)» once, cleans the name and falls back to the ordinary identity without an agent', () => {
+    assert.deepEqual(commitIdentity({ name: 'x', displayName: ' David ' }), {
+      GIT_AUTHOR_NAME: 'David (IA)',
+      GIT_COMMITTER_NAME: 'David (IA)',
+    });
+    assert.equal(
+      commitIdentity({ name: 'Kiwi (IA)' }).GIT_AUTHOR_NAME,
+      'Kiwi (IA)',
+    );
+    assert.equal(
+      commitIdentity({ name: 'Mal <nombre>\n' }).GIT_AUTHOR_NAME,
+      'Mal nombre (IA)',
+    );
+    assert.deepEqual(commitIdentity(null), {});
   });
 });

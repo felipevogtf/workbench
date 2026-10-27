@@ -8,13 +8,19 @@ const SSH_COMMAND = 'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new';
 /** Ejecuta `git` sin shell y sin pedir credenciales. Devuelve stdout; rechaza si falla o pasa el tiempo. */
 export function git(
   args: string[],
-  options: { cwd?: string; timeoutMs?: number } = {},
+  options: {
+    cwd?: string;
+    timeoutMs?: number;
+    /** Variables extra para este comando (por ejemplo, el autor de un commit). */
+    env?: Record<string, string>;
+  } = {},
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn('git', args, {
       cwd: options.cwd,
       env: {
         ...process.env,
+        ...options.env,
         GIT_TERMINAL_PROMPT: '0',
         GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND || SSH_COMMAND,
       },

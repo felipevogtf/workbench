@@ -10,6 +10,8 @@ export interface JobAgent {
   /** El agente (de la tabla de agentes) que hace el trabajo: así la app muestra a quién estaba asignado. */
   id: string;
   name: string;
+  /** Cómo se conoce al agente (Rebecca, David…): el runner firma con él los commits que hace. Ausente = `name`. */
+  displayName?: string;
   model: string;
   systemPrompt: string;
   allowedTools: string[];

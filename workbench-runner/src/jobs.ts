@@ -7,8 +7,25 @@ import {
   submoduleNotice,
   submodulePaths,
 } from './submodules';
-import type { JobOutcome, RunnerJob } from './types';
+import type { JobAgent, JobOutcome, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
+
+/**
+ * Quién firma el commit: el agente que hizo el trabajo y «(IA)» al final, para que en la PR se vea que no lo escribió una
+ * persona. Solo cambia el nombre; el correo sigue siendo el que tenga configurado git en este equipo. Sin agente, git usa
+ * la identidad de siempre.
+ */
+export function commitIdentity(
+  agent: Pick<JobAgent, 'name' | 'displayName'> | null | undefined,
+): Record<string, string> {
+  const base = (agent?.displayName?.trim() || agent?.name || '')
+    .replace(/[<>\r\n]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!base) return {};
+  const name = /\(IA\)$/i.test(base) ? base : `${base} (IA)`;
+  return { GIT_AUTHOR_NAME: name, GIT_COMMITTER_NAME: name };
+}
 
 /** Tope de la respuesta del agente que viaja al servidor (el cuerpo de una petición es limitado). */
 const MAX_OUTPUT_CHARS = 60_000;
@@ -208,9 +225,7 @@ export async function runJob(
         payload.commitMessage ||
           `Trabajo de la ejecución ${job.executionId.slice(0, 8)}`,
       ],
-      {
-        cwd: workspace.dir,
-      },
+      { cwd: workspace.dir, env: commitIdentity(payload.agent) },
     );
   } else {
     context.onLog('El agente no dejó cambios en los archivos.');

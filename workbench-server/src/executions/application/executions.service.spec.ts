@@ -1392,6 +1392,25 @@ describe('ExecutionsService', () => {
       });
     });
 
+    it('sends the display name of the worker to the runner, which signs its commits with it', async () => {
+      agents.extra = [
+        {
+          ...worker('agent-task-developer-simple', { level: 'simple' }),
+          displayName: ' Rebecca ',
+        },
+      ];
+      const execution = await service.start('issue-1');
+      await answer({ output: LEVELED });
+      await service.begin(execution.id);
+
+      // El primer ticket es «simple»: lo desarrolla Rebecca; el ticket por defecto no tiene nombre visible.
+      expect(jobs.items.at(-1)!.payload.agent).toMatchObject({
+        id: 'agent-task-developer-simple',
+        displayName: 'Rebecca',
+      });
+      expect((await agents.getDefault('task-reviewer')).displayName).toBeNull();
+    });
+
     it('gives each ticket the developer of its level, and the default developer when there is none', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: LEVELED });

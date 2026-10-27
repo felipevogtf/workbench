@@ -24,6 +24,8 @@ export interface JobPayload {
 
 export interface JobAgent {
   name: string;
+  /** El nombre con que se conoce al agente (Rebecca, David…); firma sus commits. Ausente = se usa `name`. */
+  displayName?: string;
   model: string;
   systemPrompt: string;
   allowedTools: string[];
