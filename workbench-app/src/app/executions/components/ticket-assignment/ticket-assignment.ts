@@ -42,6 +42,7 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
             <label class="row__field">
               <span>Desarrolla</span>
               <select
+                class="app-control"
                 [disabled]="busy()"
                 [attr.aria-label]="'Desarrollador del ticket ' + card.number"
                 (change)="pick(card, 'developerId', $event)"
@@ -57,6 +58,7 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
             <label class="row__field">
               <span>Revisa</span>
               <select
+                class="app-control"
                 [disabled]="busy()"
                 [attr.aria-label]="'Revisor del ticket ' + card.number"
                 (change)="pick(card, 'reviewerId', $event)"
@@ -76,23 +78,24 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
   styles: `
     .assign {
       display: grid;
-      gap: 0.75rem;
+      gap: var(--space-3);
     }
 
     .assign__title {
       margin: 0;
-      font-size: 1.05rem;
+      font-size: 1.15rem;
+      color: var(--primary);
     }
 
     .assign__hint {
       margin: 0;
       font-size: 0.9rem;
-      color: var(--color-text-muted, #94a3b8);
+      color: var(--text-color);
     }
 
     .assign__list {
       display: grid;
-      gap: 0.5rem;
+      gap: var(--space-3);
       margin: 0;
       padding: 0;
       list-style: none;
@@ -101,15 +104,24 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
     .row {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 0.75rem 1rem;
+      gap: var(--space-3) var(--space-4);
       align-items: center;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--color-border, #2a2a36);
-      border-radius: 0.75rem;
+      padding: var(--space-4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--background);
     }
 
     .row__number {
-      color: var(--color-text-muted, #94a3b8);
+      display: grid;
+      place-items: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--radius-pill);
+      background: var(--tone-neutral-bg);
+      color: var(--primary);
+      font-size: 0.85rem;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
 
@@ -117,30 +129,22 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.5rem;
+      gap: var(--space-2);
       min-width: 0;
     }
 
     .row__title {
       overflow-wrap: anywhere;
+      color: var(--primary);
     }
 
     .row__field {
       display: grid;
-      gap: 0.25rem;
+      gap: var(--space-1);
       grid-column: 1 / -1;
       font-size: 0.8rem;
-      color: var(--color-text-muted, #94a3b8);
-    }
-
-    .row__field select {
-      min-height: 2.5rem;
-      padding: 0 0.75rem;
-      border: 1px solid var(--color-border, #2a2a36);
-      border-radius: 0.5rem;
-      background: transparent;
-      color: inherit;
-      font: inherit;
+      font-weight: 500;
+      color: var(--text-color);
     }
 
     @media (min-width: 48rem) {

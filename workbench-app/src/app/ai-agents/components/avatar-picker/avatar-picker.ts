@@ -57,7 +57,7 @@ import { AVATAR_RESIZER } from './resize-image';
     .error {
       margin: 0.5rem 0 0;
       font-size: 0.875rem;
-      color: var(--color-danger, #f87171);
+      color: var(--tone-danger-fg);
     }
   `,
 })
