@@ -48,6 +48,42 @@ describe('the review prompt', () => {
   });
 });
 
+describe('the comments in the code', () => {
+  const develop = buildDevelopPrompt({
+    ticket: ticket(),
+    index: 1,
+    total: 1,
+    plan: 'plan',
+    repoName: 'org/repo',
+  });
+
+  it('tells the developer not to narrate the code or the change, and to keep a comment only for a why that is not visible', () => {
+    expect(develop).toContain('No comentes lo que el código ya dice');
+    expect(develop).toContain('no narres el');
+    expect(develop).toContain('Un comentario solo si explica un porqué');
+    expect(develop).toContain('Una línea, sin adornos');
+  });
+
+  it('tells the developer to leave the existing comments alone and to reuse what exists', () => {
+    expect(develop).toContain('No borres ni reescribas comentarios');
+    expect(develop).toContain('reutilízalo');
+    expect(develop).toContain('lo mínimo nunca es dejar uno sin cumplir');
+  });
+
+  it('asks the reviewer to flag the comments the diff adds, and the ones it deletes', () => {
+    const review = buildReviewPrompt({
+      ticket: ticket(),
+      repoName: 'org/repo',
+      from: 'abc',
+      developerSummary: null,
+    });
+
+    expect(review).toContain('Mira los comentarios que agrega el diff');
+    expect(review).toContain('pide quitarlos');
+    expect(review).toContain('restaurar los comentarios');
+  });
+});
+
 describe('the recipes in the prompts', () => {
   const recipe = '## Receta de org/repo\nPara probar: docker compose up';
 
