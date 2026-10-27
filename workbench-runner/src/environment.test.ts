@@ -297,7 +297,7 @@ describe('Environments', () => {
     );
   });
 
-  it('restarts the services when a later job reuses the environment, so mounted files edited in place are read again', async () => {
+  it('restarts the services when the code changed since the last start, so mounted files edited in place are read again', async () => {
     const { env, calls } = setup();
     const dir = await worktree();
     const logs: string[] = [];
@@ -313,6 +313,7 @@ describe('Environments', () => {
     await env.ensure(input);
     assert.equal(restarts().length, 0, 'the first job just brought it up');
 
+    writeFileSync(join(dir, 'README.md'), 'cambiado\n');
     await env.ensure(input);
     assert.equal(restarts().length, 1);
     assert.equal(
@@ -320,6 +321,36 @@ describe('Environments', () => {
       true,
     );
     assert.ok(logs.some((line) => line.includes('Reiniciando los servicios')));
+  });
+
+  it('does not restart when nothing changed since the last start, and does again after a new change', async () => {
+    const { env, calls } = setup();
+    const dir = await worktree();
+    const logs: string[] = [];
+    const input = {
+      executionId: 'exec-1',
+      repo: REPO,
+      dir,
+      onLog: (line: string) => logs.push(line),
+    };
+    const restarts = () =>
+      calls.filter((c) => c.args[0] === 'compose' && c.args[1] === 'restart');
+
+    await env.ensure(input);
+    await env.ensure(input);
+    assert.equal(restarts().length, 0);
+    assert.ok(logs.some((line) => line.includes('siguen al día')));
+
+    writeFileSync(join(dir, 'README.md'), 'uno\n');
+    await env.ensure(input);
+    assert.equal(restarts().length, 1);
+
+    await env.ensure(input);
+    assert.equal(restarts().length, 1, 'same state as the last restart');
+
+    writeFileSync(join(dir, 'README.md'), 'dos\n');
+    await env.ensure(input);
+    assert.equal(restarts().length, 2, 'the same file with other content');
   });
 
   it('gives each execution its own project name and different ports', async () => {

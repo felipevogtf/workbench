@@ -202,6 +202,8 @@ interface ProjectEnv {
   dir?: string;
   warnings: string[];
   failure?: string;
+  /** Cómo estaba el worktree la última vez que los servicios se (re)iniciaron: si no cambió, no hace falta reiniciarlos. */
+  fingerprint?: string;
 }
 
 interface ExecutionEnv {
@@ -210,6 +212,28 @@ interface ExecutionEnv {
   services: Map<string, { container: string; port: number }>;
   projects: Map<string, ProjectEnv>;
   taken: Set<number>;
+}
+
+/**
+ * Cómo está un worktree: el commit y lo que tiene sin guardar (qué archivos y su contenido). Dos huellas iguales = nada cambió.
+ * `undefined` si no se pudo calcular: entonces siempre se reinicia.
+ */
+async function fingerprintOf(
+  dir: string | undefined,
+): Promise<string | undefined> {
+  if (!dir) return undefined;
+  try {
+    const [head, status, diff] = await Promise.all([
+      git(['rev-parse', 'HEAD'], { cwd: dir }),
+      git(['status', '--porcelain'], { cwd: dir }),
+      git(['diff', 'HEAD'], { cwd: dir }),
+    ]);
+    return createHash('sha256')
+      .update(`${head}|${status}|${diff}`)
+      .digest('hex');
+  } catch {
+    return undefined;
+  }
 }
 
 const took = (since: number) => `${((Date.now() - since) / 1000).toFixed(1)} s`;
@@ -324,6 +348,15 @@ export class Environments {
     onLog: (line: string) => void,
     signal?: AbortSignal,
   ): Promise<void> {
+    // Un reinicio tarda ~20 s y solo hace falta si el worktree cambió desde el último: el código se ve sin reiniciar (PHP sin opcache);
+    // lo que sí lo pide son los archivos montados sueltos que se editaron en el lugar, y esos son del repo, así que aparecen en la huella.
+    const fingerprint = await fingerprintOf(project.dir);
+    if (fingerprint && fingerprint === project.fingerprint) {
+      onLog(
+        'Los servicios siguen al día: nada cambió desde el último reinicio.',
+      );
+      return;
+    }
     onLog('Reiniciando los servicios para que tomen los cambios del código…');
     const result = await this.exec('docker', ['compose', 'restart'], {
       cwd: project.dir,
@@ -338,6 +371,7 @@ export class Environments {
       );
       return;
     }
+    project.fingerprint = fingerprint;
     for (const wait of config.waitFor ?? []) {
       const url = fill(wait.url, {
         project: project.project,
@@ -668,7 +702,15 @@ export class Environments {
       if (saved.length > 0)
         onLog(`Dependencias guardadas en la caché (${saved.join(', ')})`);
     }
-    return { project, processEnv, ports, schema, dir, warnings };
+    return {
+      project,
+      processEnv,
+      ports,
+      schema,
+      dir,
+      warnings,
+      fingerprint: await fingerprintOf(dir),
+    };
   }
 
   private async startService(
