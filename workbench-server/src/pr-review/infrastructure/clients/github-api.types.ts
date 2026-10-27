@@ -21,6 +21,11 @@ export interface GithubPullRequest {
   base: { ref: string };
 }
 
+/** Una PR recién abierta. */
+export interface GithubCreatedPullRequest {
+  html_url: string;
+}
+
 export interface GithubComment {
   html_url: string;
 }

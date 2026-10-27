@@ -59,7 +59,6 @@ import {
 
 const MAX_SUMMARY_CHARS = 4000;
 /** Por ahora las PRs solo se abren en Bitbucket. */
-const SUPPORTED_HOST = 'bitbucket.org';
 /** Repositorios que puede tocar una misma tarea: cada uno suma una carpeta de trabajo y una PR. */
 const MAX_REPOS = 3;
 /** Preguntas que un desarrollador puede hacer en un mismo ticket: a la tercera se falla con lo que pasó. */
@@ -145,11 +144,6 @@ export class ExecutionsService {
     if (repos.length > MAX_REPOS) {
       throw new DomainError(
         `The task has ${repos.length} repositories; a task can run on up to ${MAX_REPOS}`,
-      );
-    }
-    if (repos.some((repo) => repo.host !== SUPPORTED_HOST)) {
-      throw new DomainError(
-        'For now the pull request can only be opened on Bitbucket',
       );
     }
 

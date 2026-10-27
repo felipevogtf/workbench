@@ -6,17 +6,34 @@ import {
   RemotePullRequestData,
 } from '@pr-review/domain/ports/pull-request-source.port';
 import { PullRequestCommentPort } from '@pr-review/domain/ports/pull-request-comment.port';
+import {
+  NewPullRequestData,
+  PullRequestCreationPort,
+} from '@pr-review/domain/ports/pull-request-creation.port';
 import { GithubApiClient } from '@pr-review/infrastructure/clients/github-api.client';
 import { GithubPullRequest } from '@pr-review/infrastructure/clients/github-api.types';
 
 @Injectable()
 export class GithubAdapter
-  implements PullRequestSourcePort, PullRequestCommentPort
+  implements
+    PullRequestSourcePort,
+    PullRequestCommentPort,
+    PullRequestCreationPort
 {
   readonly provider: GitProvider = 'github';
   private readonly logger = new Logger(GithubAdapter.name);
 
   constructor(private readonly client: GithubApiClient) {}
+
+  async create(data: NewPullRequestData): Promise<{ url: string }> {
+    const pr = await this.client.createPullRequest(data.repo, {
+      title: data.title,
+      body: data.description,
+      head: data.sourceBranch,
+      base: data.destBranch,
+    });
+    return { url: pr.html_url };
+  }
 
   isEnabled(): boolean {
     return this.client.isConfigured();

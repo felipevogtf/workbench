@@ -201,9 +201,10 @@ describe('ExecutionsService', () => {
       await expect(service.start('issue-1')).rejects.toThrow('up to 3');
     });
 
-    it('only supports Bitbucket for now', async () => {
+    it('accepts a repository on GitHub', async () => {
       tasks.task!.repoUrls = ['https://github.com/acme/web'];
-      await expect(service.start('issue-1')).rejects.toThrow('Bitbucket');
+      const execution = await service.start('issue-1');
+      expect(execution.repo.host).toBe('github.com');
     });
 
     it('refuses agents that the runner cannot run', async () => {

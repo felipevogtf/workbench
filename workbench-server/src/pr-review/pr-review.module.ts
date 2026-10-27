@@ -87,11 +87,10 @@ function enabledProviders(
     { provide: PULL_REQUEST_SOURCE_PORTS, useExisting: ENABLED_PROVIDERS },
     { provide: PULL_REQUEST_COMMENT_PORTS, useExisting: ENABLED_PROVIDERS },
     {
-      // Hoy solo Bitbucket sabe abrir PRs; GitHub se suma cuando haga falta.
       provide: PULL_REQUEST_CREATION_PORTS,
-      useFactory: (bitbucket: BitbucketAdapter) =>
-        bitbucket.isEnabled() ? [bitbucket] : [],
-      inject: [BitbucketAdapter],
+      useFactory: (bitbucket: BitbucketAdapter, github: GithubAdapter) =>
+        [bitbucket, github].filter((port) => port.isEnabled()),
+      inject: [BitbucketAdapter, GithubAdapter],
     },
     {
       provide: PULL_REQUEST_REPOSITORY_PORT,

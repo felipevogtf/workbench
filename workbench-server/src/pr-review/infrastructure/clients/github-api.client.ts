@@ -6,6 +6,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
   GithubComment,
+  GithubCreatedPullRequest,
   GithubPullRequest,
   GithubSearchItem,
   GithubSearchResponse,
@@ -124,6 +125,20 @@ export class GithubApiClient {
     );
   }
 
+  /** Abre una PR. Los revisores no se asignan aquí: los de la configuración son de Bitbucket. */
+  createPullRequest(
+    repo: string,
+    body: { title: string; body: string; head: string; base: string },
+  ): Promise<GithubCreatedPullRequest> {
+    return this.call(() =>
+      this.http.post<GithubCreatedPullRequest>(
+        `${API}/repos/${repo}/pulls`,
+        body,
+        this.options(),
+      ),
+    );
+  }
+
   private options() {
     return { headers: this.headers, timeout: REQUEST_TIMEOUT_MS };
   }
@@ -141,9 +156,16 @@ export class GithubApiClient {
 
   private toHttpException(err: AxiosError): HttpException {
     const status = err.response?.status ?? HttpStatus.BAD_GATEWAY;
-    return new HttpException(
-      `GitHub API error (${status}): ${err.message}`,
-      status,
-    );
+    // GitHub explica el motivo en el cuerpo ({"message", "errors": [{"message"}]}); el mensaje de axios no.
+    const data = err.response?.data as
+      { message?: string; errors?: { message?: string }[] } | undefined;
+    const details = (data?.errors ?? [])
+      .map((error) => error.message)
+      .filter(Boolean)
+      .join('; ');
+    const reason = data?.message
+      ? `${data.message}${details ? ` (${details})` : ''}`
+      : err.message;
+    return new HttpException(`GitHub API error (${status}): ${reason}`, status);
   }
 }

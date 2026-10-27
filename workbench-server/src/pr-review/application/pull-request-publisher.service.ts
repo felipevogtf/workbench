@@ -7,7 +7,7 @@ import {
   type PullRequestCreationPort,
 } from '@pr-review/domain/ports/pull-request-creation.port';
 
-/** Abre PRs en el proveedor que corresponda (hoy solo Bitbucket). */
+/** Abre PRs en el proveedor que corresponda (Bitbucket y GitHub). */
 @Injectable()
 export class PullRequestPublisherService {
   constructor(
