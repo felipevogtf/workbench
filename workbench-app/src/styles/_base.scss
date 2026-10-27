@@ -22,6 +22,8 @@ h4 {
 
 html {
   scroll-behavior: smooth;
+  // Los controles nativos que el app no reemplaza (radio, checkbox, deslizador) toman el color principal, no el azul del navegador.
+  accent-color: var(--primary);
 }
 
 html,

@@ -137,7 +137,7 @@ const KINDS: readonly { kind: string; label: string }[] = [
 
     .chart__part[data-kind='tickets'],
     .chart__swatch[data-kind='tickets'] {
-      background: #3b82f6;
+      background: var(--success);
     }
 
     .chart__part[data-kind='develop'],

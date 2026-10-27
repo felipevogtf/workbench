@@ -417,7 +417,7 @@
   }
 
   &:disabled {
-    color: var(--text-muted, var(--text-color));
+    color: var(--text-color);
     opacity: 0.4;
     cursor: default;
   }
