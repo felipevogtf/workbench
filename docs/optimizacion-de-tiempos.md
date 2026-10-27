@@ -49,6 +49,18 @@ armar el entorno en frío, no la IA.
   ejecución). Hay que confirmar que PHP no necesita el reinicio para ver cambios de código (su `opcache`).
 - Otras mejoras posibles del entorno: el esquema de la base de datos (22 s) y el `restart app` + espera (~20 s) del primer arranque.
 
+## Segunda ronda (2026-10-27, noche)
+
+- **Caché de `vendor/`: arreglada.** Copiarla antes de `compose up` hacía que la imagen se reconstruyera (el Dockerfile hace `COPY . /app`):
+  `compose up` pasó de 4.8 s a 33.6 s y el ahorro de `composer install` (25 s → 0.2 s) se perdía. Ahora se copia después de levantar. En el
+  trabajo de Lucy el entorno bajó a **60 s** (antes 85–90 s) y el trabajo entero a 143 s (antes 183 s).
+- **Reinicio entre trabajos: solo si algo cambió.** Al terminar un reinicio se guarda una huella del worktree (commit, estado y contenido de
+  lo no guardado); el siguiente trabajo la compara y, si es igual, se salta el `docker compose restart`. Se comprobó que la imagen de
+  `melon-web` no tiene `opcache` (PHP ve los cambios de código sin reiniciar). Los archivos montados sueltos que se editan en el lugar
+  (`nginx.conf`) son del repo, así que su cambio altera la huella y sí reinicia. Ahorro esperado: unos 70 s por ejecución (4 de 8
+  reinicios). Falta medirlo con una ejecución completa.
+- **Ejecución `97ec4f02…` (caché con el orden malo, CodeGraph sin usar):** 675 s en total contra 776 s de la base.
+
 ## Pendiente: dependencias compartidas (punto 4)
 
 **Problema.** El runner no instala dependencias: lo hace el agente cuando se le ocurre, y cada worktree las instala de cero (de cinco

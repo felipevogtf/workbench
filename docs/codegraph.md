@@ -26,6 +26,20 @@ encuentren el código sin explorar archivo por archivo.
 - **Cómo medir:** cada trabajo registra `⏱ … codegraph X s · IA Y s`. Comparar la fase `IA` y el costo con la ejecución base `6aa948cf…`
   (776 s en total; IA ~450 s; sin CodeGraph).
 
+## Verificación de que los agentes lo usan (2026-10-27, noche)
+
+- **Primeras dos ejecuciones con CodeGraph (`97ec4f02…` y `5b8a0cb0…`): 0 llamadas** en todos los trabajos. La instrucción estaba al final del
+  prompt. Se movió **al comienzo del prompt y a una regla en el prompt de sistema** (commit `18bfcea`).
+- **Aun así Lucy no lo usó en `5b8a0cb0…`**, pero la causa no era la instrucción: ese ticket (límites de subida de nginx y PHP) es de
+  configuración, y para eso `grep` sobre archivos de configuración es lo natural; CodeGraph indexa símbolos de código, no `nginx.conf` ni
+  `php.ini`, ni el código de `vendor/`.
+- **Prueba aparte con el mismo agente** (`default-task-tickets`: Opus, esfuerzo medio, su prompt de sistema más la regla, la sección al
+  comienzo del prompt y el mismo `--allowedTools`) sobre un ticket de código (cambiar «cancelada» por «anulada» en una notificación):
+  **llamó a `codegraph_explore` antes que a `Grep`, 4 veces**, con el `projectPath` correcto, y usó `Grep` solo para buscar textos literales.
+  La herramienta responde bien y el servidor MCP queda `connected` dentro de `claude -p`.
+- **Conclusión:** para medir el beneficio hay que usar tickets de código (lógica, controladores, servicios), no de infraestructura. En los
+  de configuración el agente acierta al no usarlo.
+
 ## Qué es
 
 [CodeGraph](https://github.com/colbymchenry/codegraph) (colbymchenry, MIT) indexa un proyecto en un grafo de conocimiento local: símbolos,
