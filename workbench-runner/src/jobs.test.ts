@@ -647,6 +647,78 @@ describe('runJob', () => {
       assert.ok(!args.includes('--add-dir'));
     });
 
+    describe('the chat of Lucy', () => {
+      /** Solo `acme/app` tiene entorno; `acme/web`, el principal, no. */
+      function onlyTheOtherHasOne() {
+        const asked: string[] = [];
+        const events: string[] = [];
+        const environments = {
+          async ensure(input: { repo: { fullName: string }; dir: string }) {
+            asked.push(input.repo.fullName);
+            if (input.repo.fullName !== 'acme/app') return null;
+            return {
+              notice: '## Entorno de pruebas — Arriba',
+              processEnv: { COMPOSE_PROJECT_NAME: 'wb-12345678-app' },
+            };
+          },
+          async reclaim() {
+            events.push('reclaim');
+          },
+          async tearDown() {
+            events.push('tearDown');
+          },
+        } as unknown as Environments;
+        return { environments, asked, events };
+      }
+
+      it('brings up the environment of the other repository, so its dependencies are there to read', async () => {
+        const { context } = twoRepos();
+        const { environments, asked } = onlyTheOtherHasOne();
+        const argsFile = join(tempDir('args'), 'args.json');
+        process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+        try {
+          await runJob(withContext('chat'), { ...context, environments });
+        } finally {
+          delete process.env.FAKE_CLAUDE_ARGS_FILE;
+        }
+
+        assert.deepEqual(asked, ['acme/web', 'acme/app']);
+        const seen = JSON.parse(readFileSync(argsFile, 'utf8')) as {
+          prompt: string;
+          compose: string | null;
+        };
+        assert.match(seen.prompt, /Entorno de pruebas — Arriba/);
+        assert.equal(seen.compose, 'wb-12345678-app');
+      });
+
+      it('takes down what it built and removes the folders it created in the other repository too', async () => {
+        const { context } = twoRepos();
+        const { environments, events } = onlyTheOtherHasOne();
+
+        await runJob(withContext('chat'), { ...context, environments });
+
+        assert.ok(events.includes('tearDown'));
+        const other = join(
+          context.config.workDir,
+          'worktrees',
+          'app__workbench__vista-1234abcd',
+        );
+        assert.equal(existsSync(other), false);
+      });
+
+      it('leaves the other repository alone when it was already there', async () => {
+        const { context } = twoRepos();
+        const { environments, events } = onlyTheOtherHasOne();
+        await context.workspaces.prepare(REPO, BRANCH);
+        const other = await context.workspaces.prepare(OTHER, OTHER.branch);
+
+        await runJob(withContext('chat'), { ...context, environments });
+
+        assert.ok(!events.includes('tearDown'));
+        assert.ok(existsSync(other.dir));
+      });
+    });
+
     it('throws away what the agent changed in a repository that is only to read', async () => {
       const { context, logs } = twoRepos();
       const other = await context.workspaces.prepare(OTHER, OTHER.branch);

@@ -90,10 +90,21 @@ export async function runJob(
 
   // Los otros repos de la tarea quedan a la vista del agente, solo para leer: cada uno en su propio
   // worktree, con lo que ya se hizo en su rama.
-  const consult: { fullName: string; dir: string }[] = [];
+  const consult: { fullName: string; dir: string; branch: string }[] = [];
+  const createdByChat: { fullName: string; branch: string }[] = [];
   for (const other of payload.context ?? []) {
+    if (
+      job.kind === 'chat' &&
+      !(await context.workspaces.has(other, other.branch))
+    ) {
+      createdByChat.push({ fullName: other.fullName, branch: other.branch });
+    }
     const prepared = await context.workspaces.prepare(other, other.branch);
-    consult.push({ fullName: other.fullName, dir: prepared.dir });
+    consult.push({
+      fullName: other.fullName,
+      dir: prepared.dir,
+      branch: other.branch,
+    });
   }
   // Los submódulos son de otros repos: se empieza sin cambios en ellos (por si un intento anterior los dejó) y el
   // agente sabe que no debe tocarlos.
@@ -105,7 +116,7 @@ export async function runJob(
     );
   }
   // El entorno de pruebas del proyecto, si tiene uno configurado. Quien planifica no lo necesita.
-  const environment =
+  let environment =
     job.kind === 'tickets'
       ? null
       : await context.environments?.ensure({
@@ -115,6 +126,27 @@ export async function runJob(
           onLog: context.onLog,
           signal: context.signal,
         });
+  // Lucy mira todos los repos de la tarea, no solo el de su ticket: los que tienen entorno se levantan también, para que
+  // tengan sus dependencias instaladas. `docker compose` apunta a uno solo: el del repo principal o, si ese no tiene
+  // entorno, el primero de los otros que lo tenga.
+  const alsoUp: string[] = [];
+  if (job.kind === 'chat') {
+    for (const other of consult) {
+      const handle = await context.environments?.ensure({
+        executionId: job.executionId,
+        repo: { fullName: other.fullName },
+        dir: other.dir,
+        onLog: context.onLog,
+        signal: context.signal,
+      });
+      if (!handle?.processEnv.COMPOSE_PROJECT_NAME) continue;
+      if (environment?.processEnv.COMPOSE_PROJECT_NAME) {
+        alsoUp.push(other.fullName);
+      } else {
+        environment = handle;
+      }
+    }
+  }
   const prompt =
     payload.prompt.replace(
       /\{\{dir:([^}]+)\}\}/g,
@@ -122,7 +154,12 @@ export async function runJob(
         consult.find((other) => other.fullName === name)?.dir ?? placeholder,
     ) +
     submoduleNotice(submodules, job.kind) +
-    (environment?.notice ?? '');
+    (environment?.notice ?? '') +
+    (alsoUp.length > 0
+      ? `
+
+También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus dependencias estén instaladas y se puedan leer: \`docker compose\` y \`wb-curl\` apuntan al entorno de arriba.`
+      : '');
 
   const headBefore = (
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
@@ -165,8 +202,13 @@ export async function runJob(
   } finally {
     // Los contenedores dejan archivos a nombre de root: se devuelven al runner antes de tocar el worktree con git.
     await context.environments?.reclaim(job.executionId, workspace.dir);
-    // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno.
-    if (job.kind === 'final' || (job.kind === 'chat' && !hadWorkspace))
+    for (const other of consult) {
+      await context.environments?.reclaim(job.executionId, other.dir);
+    }
+    // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno. Una pregunta del chat baja el
+    // que ella misma tuvo que armar (la ejecución ya había terminado y sus carpetas estaban retiradas).
+    const rebuilt = !hadWorkspace || createdByChat.length > 0;
+    if (job.kind === 'final' || (job.kind === 'chat' && rebuilt))
       await context.environments?.tearDown(job.executionId, context.onLog);
   }
   const output = claude.output.slice(0, MAX_OUTPUT_CHARS);
@@ -201,8 +243,13 @@ export async function runJob(
     }
   }
 
-  if (job.kind === 'chat' && !hadWorkspace) {
-    await context.workspaces.release(payload.repo, payload.branch);
+  if (job.kind === 'chat') {
+    if (!hadWorkspace) {
+      await context.workspaces.release(payload.repo, payload.branch);
+    }
+    for (const created of createdByChat) {
+      await context.workspaces.release(created, created.branch);
+    }
   }
 
   if (job.kind !== 'develop') {
