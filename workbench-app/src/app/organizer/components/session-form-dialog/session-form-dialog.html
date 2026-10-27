@@ -1,0 +1,42 @@
+<app-dialog heading="Nueva sesión" [(open)]="open">
+  <form id="session-form" class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-form-field
+      label="Título"
+      for="session-title"
+      required
+      [error]="invalid('title') ? 'Escribe un título' : null"
+    >
+      <app-text-input
+        inputId="session-title"
+        formControlName="title"
+        placeholder="Ej.: Anulación de guías"
+        [invalid]="invalid('title')"
+      />
+    </app-form-field>
+    <app-form-field
+      label="Proyecto"
+      for="session-project"
+      required
+      [error]="invalid('projectId') ? 'Elige un proyecto' : null"
+    >
+      <app-select
+        inputId="session-project"
+        formControlName="projectId"
+        placeholder="Elige un proyecto"
+        [options]="projectOptions()"
+        [invalid]="invalid('projectId')"
+      />
+    </app-form-field>
+    <p class="hint">
+      El grupo es una tarea más del proyecto; en la sesión eliges las tareas que reúne y conversas
+      con la IA para planificarlas juntas.
+    </p>
+  </form>
+
+  <ng-container dialog-footer>
+    <button app-button variant="secondary" type="button" (click)="open.set(false)">Cancelar</button>
+    <button app-button type="submit" form="session-form" [loading]="store.saving()">
+      Crear sesión
+    </button>
+  </ng-container>
+</app-dialog>

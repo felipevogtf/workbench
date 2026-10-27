@@ -1,6 +1,6 @@
 @let chat = store();
 
-@if (chat.open()) {
+@if (chat.open() || inline()) {
   <section
     class="panel"
     role="dialog"
@@ -32,9 +32,11 @@
         >
           <app-icon name="trash" size="1.1rem" />
         </button>
-        <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
-          <app-icon name="x" size="1.1rem" />
-        </button>
+        @if (!inline()) {
+          <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
+            <app-icon name="x" size="1.1rem" />
+          </button>
+        }
       </div>
       @if (info()) {
         <p class="panel__info" [title]="infoTitle() || info()">
@@ -205,38 +207,40 @@
   </section>
 }
 
-<button
-  class="fab"
-  [class.fab--avatar]="!!assistant() && !chat.open()"
-  [class.fab--unread]="chat.unread() > 0 && !chat.open()"
-  type="button"
-  [attr.aria-expanded]="chat.open()"
-  [attr.aria-label]="
-    chat.open()
-      ? 'Cerrar el chat'
-      : (chat.unread() > 0
-          ? chat.unread() + (chat.unread() === 1 ? ' mensaje nuevo. ' : ' mensajes nuevos. ')
-          : '') +
-        'Abrir el chat con ' +
-        (assistant()?.name ?? 'la IA')
-  "
-  [title]="chat.open() ? 'Cerrar el chat' : 'Hablar con ' + (assistant()?.name ?? 'la IA')"
-  (click)="chat.toggle()"
->
-  @if (assistant(); as who) {
-    @if (chat.open()) {
-      <app-icon name="x" size="1.5rem" />
+@if (!inline()) {
+  <button
+    class="fab"
+    [class.fab--avatar]="!!assistant() && !chat.open()"
+    [class.fab--unread]="chat.unread() > 0 && !chat.open()"
+    type="button"
+    [attr.aria-expanded]="chat.open()"
+    [attr.aria-label]="
+      chat.open()
+        ? 'Cerrar el chat'
+        : (chat.unread() > 0
+            ? chat.unread() + (chat.unread() === 1 ? ' mensaje nuevo. ' : ' mensajes nuevos. ')
+            : '') +
+          'Abrir el chat con ' +
+          (assistant()?.name ?? 'la IA')
+    "
+    [title]="chat.open() ? 'Cerrar el chat' : 'Hablar con ' + (assistant()?.name ?? 'la IA')"
+    (click)="chat.toggle()"
+  >
+    @if (assistant(); as who) {
+      @if (chat.open()) {
+        <app-icon name="x" size="1.5rem" />
+      } @else {
+        <app-avatar [name]="who.name" [src]="who.avatar" size="3.5rem" />
+      }
     } @else {
-      <app-avatar [name]="who.name" [src]="who.avatar" size="3.5rem" />
+      <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
     }
-  } @else {
-    <app-icon [name]="chat.open() ? 'x' : 'message-circle'" size="1.5rem" />
-  }
-  @if (chat.unread() > 0 && !chat.open()) {
-    <span class="fab__badge" aria-hidden="true">{{
-      chat.unread() > 9 ? '9+' : chat.unread()
-    }}</span>
-  } @else if (chat.sending() && !chat.open()) {
-    <span class="fab__dot" aria-hidden="true"></span>
-  }
-</button>
+    @if (chat.unread() > 0 && !chat.open()) {
+      <span class="fab__badge" aria-hidden="true">{{
+        chat.unread() > 9 ? '9+' : chat.unread()
+      }}</span>
+    } @else if (chat.sending() && !chat.open()) {
+      <span class="fab__dot" aria-hidden="true"></span>
+    }
+  </button>
+}

@@ -6,6 +6,7 @@ import { provideNavItem } from '@core/navigation/nav-item';
 import { DASHBOARD_NAV } from '@dashboard/dashboard.nav';
 import { TASKS_NAV } from '@tasks/tasks.nav';
 import { KANBAN_NAV } from '@kanban/kanban.nav';
+import { ORGANIZER_NAV } from '@organizer/organizer.nav';
 import { PR_REVIEW_NAV } from '@pr-review/pr-review.nav';
 import { EXECUTIONS_NAV } from '@executions/executions.nav';
 import { CREDENTIALS_NAV } from '@credentials/credentials.nav';
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
     provideNavItem(DASHBOARD_NAV),
     provideNavItem(TASKS_NAV),
     provideNavItem(KANBAN_NAV),
+    provideNavItem(ORGANIZER_NAV),
     provideNavItem(PR_REVIEW_NAV),
     provideNavItem(EXECUTIONS_NAV),
     provideNavItem(CREDENTIALS_NAV),

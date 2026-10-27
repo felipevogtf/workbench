@@ -1,0 +1,61 @@
+<div class="page">
+  <app-page-header
+    heading="Organizador"
+    subtitle="Planifica y ejecuta juntas varias tareas que dependen entre sí: un solo plan, una rama y una PR por repositorio."
+  >
+    <button actions app-button type="button" (click)="formOpen.set(true)">
+      <app-icon name="plus" size="1em" /> Nueva sesión
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar las sesiones">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && store.sessions().length === 0) {
+    <div class="grid" aria-busy="true">
+      @for (n of [1, 2, 3]; track n) {
+        <app-skeleton height="140px" />
+      }
+    </div>
+  } @else if (store.sessions().length === 0) {
+    <app-empty-state icon="list-checks" heading="Todavía no hay sesiones">
+      Crea una sesión, suma las tareas que dependen entre sí y conversa con la IA para planificarlas
+      juntas.
+      <button empty-action app-button type="button" (click)="formOpen.set(true)">
+        Nueva sesión
+      </button>
+    </app-empty-state>
+  } @else {
+    <ul class="grid">
+      @for (session of store.sessions(); track session.id) {
+        <li>
+          <app-card interactive>
+            <a class="link" [routerLink]="['/organizer', session.id]">{{ session.title }}</a>
+            <p class="meta">
+              {{ session.memberCount }} {{ session.memberCount === 1 ? 'tarea' : 'tareas' }} ·
+              creada {{ session.createdAt | timeAgo }}
+            </p>
+            <ng-container card-footer>
+              <a app-button size="sm" variant="secondary" [routerLink]="['/organizer', session.id]">
+                Abrir
+              </a>
+            </ng-container>
+          </app-card>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-session-form-dialog [(open)]="formOpen" (created)="onCreated($event)" />
+</div>

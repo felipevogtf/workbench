@@ -1,0 +1,106 @@
+<div class="organizer">
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudo abrir la sesión">
+      {{ error }}
+      <a alert-action app-button variant="secondary" size="sm" routerLink="/organizer">
+        Volver al organizador
+      </a>
+    </app-alert>
+  } @else if (session(); as session) {
+    <header class="organizer__header">
+      <div class="organizer__title">
+        <a class="organizer__back" routerLink="/organizer">
+          <app-icon name="arrow-left" size="1em" /> Organizador
+        </a>
+        <h3>{{ session.title }}</h3>
+      </div>
+      <div class="organizer__actions">
+        <button
+          app-button
+          type="button"
+          [disabled]="!canPlan()"
+          [loading]="planning()"
+          (click)="createPlan()"
+        >
+          <app-icon name="sparkles" size="1em" />
+          {{ hasReadyPlan() ? 'Replanificar' : 'Crear plan' }}
+        </button>
+        <button app-button variant="danger" type="button" (click)="remove()">
+          <app-icon name="trash" size="1em" /> Eliminar
+        </button>
+      </div>
+    </header>
+
+    <div class="organizer__body">
+      <section class="organizer__chat" aria-label="Chat con la IA">
+        <app-chat-panel
+          [inline]="true"
+          [store]="chat"
+          [heading]="'Planifica el grupo con ' + (assistant()?.name ?? 'la IA')"
+          [assistant]="assistant()"
+          [context]="session.title"
+          [info]="
+            session.members.length > 0
+              ? session.members.length + ' tareas en el grupo'
+              : 'Todavía sin tareas: súmalas en el panel de la derecha'
+          "
+          emptyTitle="¿Cómo organizamos estas tareas?"
+          placeholder="Pregunta, aclara dependencias o pide el plan del grupo…"
+          [suggestions]="suggestions"
+        >
+          <p chat-empty>
+            La IA conoce todas las tareas del grupo, sus tickets, el plan y el código de sus repos.
+            Aclara dependencias, pásale otros tickets (por ejemplo <code>MEL-123</code>) y, cuando
+            esté bien, pulsa «Crear plan».
+          </p>
+        </app-chat-panel>
+      </section>
+
+      <aside class="organizer__side">
+        <app-members-panel
+          [members]="session.members"
+          [groupIssueId]="session.groupIssueId"
+          [saving]="store.saving()"
+          (changed)="changeMembers($event)"
+        />
+
+        <app-card>
+          <h4 card-header>Notas del grupo</h4>
+          <p class="muted">Qué depende de qué o lo que los agentes deban tener presente.</p>
+          <textarea
+            class="notes"
+            rows="4"
+            aria-label="Notas del grupo"
+            [value]="notes()"
+            (input)="notes.set($any($event.target).value)"
+          ></textarea>
+          <button
+            app-button
+            variant="secondary"
+            size="sm"
+            type="button"
+            [disabled]="!notesChanged() || store.saving()"
+            (click)="saveNotes()"
+          >
+            Guardar notas
+          </button>
+        </app-card>
+
+        @if (groupIssue(); as issue) {
+          @if (plans.plans().length > 0 || plans.requesting()) {
+            <app-plan-panel [issue]="issue" />
+          }
+        }
+
+        @if (hasReadyPlan() || executions.executions().length > 0) {
+          <app-execution-panel [issueId]="session.groupIssueId" [canRun]="hasReadyPlan()" />
+        }
+      </aside>
+    </div>
+  } @else {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="48px" />
+      <app-skeleton height="320px" />
+    </div>
+  }
+</div>

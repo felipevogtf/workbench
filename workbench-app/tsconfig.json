@@ -22,7 +22,8 @@
       "@kanban/*": ["./src/app/kanban/*"],
       "@dashboard/*": ["./src/app/dashboard/*"],
       "@credentials/*": ["./src/app/credentials/*"],
-      "@executions/*": ["./src/app/executions/*"]
+      "@executions/*": ["./src/app/executions/*"],
+      "@organizer/*": ["./src/app/organizer/*"]
     },
     "module": "preserve"
   },

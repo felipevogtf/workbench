@@ -37,6 +37,7 @@ const MAX_INPUT_PX = 144;
   selector: 'app-chat-panel',
   imports: [Alert, Avatar, Button, Icon, IconButton, MarkdownViewer, Spinner],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.inline]': 'inline()' },
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
 })
@@ -57,6 +58,8 @@ export class ChatPanel {
   readonly attachments = input(true);
   /** Preguntas de ejemplo para empezar. */
   readonly suggestions = input<readonly string[]>([]);
+  /** Ocupa el espacio que le da la pantalla, siempre abierto y sin el botón flotante (el chat de una pantalla propia). */
+  readonly inline = input(false);
 
   /** Lo escrito, solo para saber si el botón de enviar tiene algo que enviar. */
   protected readonly draft = signal('');

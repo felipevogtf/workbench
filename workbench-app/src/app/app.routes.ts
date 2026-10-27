@@ -11,6 +11,10 @@ export const routes: Routes = [
     loadChildren: () => import('@tasks/tasks.routes').then((m) => m.TASKS_ROUTES),
   },
   {
+    path: 'organizer',
+    loadChildren: () => import('@organizer/organizer.routes').then((m) => m.ORGANIZER_ROUTES),
+  },
+  {
     path: 'kanban',
     loadChildren: () => import('@kanban/kanban.routes').then((m) => m.KANBAN_ROUTES),
   },

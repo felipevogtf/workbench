@@ -1,0 +1,86 @@
+<app-card>
+  <h4 card-header>Tareas del grupo</h4>
+
+  @if (members().length === 0) {
+    <p class="muted">Todavía no hay tareas. Busca abajo las que quieras planificar juntas.</p>
+  } @else {
+    <ol class="members" aria-label="Tareas del grupo, en el orden en que se hacen">
+      @for (member of members(); track member.id; let index = $index; let last = $last) {
+        <li class="member">
+          <span class="member__order" aria-hidden="true">{{ index + 1 }}</span>
+          <span class="member__text">
+            @if (member.key) {
+              <strong>{{ member.key }}</strong>
+            }
+            {{ member.name }}
+          </span>
+          <span class="member__actions">
+            <button
+              app-icon-button
+              type="button"
+              label="Subir"
+              [disabled]="saving() || index === 0"
+              (click)="move(index, -1)"
+            >
+              <app-icon name="arrow-up" size="1em" />
+            </button>
+            <button
+              app-icon-button
+              type="button"
+              label="Bajar"
+              [disabled]="saving() || last"
+              (click)="move(index, 1)"
+            >
+              <app-icon name="arrow-down" size="1em" />
+            </button>
+            <button
+              app-icon-button
+              type="button"
+              label="Quitar del grupo"
+              [disabled]="saving()"
+              (click)="remove(member.id)"
+            >
+              <app-icon name="x" size="1em" />
+            </button>
+          </span>
+        </li>
+      }
+    </ol>
+  }
+
+  <div class="add">
+    <label class="add__label" for="member-search">
+      Sumar una tarea ({{ members().length }}/{{ maxMembers }})
+    </label>
+    <input
+      id="member-search"
+      class="add__input"
+      type="search"
+      autocomplete="off"
+      placeholder="Código (MEL-123), nombre o proyecto"
+      [disabled]="full() || saving()"
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+    />
+    @if (suggestions().length > 0) {
+      <ul class="suggestions" aria-label="Tareas que coinciden">
+        @for (entry of suggestions(); track entry.id) {
+          <li>
+            <button type="button" class="suggestion" (click)="add(entry.id)">
+              <app-icon name="plus" size="1em" />
+              <span>
+                @if (entry.code) {
+                  <strong>{{ entry.code }}</strong>
+                }
+                {{ entry.name }}
+                <small>{{ entry.project }}</small>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else if (search().trim().length >= 2) {
+      <p class="muted">Ninguna tarea abierta coincide.</p>
+    }
+  </div>
+</app-card>
