@@ -11,6 +11,7 @@ import {
 import type { JobAgent, JobOutcome, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
 import {
+  CODEGRAPH_SYSTEM_RULE,
   CODEGRAPH_TOOL,
   codegraphMcpConfig,
   codegraphNotice,
@@ -180,6 +181,7 @@ async function runJobSteps(
   }
   watch.lap('codegraph');
   const prompt =
+    (graphed.length > 0 ? codegraphNotice(graphed) : '') +
     payload.prompt.replace(
       /\{\{dir:([^}]+)\}\}/g,
       (placeholder, name: string) =>
@@ -187,7 +189,6 @@ async function runJobSteps(
     ) +
     submoduleNotice(submodules, job.kind) +
     (environment?.notice ?? '') +
-    (graphed.length > 0 ? codegraphNotice(graphed) : '') +
     (alsoUp.length > 0
       ? `
 
@@ -222,7 +223,10 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
       bin: context.config.claudeBin,
       binArgs: context.config.claudeBinArgs,
       model: agent.model,
-      systemPrompt: agent.systemPrompt,
+      systemPrompt:
+        graphed.length > 0
+          ? `${agent.systemPrompt}\n\n${CODEGRAPH_SYSTEM_RULE}`
+          : agent.systemPrompt,
       effort: agent.effort,
       tools,
       mcpConfig:

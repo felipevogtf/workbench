@@ -236,8 +236,9 @@ export class Environments {
     private readonly fetchUrl: (url: string) => Promise<number> = async (url) =>
       (await fetch(url, { signal: AbortSignal.timeout(5_000) })).status,
   ) {
-    this.deps = new DependencyCache(join(config.workDir, 'deps'), (command, args) =>
-      exec(command, args),
+    this.deps = new DependencyCache(
+      join(config.workDir, 'deps'),
+      (command, args) => exec(command, args),
     );
   }
 
@@ -534,19 +535,6 @@ export class Environments {
 
     await this.writeFiles(fullName, name, dir, config, vars);
 
-    // Un worktree nuevo parte con las dependencias de la última vez: instalarlas de cero tardaba más de un minuto.
-    const cached = config.dependencyCache ?? [];
-    if (cached.length > 0) {
-      const began = Date.now();
-      const copied = await this.deps
-        .seed(fullName, dir, cached)
-        .catch(() => [] as string[]);
-      if (copied.length > 0)
-        onLog(
-          `Dependencias copiadas de la caché (${copied.join(', ')}): ${took(began)}`,
-        );
-    }
-
     const files = [...config.composeFiles];
     const overrides = config.ports.filter(
       (port) => port.service && port.container,
@@ -614,6 +602,20 @@ export class Environments {
     }
 
     onLog(`⏱ docker compose up: ${took(upBegan)}`);
+
+    // Un worktree nuevo parte con las dependencias de la última vez. Se copian DESPUÉS de levantar: el Dockerfile hace `COPY . /app`, y
+    // con `vendor/` ya puesto la imagen se reconstruía (de 5 s a 34 s). El contenedor monta el worktree, así que las ve igual.
+    const cached = config.dependencyCache ?? [];
+    if (cached.length > 0) {
+      const began = Date.now();
+      const copied = await this.deps
+        .seed(fullName, dir, cached)
+        .catch(() => [] as string[]);
+      if (copied.length > 0)
+        onLog(
+          `Dependencias copiadas de la caché (${copied.join(', ')}): ${took(began)}`,
+        );
+    }
 
     const warnings: string[] = [];
     for (const command of config.prepare ?? []) {

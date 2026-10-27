@@ -115,6 +115,41 @@ describe('fill', () => {
   });
 });
 
+describe('dependency cache', () => {
+  it('puts the saved dependencies in after the containers are up and before the prepare steps', async () => {
+    const { env, calls, workDir } = setup(
+      {},
+      {
+        'acme/web': {
+          ...WEB,
+          dependencyCache: [{ dir: 'vendor', lock: 'composer.lock' }],
+        },
+      },
+    );
+    const saved = join(workDir, 'deps', 'acme_web', 'vendor', 'data');
+    mkdirSync(saved, { recursive: true });
+    writeFileSync(join(saved, 'autoload.php'), '<?php');
+    const dir = await worktree();
+
+    await env.ensure({
+      executionId: 'e1',
+      repo: REPO,
+      dir,
+      onLog: () => undefined,
+    });
+
+    const at = (match: (call: (typeof calls)[number]) => boolean) =>
+      calls.findIndex(match);
+    const up = at(
+      (call) => call.args[0] === 'compose' && call.args[1] === 'up',
+    );
+    const copy = at((call) => call.command === 'cp');
+    const prepare = at((call) => call.command === 'sh');
+    assert.ok(up >= 0 && copy >= 0 && prepare >= 0);
+    assert.ok(up < copy && copy < prepare);
+  });
+});
+
 describe('environmentTools', () => {
   it('lets the developer restart services but not the reviewer, and gives nothing to the planner', () => {
     assert.ok(

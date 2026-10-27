@@ -442,7 +442,9 @@ describe('runJob', () => {
       const tools = seen.args[seen.args.indexOf('--allowedTools') + 1];
       assert.ok(tools.split(',').includes('mcp__codegraph__codegraph_explore'));
       assert.ok(seen.args.includes('--mcp-config'));
-      assert.match(seen.prompt, /# Grafo del código/);
+      assert.ok(seen.prompt.startsWith('# Antes de explorar el código'));
+      const system = seen.args[seen.args.indexOf('--append-system-prompt') + 1];
+      assert.match(system, /llama primero a `codegraph_explore`/);
       assert.ok(existsSync(join(dir, '.codegraph', 'codegraph.db')));
       const committed = await git(
         ['show', '--name-only', '--format=', 'HEAD'],
@@ -461,7 +463,7 @@ describe('runJob', () => {
       const tools = seen.args[seen.args.indexOf('--allowedTools') + 1];
       assert.ok(!tools.includes('codegraph'));
       assert.ok(!seen.args.includes('--mcp-config'));
-      assert.doesNotMatch(seen.prompt, /Grafo del código/);
+      assert.doesNotMatch(seen.prompt, /consulta el grafo/);
     });
   });
 
