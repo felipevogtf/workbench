@@ -59,6 +59,7 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(git restore:*)',
     'Bash(git checkout --:*)',
     'Bash(git rm:*)',
+    'Bash(cp:*)',
     'Bash(npm install:*)',
     'Bash(npm i:*)',
     'Bash(npm ci:*)',

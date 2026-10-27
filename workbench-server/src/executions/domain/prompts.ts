@@ -214,6 +214,8 @@ export function buildDevelopPrompt(data: {
     '- Los archivos que necesites solo para probar (una imagen para subir con `curl`, una salida de ejemplo) créalos en la carpeta `.wb-scratch/` de tu',
     '  directorio: git la ignora y se borra sola al terminar. Nunca los dejes en otra parte del repositorio: todo lo que quede ahí va al commit.',
     '  Si ya hay un archivo tuyo que no debe estar, quítalo con `git rm <ruta>`.',
+    '- Para duplicar o copiar un archivo (sobre todo uno binario: audio, imagen, fuente) usa `cp <origen> <destino>` con rutas dentro del repositorio;',
+    '  `Write` solo sirve para texto.',
     '- Si un comando no está permitido, dilo en el resumen y sigue con el resto: no te detengas por eso.',
     '- Si NO puedes avanzar sin una respuesta (una decisión de alcance o un dato que no está en el plan, el ticket ni el código), no hagas',
     '  cambios y termina con una línea `PREGUNTA: <la pregunta concreta, con las opciones que ves>`. Pregunta solo si no se resuelve leyendo; si puedes',
