@@ -24,7 +24,7 @@
       </a>
 
       <ng-container actions>
-        @for (target of execution.repos; track target.repo.fullName) {
+        @for (target of pullRequests(execution); track target.repo.fullName) {
           @if (target.pullRequestUrl; as url) {
             <a
               app-button

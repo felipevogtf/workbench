@@ -236,6 +236,20 @@ export class ExecutionPage {
     });
   }
 
+  /**
+   * Los repositorios con PR. Un primario sin cambios hereda el enlace del repo que sí publicó (queda el
+   * mismo en ambos), así que de los enlaces repetidos se muestra solo el último.
+   */
+  protected pullRequests(execution: ExecutionDetail) {
+    return execution.repos.filter(
+      (target, index) =>
+        target.pullRequestUrl &&
+        !execution.repos
+          .slice(index + 1)
+          .some((other) => other.pullRequestUrl === target.pullRequestUrl),
+    );
+  }
+
   /** Dónde va la ejecución, en una frase. */
   protected activity(execution: ExecutionDetail): string {
     switch (execution.status) {

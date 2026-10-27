@@ -472,6 +472,17 @@ describe('ExecutionPage', () => {
       ]);
     });
 
+    it('shows a single link when the primary without changes shares the pull request of the other repository', async () => {
+      const fixture = await render(multi(['https://pr/app', 'https://pr/app']));
+
+      const links = [
+        ...fixture.nativeElement.querySelectorAll('app-page-header a[href^="https://pr/"]'),
+      ];
+      expect(links.map((link) => [link.textContent?.trim(), link.getAttribute('href')])).toEqual([
+        ['PR de app', 'https://pr/app'],
+      ]);
+    });
+
     it('does not label the tickets nor change the link when there is a single repository', async () => {
       const fixture = await render(
         detail('e1', 'completed', {
