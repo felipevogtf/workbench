@@ -136,7 +136,7 @@ Esto reemplaza el diseño del hallazgo 3 (clon autoritativo en Windows). Lo que 
   privados de Bitbucket (`miflota-web`, `miobra-ionicv6`, `miseguridad-web`).
 - **Arranque:** `E:\wsl\wb-agents-runner.vbs` enciende la distro si está apagada y la mantiene viva con un `wsl.exe … sleep infinity` (no se duplica si se ejecuta
   de nuevo). Está en la carpeta de Inicio de Windows y es lo que abre el enlace `workbench-runner://` del botón «Ejecutar». El script anterior quedó guardado como
-  `workbench-runner.vbs.runner-de-windows` en esa carpeta de Inicio. Probado en frío: con la distro apagada, el script la enciende y el runner se conecta en menos de 30 s.
+  `E:\wsl\workbench-runner.vbs.runner-de-windows.bak` (fuera de la carpeta de Inicio: ahí Windows intenta abrirlo en cada arranque). Probado en frío: con la distro apagada, el script la enciende y el runner se conecta en menos de 30 s.
 - **Sin comprobar:** el mismo arranque con Docker Desktop cerrado (hoy está abierto y mantiene viva la máquina virtual). El runner de la distro no depende de él.
 - **Pendiente:** una ejecución real de punta a punta (clonar dentro de la distro, trabajar, subir la rama desde ahí).
 
