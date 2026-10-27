@@ -64,11 +64,12 @@
       "files": [
         { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
         { "from": "parameters.yml", "to": "app/config/parameters.yml", "template": true },
+        { "from": "strip-packages.php", "to": ".wb-strip-packages.php" },
         { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" }
       ],
       "prepare": [
         "docker compose exec -T app sh -c 'rm -rf /root/.ssh && cp -r /ssh-src /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*'",
-        "docker compose exec -T app composer install --no-interaction",
+        "docker compose exec -T app php .wb-strip-packages.php drop:dsarhoya/dsy-stateless-signature remap:carbondate/carbon=https://github.com/briannesbitt/Carbon.git@55667c1007a99e82030874b1bb14d24d07108413 && docker compose exec -T app composer install --no-interaction; rc=$?; git checkout -- composer.json composer.lock; exit $rc",
         "docker compose exec -T app bin/console doctrine:schema:update --force",
         "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
         "docker compose exec -T app bin/console app:init-sessions",
