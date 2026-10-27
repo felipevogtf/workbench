@@ -22,8 +22,8 @@ export class ExecutionsApi {
   private readonly base = inject(API_BASE_URL);
 
   /** Empieza a ejecutar la tarea con su último plan; el trabajo lo hace el runner en segundo plano. */
-  start(issueId: string): Observable<Execution> {
-    return this.http.post<Execution>(`${this.base}/issues/${issueId}/executions`, {});
+  start(issueId: string, options: { openPullRequest?: boolean } = {}): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/issues/${issueId}/executions`, options);
   }
 
   /** El historial general: las ejecuciones más recientes de todas las tareas. */

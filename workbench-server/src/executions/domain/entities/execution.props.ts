@@ -164,6 +164,8 @@ export interface ExecutionProps {
   stages: StageRun[];
   tickets: ExecutionTicket[];
   pullRequestUrl: string | null;
+  /** `false`: al terminar solo sube la rama, sin abrir la PR (una prueba). Ausente = se abre. */
+  openPullRequest?: boolean;
   error: string | null;
   /** La revisión final pedida por el usuario; ausente si nunca se pidió. */
   finalReview?: FinalReview | null;

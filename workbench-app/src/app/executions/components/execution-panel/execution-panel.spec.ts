@@ -62,8 +62,19 @@ describe('ExecutionPanel', () => {
     runButton(element).click();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(api.start).toHaveBeenCalledWith('i1');
+    expect(api.start).toHaveBeenCalledWith('i1', {});
     expect(navigate).toHaveBeenCalledWith(['/executions', 'new']);
+  });
+
+  it('starts without opening the pull request when the box is unchecked', async () => {
+    const element = await render(true);
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    element.querySelector<HTMLInputElement>('app-checkbox input')!.click();
+    runButton(element).click();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(api.start).toHaveBeenCalledWith('i1', { openPullRequest: false });
   });
 
   describe('when the play button is pressed', () => {

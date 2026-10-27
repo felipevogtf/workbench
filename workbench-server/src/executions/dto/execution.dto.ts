@@ -10,6 +10,7 @@ import {
   IsUUID,
   MaxLength,
   ValidateNested,
+  IsBoolean,
 } from 'class-validator';
 import type { ChatProposal } from '@executions/domain/chat-proposals';
 import {
@@ -60,6 +61,8 @@ export class ExecutionResponseDto {
   stages!: StageRun[];
   tickets!: ExecutionTicket[];
   pullRequestUrl!: string | null;
+  /** `false`: esta ejecución no abre PR. */
+  openPullRequest!: boolean;
   error!: string | null;
   /** La revisión final que pidió el usuario, si la pidió. */
   finalReview!: FinalReview | null;
@@ -145,6 +148,11 @@ export class StartExecutionDto {
   @IsOptional()
   @IsIn(BRANCH_TYPES)
   branchType?: BranchType;
+
+  /** `false`: la ejecución solo sube la rama y no abre la PR (para probar). Por defecto se abre. */
+  @IsOptional()
+  @IsBoolean()
+  openPullRequest?: boolean;
 }
 
 /** Un ticket nuevo para sumar a una ejecución terminada. */

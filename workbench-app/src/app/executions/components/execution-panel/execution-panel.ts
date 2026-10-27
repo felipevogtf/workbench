@@ -4,6 +4,7 @@ import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { Card } from '@shared/ui/card/card';
+import { Checkbox } from '@shared/ui/checkbox/checkbox';
 import { Icon } from '@shared/ui/icon/icon';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { Toast } from '@shared/ui/toast/toast';
@@ -24,7 +25,7 @@ const HISTORY_SHOWN = 5;
  */
 @Component({
   selector: 'app-execution-panel',
-  imports: [RouterLink, TimeAgoPipe, Badge, Button, Card, Icon, Spinner],
+  imports: [RouterLink, TimeAgoPipe, Badge, Button, Card, Checkbox, Icon, Spinner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './execution-panel.html',
   styleUrl: './execution-panel.scss',
@@ -42,6 +43,8 @@ export class ExecutionPanel {
 
   /** Se está despertando al runner antes de ejecutar. */
   protected readonly launching = signal(false);
+  /** Quitarla deja una ejecución de prueba: sube la rama pero no abre la PR. */
+  protected readonly openPr = signal(true);
 
   protected readonly statusLabel = EXECUTION_STATUS_LABEL;
   protected readonly statusTone = EXECUTION_STATUS_TONE;
@@ -73,7 +76,7 @@ export class ExecutionPanel {
       );
     }
 
-    const execution = await this.store.start();
+    const execution = await this.store.start(this.openPr() ? {} : { openPullRequest: false });
     if (execution) await this.router.navigate(['/executions', execution.id]);
   }
 }

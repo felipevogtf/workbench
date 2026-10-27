@@ -50,6 +50,9 @@ export class ExecutionOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   pull_request_url!: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  open_pull_request!: boolean;
+
   @Column({ type: 'text', nullable: true })
   error!: string | null;
 

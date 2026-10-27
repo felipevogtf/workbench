@@ -23,6 +23,7 @@
         <span class="exec__muted">La tarea necesita un plan listo.</span>
       }
     </div>
+    <app-checkbox [(value)]="openPr">Abrir la pull request al terminar</app-checkbox>
 
     @if (store.active(); as active) {
       <p class="exec__progress" role="status">

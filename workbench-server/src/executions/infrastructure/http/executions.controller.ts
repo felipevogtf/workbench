@@ -50,7 +50,10 @@ export class ExecutionsController {
     @Body() dto: StartExecutionDto,
   ): Promise<ExecutionResponseDto> {
     return this.toDto(
-      await this.executions.start(issueId, { branchType: dto.branchType }),
+      await this.executions.start(issueId, {
+        branchType: dto.branchType,
+        openPullRequest: dto.openPullRequest,
+      }),
     );
   }
 
@@ -200,6 +203,7 @@ export class ExecutionsController {
       stages: execution.stages,
       tickets: execution.tickets,
       pullRequestUrl: execution.pullRequestUrl,
+      openPullRequest: execution.opensPullRequest,
       error: execution.error,
       finalReview: execution.finalReview,
       createdAt: execution.createdAt.toISOString(),

@@ -116,7 +116,7 @@ export class ExecutionsService {
   /** Empieza a ejecutar la tarea con su último plan. Revisa todo lo que puede fallar antes de encolar. */
   async start(
     issueId: string,
-    options: { branchType?: BranchType } = {},
+    options: { branchType?: BranchType; openPullRequest?: boolean } = {},
   ): Promise<Execution> {
     const task = await this.tasks.getTask(issueId);
     if (!task) throw DomainError.notFound(`Issue with id ${issueId} not found`);
@@ -176,6 +176,7 @@ export class ExecutionsService {
       repo: repos[0],
       branch,
       extraRepos: repos.slice(1).map((repo) => ({ repo, branch })),
+      openPullRequest: options.openPullRequest,
     });
     execution.setStage('tickets', 'running');
 
@@ -759,39 +760,41 @@ export class ExecutionsService {
 
         // Tras reabrir un ticket o sumar otros la PR ya existe: subir la rama la actualiza, no se abre otra.
         const task = await this.tasks.getTask(execution.issueId);
-        const url =
-          target.pullRequestUrl ??
-          (
-            await this.pullRequests
-              .create({
-                host: target.repo.host,
-                repo: target.repo.fullName,
-                sourceBranch: target.branch,
-                destBranch: baseBranch,
-                title: task?.name ?? target.branch,
-                description: buildPullRequestDescription({
-                  taskName: task?.name ?? target.branch,
-                  tickets: execution.tickets.filter(
-                    (ticket) =>
-                      execution.targetOf(ticket.repo).repo.fullName ===
-                      target.repo.fullName,
-                  ),
-                  otherRepos: targets
-                    .map((other) => other.repo.fullName)
-                    .filter((name) => name !== target.repo.fullName),
-                  members: task?.members,
-                }),
-              })
-              .catch((error: unknown) => {
-                const message =
-                  error instanceof Error ? error.message : String(error);
-                throw new DomainError(
-                  `The branch was pushed but the pull request could not be opened: ${message}`,
-                );
-              })
-          ).url;
+        // Una ejecución de prueba sube la rama y no abre la PR.
+        const url = !execution.opensPullRequest
+          ? null
+          : (target.pullRequestUrl ??
+            (
+              await this.pullRequests
+                .create({
+                  host: target.repo.host,
+                  repo: target.repo.fullName,
+                  sourceBranch: target.branch,
+                  destBranch: baseBranch,
+                  title: task?.name ?? target.branch,
+                  description: buildPullRequestDescription({
+                    taskName: task?.name ?? target.branch,
+                    tickets: execution.tickets.filter(
+                      (ticket) =>
+                        execution.targetOf(ticket.repo).repo.fullName ===
+                        target.repo.fullName,
+                    ),
+                    otherRepos: targets
+                      .map((other) => other.repo.fullName)
+                      .filter((name) => name !== target.repo.fullName),
+                    members: task?.members,
+                  }),
+                })
+                .catch((error: unknown) => {
+                  const message =
+                    error instanceof Error ? error.message : String(error);
+                  throw new DomainError(
+                    `The branch was pushed but the pull request could not be opened: ${message}`,
+                  );
+                })
+            ).url);
 
-        execution.setTargetPullRequest(target.repo.fullName, url);
+        if (url) execution.setTargetPullRequest(target.repo.fullName, url);
 
         const next =
           targets[

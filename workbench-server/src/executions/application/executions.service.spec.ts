@@ -332,6 +332,27 @@ describe('ExecutionsService', () => {
       expect(pullRequests.created[0].description).toContain('API de órdenes');
     });
 
+    it('pushes the branch but opens no pull request when asked not to', async () => {
+      const execution = await service.start('issue-1', {
+        openPullRequest: false,
+      });
+
+      await answer({ output: TICKETS_OUTPUT });
+      await service.begin(execution.id);
+      await answer(developed('aaa', 'bbb'));
+      await answer({ output: APPROVED });
+      await answer(developed('bbb', 'ccc'));
+      await answer({ output: APPROVED });
+      expect(jobs.items.at(-1)!.kind).toBe('publish');
+      await answer({ baseBranch: 'main' });
+
+      const current = (await service.get(execution.id)).execution;
+      expect(current.status).toBe('completed');
+      expect(current.pullRequestUrl).toBeNull();
+      expect(current.opensPullRequest).toBe(false);
+      expect(pullRequests.created).toEqual([]);
+    });
+
     it('reports the total cost of the jobs', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: TICKETS_OUTPUT });

@@ -24,6 +24,7 @@ export class Execution {
     branch: string;
     /** Los demás repositorios de la tarea, ya con su rama. */
     extraRepos?: { repo: ExecutionRepo; branch: string }[];
+    openPullRequest?: boolean;
   }): Execution {
     const now = new Date();
     return new Execution({
@@ -47,6 +48,7 @@ export class Execution {
       })),
       tickets: [],
       pullRequestUrl: null,
+      openPullRequest: data.openPullRequest ?? true,
       error: null,
       createdAt: now,
       updatedAt: now,
@@ -99,6 +101,10 @@ export class Execution {
   get tickets(): ExecutionTicket[] {
     return this.props.tickets;
   }
+  get opensPullRequest(): boolean {
+    return this.props.openPullRequest ?? true;
+  }
+
   get pullRequestUrl(): string | null {
     return this.props.pullRequestUrl;
   }
@@ -218,7 +224,7 @@ export class Execution {
     this.touch();
   }
 
-  complete(pullRequestUrl: string): void {
+  complete(pullRequestUrl: string | null): void {
     this.props.status = 'completed';
     this.props.pullRequestUrl = pullRequestUrl;
     this.props.error = null;

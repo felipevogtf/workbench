@@ -173,6 +173,8 @@ export interface Execution {
   stages: StageRun[];
   tickets: ExecutionTicket[];
   pullRequestUrl: string | null;
+  /** `false`: la ejecución solo sube la rama, sin abrir la PR. */
+  openPullRequest?: boolean;
   error: string | null;
   /** La revisión final que pidió el usuario; ausente o `null` si nunca la pidió. */
   finalReview?: FinalReview | null;

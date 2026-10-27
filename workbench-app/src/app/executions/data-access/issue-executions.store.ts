@@ -47,11 +47,11 @@ export class IssueExecutionsStore {
   }
 
   /** Empieza a ejecutar la tarea. Devuelve la ejecución nueva, o `null` si el servidor la rechazó. */
-  async start(): Promise<Execution | null> {
+  async start(options: { openPullRequest?: boolean } = {}): Promise<Execution | null> {
     if (!this.issueId) return null;
     this.startingState.set(true);
     try {
-      const created = await firstValueFrom(this.api.start(this.issueId));
+      const created = await firstValueFrom(this.api.start(this.issueId, options));
       this.items.update((list) => [created, ...list]);
       this.syncPolling();
       return created;
