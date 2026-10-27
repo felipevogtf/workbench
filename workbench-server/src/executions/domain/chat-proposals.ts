@@ -54,8 +54,11 @@ const MAX_TITLE = 120;
 const MAX_DESCRIPTION = 4_000;
 
 const NOTE = /^[ \t]*NOTA[ \t]+(\d+)[ \t]*:[ \t]*(.+?)[ \t]*$/i;
+// Lo que sigue al título es la descripción y, si el último campo es un repo, el repo: la descripción puede llevar `|` (una
+// expresión regular, una tabla) sin que la línea deje de ser una propuesta.
 const TICKET =
-  /^[ \t]*TICKET[ \t]*(simple|medium|complex)?[ \t]*\|[ \t]*([^|]+?)[ \t]*\|[ \t]*([^|]+?)(?:[ \t]*\|[ \t]*([^|]+?))?[ \t]*$/i;
+  /^[ \t]*TICKET[ \t]*(simple|medium|complex)?[ \t]*\|[ \t]*([^|]+?)[ \t]*\|[ \t]*(.+?)[ \t]*$/i;
+const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const FINAL_REVIEW = /^[ \t]*REVISI[OÓ]N[ \t]+FINAL[ \t]*$/i;
 
 /**
@@ -152,14 +155,25 @@ function proposalOf(
   const added = TICKET.exec(line);
   if (added) {
     if (!completed) return null;
-    const wanted = added[4]?.trim().toLowerCase();
+    let description = added[3];
+    let wanted: string | undefined;
+    const cut = description.lastIndexOf('|');
+    if (cut >= 0) {
+      const tail = description.slice(cut + 1).trim();
+      // Un último campo con forma de repo lo es, aunque no sea de esta tarea (se ignora); si no, sigue siendo descripción.
+      if (REPO_NAME.test(tail)) {
+        wanted = tail.toLowerCase();
+        description = description.slice(0, cut).trim();
+      }
+    }
+    if (!description) return null;
     const level = TICKET_LEVELS.find(
       (each) => each === added[1]?.toLowerCase(),
     );
     return {
       kind: 'ticket',
       title: added[2].slice(0, MAX_TITLE),
-      text: added[3].slice(0, MAX_DESCRIPTION),
+      text: description.slice(0, MAX_DESCRIPTION),
       level: level ?? 'medium',
       repo: context.repos.find((repo) => repo.toLowerCase() === wanted) ?? null,
     };

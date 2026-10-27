@@ -175,6 +175,35 @@ describe('extractProposals — new tickets', () => {
     expect(reply).toBe(line);
   });
 
+  it('keeps a description that has the | character in it, like a regular expression', () => {
+    const regex = String.raw`'~^/secured/admin/?\?(.*&)?entity=Advertisement(&|$)' 1;`;
+
+    const { reply, proposals } = extractProposals(
+      `Va así:\nTICKET simple | Permitir multipart | Agregar ${regex} al map | acme/web`,
+      context('completed'),
+    );
+
+    expect(reply).toBe('Va así:');
+    expect(proposals).toEqual([
+      {
+        kind: 'ticket',
+        level: 'simple',
+        title: 'Permitir multipart',
+        text: `Agregar ${regex} al map`,
+        repo: 'acme/web',
+      },
+    ]);
+  });
+
+  it('keeps the | in the description when the last field is not a repository', () => {
+    const { proposals } = extractProposals(
+      'TICKET simple | Ajuste | Cambiar a|b',
+      context('completed'),
+    );
+
+    expect(proposals).toMatchObject([{ text: 'Cambiar a|b', repo: null }]);
+  });
+
   it('does not take a TICKET line without title and description', () => {
     expect(
       extractProposals('TICKET simple | solo un título', context('completed'))
