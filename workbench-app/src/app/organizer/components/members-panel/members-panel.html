@@ -1,19 +1,23 @@
-<app-card>
-  <h4 card-header>Tareas del grupo</h4>
-
+<div class="panel">
   @if (members().length === 0) {
-    <p class="muted">Todavía no hay tareas. Busca abajo las que quieras planificar juntas.</p>
+    <p class="muted">Sin tareas todavía. Busca abajo las que quieras planificar juntas.</p>
   } @else {
     <ol class="members" aria-label="Tareas del grupo, en el orden en que se hacen">
       @for (member of members(); track member.id; let index = $index; let last = $last) {
         <li class="member">
           <span class="member__order" aria-hidden="true">{{ index + 1 }}</span>
-          <span class="member__text">
+          <a
+            class="member__text"
+            target="_blank"
+            rel="noopener"
+            [routerLink]="['/tasks/issues', member.id]"
+            [title]="'Abrir ' + (member.key || member.name) + ' en otra pestaña'"
+          >
             @if (member.key) {
               <strong>{{ member.key }}</strong>
             }
             {{ member.name }}
-          </span>
+          </a>
           <span class="member__actions">
             <button
               app-icon-button
@@ -83,4 +87,4 @@
       <p class="muted">Ninguna tarea abierta coincide.</p>
     }
   </div>
-</app-card>
+</div>

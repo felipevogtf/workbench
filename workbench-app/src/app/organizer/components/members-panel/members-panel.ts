@@ -7,8 +7,8 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
-import { Card } from '@shared/ui/card/card';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { MAX_GROUP_MEMBERS, OrganizerMember } from '../../models/organizer';
@@ -22,7 +22,7 @@ const MAX_SUGGESTIONS = 8;
  */
 @Component({
   selector: 'app-members-panel',
-  imports: [Card, Icon, IconButton],
+  imports: [RouterLink, Icon, IconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './members-panel.html',
   styleUrl: './members-panel.scss',

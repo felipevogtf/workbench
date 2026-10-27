@@ -19,9 +19,9 @@ import { TaskChatStore } from '@tasks/data-access/task-chat.store';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
-import { Card } from '@shared/ui/card/card';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
+import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
 import { MembersPanel } from '../../components/members-panel/members-panel';
@@ -42,8 +42,8 @@ import { OrganizerStore } from '../../data-access/organizer.store';
     MembersPanel,
     Alert,
     Button,
-    Card,
     Icon,
+    IconButton,
     Skeleton,
   ],
   providers: [PlansStore, TaskChatStore, IssueExecutionsStore],

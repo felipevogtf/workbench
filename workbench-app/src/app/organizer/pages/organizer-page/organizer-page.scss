@@ -1,29 +1,27 @@
-// Ancho completo, como el tablero: el menú es un panel flotante y el chat usa todo el alto que queda.
+// Minimalista: el chat ocupa el centro sin marcos y a la derecha, una columna de secciones plegables.
 .organizer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   width: 100%;
-  min-height: calc(100dvh - 56px);
-  padding: var(--space-5) var(--space-4) var(--space-4);
+  height: calc(100dvh - 56px);
+  padding: var(--space-3) var(--space-4) 0;
 }
 
 .organizer__header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
-}
-
-.organizer__title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   min-width: 0;
 
   h3 {
-    font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem);
-    font-weight: 700;
-    overflow-wrap: anywhere;
+    flex: 1;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -31,10 +29,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  align-self: flex-start;
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   text-decoration: none;
   color: var(--text-color);
 
@@ -45,45 +40,58 @@
 
 .organizer__actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
 .organizer__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
   flex: 1;
+  gap: var(--space-4);
   min-height: 0;
 }
 
 .organizer__chat {
-  // En móvil el chat tiene alto propio; desde escritorio llena el alto de la pantalla.
+  min-height: 0;
   height: 70dvh;
-  min-height: 420px;
 }
 
 .organizer__side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   min-width: 0;
+  padding-bottom: var(--space-4);
+  overflow-y: auto;
+}
+
+// Cada sección es un título que se pliega, separado por una línea fina; sin tarjetas.
+.section {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+
+  summary {
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style-position: inside;
+  }
+
+  &[open] > summary {
+    margin-bottom: var(--space-3);
+  }
 }
 
 .muted {
   margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
   color: var(--text-color);
-}
-
-h4[card-header] {
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .notes {
   display: block;
   width: 100%;
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
@@ -93,21 +101,27 @@ h4[card-header] {
   resize: vertical;
 }
 
+.organizer__delete {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
 @media (min-width: 1024px) {
   .organizer__body {
-    grid-template-columns: minmax(0, 1fr) 380px;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
 
   .organizer__chat {
-    position: sticky;
-    top: var(--space-4);
-    height: calc(100dvh - 190px);
-  }
-
-  .organizer__header {
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: space-between;
+    height: 100%;
   }
 }
