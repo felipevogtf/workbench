@@ -365,6 +365,17 @@ export class Environments {
   private async chown(dir: string): Promise<void> {
     const uid = process.getuid?.() ?? 1000;
     const gid = process.getgid?.() ?? 1000;
+    // Levantar el contenedor y recorrer `node_modules` entero tarda segundos en cada trabajo: se hace solo si hay algo ajeno. Si
+    // `find` no puede mirar (una carpeta de root sin permiso), también hace falta.
+    const foreign = await this.exec('find', [
+      dir,
+      '-not',
+      '-uid',
+      String(uid),
+      '-print',
+      '-quit',
+    ]).catch(() => undefined);
+    if (foreign && foreign.code === 0 && foreign.stdout.trim() === '') return;
     await this.exec('docker', [
       'run',
       '--rm',

@@ -10,6 +10,7 @@ import {
 } from './submodules';
 import type { JobAgent, JobOutcome, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
+import { stopwatch } from './stopwatch';
 
 /**
  * Quién firma el commit: el agente que hizo el trabajo y «(IA)» al final, para que en la PR se vea que no lo escribió una
@@ -40,30 +41,40 @@ export interface JobContext {
   signal: AbortSignal;
 }
 
-/** Hace un trabajo de la ejecución, en el worktree de su rama. */
+/** Hace un trabajo de la ejecución, en el worktree de su rama, y deja en su registro cuánto tardó cada fase. */
 export async function runJob(
   job: RunnerJob,
   context: JobContext,
+): Promise<JobOutcome> {
+  const watch = stopwatch();
+  try {
+    return await runJobSteps(job, context, watch);
+  } finally {
+    context.onLog(watch.summary());
+  }
+}
+
+async function runJobSteps(
+  job: RunnerJob,
+  context: JobContext,
+  watch: ReturnType<typeof stopwatch>,
 ): Promise<JobOutcome> {
   const { payload } = job;
   context.onLog(
     `▶ ${job.kind} (intento ${job.attempt}) en ${payload.repo.fullName}, rama ${payload.branch}`,
   );
 
-  // Una pregunta del chat sobre una ejecución que ya terminó vuelve a armar la carpeta de trabajo y su entorno: lo que ella
-  // creó se retira al terminar, para no dejar contenedores ni carpetas que nadie más va a usar.
-  const hadWorkspace =
-    job.kind !== 'chat' ||
-    (await context.workspaces.has(payload.repo, payload.branch));
   const workspace = await context.workspaces.prepare(
     payload.repo,
     payload.branch,
   );
   if (job.kind !== 'publish') await ignoreScratch(workspace.dir);
+  watch.lap('carpeta');
 
   if (job.kind === 'publish') {
     context.onLog('Subiendo la rama…');
     await context.workspaces.push(workspace.dir, payload.branch);
+    watch.lap('subida');
     const headAfter = (
       await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
     ).trim();
@@ -71,6 +82,7 @@ export async function runJob(
     await context.environments?.reclaim(job.executionId, workspace.dir);
     await context.workspaces.release(payload.repo, payload.branch);
     await context.environments?.tearDown(job.executionId, context.onLog);
+    watch.lap('limpieza');
     context.onLog(
       `Rama subida (${headAfter.slice(0, 8)}), PR hacia ${workspace.baseBranch}`,
     );
@@ -93,14 +105,7 @@ export async function runJob(
   // Los otros repos de la tarea quedan a la vista del agente, solo para leer: cada uno en su propio
   // worktree, con lo que ya se hizo en su rama.
   const consult: { fullName: string; dir: string; branch: string }[] = [];
-  const createdByChat: { fullName: string; branch: string }[] = [];
   for (const other of payload.context ?? []) {
-    if (
-      job.kind === 'chat' &&
-      !(await context.workspaces.has(other, other.branch))
-    ) {
-      createdByChat.push({ fullName: other.fullName, branch: other.branch });
-    }
     const prepared = await context.workspaces.prepare(other, other.branch);
     consult.push({
       fullName: other.fullName,
@@ -117,6 +122,7 @@ export async function runJob(
       `Se descartaron cambios que habían quedado en los submódulos: ${leftovers.join(', ')}`,
     );
   }
+  watch.lap('repos de consulta');
   // El entorno de pruebas del proyecto, si tiene uno configurado. También lo usa Lucy al crear los tickets (así verifica el
   // plan contra el código instalado antes de que el usuario dé el visto bueno) y el desarrollador lo reutiliza después.
   let environment = await context.environments?.ensure({
@@ -147,6 +153,7 @@ export async function runJob(
       }
     }
   }
+  watch.lap('entorno');
   const prompt =
     payload.prompt.replace(
       /\{\{dir:([^}]+)\}\}/g,
@@ -199,6 +206,7 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
       onLog: context.onLog,
       signal: context.signal,
     });
+    watch.lap('IA');
   } finally {
     await clearScratch(workspace.dir);
     // Los contenedores dejan archivos a nombre de root: se devuelven al runner antes de tocar el worktree con git.
@@ -206,12 +214,13 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
     for (const other of consult) {
       await context.environments?.reclaim(job.executionId, other.dir);
     }
-    // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno. Una pregunta del chat baja el
-    // que ella misma tuvo que armar (la ejecución ya había terminado y sus carpetas estaban retiradas).
-    const rebuilt = !hadWorkspace || createdByChat.length > 0;
-    if (job.kind === 'final' || (job.kind === 'chat' && rebuilt))
+    // La revisión final es lo último de su ejecución: no hay más trabajos que usen el entorno. Una pregunta del chat sobre una
+    // ejecución terminada deja lo que armó (carpeta y entorno): la siguiente pregunta llega a algo ya listo, y el barrido de entornos
+    // inactivos lo baja solo.
+    if (job.kind === 'final')
       await context.environments?.tearDown(job.executionId, context.onLog);
   }
+  watch.lap('limpieza');
   const output = claude.output.slice(0, MAX_OUTPUT_CHARS);
 
   // Los repos de consulta no se tocan: si el agente cambió algo ahí, se descarta.
@@ -249,16 +258,8 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
     }
   }
 
-  if (job.kind === 'chat') {
-    if (!hadWorkspace) {
-      await context.workspaces.release(payload.repo, payload.branch);
-    }
-    for (const created of createdByChat) {
-      await context.workspaces.release(created, created.branch);
-    }
-  }
-
   if (job.kind !== 'develop') {
+    watch.lap('cierre');
     return { result: { output }, costUsd: claude.costUsd, usage: claude.usage };
   }
 
@@ -296,6 +297,7 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })
   ).trim();
 
+  watch.lap('commit');
   return {
     result: { output, headBefore, headAfter },
     costUsd: claude.costUsd,

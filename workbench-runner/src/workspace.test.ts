@@ -236,6 +236,25 @@ describe('Workspaces', () => {
     assert.ok(existsSync(join(next.dir, 'nuevo.txt')));
   });
 
+  it('does not go to the remote again for a worktree that already exists', async () => {
+    const { workspaces, bare, workDir } = setup();
+    await workspaces.prepare(REPO, 'workbench/primera-1');
+
+    const mate = tempDir('mate');
+    await git(['clone', bare, mate]);
+    writeFileSync(join(mate, 'nuevo.txt'), 'x\n');
+    await git(['add', '--all'], { cwd: mate });
+    await git(['commit', '-m', 'nuevo'], { cwd: mate });
+    await git(['push', 'origin', 'main'], { cwd: mate });
+
+    await workspaces.prepare(REPO, 'workbench/primera-1');
+    const clone = join(workDir, 'repos', 'acme__web');
+    const known = (await git(['log', '--oneline', 'origin/main'], { cwd: clone }))
+      .trim()
+      .split('\n');
+    assert.ok(!known.some((line) => line.includes('nuevo')));
+  });
+
   it('sweeps the worktrees nobody touched in a week and leaves the recent ones', async () => {
     const { workspaces, workDir } = setup();
     const recent = await workspaces.prepare(REPO, 'workbench/reciente-1');

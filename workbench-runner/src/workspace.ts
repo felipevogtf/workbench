@@ -63,21 +63,28 @@ export class Workspaces {
     const clone = this.inside('repos', repo.fullName.replace('/', '__'));
     await mkdir(resolve(clone, '..'), { recursive: true });
 
-    if (existsSync(join(clone, '.git'))) {
-      await git(['fetch', '--prune', 'origin'], { cwd: clone });
-    } else {
-      await git(['clone', '--no-tags', url ?? repo.sshUrl, clone]);
-    }
-
-    const baseBranch = await this.defaultBranch(clone);
     // El worktree que ya tiene esta rama se reutiliza, esté donde esté; uno nuevo lleva el nombre del
     // repo, porque varios repos de una misma tarea usan el mismo nombre de rama.
-    let existing = await this.worktreeOf(clone, branch);
+    let existing = existsSync(join(clone, '.git'))
+      ? await this.worktreeOf(clone, branch)
+      : null;
     if (existing && !existsSync(existing)) {
       // La carpeta se borró a mano: git sigue creyendo que la rama está ocupada.
       await git(['worktree', 'prune'], { cwd: clone }).catch(() => undefined);
       existing = null;
     }
+
+    // Traer lo del remoto solo hace falta para armar un worktree nuevo: uno que ya existe sigue de su rama local, y subirla no
+    // necesita el fetch. Con varios trabajos por ticket, se ahorra una ida a Bitbucket por cada uno.
+    if (!existing) {
+      if (existsSync(join(clone, '.git'))) {
+        await git(['fetch', '--prune', 'origin'], { cwd: clone });
+      } else {
+        await git(['clone', '--no-tags', url ?? repo.sshUrl, clone]);
+      }
+    }
+
+    const baseBranch = await this.defaultBranch(clone);
     const dir =
       existing ?? this.inside('worktrees', this.worktreeName(repo, branch));
 

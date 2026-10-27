@@ -502,7 +502,7 @@ describe('runJob', () => {
       assert.deepEqual(events, ['ensure', 'reclaim']);
     });
 
-    it('chat: on a finished execution it rebuilds what it needs and removes it afterwards', async () => {
+    it('chat: on a finished execution it rebuilds what it needs and leaves it for the next question', async () => {
       const { context } = setup();
       const { environments, events } = fakeEnvironments();
       const dir = join(
@@ -513,8 +513,8 @@ describe('runJob', () => {
 
       await runJob(job('chat'), { ...context, environments });
 
-      assert.deepEqual(events, ['ensure', 'reclaim', 'tearDown']);
-      assert.ok(!existsSync(dir));
+      assert.deepEqual(events, ['ensure', 'reclaim']);
+      assert.ok(existsSync(dir));
     });
 
     it('chat: reads the environment like a review and never restarts anything', async () => {
@@ -717,19 +717,19 @@ describe('runJob', () => {
         assert.equal(seen.compose, 'wb-12345678-app');
       });
 
-      it('takes down what it built and removes the folders it created in the other repository too', async () => {
+      it('leaves what it built in the other repository for the next question', async () => {
         const { context } = twoRepos();
         const { environments, events } = onlyTheOtherHasOne();
 
         await runJob(withContext('chat'), { ...context, environments });
 
-        assert.ok(events.includes('tearDown'));
+        assert.ok(!events.includes('tearDown'));
         const other = join(
           context.config.workDir,
           'worktrees',
           'app__workbench__vista-1234abcd',
         );
-        assert.equal(existsSync(other), false);
+        assert.equal(existsSync(other), true);
       });
 
       it('leaves the other repository alone when it was already there', async () => {
