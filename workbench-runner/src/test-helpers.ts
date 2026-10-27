@@ -1,5 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_CONFIG, type RunnerConfig } from './config';
@@ -22,6 +28,27 @@ export const FAKE_CLAUDE = join(
   'test-support',
   'fake-claude.js',
 );
+
+export const FAKE_CODEGRAPH = join(
+  __dirname,
+  '..',
+  'test-support',
+  'fake-codegraph.js',
+);
+
+/** Un `codegraph` de mentira que anota cada llamada; `calls()` devuelve lo anotado. */
+export function fakeCodegraph(): {
+  config: { bin: string; binArgs: string[]; repos: string[] };
+  calls: () => string[];
+} {
+  const log = join(tempDir('cg-log'), 'calls.log');
+  process.env.FAKE_CODEGRAPH_LOG = log;
+  return {
+    config: { bin: process.execPath, binArgs: [FAKE_CODEGRAPH], repos: [] },
+    calls: () =>
+      existsSync(log) ? readFileSync(log, 'utf8').trim().split(/\r?\n/) : [],
+  };
+}
 
 export function tempDir(prefix: string): string {
   return mkdtempSync(join(tmpdir(), `wbr-${prefix}-`));

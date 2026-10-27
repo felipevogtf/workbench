@@ -23,6 +23,8 @@ export interface ClaudeRun {
   /** Esfuerzo con que trabaja (`--effort`); ausente = el del modelo. */
   effort?: string;
   tools: string[];
+  /** Servidores MCP que el agente puede usar (JSON de `--mcp-config`); sin esto no tiene ninguno. */
+  mcpConfig?: string;
   /** Otras carpetas a las que el agente puede acceder además de la de trabajo (`--add-dir`). */
   addDirs?: string[];
   prompt: string;
@@ -213,6 +215,7 @@ export function claudeArgs(run: ClaudeRun): string[] {
     String(run.maxBudgetUsd),
   ];
   if (run.effort) args.push('--effort', run.effort);
+  if (run.mcpConfig) args.push('--mcp-config', run.mcpConfig);
   if (run.addDirs?.length) args.push('--add-dir', ...run.addDirs);
   if (run.tools.length > 0) args.push('--allowedTools', run.tools.join(','));
   return args;

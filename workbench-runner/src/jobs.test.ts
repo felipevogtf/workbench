@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { DEFAULT_CONFIG } from './config';
@@ -10,6 +10,7 @@ import {
   REPO,
   createRemote,
   createRemoteWithSubmodule,
+  fakeCodegraph,
   remoteBranches,
   tempDir,
   testConfig,
@@ -401,6 +402,66 @@ describe('runJob', () => {
       assert.match(prompt, /Submódulos de este repositorio/);
       assert.match(prompt, /- src\/mipedido/);
       assert.match(prompt, /NO las modifiques/);
+    });
+  });
+
+  describe('with the code graph', () => {
+    async function runWithGraph(kind: 'develop' | 'review', indexed: boolean) {
+      const { context } = setup();
+      const { config } = fakeCodegraph();
+      context.config = {
+        ...context.config,
+        codegraph: { ...config, repos: [REPO.fullName] },
+      };
+      const { dir } = await context.workspaces.prepare(REPO, BRANCH);
+      if (indexed) {
+        const index = join(
+          context.workspaces.cloneDir(REPO.fullName),
+          '.codegraph',
+        );
+        mkdirSync(index, { recursive: true });
+        writeFileSync(join(index, 'codegraph.db'), 'índice');
+      }
+      const argsFile = join(tempDir('args'), 'args.json');
+      process.env.FAKE_CLAUDE_ARGS_FILE = argsFile;
+      try {
+        const outcome = await runJob(job(kind), context);
+        const seen = JSON.parse(readFileSync(argsFile, 'utf8')) as {
+          args: string[];
+          prompt: string;
+        };
+        return { outcome, seen, dir };
+      } finally {
+        delete process.env.FAKE_CLAUDE_ARGS_FILE;
+      }
+    }
+
+    it('gives the agent the tool, the server and the instruction, and never commits the index', async () => {
+      const { outcome, seen, dir } = await runWithGraph('develop', true);
+
+      const tools = seen.args[seen.args.indexOf('--allowedTools') + 1];
+      assert.ok(tools.split(',').includes('mcp__codegraph__codegraph_explore'));
+      assert.ok(seen.args.includes('--mcp-config'));
+      assert.match(seen.prompt, /# Grafo del código/);
+      assert.ok(existsSync(join(dir, '.codegraph', 'codegraph.db')));
+      const committed = await git(
+        ['show', '--name-only', '--format=', 'HEAD'],
+        {
+          cwd: dir,
+        },
+      );
+      assert.match(committed, /feature\.txt/);
+      assert.ok(!committed.includes('.codegraph'));
+      assert.notEqual(outcome.result.headBefore, outcome.result.headAfter);
+    });
+
+    it('works as before when the repo has no index', async () => {
+      const { seen } = await runWithGraph('review', false);
+
+      const tools = seen.args[seen.args.indexOf('--allowedTools') + 1];
+      assert.ok(!tools.includes('codegraph'));
+      assert.ok(!seen.args.includes('--mcp-config'));
+      assert.doesNotMatch(seen.prompt, /Grafo del código/);
     });
   });
 

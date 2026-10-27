@@ -10,6 +10,12 @@ import {
 } from './submodules';
 import type { JobAgent, JobOutcome, RunnerJob } from './types';
 import type { Workspaces } from './workspace';
+import {
+  CODEGRAPH_TOOL,
+  codegraphMcpConfig,
+  codegraphNotice,
+  prepareIndex,
+} from './codegraph';
 import { stopwatch } from './stopwatch';
 
 /**
@@ -154,6 +160,25 @@ async function runJobSteps(
     }
   }
   watch.lap('entorno');
+
+  // El grafo del código: cada repo con índice en su clon lo lleva también en su worktree. Si algo falla el agente sigue sin él.
+  const codegraph = context.config.codegraph;
+  const graphed: { fullName: string; dir: string }[] = [];
+  if (codegraph) {
+    const places = [
+      { fullName: payload.repo.fullName, dir: workspace.dir },
+      ...consult,
+    ];
+    for (const place of places) {
+      if (!codegraph.repos.includes(place.fullName)) continue;
+      const ready = await prepareIndex(codegraph, {
+        clone: context.workspaces.cloneDir(place.fullName),
+        worktree: place.dir,
+      }).catch(() => false);
+      if (ready) graphed.push({ fullName: place.fullName, dir: place.dir });
+    }
+  }
+  watch.lap('codegraph');
   const prompt =
     payload.prompt.replace(
       /\{\{dir:([^}]+)\}\}/g,
@@ -162,6 +187,7 @@ async function runJobSteps(
     ) +
     submoduleNotice(submodules, job.kind) +
     (environment?.notice ?? '') +
+    (graphed.length > 0 ? codegraphNotice(graphed) : '') +
     (alsoUp.length > 0
       ? `
 
@@ -180,6 +206,8 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
     ...(environment?.processEnv.COMPOSE_PROJECT_NAME
       ? environmentTools(job.kind)
       : []),
+    // El grafo es de solo lectura: lo decide el runner, como el entorno.
+    ...(graphed.length > 0 ? [CODEGRAPH_TOOL] : []),
   ];
   const dropped = agent.allowedTools.filter((tool) => !tools.includes(tool));
   if (dropped.length > 0) {
@@ -197,6 +225,10 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
       systemPrompt: agent.systemPrompt,
       effort: agent.effort,
       tools,
+      mcpConfig:
+        codegraph && graphed.length > 0
+          ? codegraphMcpConfig(codegraph)
+          : undefined,
       addDirs: consult.map((other) => other.dir),
       prompt,
       cwd: workspace.dir,

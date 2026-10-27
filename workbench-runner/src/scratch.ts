@@ -11,14 +11,18 @@ import { git } from './git';
 export const SCRATCH_DIR = '.wb-scratch';
 
 /** Deja la carpeta fuera de git (en `info/exclude` del worktree, que no se versiona). */
-export async function ignoreScratch(dir: string): Promise<void> {
+export function ignoreScratch(dir: string): Promise<void> {
+  return ignorePath(dir, `/${SCRATCH_DIR}/`);
+}
+
+/** Agrega una línea a `info/exclude` del worktree si no está. */
+export async function ignorePath(dir: string, line: string): Promise<void> {
   const exclude = (
     await git(['rev-parse', '--git-path', 'info/exclude'], { cwd: dir })
   ).trim();
   const path = resolve(dir, exclude);
   await mkdir(dirname(path), { recursive: true });
   const current = existsSync(path) ? await readFile(path, 'utf8') : '';
-  const line = `/${SCRATCH_DIR}/`;
   if (current.split('\n').includes(line)) return;
   await appendFile(
     path,

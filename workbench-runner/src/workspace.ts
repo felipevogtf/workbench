@@ -51,6 +51,11 @@ export class Workspaces {
     > = {},
   ) {}
 
+  /** La carpeta del clon de un repo (donde se guardan cosas por repo, como el índice del código). */
+  cloneDir(fullName: string): string {
+    return this.inside('repos', fullName.replace('/', '__'));
+  }
+
   /** Deja listo el worktree de la rama de la ejecución: la primera vez la crea y después la reutiliza. */
   async prepare(
     repo: { sshUrl: string; fullName: string },

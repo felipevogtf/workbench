@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { homedir } from 'node:os';
+import type { CodegraphConfig } from './codegraph';
 import type { EnvironmentsConfig } from './environment';
 import type { JobKind } from './types';
 
@@ -32,6 +33,8 @@ export interface RunnerConfig {
   copyFiles: Record<string, { from: string; to: string }[]>;
   /** Entornos de prueba (contenedores) que el runner levanta por ejecución. Vacío = no levanta nada. */
   environment: Omit<EnvironmentsConfig, 'workDir'>;
+  /** El grafo del código que consultan los agentes; ausente = no se usa. */
+  codegraph?: CodegraphConfig;
 }
 
 export const DEFAULT_CONFIG = {
@@ -189,6 +192,21 @@ export function loadConfig(
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
     copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],
     environment: environmentFrom(raw),
+    ...codegraphFrom(raw),
+  };
+}
+
+function codegraphFrom(
+  raw: Record<string, unknown>,
+): { codegraph: CodegraphConfig } | Record<string, never> {
+  const section = raw.codegraph as Partial<CodegraphConfig> | undefined;
+  if (!section) return {};
+  if (typeof section.bin !== 'string' || !isAbsolute(section.bin))
+    fail('codegraph.bin debe ser la ruta completa del programa codegraph');
+  if (!Array.isArray(section.repos))
+    fail('codegraph.repos debe ser la lista de repositorios con índice');
+  return {
+    codegraph: { bin: section.bin, repos: section.repos.map(String) },
   };
 }
 
