@@ -29,6 +29,26 @@ armar el entorno en frío, no la IA.
    listo. El barrido de entornos inactivos los baja a las 2 h (`idleMinutes`); las carpetas quedan hasta el barrido semanal, como las de las
    ejecuciones fallidas. Costo: disco y memoria un rato más.
 
+## Medición real: la ejecución `6aa948cf…` (2026-10-27, sin PR, sin caché ni CodeGraph)
+
+776 s en total, 11 trabajos, espera en cola 0 s en todos. Por fase: IA ~450 s (58%), entorno ~233 s (30%), el resto ~90 s (12%).
+
+- **Entorno:** el primer trabajo (los tickets de Lucy) pagó 85 s. Los otros 8 con entorno pagaron **17 a 20 s cada uno** aunque ya estaba
+  arriba: al empezar cada trabajo `refresh` hace `docker compose restart` de todos los servicios y espera a que respondan. Suma ~145 s,
+  más que el `composer install`.
+- **Pasos del entorno de `melon-web`** (calentamiento aparte, 88 s): `compose up` 4.8 s, `composer install` 24.9 s, `doctrine:schema:update`
+  11.6 + 10.2 s (normal y test), `restart app` 13.4 s, espera 6.2 s. Composer es solo ~25 s de 88.
+
+## Hecho después de la medición (2026-10-27)
+
+- **Caché de `vendor/` activada para `melon-web`** (`dependencyCache` en la configuración de la distro) y sembrada con un calentamiento: 328 MB en
+  `deps/garage-labs_melon-web/vendor`. Solo se guarda desde una rama cuyo `composer.lock` sea el de la rama base. Se espera que ahorre ~20 s en
+  el primer trabajo de cada ejecución. Falta comprobarlo con una ejecución real.
+- **CodeGraph** activo en `melon-web` y `melon-ionic` (ver [codegraph.md](codegraph.md)).
+- **Pendiente, a propósito:** no reiniciar los servicios en cada trabajo cuando el worktree no cambió desde el último reinicio (~70 s menos por
+  ejecución). Hay que confirmar que PHP no necesita el reinicio para ver cambios de código (su `opcache`).
+- Otras mejoras posibles del entorno: el esquema de la base de datos (22 s) y el `restart app` + espera (~20 s) del primer arranque.
+
 ## Pendiente: dependencias compartidas (punto 4)
 
 **Problema.** El runner no instala dependencias: lo hace el agente cuando se le ocurre, y cada worktree las instala de cero (de cinco
@@ -43,7 +63,9 @@ worktrees medidos, tres tenían `node_modules` de 580 a 760 MB). Cada ejecución
   empiece; el agente solo instala si el lockfile cambió.
 - Lo mismo se puede hacer con `vendor/` de PHP (hash de `composer.lock`) para los repos de Symfony.
 
-**Por qué no se hizo todavía.**
+**Estado (2026-10-27): construido y activado para `melon-web`** (ver arriba). Lo que sigue describe el diseño y por qué se eligió así.
+
+**Por qué una copia y no un volumen o un enlace.**
 
 - Copiar 600 MB solo gana si `npm install` tarda bastante más que la copia (en ext4 de WSL no hay reflink: es una copia real). Hay que
   comprobarlo con los tiempos de la medición (fases `entorno` e `IA`) antes de construirlo.

@@ -1,7 +1,30 @@
-# CodeGraph para los agentes: piloto propuesto
+# CodeGraph para los agentes: piloto en marcha
 
-Idea del 2026-10-27, sin construir. Parte de [optimizacion-de-tiempos.md](optimizacion-de-tiempos.md): que Lucy, el desarrollador y el revisor
+Idea del 2026-10-27; **instalado y activo desde esa tarde para `melon-web` y `melon-ionic`** (ver «Estado del piloto»). Parte de [optimizacion-de-tiempos.md](optimizacion-de-tiempos.md): que Lucy, el desarrollador y el revisor
 encuentren el código sin explorar archivo por archivo.
+
+## Estado del piloto (2026-10-27, tarde)
+
+- **Instalado** con `npm i -g @colbymchenry/codegraph` como usuario `agent` en `wb-agents` (no se usó `codegraph install`, que toca la
+  configuración de Claude). La telemetría y la búsqueda de actualizaciones se apagan con `CODEGRAPH_TELEMETRY=off`, `DO_NOT_TRACK=1` y
+  `CODEGRAPH_NO_UPDATE_CHECK=1` (por defecto envía eventos anónimos a `telemetry.getcodegraph.com`); el runner las pone al arrancar su
+  servidor y al sincronizar.
+- **Índices en los clones** (`/home/agent/work/repos/<repo>/.codegraph`): `melon-web` 2.432 archivos, 41.068 nodos, 232 MB, 155 s para
+  indexar; `melon-ionic` 283 archivos, 12 MB, 2 s. En `melon-web` casi 1.000 archivos son plugins JS de terceros (`web/assets`); CodeGraph no
+  mostró cómo excluirlos, así que el índice pesa más de lo necesario.
+- **Cómo lo usa el runner** (`workbench-runner/src/codegraph.ts`, config `codegraph: { bin, repos }` en `runner.config.json`):
+  1. Para cada repo con índice (el de la tarea y los de consulta), copia el `.codegraph/` del clon al worktree la primera vez y corre
+     `codegraph sync` para ponerlo al día con la rama. Queda fuera de git (`info/exclude`).
+  2. Le pasa a Claude el servidor MCP (`--mcp-config`) y agrega la herramienta de solo lectura `mcp__codegraph__codegraph_explore` a las
+     herramientas del trabajo (la decide el runner, como el entorno; no hay cambios en el servidor).
+  3. Agrega al prompt una sección «Grafo del código» con la instrucción de consultarlo primero y el `projectPath` de cada repo.
+  4. Si el repo no tiene índice o algo falla, el trabajo sigue como antes. Se aplica a Lucy, desarrolladores, revisores, revisión final y
+     chat. El planificador (que corre en el servidor) no lo usa todavía.
+- **Pendiente / a vigilar:** el índice del clon no se actualiza solo (el clon no avanza de rama), así que con el tiempo el `sync` de cada
+  worktree tendrá más diferencias; conviene un `codegraph sync` periódico del clon o regenerarlo. Si el índice de 232 MB hace lento armar el
+  worktree, la fase `codegraph` del registro del trabajo lo mostrará.
+- **Cómo medir:** cada trabajo registra `⏱ … codegraph X s · IA Y s`. Comparar la fase `IA` y el costo con la ejecución base `6aa948cf…`
+  (776 s en total; IA ~450 s; sin CodeGraph).
 
 ## Qué es
 
