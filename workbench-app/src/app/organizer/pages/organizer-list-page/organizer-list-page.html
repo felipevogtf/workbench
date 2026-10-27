@@ -37,24 +37,42 @@
       </button>
     </app-empty-state>
   } @else {
-    <ul class="grid">
-      @for (session of store.sessions(); track session.id) {
-        <li>
-          <app-card interactive>
-            <a class="link" [routerLink]="['/organizer', session.id]">{{ session.title }}</a>
-            <p class="meta">
-              {{ session.memberCount }} {{ session.memberCount === 1 ? 'tarea' : 'tareas' }} ·
-              creada {{ session.createdAt | timeAgo }}
-            </p>
-            <ng-container card-footer>
-              <a app-button size="sm" variant="secondary" [routerLink]="['/organizer', session.id]">
-                Abrir
-              </a>
-            </ng-container>
-          </app-card>
-        </li>
-      }
-    </ul>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden">
+          Sesiones del organizador
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Sesión</th>
+            <th scope="col">Tareas</th>
+            <th scope="col">Creada</th>
+            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (session of store.sessions(); track session.id) {
+            <tr>
+              <td class="cell-main">
+                <a class="link" [routerLink]="['/organizer', session.id]">{{ session.title }}</a>
+              </td>
+              <td class="nowrap">{{ session.memberCount }}</td>
+              <td class="nowrap">{{ session.createdAt | timeAgo }}</td>
+              <td class="actions">
+                <a
+                  app-button
+                  size="sm"
+                  variant="secondary"
+                  [routerLink]="['/organizer', session.id]"
+                >
+                  Abrir
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 
   <app-session-form-dialog [(open)]="formOpen" (created)="onCreated($event)" />

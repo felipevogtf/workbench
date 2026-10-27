@@ -25,6 +25,9 @@ export class IssueOrmEntity {
   @Column({ default: false })
   is_local!: boolean;
 
+  @Column({ default: false })
+  is_group!: boolean;
+
   @ManyToOne(() => ProjectOrmEntity, (project) => project.issues, {
     onDelete: 'CASCADE',
   })

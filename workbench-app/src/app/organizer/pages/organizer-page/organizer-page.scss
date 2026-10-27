@@ -66,17 +66,23 @@
 }
 
 // Cada sección es una caja con borde y un título que se pliega.
-.section,
+.fold,
 .attachment {
   align-self: stretch;
   margin-bottom: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-sm);
   background: var(--background);
 }
 
-.section {
+// El panel de ejecución ya es una tarjeta con borde: no se envuelve en otra caja.
+.execution {
+  display: block;
+  margin-bottom: var(--space-3);
+}
+
+.fold {
   summary {
     font-size: 0.875rem;
     font-weight: 600;

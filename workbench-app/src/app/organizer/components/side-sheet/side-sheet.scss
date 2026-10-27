@@ -46,3 +46,10 @@
   padding: var(--space-4);
   overflow-y: auto;
 }
+
+// El panel ya es el marco: la tarjeta del contenido (el plan) va sin borde ni relleno propios.
+.sheet__body ::ng-deep app-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}

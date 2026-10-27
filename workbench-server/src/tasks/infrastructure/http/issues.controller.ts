@@ -101,6 +101,7 @@ export class IssuesController {
       id: issue.id,
       name: issue.name,
       isLocal: issue.isLocal,
+      isGroup: issue.isGroup,
       externalId: issue.externalId,
       remoteSequence: issue.remoteSequence,
       localSequence: issue.localSequence,

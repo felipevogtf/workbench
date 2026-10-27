@@ -55,7 +55,7 @@
       </section>
 
       <aside class="organizer__side">
-        <details class="section" open>
+        <details class="fold" open>
           <summary>Tareas · {{ session.members.length }}</summary>
           <app-members-panel
             [members]="session.members"
@@ -66,7 +66,7 @@
           />
         </details>
 
-        <details class="section">
+        <details class="fold">
           <summary>Notas</summary>
           <p class="muted">Qué depende de qué o lo que los agentes deban tener presente.</p>
           <textarea
@@ -99,10 +99,7 @@
         }
 
         @if (hasReadyPlan() || executions.executions().length > 0) {
-          <details class="section" open>
-            <summary>Ejecución</summary>
-            <app-execution-panel [issueId]="session.groupIssueId" [canRun]="hasReadyPlan()" />
-          </details>
+          <app-execution-panel class="execution" [issueId]="session.groupIssueId" [canRun]="hasReadyPlan()" />
         }
 
         <button class="organizer__delete" type="button" (click)="remove()">

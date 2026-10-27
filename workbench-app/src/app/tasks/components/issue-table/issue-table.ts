@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { formatDay, formatHours } from '@shared/util/date';
+import { formatHours } from '@shared/util/date';
 import { Badge } from '@shared/ui/badge/badge';
 import { Card } from '@shared/ui/card/card';
 import { Menu, MenuItem } from '@shared/ui/menu/menu';
@@ -30,7 +30,6 @@ export class IssueTable {
   private readonly states = inject(StatesStore).stateById;
   private readonly labels = inject(LabelsStore).labelById;
 
-  protected readonly formatDay = formatDay;
   protected readonly formatHours = formatHours;
 
   /** Datos de cada fila ya resueltos (proyecto, estado y etiquetas por id). */

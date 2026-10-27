@@ -13,7 +13,7 @@ export class Issue {
   static createLocal(
     data: Pick<
       IssueProps,
-      'name' | 'projectId' | 'description' | 'localSequence'
+      'name' | 'projectId' | 'description' | 'localSequence' | 'isGroup'
     >,
   ): Issue {
     return new Issue({
@@ -111,6 +111,10 @@ export class Issue {
 
   get isLocal(): boolean {
     return this.props.isLocal;
+  }
+
+  get isGroup(): boolean {
+    return this.props.isGroup ?? false;
   }
 
   get externalId(): string | null {

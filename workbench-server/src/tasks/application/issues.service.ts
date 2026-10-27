@@ -32,6 +32,7 @@ interface IssueData {
   dueDate?: string | null;
   estimatedHours?: number | null;
   labelIds?: string[];
+  isGroup?: boolean;
 }
 
 @Injectable()
@@ -61,6 +62,7 @@ export class IssuesService {
       description: data.description || null,
       projectId: data.projectId,
       localSequence,
+      isGroup: data.isGroup,
     });
     await this.applyOptionalFields(issue, data);
 

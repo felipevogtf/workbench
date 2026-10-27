@@ -2,6 +2,8 @@ export class IssueResponseDto {
   id!: string;
   name!: string;
   isLocal!: boolean;
+  /** El grupo de una sesión del organizador. */
+  isGroup!: boolean;
   externalId!: string | null;
   remoteSequence!: number | null;
   localSequence!: number;

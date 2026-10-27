@@ -2,6 +2,8 @@ export interface IssueProps {
   id: string;
   name: string;
   isLocal: boolean;
+  /** Es el grupo de una sesión del organizador (reúne a otras tareas). */
+  isGroup?: boolean;
   externalId: string | null;
   externalState: string | null;
   remoteSequence: number | null;

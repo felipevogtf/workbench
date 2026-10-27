@@ -13,6 +13,8 @@ export interface Issue {
   name: string;
   /** `false`: viene de Plane (nombre, descripción, prioridad y fechas solo cambian con el sync). */
   isLocal: boolean;
+  /** Es el grupo de una sesión del organizador. */
+  isGroup?: boolean;
   externalId: string | null;
   remoteSequence: number | null;
   localSequence: number;
@@ -52,7 +54,7 @@ export interface IssueFilters {
    */
   stateKeys: string[] | null;
   labelId: string;
-  origin: 'all' | 'plane' | 'local';
+  origin: 'all' | 'plane' | 'local' | 'session';
   /** `open`: pendientes y finalizadas. `closed`: el historial. */
   view: 'open' | 'closed';
 }

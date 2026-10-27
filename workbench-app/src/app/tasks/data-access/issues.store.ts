@@ -36,7 +36,11 @@ export function matchesFilters(
 
   if (filters.projectId !== 'all' && issue.projectId !== filters.projectId) return false;
   if (filters.labelId !== 'all' && !issue.labelIds.includes(filters.labelId)) return false;
-  if (filters.origin !== 'all' && issue.isLocal !== (filters.origin === 'local')) return false;
+  // Las sesiones del organizador solo se ven al elegir ese origen; no se mezclan con las tareas.
+  if ((filters.origin === 'session') !== (issue.isGroup === true)) return false;
+  if (filters.origin === 'plane' || filters.origin === 'local') {
+    if (issue.isLocal !== (filters.origin === 'local')) return false;
+  }
 
   const search = filters.search.trim().toLowerCase();
   if (!search) return true;

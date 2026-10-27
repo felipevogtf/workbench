@@ -38,6 +38,7 @@ export class IssueGroupsService {
       name: data.title,
       description: data.notes ?? null,
       projectId: data.projectId,
+      isGroup: true,
     });
   }
 

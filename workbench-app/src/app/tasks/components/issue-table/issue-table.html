@@ -10,7 +10,6 @@
         <th scope="col">Estado</th>
         <th scope="col">Prioridad</th>
         <th scope="col">Etiquetas</th>
-        <th scope="col">Vence</th>
         <th scope="col">Estimado</th>
         <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
@@ -24,7 +23,9 @@
             }}</a>
             <span class="meta">
               <span class="code">{{ row.code }}</span>
-              @if (row.issue.isLocal) {
+              @if (row.issue.isGroup) {
+                <app-badge tone="info" title="Reúne varias tareas en el organizador">Sesión</app-badge>
+              } @else if (row.issue.isLocal) {
                 <app-badge tone="success" title="Tarea local">Local</app-badge>
               } @else {
                 <app-badge title="Viene de Plane">Plane</app-badge>
@@ -46,7 +47,6 @@
               }
             </span>
           </td>
-          <td class="muted nowrap">{{ formatDay(row.issue.dueDate) }}</td>
           <td class="muted nowrap">{{ formatHours(row.issue.estimatedHours) }}</td>
           <td class="actions">
             <app-menu
@@ -68,7 +68,9 @@
       <app-card interactive>
         <ng-container card-header>
           <span class="code">{{ row.code }}</span>
-          @if (row.issue.isLocal) {
+          @if (row.issue.isGroup) {
+            <app-badge tone="info" title="Reúne varias tareas en el organizador">Sesión</app-badge>
+          } @else if (row.issue.isLocal) {
             <app-badge tone="success" title="Tarea local">Local</app-badge>
           } @else {
             <app-badge title="Viene de Plane">Plane</app-badge>
@@ -89,15 +91,8 @@
             <app-tag [color]="label.color">{{ label.name }}</app-tag>
           }
         </div>
-        @if (row.issue.dueDate || row.issue.estimatedHours !== null) {
-          <p class="card__line">
-            @if (row.issue.dueDate) {
-              Vence {{ formatDay(row.issue.dueDate) }}
-            }
-            @if (row.issue.estimatedHours !== null) {
-              · Estimado {{ formatHours(row.issue.estimatedHours) }}
-            }
-          </p>
+        @if (row.issue.estimatedHours !== null) {
+          <p class="card__line">Estimado {{ formatHours(row.issue.estimatedHours) }}</p>
         }
 
         <ng-container card-footer>

@@ -3,7 +3,6 @@ import { Router, RouterLink } from '@angular/router';
 import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
-import { Card } from '@shared/ui/card/card';
 import { EmptyState } from '@shared/ui/empty-state/empty-state';
 import { Icon } from '@shared/ui/icon/icon';
 import { PageHeader } from '@shared/ui/page-header/page-header';
@@ -20,7 +19,6 @@ import { OrganizerSession } from '../../models/organizer';
     TimeAgoPipe,
     Alert,
     Button,
-    Card,
     EmptyState,
     Icon,
     PageHeader,

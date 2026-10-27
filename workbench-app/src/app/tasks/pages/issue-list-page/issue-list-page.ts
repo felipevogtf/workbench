@@ -27,6 +27,7 @@ const ORIGIN_OPTIONS: SelectOption[] = [
   { value: 'all', label: 'Todas las tareas' },
   { value: 'plane', label: 'De Plane' },
   { value: 'local', label: 'Locales' },
+  { value: 'session', label: 'Sesión' },
 ];
 
 @Component({
