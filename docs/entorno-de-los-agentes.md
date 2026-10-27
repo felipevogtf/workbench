@@ -167,6 +167,13 @@ da 415, y al terminar no queda ningún contenedor ni volumen de esa ejecución.
   ya fijan, y `wb-curl`: solo localhost (`--connect-to ::127.0.0.1:`, sin proxy, sin `.curlrc`) y solo escribe en `/dev/null`. El runner las suma; no pasan por el servidor.
   Límite conocido: `docker compose exec` entra a contenedores que montan el worktree y tienen salida a la red de la distro.
 - **Medido en la distro (miseguridad-web):** primera vez ~3,5 min (construye PHP 7.3 y baja imágenes); con caché ~1 min; 58 tablas, app 200, borrado sin restos.
+- **Más proyectos (2026-10-26):** configuraciones y recetas de `miobra-web`, `melon-web`, `miplanta-web` y `melon-volumenes-web` (recetas en `docs/recetas/` y en la app).
+  Probados con Docker real en la distro: melon-web ~1,5 min (66 tablas, app 200, `nginx -s reload`, tests), miplanta-web ~1,5 min (34 tablas de test, app 200) y
+  volumes-web ~3 min (app y login 200, tests). Aprendido al hacerlos: dentro del contenedor ssh rechaza el `~/.ssh` montado (dueño `agent`), así que un paso de
+  preparación lo copia a `/root/.ssh` con dueño root; los proyectos Symfony 3 con sesiones en base necesitan `app:init-sessions`; los tests de los Symfony 3 son
+  `vendor/bin/simple-phpunit`. **miobra-web no se pudo validar:** `composer install` falla en `dsarhoya/dsy-stateless-signature`, repo al que la llave
+  `bitbucket_garagelabs` no tiene acceso (los otros 14 repos privados de dsarhoya sí). Límite: `config_dev.yml` de estos proyectos fija wiremock en el puerto 8096/8094
+  de la distro, no en el puerto de la ejecución.
 - **Falta:** probar miflota-web (config y receta de `nginx -t`/`curl`), una ejecución real con agentes sobre miseguridad y el criterio de Pilar.
 - **Costo mientras no exista la etapa 3:** todo trabajo de desarrollo o revisión en un repo con entorno configurado lo levanta, aunque el ticket sea solo de texto.
 

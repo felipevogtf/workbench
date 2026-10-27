@@ -47,6 +47,119 @@
         "docker compose up -d"
       ],
       "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
+    },
+    "garage-labs/miobra-web": {
+      "composeFiles": [
+        "docker-compose.yml",
+        "docker-compose-local.yml",
+        "docker-compose-wiremock.yml"
+      ],
+      "envFile": ".env.docker.local",
+      "ports": [
+        { "name": "app", "env": "COMPOSE_PORT" },
+        { "name": "wiremock", "service": "wiremock", "container": 8080 },
+        { "name": "swagger", "service": "swagger", "container": 8080 }
+      ],
+      "database": { "service": "mysql57", "schema": "miobra", "testSchema": "miobra-test" },
+      "files": [
+        { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
+        { "from": "parameters.yml", "to": "app/config/parameters.yml", "template": true },
+        { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" }
+      ],
+      "prepare": [
+        "docker compose exec -T app sh -c 'rm -rf /root/.ssh && cp -r /ssh-src /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*'",
+        "docker compose exec -T app composer install --no-interaction",
+        "docker compose exec -T app bin/console doctrine:schema:update --force",
+        "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
+        "docker compose exec -T app bin/console app:init-sessions",
+        "docker compose exec -T app chmod -R a+rwX var",
+        "docker compose up -d"
+      ],
+      "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
+    },
+    "garage-labs/melon-web": {
+      "composeFiles": [
+        "docker-compose.yml",
+        "docker-compose-local.yml",
+        "docker-compose-wiremock.yml"
+      ],
+      "envFile": ".env.docker.local",
+      "ports": [
+        { "name": "app", "env": "COMPOSE_PORT" },
+        { "name": "wiremock", "service": "wiremock", "container": 8080 },
+        { "name": "swagger", "service": "swagger", "container": 8080 }
+      ],
+      "database": { "service": "mysql57", "schema": "mimixer", "testSchema": "mimixer-test" },
+      "files": [
+        { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
+        { "from": "env.compose.local", "to": ".env.compose.local", "template": true },
+        { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" }
+      ],
+      "prepare": [
+        "docker compose exec -T app sh -c 'rm -rf /root/.ssh && cp -r /ssh-src /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*'",
+        "docker compose exec -T app composer install --no-interaction --no-scripts",
+        "docker compose exec -T app bin/console doctrine:schema:update --force",
+        "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
+        "docker compose exec -T app bin/console app:init-sessions",
+        "docker compose exec -T app chmod -R a+rwX var",
+        "docker compose restart app"
+      ],
+      "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
+    },
+    "garage-labs/miplanta-web": {
+      "composeFiles": [
+        "docker-compose.yml",
+        "docker-compose-local.yml",
+        "docker-compose-wiremock.yml"
+      ],
+      "envFile": ".env.docker.local",
+      "ports": [
+        { "name": "app", "env": "COMPOSE_PORT" },
+        { "name": "wiremock", "service": "wiremock", "container": 8080 },
+        { "name": "swagger", "service": "swagger", "container": 8080 }
+      ],
+      "database": { "service": "mysql57", "schema": "miplanta", "testSchema": "miplanta-test" },
+      "files": [
+        { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
+        { "from": "parameters.yml", "to": "app/config/parameters.yml", "template": true },
+        { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" }
+      ],
+      "prepare": [
+        "docker compose exec -T app sh -c 'rm -rf /root/.ssh && cp -r /ssh-src /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*'",
+        "docker compose exec -T app composer install --no-interaction",
+        "docker compose exec -T app bin/console doctrine:schema:update --force",
+        "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
+        "docker compose exec -T app bin/console app:init-sessions",
+        "docker compose exec -T app chmod -R a+rwX var",
+        "docker compose up -d"
+      ],
+      "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
+    },
+    "garagelabscl/melon-volumenes-web": {
+      "composeFiles": [
+        "docker-compose.yml",
+        "docker-compose-local.yml"
+      ],
+      "envFile": ".env.docker.local",
+      "ports": [
+        { "name": "app", "env": "COMPOSE_PORT" }
+      ],
+      "database": { "service": "mysql57", "schema": "volumenes", "testSchema": "volumenes_test" },
+      "files": [
+        { "from": ".env.docker.local", "to": ".env.docker.local", "template": true },
+        { "from": "env.local", "to": ".env.local", "template": true },
+        { "from": "env.test.local", "to": ".env.test.local", "template": true },
+        { "from": "docker-compose-local.yml", "to": "docker-compose-local.yml" }
+      ],
+      "prepare": [
+        "docker compose exec -T app sh -c 'rm -rf /root/.ssh && cp -r /ssh-src /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*'",
+        "docker compose exec -T app composer install --no-interaction",
+        "docker compose exec -T app bin/console doctrine:schema:update --force",
+        "docker compose exec -T app bin/console doctrine:schema:update --force --env=test",
+        "docker compose exec -T app chmod -R a+rwX var",
+        "docker compose up -d"
+      ],
+      "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
     }
   },
   "copyFiles": {}
