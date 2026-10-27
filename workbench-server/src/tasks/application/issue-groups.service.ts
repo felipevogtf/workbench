@@ -41,6 +41,22 @@ export class IssueGroupsService {
     });
   }
 
+  /** Cambia el título del grupo y sus notas (qué depende de qué); lo que no se manda no cambia. */
+  async updateGroup(
+    groupId: string,
+    data: { title?: string; notes?: string | null },
+  ): Promise<Issue> {
+    return this.issuesService.updateIssue(groupId, {
+      ...(data.title !== undefined ? { name: data.title } : {}),
+      ...(data.notes !== undefined ? { description: data.notes } : {}),
+    });
+  }
+
+  /** Borra la tarea del grupo; sus tareas quedan libres. */
+  deleteGroup(groupId: string): Promise<void> {
+    return this.issuesService.deleteIssue(groupId);
+  }
+
   /** Las tareas del grupo, en su orden. */
   async members(groupId: string): Promise<Issue[]> {
     const ids = await this.groups.memberIds(groupId);

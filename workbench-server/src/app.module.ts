@@ -13,6 +13,7 @@ import { ExecutionsModule } from '@executions/executions.module';
 import { CredentialsModule } from '@credentials/credentials.module';
 import { RecipesModule } from '@recipes/recipes.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
+import { OrganizerModule } from '@organizer/organizer.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
     PrReviewModule,
     PlannerModule,
     ExecutionsModule,
+    OrganizerModule,
     IssueTransferModule,
     CredentialsModule,
     RecipesModule,
