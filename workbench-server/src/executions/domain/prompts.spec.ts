@@ -2,6 +2,7 @@ import { ExecutionTicket } from './entities/execution.props';
 import {
   buildDevelopPrompt,
   buildFinalReviewPrompt,
+  buildPullRequestDescription,
   buildReviewPrompt,
   buildTicketsPrompt,
 } from './prompts';
@@ -239,5 +240,31 @@ describe('the final review prompt', () => {
       '# Recetas del proyecto',
     );
     expect(build()).not.toContain('# Recetas del proyecto');
+  });
+});
+
+describe('the description of the pull request', () => {
+  it('lists what the reviewer still asked for when the reviews ran out, and nothing otherwise', () => {
+    const clean = { ...ticket(), status: 'done' as const };
+    const pending = {
+      ...ticket(),
+      title: 'Documentar el modo rechazo',
+      status: 'done' as const,
+      feedback: ['Cambia el comando por uno que sí muestre el valor'],
+    };
+
+    const withPending = buildPullRequestDescription({
+      taskName: 'Tarea',
+      tickets: [clean, pending],
+    });
+    expect(withPending).toContain('### Pendiente de revisión humana');
+    expect(withPending).toContain('Documentar el modo rechazo');
+    expect(withPending).toContain(
+      'Cambia el comando por uno que sí muestre el valor',
+    );
+
+    expect(
+      buildPullRequestDescription({ taskName: 'Tarea', tickets: [clean] }),
+    ).not.toContain('Pendiente de revisión humana');
   });
 });

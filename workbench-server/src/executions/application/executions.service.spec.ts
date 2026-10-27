@@ -1545,36 +1545,55 @@ describe('ExecutionsService', () => {
       ).toMatchObject({ status: 'developing', rounds: 1 });
     });
 
-    it('fails when the reviewer still asks for changes after the second review', async () => {
+    it('lets the ticket through with what is pending when the reviews run out, and keeps going', async () => {
       const execution = await reachFirstReview();
       await answer({ output: REJECTED });
       await answer(developed('bbb', 'ccc'));
       await answer({ output: REJECTED });
 
       const current = (await service.get(execution.id)).execution;
-      expect(current.status).toBe('failed');
-      expect(current.error).toContain('Maneja el error 404');
-      expect(current.tickets[0].status).toBe('failed');
-    });
-
-    it('gives one more round when the user retries after that failure', async () => {
-      const execution = await reachFirstReview();
-      await answer({ output: REJECTED });
-      await answer(developed('bbb', 'ccc'));
-      await answer({ output: REJECTED });
-
-      await service.retry(execution.id);
-
+      expect(current.status).toBe('running');
+      expect(current.tickets[0]).toMatchObject({
+        status: 'done',
+        rounds: 2,
+        feedback: ['Maneja el error 404'],
+      });
+      expect(current.tickets[0].doubts?.at(-1)?.text).toContain(
+        'Quedó pendiente tras 2 revisiones: Maneja el error 404',
+      );
+      // Sigue con lo que viene: el ticket siguiente.
       expect(jobs.items.at(-1)).toMatchObject({
         kind: 'develop',
         status: 'pending',
       });
-      const current = (await service.get(execution.id)).execution;
-      expect(current.status).toBe('running');
-      expect(current.tickets[0]).toMatchObject({
-        status: 'developing',
-        rounds: 1,
+      expect(jobs.items.at(-1)!.ticketId).not.toBe(current.tickets[0].id);
+    });
+
+    it('keeps the reviewer suggestions apart: they do not block and they stay in the note', async () => {
+      const execution = await reachFirstReview();
+      await answer({
+        output: JSON.stringify({
+          approved: true,
+          summary: 'Cumple',
+          issues: [],
+          suggestions: ['Podría explicarse mejor la sección 2'],
+        }),
       });
+
+      const ticket = (await service.get(execution.id)).execution.tickets[0];
+      expect(ticket.status).toBe('done');
+      expect(ticket.reviewNote).toContain('Cumple');
+      expect(ticket.reviewNote).toContain('Sugerencias (no bloquean)');
+      expect(ticket.reviewNote).toContain('Podría explicarse mejor');
+    });
+
+    it('tells the reviewer what blocks and what is only a suggestion, and to check things itself', async () => {
+      await reachFirstReview();
+      const prompt = jobs.items.at(-1)!.payload.prompt;
+
+      expect(prompt).toContain('Qué bloquea');
+      expect(prompt).toContain('suggestions');
+      expect(prompt).toContain('ejecuta tú las verificaciones');
     });
 
     it('fails when the reviewer does not answer with a verdict', async () => {

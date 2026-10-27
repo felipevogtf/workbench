@@ -262,6 +262,31 @@ describe('Environments', () => {
     );
   });
 
+  it('restarts the services when a later job reuses the environment, so mounted files edited in place are read again', async () => {
+    const { env, calls } = setup();
+    const dir = await worktree();
+    const logs: string[] = [];
+    const input = {
+      executionId: 'exec-1',
+      repo: REPO,
+      dir,
+      onLog: (line: string) => logs.push(line),
+    };
+    const restarts = () =>
+      calls.filter((c) => c.args[0] === 'compose' && c.args[1] === 'restart');
+
+    await env.ensure(input);
+    assert.equal(restarts().length, 0, 'the first job just brought it up');
+
+    await env.ensure(input);
+    assert.equal(restarts().length, 1);
+    assert.equal(
+      restarts()[0].env?.COMPOSE_PROJECT_NAME?.startsWith('wb-'),
+      true,
+    );
+    assert.ok(logs.some((line) => line.includes('Reiniciando los servicios')));
+  });
+
   it('gives each execution its own project name and different ports', async () => {
     const { env, calls } = setup();
     const dir = await worktree();

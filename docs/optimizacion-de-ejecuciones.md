@@ -134,3 +134,19 @@ todavía no tiene un selector). Si la tarea ya tuvo ejecuciones, la rama lleva `
 
 **Todavía no hay:** un selector del tipo de rama en la app, la revisión final de varios repositorios con diff de cada uno, ni la aprobación
 automática de correcciones con tope de rondas. Servidor 705 tests, front 626, runner 83.
+
+## Revisiones que no tiran la ejecución (2026-10-27)
+
+Hasta ahora, si el revisor seguía pidiendo cambios tras la segunda revisión de un ticket, la ejecución entera fallaba y se perdía el trabajo de los
+demás tickets (pasó con el ticket de README de MiSeguridad, por tres correcciones legítimas). Ahora:
+
+- **El revisor separa lo que bloquea de lo que no.** `issues` (y `approved: false`) solo para un criterio sin cumplir, algo incorrecto o falso, algo que rompe
+  el build o las pruebas, o un riesgo de seguridad. Mejoras, redacción, detalles y lo que no pudo comprobar van en `suggestions`, que no impiden aprobar y
+  quedan en la nota de revisión del ticket.
+- **Al agotarse las revisiones el ticket pasa con lo pendiente a la vista**, en vez de fallar: queda «hecho» con las correcciones pendientes en el ticket,
+  una duda «Quedó pendiente tras N revisiones: …» y una sección «Pendiente de revisión humana» en la descripción de la PR. La ejecución sigue con los demás
+  tickets. Si importa, el ticket se puede reabrir con una nota (opción A) cuando la ejecución termina.
+- **El revisor comprueba él mismo** cuando hay entorno (`nginx -t`, `wb-curl`, tests) en vez de fiarse del resumen del desarrollador.
+- **El runner reinicia los servicios al comenzar cada trabajo que reutiliza el entorno.** Un archivo montado suelto (la configuración de nginx, un php.ini) que
+  el agente edita reemplazándolo (`sed -i`) deja al contenedor mirando el archivo viejo hasta reiniciarlo; así lo vieron mal el desarrollador y los
+  revisores en las ejecuciones de MiMixer y Volúmenes («el contenedor no es la versión nueva», `docker compose cp` pidiendo aprobación).

@@ -277,6 +277,8 @@ export class Environments {
         await this.chown(input.dir);
       }
       run.projects.set(repo.fullName, project);
+    } else if (!project.failure) {
+      await this.refresh(project, config, onLog, input.signal);
     }
     run.lastUsed = Date.now();
     if (project.failure)
@@ -289,6 +291,49 @@ export class Environments {
         PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
       },
     };
+  }
+
+  /**
+   * Un archivo que se monta suelto en un contenedor (la configuración de nginx, un php.ini) y que el agente edita
+   * reemplazándolo (`sed -i`, un guardado atómico) deja al contenedor mirando el archivo viejo hasta que se reinicia.
+   * Al comenzar cada trabajo siguiente se reinician los servicios, así el desarrollador, el revisor y la revisión final
+   * ven y prueban lo que hay en el worktree. Un fallo aquí no detiene el trabajo: si el servicio no arranca (por una
+   * configuración mala) el agente lo verá al probar.
+   */
+  private async refresh(
+    project: ProjectEnv,
+    config: EnvironmentConfig,
+    onLog: (line: string) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    onLog('Reiniciando los servicios para que tomen los cambios del código…');
+    const result = await this.exec('docker', ['compose', 'restart'], {
+      cwd: project.dir,
+      env: { ...process.env, ...project.processEnv },
+      timeoutMs: 5 * 60_000,
+      onLine: onLog,
+      signal,
+    });
+    if (result.code !== 0) {
+      onLog(
+        `No se pudieron reiniciar los servicios: ${tail(result.stderr || result.stdout)}`,
+      );
+      return;
+    }
+    for (const wait of config.waitFor ?? []) {
+      const url = fill(wait.url, {
+        project: project.project,
+        host: 'host.docker.internal',
+        ...Object.fromEntries(
+          Object.entries(project.ports).map(([name, port]) => [
+            `port.${name}`,
+            String(port),
+          ]),
+        ),
+      });
+      if (!(await this.waitFor(url, Math.min(wait.timeoutSeconds ?? 60, 60))))
+        onLog(`${url} no respondió tras reiniciar`);
+    }
   }
 
   /** Deja `wb-curl` donde el agente lo encuentre: una carpeta propia del runner, al principio del PATH. */
@@ -778,7 +823,7 @@ export class Environments {
       '- `docker compose exec -T <servicio> <comando>` corre un comando dentro de un contenedor (composer, phpunit, migraciones, consola del framework). Ya apunta a tu proyecto: no necesitas `-p` ni `-f`.',
       '- `docker compose ps` / `docker compose logs <servicio>` para ver el estado; `docker compose restart <servicio>` para reiniciar (solo desarrollo).',
       '- `wb-curl <opciones> http://localhost:<puerto>/…` para probar rutas. Solo habla con localhost.',
-      '- Tu código ya está montado en los contenedores: un cambio de archivo se ve sin reconstruir.',
+      '- Tu código ya está montado en los contenedores: un cambio de archivo se ve sin reconstruir. Los archivos de configuración montados sueltos (nginx, php.ini) solo se releen al reiniciar el servicio: el runner los reinicia al comenzar cada trabajo; para verlos al momento usa `docker compose restart <servicio>` (si tienes permiso).',
       '- No uses `docker run`, `docker stop`, `docker rm`, `docker ps` ni toques contenedores que no sean de este proyecto.',
       ...(project.warnings.length > 0
         ? [

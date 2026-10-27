@@ -20,7 +20,10 @@ export interface TicketDraft {
 export interface ReviewVerdict {
   approved: boolean;
   summary: string;
+  /** Lo que bloquea la aprobación: el ticket no se cumple, algo es incorrecto o rompe. */
   issues: string[];
+  /** Mejoras que el revisor sugiere sin que impidan aprobar. */
+  suggestions: string[];
   /** Lo que el revisor dejó dudoso sin que impida aprobar; vacío si nada. */
   doubts: string;
 }
@@ -158,6 +161,7 @@ export function parseReview(output: string): ReviewVerdict {
     approved: json.approved,
     summary: text(json.summary, MAX_DESCRIPTION),
     issues: list(json.issues, MAX_ISSUES, MAX_DESCRIPTION),
+    suggestions: list(json.suggestions, MAX_ISSUES, MAX_DESCRIPTION),
     doubts: text(json.doubts, MAX_QUESTION),
   };
 }

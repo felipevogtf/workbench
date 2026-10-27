@@ -556,6 +556,17 @@ export class ExecutionsService {
     ].slice(-MAX_DOUBTS);
   }
 
+  /** Lo que el revisor dijo: su resumen y, aparte, las sugerencias que no bloquean. */
+  private reviewNoteOf(verdict: {
+    summary: string;
+    suggestions: string[];
+  }): string | null {
+    const suggestions = verdict.suggestions.length
+      ? `Sugerencias (no bloquean):\n${verdict.suggestions.map((item) => `- ${item}`).join('\n')}`
+      : '';
+    return [verdict.summary, suggestions].filter(Boolean).join('\n\n') || null;
+  }
+
   /** El desarrollador preguntó: el ticket espera y, cuando se guarde, Lucy decide qué hacer con la pregunta. */
   private async ask(
     execution: Execution,
@@ -688,7 +699,7 @@ export class ExecutionsService {
         const ticket = execution.ticket(job.ticketId);
         const verdict = parseReview(output);
         ticket.rounds += 1;
-        ticket.reviewNote = verdict.summary || null;
+        ticket.reviewNote = this.reviewNoteOf(verdict);
         if (verdict.doubts) await this.addDoubt(ticket, job, verdict.doubts);
 
         if (verdict.approved) {
@@ -702,11 +713,18 @@ export class ExecutionsService {
           ? verdict.issues
           : [verdict.summary || 'The reviewer asked for changes'];
         if (ticket.rounds >= MAX_REVIEW_ROUNDS) {
-          ticket.status = 'failed';
+          // Se acabaron las revisiones: el ticket pasa con lo pendiente a la vista (en el ticket, en sus dudas y en la
+          // descripción de la PR) en vez de tirar la ejecución y el trabajo de los demás tickets. Si importa, se reabre
+          // con una nota después.
+          ticket.status = 'done';
           ticket.feedback = issues;
-          throw new DomainError(
-            `The reviewer still asks for changes on "${ticket.title}" after ${ticket.rounds} reviews: ${issues.join('; ')}`,
+          await this.addDoubt(
+            ticket,
+            job,
+            `Quedó pendiente tras ${ticket.rounds} revisiones: ${issues.join('; ')}`,
           );
+          await this.startNextTicket(execution);
+          return;
         }
         ticket.status = 'developing';
         ticket.feedback = issues;

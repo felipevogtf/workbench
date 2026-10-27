@@ -112,7 +112,13 @@ describe('parseReview', () => {
   it('reads an approval', () => {
     expect(
       parseReview('{"approved":true,"summary":"Bien","issues":[]}'),
-    ).toEqual({ approved: true, summary: 'Bien', issues: [], doubts: '' });
+    ).toEqual({
+      approved: true,
+      summary: 'Bien',
+      issues: [],
+      suggestions: [],
+      doubts: '',
+    });
   });
 
   it('reads what the reviewer left in doubt', () => {
@@ -130,8 +136,17 @@ describe('parseReview', () => {
       approved: false,
       summary: 'Falta',
       issues: ['a', 'b'],
+      suggestions: [],
       doubts: '',
     });
+  });
+
+  it('reads the suggestions apart from the issues', () => {
+    const verdict = parseReview(
+      '{"approved":true,"summary":"Bien","issues":[],"suggestions":[" mejorar la redacción "]}',
+    );
+    expect(verdict.issues).toEqual([]);
+    expect(verdict.suggestions).toEqual(['mejorar la redacción']);
   });
 
   it('does not take an unclear verdict as approved', () => {
