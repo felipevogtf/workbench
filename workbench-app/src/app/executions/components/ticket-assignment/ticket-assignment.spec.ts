@@ -70,6 +70,42 @@ describe('TicketAssignment', () => {
     expect(selected(rows[1], 'Revisor')?.trim()).toBe('Pilar');
   });
 
+  it('lets the user read what each ticket is about before deciding', async () => {
+    const fixture = TestBed.createComponent(TicketAssignment);
+    fixture.componentRef.setInput('cards', [
+      boardCard(
+        ticket('a', {
+          title: 'Cambiar el texto',
+          description: 'Reemplazar el título de la portada',
+          criteria: ['Se ve el título nuevo', 'No cambia otra pantalla'],
+          files: ['src/app/home.html'],
+        }),
+        { number: 1 },
+      ),
+    ]);
+    fixture.componentRef.setInput('developers', DEVELOPERS);
+    fixture.componentRef.setInput('reviewers', REVIEWERS);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
+
+    const detail = element.querySelector('details.row__detail') as HTMLDetailsElement;
+    expect(detail.querySelector('summary')?.textContent).toContain('Ver el detalle del ticket 1');
+    expect(detail.open).toBe(false);
+    expect(detail.textContent).toContain('Reemplazar el título de la portada');
+    expect(detail.textContent).toContain('Se ve el título nuevo');
+    expect(detail.textContent).toContain('No cambia otra pantalla');
+    expect(detail.textContent).toContain('src/app/home.html');
+  });
+
+  it('does not list criteria or files when the ticket has none', async () => {
+    const element: HTMLElement = (await render()).nativeElement;
+
+    const detail = element.querySelector('details.row__detail')!;
+    expect(detail.textContent).toContain('Hacer algo');
+    expect(detail.textContent).not.toContain('Criterios de aceptación');
+    expect(detail.textContent).not.toContain('Archivos previstos');
+  });
+
   it('tells which ticket gets which worker when the user picks another one', async () => {
     const fixture = await render();
     const emitted: unknown[] = [];

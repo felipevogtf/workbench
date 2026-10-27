@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { Agent, agentLabel, levelLabel } from '@ai-agents/index';
 import { Badge, BadgeTone } from '@shared/ui/badge/badge';
+import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { BoardCard, TICKET_LEVEL_LABEL, TicketLevel } from '../../models/execution';
 
 const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
@@ -15,14 +16,15 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
  */
 @Component({
   selector: 'app-ticket-assignment',
-  imports: [Badge],
+  imports: [Badge, MarkdownViewer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="assign" aria-label="Asignación de los tickets">
       <h2 class="assign__title">Asigna los tickets</h2>
       <p class="assign__hint">
         Lucy eligió un desarrollador según el nivel de cada ticket y repartió la revisión. Cámbialo
-        si quieres y pulsa «Empezar el desarrollo».
+        si quieres y pulsa «Empezar el desarrollo». Abre «Ver el detalle» de un ticket para leer qué
+        hay que hacer antes de decidir.
       </p>
 
       <ol class="assign__list">
@@ -38,6 +40,22 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
                 <app-badge tone="info">{{ card.repo }}</app-badge>
               }
             </div>
+
+            <details class="row__detail">
+              <summary>Ver el detalle del ticket {{ card.number }}</summary>
+              <div class="row__detail-body">
+                <h3>Descripción</h3>
+                <app-markdown-viewer [content]="card.ticket.description" />
+                @if (card.ticket.criteria.length > 0) {
+                  <h3>Criterios de aceptación</h3>
+                  <app-markdown-viewer [content]="list(card.ticket.criteria)" />
+                }
+                @if (card.ticket.files?.length) {
+                  <h3>Archivos previstos</h3>
+                  <app-markdown-viewer [content]="paths(card.ticket.files)" />
+                }
+              </div>
+            </details>
 
             <label class="row__field">
               <span>Desarrolla</span>
@@ -138,6 +156,33 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
       color: var(--primary);
     }
 
+    .row__detail {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--border);
+      padding-top: var(--space-3);
+      font-size: 0.9rem;
+    }
+
+    .row__detail summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .row__detail-body {
+      display: grid;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+      color: var(--primary);
+    }
+
+    .row__detail-body h3 {
+      margin: var(--space-2) 0 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
     .row__field {
       display: grid;
       gap: var(--space-1);
@@ -168,6 +213,15 @@ export class TicketAssignment {
 
   protected readonly tone = LEVEL_TONE;
   protected readonly levelName = TICKET_LEVEL_LABEL;
+
+  protected list(items: readonly string[]): string {
+    return items.map((item) => `- ${item}`).join('\n');
+  }
+
+  /** Las rutas, en código para que los guiones bajos no se lean como énfasis. */
+  protected paths(files: readonly string[] | undefined): string {
+    return this.list((files ?? []).map((file) => `\`${file}\``));
+  }
 
   /** «Rebecca · Simple», para que se sepa para qué sirve cada uno. */
   protected describe(agent: Agent): string {

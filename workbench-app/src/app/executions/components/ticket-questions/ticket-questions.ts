@@ -57,7 +57,8 @@ import { BoardCard, Worker } from '../../models/execution';
                 <span>Tu respuesta</span>
                 <textarea
                   #box
-                  rows="2"
+                  class="app-control"
+                  rows="3"
                   [disabled]="busy()"
                   [attr.aria-label]="'Respuesta para ' + question.from"
                 ></textarea>
@@ -121,14 +122,7 @@ import { BoardCard, Worker } from '../../models/execution';
     }
 
     .question__form textarea {
-      width: 100%;
-      padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--border);
-      border-radius: var(--border-radius);
-      background: var(--background);
-      color: inherit;
-      font: inherit;
-      resize: vertical;
+      min-height: 5.5rem;
     }
   `,
 })
