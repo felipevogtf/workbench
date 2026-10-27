@@ -247,6 +247,25 @@ export class ExecutionsService {
     if (last.kind === 'publish' && last.status === 'done') {
       execution.setStage('publish', 'running');
       await this.executions.save(execution);
+      const [first] = this.publishTargets(execution);
+      const lastRepo = last.payload.repo.fullName;
+      if (
+        !this.publishTargets(execution).some(
+          (target) => target.repo.fullName === lastRepo,
+        )
+      ) {
+        // Falló un repositorio sin cambios (versión anterior): se publica desde el primero que sí los tiene.
+        await this.jobs.save(
+          await this.buildJob(
+            execution,
+            'publish',
+            undefined,
+            last.attempt + 1,
+            first.repo.fullName,
+          ),
+        );
+        return (await this.executions.findById(id)) ?? execution;
+      }
       await this.handleFinished(last);
       return (await this.executions.findById(id)) ?? execution;
     }
