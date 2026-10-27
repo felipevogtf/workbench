@@ -38,7 +38,7 @@ export const DEFAULT_CONFIG = {
   claudeBin: 'claude',
   maxBudgetUsd: 5,
   timeoutMinutes: {
-    tickets: 15,
+    tickets: 25,
     develop: 45,
     review: 15,
     publish: 5,

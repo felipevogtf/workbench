@@ -115,22 +115,20 @@ export async function runJob(
       `Se descartaron cambios que habían quedado en los submódulos: ${leftovers.join(', ')}`,
     );
   }
-  // El entorno de pruebas del proyecto, si tiene uno configurado. Quien planifica no lo necesita.
-  let environment =
-    job.kind === 'tickets'
-      ? null
-      : await context.environments?.ensure({
-          executionId: job.executionId,
-          repo: payload.repo,
-          dir: workspace.dir,
-          onLog: context.onLog,
-          signal: context.signal,
-        });
+  // El entorno de pruebas del proyecto, si tiene uno configurado. También lo usa Lucy al crear los tickets (así verifica el
+  // plan contra el código instalado antes de que el usuario dé el visto bueno) y el desarrollador lo reutiliza después.
+  let environment = await context.environments?.ensure({
+    executionId: job.executionId,
+    repo: payload.repo,
+    dir: workspace.dir,
+    onLog: context.onLog,
+    signal: context.signal,
+  });
   // Lucy mira todos los repos de la tarea, no solo el de su ticket: los que tienen entorno se levantan también, para que
   // tengan sus dependencias instaladas. `docker compose` apunta a uno solo: el del repo principal o, si ese no tiene
   // entorno, el primero de los otros que lo tenga.
   const alsoUp: string[] = [];
-  if (job.kind === 'chat') {
+  if (job.kind === 'chat' || job.kind === 'tickets') {
     for (const other of consult) {
       const handle = await context.environments?.ensure({
         executionId: job.executionId,
@@ -227,7 +225,12 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
     }
   }
 
-  if (job.kind === 'review' || job.kind === 'final' || job.kind === 'chat') {
+  if (
+    job.kind === 'review' ||
+    job.kind === 'final' ||
+    job.kind === 'chat' ||
+    job.kind === 'tickets'
+  ) {
     // El revisor corre pruebas, lint y build, que pueden dejar archivos (un `lint --fix`, por ejemplo): no es su trabajo
     // cambiar nada, y lo que quede se colaría en el commit del próximo desarrollo.
     await discardSubmoduleChanges(workspace.dir, submodules);

@@ -500,10 +500,12 @@ describe('runJob', () => {
       assert.ok(!tools.includes('Bash(docker compose restart:*)'));
     });
 
-    it('tickets: the planner never gets one', async () => {
-      const { events, seen } = await run('tickets');
-      assert.ok(!events.includes('ensure') && !events.includes('tearDown'));
-      assert.equal(seen.compose, null);
+    it('tickets: Lucy gets it too, read-only, and leaves it up for the developer', async () => {
+      const { events, seen, tools } = await run('tickets');
+      assert.deepEqual(events, ['ensure', 'reclaim']);
+      assert.equal(seen.compose, 'wb-12345678-web');
+      assert.ok(tools.includes('Bash(docker compose exec:*)'));
+      assert.ok(!tools.includes('Bash(docker compose restart:*)'));
     });
 
     it('when it could not be brought up the agent works without containers and is told so', async () => {

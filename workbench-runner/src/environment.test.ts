@@ -124,7 +124,7 @@ describe('environmentTools', () => {
       !environmentTools('review').includes('Bash(docker compose restart:*)'),
     );
     assert.ok(environmentTools('final').includes('Bash(wb-curl:*)'));
-    assert.deepEqual(environmentTools('tickets'), []);
+    assert.deepEqual(environmentTools('tickets'), environmentTools('review'));
   });
 
   it('never allows a free docker', () => {
