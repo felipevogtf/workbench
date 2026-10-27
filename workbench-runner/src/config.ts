@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { EnvironmentsConfig } from './environment';
 import type { JobKind } from './types';
@@ -221,6 +221,20 @@ function environmentFrom(
         fail(
           `environments["${repo}"].ports: cada puerto necesita name y env, o service y container`,
         );
+    }
+    // Son rutas dentro del worktree: una que salga de él copiaría o borraría archivos ajenos.
+    for (const entry of env.dependencyCache ?? []) {
+      for (const path of [entry?.dir, entry?.lock]) {
+        if (
+          typeof path !== 'string' ||
+          !path.trim() ||
+          isAbsolute(path) ||
+          path.split(/[\/]/).includes('..')
+        )
+          fail(
+            `environments["${repo}"].dependencyCache: dir y lock deben ser rutas relativas dentro del repositorio`,
+          );
+      }
     }
     if (env.database && !services[env.database.service])
       fail(

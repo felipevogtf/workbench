@@ -10,6 +10,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { DependencyCache, type DependencyCacheEntry } from './dependency-cache';
 import { git } from './git';
 import type { JobKind } from './types';
 
@@ -54,6 +55,11 @@ export interface EnvironmentConfig {
   up?: string[];
   /** Comandos (con `sh -c`, en el worktree) que dejan el proyecto usable: dependencias, esquema, datos. */
   prepare?: string[];
+  /**
+   * Carpetas de dependencias (`vendor`, `node_modules`) que se copian de una caché al armar el worktree y se actualizan cuando cambia
+   * su lockfile: ahorran instalarlas de cero en cada ejecución.
+   */
+  dependencyCache?: DependencyCacheEntry[];
   /** Direcciones que deben responder antes de dar el entorno por listo. */
   waitFor?: { url: string; timeoutSeconds?: number }[];
 }
@@ -206,6 +212,8 @@ interface ExecutionEnv {
   taken: Set<number>;
 }
 
+const took = (since: number) => `${((Date.now() - since) / 1000).toFixed(1)} s`;
+
 const slug = (text: string, max = 20) =>
   text
     .toLowerCase()
@@ -227,7 +235,13 @@ export class Environments {
       new Promise((done) => setTimeout(done, ms)),
     private readonly fetchUrl: (url: string) => Promise<number> = async (url) =>
       (await fetch(url, { signal: AbortSignal.timeout(5_000) })).status,
-  ) {}
+  ) {
+    this.deps = new DependencyCache(join(config.workDir, 'deps'), (command, args) =>
+      exec(command, args),
+    );
+  }
+
+  private readonly deps: DependencyCache;
 
   has(repoFullName: string): boolean {
     return (
@@ -520,6 +534,19 @@ export class Environments {
 
     await this.writeFiles(fullName, name, dir, config, vars);
 
+    // Un worktree nuevo parte con las dependencias de la última vez: instalarlas de cero tardaba más de un minuto.
+    const cached = config.dependencyCache ?? [];
+    if (cached.length > 0) {
+      const began = Date.now();
+      const copied = await this.deps
+        .seed(fullName, dir, cached)
+        .catch(() => [] as string[]);
+      if (copied.length > 0)
+        onLog(
+          `Dependencias copiadas de la caché (${copied.join(', ')}): ${took(began)}`,
+        );
+    }
+
     const files = [...config.composeFiles];
     const overrides = config.ports.filter(
       (port) => port.service && port.container,
@@ -572,6 +599,7 @@ export class Environments {
           signal,
         },
       );
+    const upBegan = Date.now();
     let up = await startUp();
     if (up.code !== 0 && !signal?.aborted) {
       // Construir varias imágenes a la vez a veces choca en Docker («failed to prepare extraction snapshot»): con lo ya
@@ -585,8 +613,11 @@ export class Environments {
       );
     }
 
+    onLog(`⏱ docker compose up: ${took(upBegan)}`);
+
     const warnings: string[] = [];
     for (const command of config.prepare ?? []) {
+      const stepBegan = Date.now();
       const runStep = () =>
         this.exec('sh', ['-c', fill(command, vars)], {
           cwd: dir,
@@ -602,6 +633,7 @@ export class Environments {
         onLog(`El paso «${command}» falló; se reintenta una vez`);
         step = await runStep();
       }
+      onLog(`⏱ ${took(stepBegan)} «${command.slice(0, 70)}»`);
       if (step.code !== 0) {
         warnings.push(
           `falló «${command}»: ${tail(step.stderr || step.stdout)}`,
@@ -611,11 +643,29 @@ export class Environments {
     }
     for (const wait of config.waitFor ?? []) {
       const url = fill(wait.url, vars);
+      const waitBegan = Date.now();
       if (!(await this.waitFor(url, wait.timeoutSeconds ?? 120)))
         warnings.push(`${url} no respondió a tiempo`);
+      onLog(`⏱ ${took(waitBegan)} esperando ${url}`);
     }
 
     await this.chown(dir);
+    // Lo que quedó instalado se guarda para el próximo worktree, solo si el entorno quedó bien y la copia era de otro lockfile.
+    if (cached.length > 0 && warnings.length === 0) {
+      const saved = await this.deps
+        .save(fullName, dir, cached, (entry) =>
+          // Sin cambios en el lockfile respecto de la rama base: lo instalado es lo que esa rama usa.
+          git(['diff', '--quiet', 'origin/HEAD', '--', entry.lock], {
+            cwd: dir,
+          }).then(
+            () => true,
+            () => false,
+          ),
+        )
+        .catch(() => [] as string[]);
+      if (saved.length > 0)
+        onLog(`Dependencias guardadas en la caché (${saved.join(', ')})`);
+    }
     return { project, processEnv, ports, schema, dir, warnings };
   }
 

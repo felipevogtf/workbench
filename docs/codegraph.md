@@ -34,6 +34,39 @@ llamadas y el código, en vez de varias rondas de `grep` y lectura.
   trabajos largos.
 - Que cubra bien el PHP de Symfony y el TypeScript de estos repos hay que comprobarlo; el 100% de cobertura que reporta es para guzzle.
 
+## Quién lo aprovecha: todos los agentes (2026-10-27)
+
+El objetivo es que **todos** los agentes le saquen provecho: Lucy (planifica y decide qué archivos toca cada ticket, así que un buen punto
+de partida suyo ahorra trabajo a los demás), el planificador, los desarrolladores, los revisores y la revisión final. Empezar por Lucy da la
+medición más clara; el resto sale casi gratis si el índice y la herramienta ya están en el runner.
+
+| Agente | Trabajo | Dónde corre |
+|---|---|---|
+| Lucy | tickets, chat | runner |
+| Planificador | el plan de la tarea | servidor |
+| Desarrolladores (simple, medio, complejo) | `develop` | runner |
+| Revisores y revisión final | `review`, `final` | runner |
+
+Los trabajos de Lucy, con sus tiempos:
+
+| Trabajo de Lucy | Dónde corre | Duración media (14 días) | Costo medio |
+|---|---|---|---|
+| Crear los tickets (`tickets`) | runner (con el entorno levantado) | 83 s | 0.39 USD (el trabajo más caro) |
+| Chat sobre la tarea o la ejecución (`chat`) | runner | 70 s | 0.27 USD |
+| El plan de la tarea (planificador) | servidor, con su propia copia de los repos (`git-repos-checkout`) | sin medir | sin medir |
+
+- **Tickets y chat** son los que el piloto debe medir primero: son de Lucy, corren en el runner y `tickets` es hoy el trabajo más caro por
+  unidad. Si CodeGraph le ahorra explorar, se nota ahí (tiempo, costo y cantidad de llamadas a herramientas).
+- **El plan** se genera en el servidor, no en el runner: para que se beneficie hay que instalar CodeGraph también en el contenedor del
+  servidor e indexar su copia de cada repo (`git-repos-cache`). Es una segunda integración, aparte de la del runner. Antes de hacerla hay
+  que medir cuánto tarda hoy el plan (no se guarda como los trabajos del runner).
+- Con varios repos por tarea (`melon-web` y `melon-ionic`), Lucy mira todos: el índice tiene que cubrir cada repo de consulta, no solo el
+  principal.
+- Los agentes del runner comparten una sola integración: el permiso `mcp__codegraph__codegraph_explore` se agrega a las herramientas de
+  cada agente (solo lectura, también para el revisor) y una línea en cada prompt indica usarla antes de leer archivos. A Lucy además se le pide
+  que la use para llenar el campo de archivos previstos de cada ticket, que después reciben el desarrollador y el revisor.
+- Un solo índice por repo sirve a todos los agentes de una ejecución (ver «Cómo encajaría en el runner»).
+
 ## Cómo encajaría en el runner
 
 1. **Índice por repo.** Un `codegraph init` en el clon de cada repo (dentro de la distro `wb-agents`), que se mantiene con `codegraph sync` en
@@ -54,7 +87,9 @@ Con la medición de tiempos ya activa en el runner (desplegada el 2026-10-27, co
 1. Instalar CodeGraph en la distro y correr `codegraph init` en el clon de `melon-web`. Revisar a mano que indexe bien el PHP y el
    TypeScript de ese repo (símbolos, llamadas entre archivos).
 2. Hacer dos ejecuciones del **mismo tipo de ticket**, una con y otra sin CodeGraph, y comparar con el registro de cada trabajo: tiempo
-   de la fase `IA`, cantidad de llamadas a herramientas y costo en dólares.
+   de la fase `IA`, cantidad de llamadas a herramientas y costo en dólares. **Empezar por los trabajos de Lucy** (`tickets` y `chat`) y
+   mirar también si los archivos previstos que propone coinciden con los que de verdad se tocan.
+   La corrida base (sin CodeGraph) es la ejecución `6aa948cf…`, lanzada el 2026-10-27 con la opción de no abrir la PR.
 3. Decidir con esos datos: si el ahorro es claro (por ejemplo, tiempo o costo de desarrollo y revisión a la mitad o menos), integrarlo al
    runner con los pasos de arriba; si no, descartarlo.
 
