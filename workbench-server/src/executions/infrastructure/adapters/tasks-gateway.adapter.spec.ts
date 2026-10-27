@@ -47,11 +47,18 @@ const label = Label.reconstruct({
   repoUrl: 'https://bitbucket.org/acme/web',
 });
 
-function adapter(found: Issue | null, of: Project | null) {
+function adapter(
+  found: Issue | null,
+  of: Project | null,
+  extra: Partial<Record<'groupContext' | 'groupOf', unknown>> = {},
+) {
   return new TasksGatewayAdapter({
     findIssue: () => Promise.resolve(found),
     findLabels: () => Promise.resolve([label]),
     findProject: () => Promise.resolve(of),
+    groupContext: () => Promise.resolve(null),
+    groupOf: () => Promise.resolve(null),
+    ...extra,
   } as unknown as TasksFacade);
 }
 
@@ -88,6 +95,51 @@ describe('TasksGatewayAdapter', () => {
         )
       )?.key,
     ).toBeNull();
+  });
+
+  it('composes a group from its tasks: their text, their repositories and their codes', async () => {
+    const api = Label.reconstruct({
+      id: 'l2',
+      name: 'Api',
+      color: null,
+      repoUrl: 'https://bitbucket.org/acme/api',
+    });
+    const task = await adapter(
+      issue({ isLocal: true, externalId: null, remoteSequence: null }),
+      null,
+      {
+        groupContext: () =>
+          Promise.resolve({
+            description: 'Grupo de 2 tareas',
+            members: [
+              { id: 'a', key: 'MEL-430', name: 'Tono' },
+              { id: 'b', key: 'MEL-431', name: 'Bloqueo' },
+            ],
+            labels: [api],
+          }),
+      },
+    ).getTask('i1');
+
+    expect(task).toMatchObject({
+      description: 'Grupo de 2 tareas',
+      key: 'MEL-430_MEL-431',
+      members: [
+        { key: 'MEL-430', name: 'Tono' },
+        { key: 'MEL-431', name: 'Bloqueo' },
+      ],
+    });
+    expect(task?.repoUrls).toEqual([
+      'https://bitbucket.org/acme/api',
+      'https://bitbucket.org/acme/web',
+    ]);
+  });
+
+  it('says which group a task belongs to', async () => {
+    const task = await adapter(issue(), project('MEL'), {
+      groupOf: () => Promise.resolve('g1'),
+    }).getTask('i1');
+
+    expect(task?.groupId).toBe('g1');
   });
 
   it('is null when the task does not exist', async () => {

@@ -8,6 +8,10 @@ export interface ExecutionTask {
   repoUrls: string[];
   /** El código de su ticket de Plane (`MEL-12`); `null` en una tarea local o sin proyecto con clave. */
   key: string | null;
+  /** Si la tarea es un grupo: las tareas que reúne, en el orden en que se hacen. Vacío en una tarea normal. */
+  members: { key: string | null; name: string }[];
+  /** El grupo del que esta tarea es miembro (no se ejecuta sola mientras tanto); `null` si no es de ninguno. */
+  groupId: string | null;
 }
 
 export interface TasksGatewayPort {

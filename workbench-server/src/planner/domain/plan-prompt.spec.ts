@@ -16,8 +16,34 @@ const task: TaskContext = {
   dueDate: '2026-10-20',
   estimatedHours: 6,
   isLocal: false,
+  members: [],
+  groupId: null,
   labels: [{ name: 'MiCamión Web', repoUrl: 'https://github.com/a/mi-camion' }],
 };
+
+describe('buildPlanPrompt for a group of tasks', () => {
+  it('asks for one plan for all of them, in order and by dependencies', () => {
+    const group = {
+      ...task,
+      members: [
+        { key: 'MEL-432', name: 'Cambio de concepto' },
+        { key: 'MEL-430', name: 'Tono distinto' },
+      ],
+    };
+
+    const prompt = buildPlanPrompt({ task: group, tickets: [], repos: [] });
+
+    expect(prompt).toContain('## Es un grupo de tareas');
+    expect(prompt).toContain('reúne a 2 tareas relacionadas');
+    expect(prompt).toContain('UN solo plan para todas');
+  });
+
+  it('adds nothing for a normal task', () => {
+    const prompt = buildPlanPrompt({ task, tickets: [], repos: [] });
+
+    expect(prompt).not.toContain('Es un grupo de tareas');
+  });
+});
 
 describe('buildPlanPrompt', () => {
   it('describes the task with the data it has and skips the empty ones', () => {

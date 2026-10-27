@@ -19,7 +19,22 @@ import {
   STATE_REPOSITORY_PORT,
   type StateRepositoryPort,
 } from '@tasks/domain/ports/state-repository.port';
+import { htmlToText } from '@core/text/html-to-text';
+import { composeGroupDescription } from '@tasks/domain/group-description';
+import { IssueGroupsService } from './issue-groups.service';
 import { IssuesService } from './issues.service';
+
+const MAX_MEMBER_TEXT_CHARS = 8_000;
+
+/** Un grupo de tareas tal como lo ven planificador y ejecuciones: ya compuesto. */
+export interface GroupContext {
+  /** Texto plano: las notas del grupo y una sección por tarea, en orden. */
+  description: string;
+  /** Las tareas del grupo, en orden; `key` es su código de Plane (`MEL-12`), si lo tiene. */
+  members: { id: string; key: string | null; name: string }[];
+  /** Las etiquetas de las tareas del grupo (de ahí salen sus repositorios). */
+  labels: Label[];
+}
 
 /**
  * Lo que el módulo `tasks` ofrece a los demás módulos (kanban, planner, time-tracking). Es su
@@ -38,6 +53,7 @@ export class TasksFacade {
     @Inject(LABEL_REPOSITORY_PORT)
     private readonly labels: LabelRepositoryPort,
     private readonly issuesService: IssuesService,
+    private readonly groups: IssueGroupsService,
   ) {}
 
   findIssue(id: string): Promise<Issue | null> {
@@ -58,6 +74,50 @@ export class TasksFacade {
 
   findLabels(ids: string[]): Promise<Label[]> {
     return this.labels.findByIds(ids);
+  }
+
+  /** El grupo al que pertenece una tarea, o `null`. */
+  groupOf(issueId: string): Promise<string | null> {
+    return this.groups.groupOf(issueId);
+  }
+
+  /** El grupo ya compuesto (su descripción, tareas y etiquetas); `null` si la tarea no es un grupo. */
+  async groupContext(groupId: string): Promise<GroupContext | null> {
+    const members = await this.groups.members(groupId);
+    if (members.length === 0) return null;
+
+    const group = await this.issues.findById(groupId);
+    const entries = await Promise.all(
+      members.map(async (member) => {
+        // El código de Plane (MEL-12) solo existe si la tarea viene de allá.
+        const project = member.isLocal
+          ? null
+          : await this.projects.findById(member.projectId);
+        const key =
+          project?.identifier && member.remoteSequence !== null
+            ? `${project.identifier}-${member.remoteSequence}`
+            : null;
+        return {
+          id: member.id,
+          key,
+          name: member.name,
+          text: htmlToText(member.description, MAX_MEMBER_TEXT_CHARS) || null,
+        };
+      }),
+    );
+    const labelIds = [...new Set(members.flatMap((member) => member.labelIds))];
+    return {
+      description: composeGroupDescription(
+        htmlToText(group?.description, MAX_MEMBER_TEXT_CHARS) || null,
+        entries.map((entry) => ({
+          key: entry.key,
+          name: entry.name,
+          description: entry.text,
+        })),
+      ),
+      members: entries.map(({ id, key, name }) => ({ id, key, name })),
+      labels: await this.labels.findByIds(labelIds),
+    };
   }
 
   /** Todas las etiquetas (las que tienen enlace de repositorio dicen a cuál). */

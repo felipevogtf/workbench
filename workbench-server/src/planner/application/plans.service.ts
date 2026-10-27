@@ -87,8 +87,14 @@ export class PlansService {
     override: { agentId?: string; model?: string } = {},
     revision?: { messages: PlanChatMessage[] },
   ): Promise<Plan> {
-    if (!(await this.tasks.getTask(issueId))) {
+    const task = await this.tasks.getTask(issueId);
+    if (!task) {
       throw DomainError.notFound(`Issue with id ${issueId} not found`);
+    }
+    if (task.groupId) {
+      throw DomainError.conflict(
+        'This task belongs to a group: the plan is made for the whole group',
+      );
     }
     if (await this.plans.findActiveByIssueId(issueId)) {
       throw DomainError.conflict(

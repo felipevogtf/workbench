@@ -3,6 +3,7 @@ import { DomainError } from '@core/domain/domain.error';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobResult } from '@executions/domain/entities/job.props';
 import { Runner } from '@executions/domain/entities/runner.entity';
+import type { ExecutionTask } from '@executions/domain/ports/gateways.port';
 import { ExecutionsService } from './executions.service';
 import { RunnerJobsService, STALE_JOB_MS } from './runner-jobs.service';
 import { RunnersService } from './runners.service';
@@ -200,6 +201,32 @@ describe('ExecutionsService', () => {
       await expect(service.start('issue-1')).rejects.toMatchObject({
         kind: 'not-found',
       });
+    });
+
+    it('does not run a task that belongs to a group: the group is what gets executed', async () => {
+      tasks.task = { ...(tasks.task as ExecutionTask), groupId: 'group-1' };
+
+      await expect(service.start('issue-1')).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+      expect(jobs.items).toHaveLength(0);
+    });
+
+    it('runs a group as one task: its codes name the branch and its tasks go to the agents', async () => {
+      tasks.task = {
+        ...(tasks.task as ExecutionTask),
+        key: 'MEL-430_MEL-431',
+        members: [
+          { key: 'MEL-430', name: 'Tono' },
+          { key: 'MEL-431', name: 'Bloqueo' },
+        ],
+      };
+
+      const execution = await service.start('issue-1');
+
+      expect(execution.branch).toContain('MEL-430_MEL-431');
+      expect(jobs.items[0].payload.prompt).toContain('# Tareas del grupo');
+      expect(jobs.items[0].payload.prompt).toContain('MEL-431 — Bloqueo');
     });
 
     it('rejects a second execution while one is running', async () => {

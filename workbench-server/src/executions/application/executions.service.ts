@@ -124,6 +124,11 @@ export class ExecutionsService {
     if (await this.executions.findActiveByIssueId(issueId)) {
       throw DomainError.conflict('This task is already being executed');
     }
+    if (task.groupId) {
+      throw DomainError.conflict(
+        'This task belongs to a group: the group is what gets executed',
+      );
+    }
 
     const plan = await this.plans.getLatestReadyPlan(issueId);
     if (!plan) {
@@ -774,6 +779,7 @@ export class ExecutionsService {
                   otherRepos: targets
                     .map((other) => other.repo.fullName)
                     .filter((name) => name !== target.repo.fullName),
+                  members: task?.members,
                 }),
               })
               .catch((error: unknown) => {
@@ -944,6 +950,7 @@ export class ExecutionsService {
           primary: each.primary,
         })),
         recipe,
+        members: task?.members,
       });
     } else if (kind === 'tickets') {
       payload.prompt = buildTicketsPrompt({
@@ -953,6 +960,7 @@ export class ExecutionsService {
         repoName,
         otherRepos,
         recipe,
+        members: task?.members,
       });
     } else if (ticket) {
       const index = execution.tickets.indexOf(ticket) + 1;

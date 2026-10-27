@@ -19,6 +19,10 @@ export interface TaskContext {
   /** `true` si se creó en el workbench; `false` si viene de Plane. */
   isLocal: boolean;
   labels: TaskLabel[];
+  /** Si la tarea es un grupo: las tareas que reúne, en el orden en que se hacen. Vacío en una tarea normal. */
+  members: { key: string | null; name: string }[];
+  /** El grupo del que esta tarea es miembro (no se planifica sola mientras tanto); `null` si no es de ninguno. */
+  groupId: string | null;
 }
 
 /** Contrato propio del planificador hacia el módulo tasks. */

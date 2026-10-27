@@ -65,6 +65,32 @@ function recipeBlock(recipe: string | null | undefined): string[] {
   ];
 }
 
+/** Una tarea de un grupo, tal como la ven los agentes. */
+export interface GroupMember {
+  key: string | null;
+  name: string;
+}
+
+/**
+ * Lo que los agentes deben saber cuando la tarea es un grupo de tareas relacionadas: se hacen todas en una misma rama, en el
+ * orden en que aparecen, y cada una tiene sus propios criterios de aceptación.
+ */
+function groupBlock(
+  members: readonly GroupMember[] | undefined,
+  stage: 'tickets' | 'final',
+): string[] {
+  if (!members?.length) return [];
+  const list = members.map(
+    (member, index) =>
+      `${index + 1}. ${member.key ? `${member.key} — ` : ''}${member.name}`,
+  );
+  const rule =
+    stage === 'tickets'
+      ? 'Crea los tickets en el orden de las dependencias entre estas tareas, y que ningún ticket mezcle cambios de tareas distintas: en la descripción de cada uno di a qué tarea del grupo pertenece.'
+      : 'Comprueba los criterios de aceptación de CADA tarea del grupo por separado, no solo el conjunto, y nombra la tarea en cada hallazgo.';
+  return ['', '# Tareas del grupo', ...list, rule];
+}
+
 export function buildTicketsPrompt(data: {
   taskName: string;
   taskDescription: string | null;
@@ -74,6 +100,8 @@ export function buildTicketsPrompt(data: {
   otherRepos?: readonly string[];
   /** Las recetas de los repositorios de la tarea, si las hay. */
   recipe?: string | null;
+  /** Si la tarea es un grupo: las tareas que reúne, en el orden en que se hacen. */
+  members?: readonly GroupMember[];
 }): string {
   const others = data.otherRepos ?? [];
   const multi = others.length > 0;
@@ -88,7 +116,15 @@ export function buildTicketsPrompt(data: {
         ].join('\n')
       : `\nRepositorio (tu directorio de trabajo, solo lectura): ${data.repoName}`,
     ...recipeBlock(data.recipe),
+    ...groupBlock(data.members, 'tickets'),
     `\n# Plan aprobado\n${clip(data.plan, MAX_PLAN_CHARS)}`,
+    '',
+    '# Antes de dividirlo: verifica el plan',
+    'El plan se hizo leyendo la rama principal, sin las dependencias instaladas. Si el proyecto tiene entorno de pruebas, el código de las',
+    'dependencias (`vendor/`, `node_modules/`) está instalado en tu directorio y puedes leerlo y comprobar cosas en el entorno. Antes de',
+    'dividir el plan, comprueba lo que afirma o supone sobre lo que no está en el repositorio (cómo se comporta un bundle, qué campo usa',
+    'un formulario, qué devuelve una dependencia). Si algo no calza, corrige los tickets en vez de seguir el plan al pie de la letra, y',
+    'anota en la descripción del ticket afectado qué cambió y por qué, para que el usuario lo vea antes de dar su visto bueno.',
     '',
     '# Qué debes hacer',
     `Divide el plan en como máximo ${MAX_TICKETS} tickets de desarrollo. Cada ticket debe:`,
@@ -260,6 +296,8 @@ export function buildFinalReviewPrompt(data: {
   tickets: readonly ExecutionTicket[];
   targets: readonly FinalReviewTarget[];
   recipe?: string | null;
+  /** Si la tarea es un grupo: las tareas que reúne. */
+  members?: readonly GroupMember[];
 }): string {
   const primary =
     data.targets.find((target) => target.primary) ?? data.targets[0];
@@ -291,6 +329,7 @@ export function buildFinalReviewPrompt(data: {
     '',
     '# Tickets',
     ...tickets,
+    ...groupBlock(data.members, 'final'),
     ...recipeBlock(data.recipe),
     '',
     '# Repositorios',
@@ -321,6 +360,8 @@ export function buildPullRequestDescription(data: {
   tickets: ExecutionTicket[];
   /** Los demás repositorios de la tarea, que tienen su propia PR. */
   otherRepos?: readonly string[];
+  /** Si la tarea es un grupo: las tareas que reúne, para que la PR las nombre. */
+  members?: readonly GroupMember[];
 }): string {
   const lines = data.tickets.map((ticket) => {
     const note = ticket.summary
@@ -331,6 +372,17 @@ export function buildPullRequestDescription(data: {
 
   return [
     `Desarrollo automático de la tarea «${data.taskName}», hecho por agentes de IA desde el workbench y revisado por otro agente.`,
+    '',
+    ...(data.members?.length
+      ? [
+          '',
+          '### Tareas que incluye',
+          ...data.members.map(
+            (member) =>
+              `- ${member.key ? `${member.key} — ` : ''}${member.name}`,
+          ),
+        ]
+      : []),
     '',
     '### Tickets',
     ...lines,

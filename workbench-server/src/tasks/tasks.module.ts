@@ -31,6 +31,10 @@ import { SyncController } from './infrastructure/http/sync.controller';
 import { TasksSyncScheduler } from './infrastructure/scheduling/tasks-sync.scheduler';
 import { TasksFacade } from './application/tasks-facade.service';
 import { TicketLookupService } from './application/ticket-lookup.service';
+import { IssueGroupMemberOrmEntity } from './infrastructure/persistence/issue-group-member.orm-entity';
+import { ISSUE_GROUP_REPOSITORY_PORT } from './domain/ports/issue-group-repository.port';
+import { TypeOrmIssueGroupRepository } from './infrastructure/repositories/typeorm-issue-group.repository';
+import { IssueGroupsService } from './application/issue-groups.service';
 
 @Module({
   imports: [
@@ -40,6 +44,7 @@ import { TicketLookupService } from './application/ticket-lookup.service';
       ProjectOrmEntity,
       StateOrmEntity,
       LabelOrmEntity,
+      IssueGroupMemberOrmEntity,
     ]),
   ],
   providers: [
@@ -52,6 +57,11 @@ import { TicketLookupService } from './application/ticket-lookup.service';
     { provide: PROJECT_REPOSITORY_PORT, useClass: TypeOrmProjectRepository },
     { provide: STATE_REPOSITORY_PORT, useClass: TypeOrmStateRepository },
     { provide: LABEL_REPOSITORY_PORT, useClass: TypeOrmLabelRepository },
+    {
+      provide: ISSUE_GROUP_REPOSITORY_PORT,
+      useClass: TypeOrmIssueGroupRepository,
+    },
+    IssueGroupsService,
     IssuesService,
     ProjectsService,
     StatesService,
@@ -62,7 +72,7 @@ import { TicketLookupService } from './application/ticket-lookup.service';
     TasksSyncScheduler,
   ],
   // Lo único que ven los demás módulos: la fachada y la consulta de tickets de Plane.
-  exports: [TasksFacade, TicketLookupService],
+  exports: [TasksFacade, TicketLookupService, IssueGroupsService],
   controllers: [
     ProjectsController,
     IssuesController,

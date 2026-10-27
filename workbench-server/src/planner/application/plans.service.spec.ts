@@ -24,6 +24,8 @@ const task: TaskContext = {
   dueDate: null,
   estimatedHours: null,
   isLocal: true,
+  members: [],
+  groupId: null,
   labels: [
     { name: 'b-web', repoUrl: 'https://github.com/o/web' },
     { name: 'a-api', repoUrl: 'https://github.com/o/api' },
@@ -198,6 +200,15 @@ describe('PlansService', () => {
   it('rejects an unknown task', async () => {
     const { service } = build({ task: null });
     await expect(service.create('nope')).rejects.toThrow(DomainError);
+  });
+
+  it('does not plan a task that belongs to a group: the plan is for the group', async () => {
+    const { service, store } = build({ task: { ...task, groupId: 'group-1' } });
+
+    await expect(service.create('i1')).rejects.toMatchObject({
+      kind: 'conflict',
+    });
+    expect(store).toHaveLength(0);
   });
 
   it('refuses a second plan while one is being generated, but allows it afterwards', async () => {

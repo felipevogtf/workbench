@@ -26,6 +26,8 @@ const task: TaskContext = {
   dueDate: null,
   estimatedHours: null,
   isLocal: false,
+  members: [],
+  groupId: null,
   labels: [
     { name: 'b-web', repoUrl: 'https://github.com/o/web' },
     { name: 'a-api', repoUrl: 'https://github.com/o/api' },

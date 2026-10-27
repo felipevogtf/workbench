@@ -144,6 +144,54 @@ describe('the recipes in the prompts', () => {
   });
 });
 
+describe('a group of tasks', () => {
+  const members = [
+    { key: 'MEL-432', name: 'Cambio de concepto' },
+    { key: 'MEL-430', name: 'Tono distinto' },
+  ];
+
+  it('tells Lucy to create the tickets in order, without mixing tasks, and to verify the plan', () => {
+    const prompt = buildTicketsPrompt({
+      taskName: 'Grupo',
+      taskDescription: null,
+      plan: 'plan',
+      repoName: 'org/repo',
+      members,
+    });
+
+    expect(prompt).toContain('# Tareas del grupo');
+    expect(prompt).toContain('1. MEL-432 — Cambio de concepto');
+    expect(prompt).toContain('2. MEL-430 — Tono distinto');
+    expect(prompt).toContain(
+      'ningún ticket mezcle cambios de tareas distintas',
+    );
+    expect(prompt).toContain('# Antes de dividirlo: verifica el plan');
+  });
+
+  it('says nothing about groups for a normal task', () => {
+    const prompt = buildTicketsPrompt({
+      taskName: 'T',
+      taskDescription: null,
+      plan: 'plan',
+      repoName: 'org/repo',
+    });
+
+    expect(prompt).not.toContain('Tareas del grupo');
+  });
+
+  it('names the tasks in the pull request', () => {
+    const description = buildPullRequestDescription({
+      taskName: 'Grupo',
+      tickets: [],
+      members,
+    });
+
+    expect(description).toContain('### Tareas que incluye');
+    expect(description).toContain('- MEL-432 — Cambio de concepto');
+    expect(description).toContain('- MEL-430 — Tono distinto');
+  });
+});
+
 describe('ticket files', () => {
   it('asks Lucy for the files of each ticket', () => {
     const prompt = buildTicketsPrompt({

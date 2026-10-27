@@ -62,6 +62,17 @@ export function taskLines(task: TaskContext): string[] {
   return lines;
 }
 
+/** Lo que hay que saber cuando la tarea es un grupo de tareas relacionadas: un solo plan para todas. */
+export function groupLines(task: TaskContext): string[] {
+  if (task.members.length === 0) return [];
+  return [
+    '',
+    '## Es un grupo de tareas',
+    '',
+    `Esta tarea reúne a ${task.members.length} tareas relacionadas (arriba, en el orden en que se hacen). Haz UN solo plan para todas: ordena los pasos por dependencias, rotula cada paso con la tarea a la que pertenece, di qué repositorio toca cada uno (el que otros consumen va antes, por ejemplo el backend antes que la app que lo llama) y no mezcles en un mismo paso cambios de tareas distintas. Comprueba que cada criterio de aceptación de cada tarea quede cubierto por algún paso.`,
+  ];
+}
+
 /** Los tickets de Plane leídos, cada uno con su estado, etiquetas y descripción. */
 export function ticketLines(tickets: TicketData[], heading: string): string[] {
   if (tickets.length === 0) return [];
@@ -158,6 +169,7 @@ export function buildPlanPrompt({
     '# Tarea a planificar',
     '',
     ...taskLines(task),
+    ...groupLines(task),
     ...ticketLines(tickets, '## Tickets citados en la tarea'),
     ...repoLines(repos),
     ...(revision ? revisionLines(revision) : []),
