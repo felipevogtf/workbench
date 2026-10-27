@@ -90,6 +90,9 @@ export class ExecutionPage {
   private readonly confirm = inject(ConfirmDialog);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** Se llegó desde la lista de ejecuciones (el enlace lo marca en el estado del historial): el botón de volver va allá. */
+  protected readonly fromList = history.state?.from === 'executions';
+
   protected readonly statusLabel = EXECUTION_STATUS_LABEL;
   protected readonly statusTone = EXECUTION_STATUS_TONE;
   protected readonly stageLabel = STAGE_LABEL;

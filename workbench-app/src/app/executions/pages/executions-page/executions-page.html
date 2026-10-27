@@ -66,7 +66,11 @@
 <ng-template #row let-execution>
   <li class="row">
     <div class="row__main">
-      <a class="row__title" [routerLink]="['/executions', execution.id]">
+      <a
+        class="row__title"
+        [routerLink]="['/executions', execution.id]"
+        [state]="{ from: 'executions' }"
+      >
         {{ execution.issueName ?? 'Tarea eliminada' }}
       </a>
       <span class="muted">{{ execution.repo.fullName }} · {{ execution.createdAt | timeAgo }}</span>
@@ -97,7 +101,14 @@
           <app-icon name="git-pull-request" size="1em" /> PR
         </a>
       }
-      <a app-button variant="ghost" size="sm" [routerLink]="['/executions', execution.id]">Ver</a>
+      <a
+        app-button
+        variant="ghost"
+        size="sm"
+        [routerLink]="['/executions', execution.id]"
+        [state]="{ from: 'executions' }"
+        >Ver</a
+      >
     </span>
   </li>
 </ng-template>

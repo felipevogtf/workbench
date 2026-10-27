@@ -18,9 +18,10 @@
         app-button
         variant="ghost"
         size="sm"
-        [routerLink]="['/tasks/issues', execution.issueId]"
+        [routerLink]="fromList ? ['/executions'] : ['/tasks/issues', execution.issueId]"
       >
-        <app-icon name="arrow-left" size="1em" /> Volver a la tarea
+        <app-icon name="arrow-left" size="1em" />
+        {{ fromList ? 'Volver a las ejecuciones' : 'Volver a la tarea' }}
       </a>
 
       <ng-container actions>

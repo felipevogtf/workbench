@@ -424,6 +424,28 @@ describe('ExecutionPage', () => {
     });
   });
 
+  describe('the back button', () => {
+    const backLink = (fixture: { nativeElement: HTMLElement }) =>
+      fixture.nativeElement.querySelector('app-page-header a[back]') as HTMLAnchorElement;
+
+    afterEach(() => history.replaceState(null, ''));
+
+    it('goes back to the task by default', async () => {
+      const fixture = await render(detail('e1', 'completed'));
+
+      expect(backLink(fixture).textContent?.trim()).toBe('Volver a la tarea');
+      expect(backLink(fixture).getAttribute('href')).toContain('/tasks/issues/');
+    });
+
+    it('goes back to the executions list when the user came from it', async () => {
+      history.replaceState({ from: 'executions' }, '');
+      const fixture = await render(detail('e1', 'completed'));
+
+      expect(backLink(fixture).textContent?.trim()).toBe('Volver a las ejecuciones');
+      expect(backLink(fixture).getAttribute('href')).toBe('/executions');
+    });
+  });
+
   describe('a task with several repositories', () => {
     const target = (name: string, pullRequestUrl: string | null, primary = false) => ({
       repo: {
