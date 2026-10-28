@@ -1,5 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { SlackApiClient } from '@core/slack/slack-api.client';
 import { Observable, of } from 'rxjs';
 import {
   normalizeName,
@@ -31,12 +32,15 @@ function build(env: Record<string, string>, users: unknown[] = []) {
     }
     return of({ data });
   });
+  const http = { post } as unknown as HttpService;
+  const config = {
+    get: (key: string) => env[key],
+    getOrThrow: (key: string) => env[key],
+  } as unknown as ConfigService;
   const adapter = new SlackReviewNotifierAdapter(
-    { post } as unknown as HttpService,
-    {
-      get: (key: string) => env[key],
-      getOrThrow: (key: string) => env[key],
-    } as unknown as ConfigService,
+    http,
+    config,
+    new SlackApiClient(http, config),
   );
   return { adapter, post };
 }

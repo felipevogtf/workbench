@@ -24,6 +24,7 @@
       "@credentials/*": ["./src/credentials/*"],
       "@recipes/*": ["./src/recipes/*"],
       "@organizer/*": ["./src/organizer/*"],
+      "@auto-reply/*": ["./src/auto-reply/*"],
       "@executions/*": ["./src/executions/*"],
       "@core/*": ["./src/core/*"],
     },

@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { SlackApiClient, SlackResponse } from '@core/slack/slack-api.client';
 import {
   splitForSlack,
   slackText,
@@ -12,7 +13,6 @@ import type {
   ReviewNotifierPort,
 } from '@pr-review/domain/ports/review-notifier.port';
 
-const API = 'https://slack.com/api/';
 const REQUEST_TIMEOUT_MS = 30_000;
 const USERS_TTL_MS = 60 * 60 * 1000;
 const USERS_PAGE_SIZE = 200;
@@ -24,12 +24,6 @@ interface SlackUser {
   deleted?: boolean;
   is_bot?: boolean;
   profile?: { real_name?: string; display_name?: string };
-}
-
-interface SlackResponse {
-  ok: boolean;
-  error?: string;
-  [key: string]: unknown;
 }
 
 /** Minúsculas, sin tildes y con espacios simples: «José  Pérez» == «jose perez». */
@@ -57,13 +51,11 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
+    private readonly slack: SlackApiClient,
   ) {}
 
   isEnabled(): boolean {
-    return Boolean(
-      this.config.get('SLACK_XOXC_TOKEN') &&
-      this.config.get('SLACK_XOXD_COOKIE'),
-    );
+    return this.slack.isEnabled();
   }
 
   async notifyAuthor(
@@ -208,25 +200,10 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
     return list;
   }
 
-  private async call(
+  private call(
     method: string,
     params: Record<string, string>,
   ): Promise<SlackResponse> {
-    const form = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
-      if (value) form.set(key, value);
-    }
-    const { data } = await firstValueFrom(
-      this.http.post<SlackResponse>(API + method, form.toString(), {
-        timeout: REQUEST_TIMEOUT_MS,
-        headers: {
-          Authorization: `Bearer ${this.config.getOrThrow<string>('SLACK_XOXC_TOKEN')}`,
-          Cookie: `d=${this.config.getOrThrow<string>('SLACK_XOXD_COOKIE')}`,
-          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-        },
-      }),
-    );
-    if (!data.ok) throw new Error(`Slack ${method}: ${data.error ?? 'error'}`);
-    return data;
+    return this.slack.call(method, params);
   }
 }

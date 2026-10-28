@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
 import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
+import { SlackApiClient } from '@core/slack/slack-api.client';
 import { TasksModule } from '@tasks/tasks.module';
 import { PullRequestOrmEntity } from './infrastructure/persistence/pull-request.orm-entity';
 import { ReviewOrmEntity } from './infrastructure/persistence/review.orm-entity';
@@ -75,6 +76,7 @@ function enabledProviders(
   ],
   controllers: [PullRequestsController],
   providers: [
+    SlackApiClient,
     BitbucketApiClient,
     GithubApiClient,
     BitbucketAdapter,

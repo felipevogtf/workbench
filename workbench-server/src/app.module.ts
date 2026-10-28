@@ -14,6 +14,7 @@ import { CredentialsModule } from '@credentials/credentials.module';
 import { RecipesModule } from '@recipes/recipes.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 import { OrganizerModule } from '@organizer/organizer.module';
+import { AutoReplyModule } from '@auto-reply/auto-reply.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { OrganizerModule } from '@organizer/organizer.module';
     PlannerModule,
     ExecutionsModule,
     OrganizerModule,
+    AutoReplyModule,
     IssueTransferModule,
     CredentialsModule,
     RecipesModule,
