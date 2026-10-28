@@ -423,9 +423,17 @@ export class ExecutionsService {
     if (!execution) {
       throw DomainError.notFound(`Execution with id ${executionId} not found`);
     }
-    if (execution.status !== 'completed') {
+    // Con la ejecución corriendo (p. ej. el primer ticket sumado ya la reabrió) se puede seguir sumando mientras no se
+    // haya empezado a publicar: el siguiente ticket pendiente los recoge solo.
+    const stageOf = (key: string) =>
+      execution.stages.find((stage) => stage.key === key)?.status;
+    const queueing =
+      execution.status === 'running' &&
+      stageOf('tickets') === 'done' &&
+      stageOf('publish') === 'pending';
+    if (execution.status !== 'completed' && !queueing) {
       throw DomainError.conflict(
-        'Tickets can only be added once the execution is completed',
+        'Tickets can only be added once the execution is completed, or while it is running and has not started publishing',
       );
     }
     if (drafts.length === 0) {
@@ -449,6 +457,7 @@ export class ExecutionsService {
 
     execution.addTickets(added);
     await this.assignTickets(execution, added);
+    if (queueing) return this.executions.save(execution);
     execution.reopen();
     await this.startNextTicket(execution);
     return this.executions.save(execution);
@@ -712,7 +721,24 @@ export class ExecutionsService {
 
       case 'review': {
         const ticket = execution.ticket(job.ticketId);
-        const verdict = parseReview(output);
+        let verdict: ReturnType<typeof parseReview>;
+        try {
+          verdict = parseReview(output);
+        } catch (error) {
+          // A veces el revisor deja el JSON roto (comillas sin escapar, corte a medias): una segunda lectura casi
+          // siempre sale bien, así que no se tira la ejecución por eso la primera vez.
+          if (job.attempt >= 2) throw error;
+          await this.jobs.save(
+            await this.buildJob(
+              execution,
+              'review',
+              ticket,
+              job.attempt + 1,
+              job.payload.repo.fullName,
+            ),
+          );
+          return;
+        }
         ticket.rounds += 1;
         ticket.reviewNote = this.reviewNoteOf(verdict);
         if (verdict.doubts) await this.addDoubt(ticket, job, verdict.doubts);

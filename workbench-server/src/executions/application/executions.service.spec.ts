@@ -1139,6 +1139,24 @@ describe('ExecutionsService', () => {
         expect(tickets[3].level).toBe('medium');
       });
 
+      it('keeps adding while the reopened execution has not started publishing', async () => {
+        const id = await finished();
+        await service.addTickets(id, [HOTFIX]);
+
+        await service.addTickets(id, [
+          { title: 'Otro ajuste', description: 'Ajustar otra cosa' },
+        ]);
+
+        const execution = await current(id);
+        expect(execution.status).toBe('running');
+        expect(execution.tickets.map((t) => [t.title, t.status])).toEqual([
+          ['API de órdenes', 'done'],
+          ['Vista', 'done'],
+          ['Hotfix de la ruta', 'developing'],
+          ['Otro ajuste', 'pending'],
+        ]);
+      });
+
       it('only adds to a completed execution, at least one ticket, a valid one, and not too many', async () => {
         const running = await service.start('issue-1');
         await expect(
@@ -1689,8 +1707,16 @@ describe('ExecutionsService', () => {
       expect(prompt).toContain('ejecuta tú las verificaciones');
     });
 
-    it('fails when the reviewer does not answer with a verdict', async () => {
+    it('reads the review again once when the verdict is broken, and fails the second time', async () => {
       const execution = await reachFirstReview();
+      await answer({ output: 'Se ve bien' });
+
+      const retried = jobs.items.at(-1)!;
+      expect(retried).toMatchObject({ kind: 'review', attempt: 2 });
+      expect((await service.get(execution.id)).execution.status).toBe(
+        'running',
+      );
+
       await answer({ output: 'Se ve bien' });
 
       const current = (await service.get(execution.id)).execution;
