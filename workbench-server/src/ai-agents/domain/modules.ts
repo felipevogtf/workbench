@@ -10,6 +10,7 @@ export const AGENT_MODULES = [
   'task-tickets',
   'task-developer',
   'task-reviewer',
+  'auto-reply',
 ] as const;
 
 export type AgentModule = (typeof AGENT_MODULES)[number];
@@ -81,6 +82,8 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(npm run lint:*)',
     'Bash(npm run build:*)',
   ],
+  // Redacta respuestas en Slack con el estilo del usuario: no necesita el código ni nada del disco.
+  'auto-reply': ['Read'],
   // El chat conversa sobre el código de una PR: puede leerlo y comparar ramas, nada más.
   chat: [
     'Read',

@@ -6,6 +6,7 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { IncomingMessagesService } from '@auto-reply/application/incoming-messages.service';
+import { RepliesService } from '@auto-reply/application/replies.service';
 import { DEFAULT_INTERVAL_SECONDS } from '@auto-reply/domain/auto-reply-settings';
 import { AUTO_REPLY_SETTINGS_REPOSITORY_PORT } from '@auto-reply/domain/ports/auto-reply-settings-repository.port';
 import type { AutoReplySettingsRepositoryPort } from '@auto-reply/domain/ports/auto-reply-settings-repository.port';
@@ -28,6 +29,7 @@ export class AutoReplyScheduler
 
   constructor(
     private readonly incoming: IncomingMessagesService,
+    private readonly replies: RepliesService,
     @Inject(AUTO_REPLY_SETTINGS_REPOSITORY_PORT)
     private readonly settings: AutoReplySettingsRepositoryPort,
   ) {}
@@ -64,7 +66,7 @@ export class AutoReplyScheduler
         settings.contacts.length > 0 &&
         this.incoming.isEnabled()
       ) {
-        const found = await this.incoming.check();
+        const found = await this.replies.run();
         const pending = found.filter((message) => !message.repliedByMe);
         if (pending.length > 0) {
           this.logger.log(

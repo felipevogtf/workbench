@@ -146,6 +146,40 @@ export class IncomingMessagesService {
       }));
   }
 
+  /** La conversación con un contacto, de la más antigua a la más nueva, para dársela al agente como contexto. */
+  async conversationWith(
+    userId: string,
+    limit: number,
+  ): Promise<{ ts: string; fromMe: boolean; text: string }[]> {
+    const channel = await this.channelOf(userId);
+    const me = await this.myId();
+    const out = await this.slack.call('conversations.history', {
+      channel,
+      limit: String(limit),
+    });
+    return [...((out.messages as SlackMessage[] | undefined) ?? [])]
+      .filter((message) => !message.subtype && message.text?.trim())
+      .sort((a, b) => Number(a.ts) - Number(b.ts))
+      .map((message) => ({
+        ts: message.ts,
+        fromMe: message.user === me,
+        text: message.text!,
+      }));
+  }
+
+  /** Manda un mensaje directo al contacto con la sesión del usuario: sale a su nombre. */
+  async say(userId: string, text: string): Promise<void> {
+    await this.slack.call('chat.postMessage', {
+      channel: await this.channelOf(userId),
+      text,
+      unfurl_links: 'false',
+    });
+  }
+
+  channelFor(userId: string): Promise<string> {
+    return this.channelOf(userId);
+  }
+
   private async channelOf(userId: string): Promise<string> {
     const known = this.channels.get(userId);
     if (known) return known;

@@ -6,7 +6,8 @@ export type AgentModule =
   | 'task-chat'
   | 'task-tickets'
   | 'task-developer'
-  | 'task-reviewer';
+  | 'task-reviewer'
+  | 'auto-reply';
 
 export const MODULE_OPTIONS: readonly { value: AgentModule; label: string }[] = [
   { value: 'pr-review', label: 'Revisión de PRs' },
@@ -16,6 +17,7 @@ export const MODULE_OPTIONS: readonly { value: AgentModule; label: string }[] = 
   { value: 'task-tickets', label: 'Creador de tickets' },
   { value: 'task-developer', label: 'Desarrollador' },
   { value: 'task-reviewer', label: 'Revisor' },
+  { value: 'auto-reply', label: 'Respuestas automáticas' },
 ];
 
 /** El orden en que se listan los trabajadores: primero los de la ejecución de tareas. */
@@ -27,6 +29,7 @@ export const MODULE_ORDER: readonly AgentModule[] = [
   'planner',
   'task-chat',
   'chat',
+  'auto-reply',
 ];
 
 export function moduleLabel(module: AgentModule): string {
@@ -125,6 +128,7 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
   planner: ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   'task-chat': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   chat: ['Read', 'Grep', 'Glob', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)'],
+  'auto-reply': ['Read'],
   'task-tickets': ['Read', 'Grep', 'Glob', 'Bash(git log:*)', 'Bash(git show:*)'],
   // prettier-ignore
   'task-developer': ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git restore:*)', 'Bash(git checkout --:*)', 'Bash(git rm:*)', 'Bash(cp:*)','Bash(npm install:*)', 'Bash(npm i:*)', 'Bash(npm ci:*)', 'Bash(npm test:*)', 'Bash(npm run test:*)', 'Bash(npm run lint:*)', 'Bash(npm run build:*)'],

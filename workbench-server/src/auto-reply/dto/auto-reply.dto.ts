@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -9,10 +10,12 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import type { AutoReplyMode } from '@auto-reply/domain/auto-reply-settings';
+import { MAX_REPLIES, MAX_REPLY_LENGTH } from '@auto-reply/domain/reply-draft';
 import {
   AUTO_REPLY_MODES,
   MAX_CONTACTS,
@@ -67,4 +70,28 @@ export class AutoReplyResponseDto {
   slackConfigured!: boolean;
   minIntervalSeconds!: number;
   maxIntervalSeconds!: number;
+}
+
+export class SendDraftDto {
+  /** Los mensajes que Felipe corrigió; si no viene, salen los que redactó el agente. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_REPLIES)
+  @IsString({ each: true })
+  @MaxLength(MAX_REPLY_LENGTH, { each: true })
+  replies?: string[];
+}
+
+export class ReplyDraftResponseDto {
+  id!: string;
+  contactId!: string;
+  contactName!: string;
+  incoming!: { ts: string; text: string }[];
+  action!: 'reply' | 'escalate';
+  replies!: string[];
+  reason!: string | null;
+  status!: 'pending' | 'sent' | 'discarded' | 'escalated' | 'failed';
+  error!: string | null;
+  createdAt!: Date;
+  sentAt!: Date | null;
 }

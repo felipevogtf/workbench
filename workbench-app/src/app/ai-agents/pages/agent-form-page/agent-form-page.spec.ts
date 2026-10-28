@@ -67,6 +67,7 @@ describe('AgentFormPage', () => {
         'task-tickets',
         'task-developer',
         'task-reviewer',
+        'auto-reply',
       ]);
       expect(root.querySelector<HTMLSelectElement>('#agent-module')?.value).toBe('task-developer');
       expect(root.querySelector('a[back]')?.getAttribute('href')).toBe('/executions/agents');
