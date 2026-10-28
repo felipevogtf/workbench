@@ -27,6 +27,7 @@ function build(options: {
   agent?: string;
   mode?: 'draft' | 'auto';
   mineAfter?: boolean;
+  context?: { ts: string; fromMe: boolean; text: string }[];
 }) {
   const settings = AutoReplySettings.defaults();
   settings.update({ mode: options.mode ?? 'draft' });
@@ -39,6 +40,7 @@ function build(options: {
     channelFor: () => Promise.resolve('D1'),
     conversationWith: () =>
       Promise.resolve([
+        ...(options.context ?? []),
         { ts: '100.1', fromMe: true, text: 'ya esta' },
         { ts: '101.0', fromMe: false, text: 'oe' },
         ...(options.mineAfter
@@ -119,6 +121,22 @@ describe('RepliesService', () => {
       expect(sent).toEqual([]);
     },
   );
+
+  it('does not answer while the conversation is about who is writing', async () => {
+    const { service, saved, write, sent } = build({
+      found: [message('101.0', 'ya lo perdimos')],
+      context: [
+        { ts: '99.0', fromMe: false, text: 'quiero el felipe no ia' },
+        { ts: '99.5', fromMe: true, text: 'ahora soy 100% ia' },
+      ],
+    });
+
+    await service.run();
+
+    expect([...saved.values()][0]).toMatchObject({ status: 'escalated' });
+    expect(write).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+  });
 
   it('leaves for Felipe what the agent says it should not answer', async () => {
     const { service, saved } = build({
