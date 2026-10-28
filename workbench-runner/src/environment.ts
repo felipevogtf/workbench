@@ -15,7 +15,6 @@ import {
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { DependencyCache, type DependencyCacheEntry } from './dependency-cache';
 import { git } from './git';
-import { ignorePath } from './scratch';
 import type { JobKind } from './types';
 
 /** Una base de datos (u otro servicio) que se levanta una vez por ejecución y comparten sus proyectos. */
@@ -299,31 +298,38 @@ async function watchedFilesOf(
   }
 }
 
-const HOLD_SUFFIX = '.wb-hold';
-
 /**
- * Aparta carpetas del worktree (renombrándolas, al instante) para que no entren al contexto de construcción de la imagen. Una que quedó
- * apartada por una caída se devuelve primero. Quedan fuera de git. Devuelve las que apartó.
+ * Aparta carpetas del worktree para que no entren al contexto de construcción de la imagen: las mueve a `holdRoot`, que tiene que estar
+ * FUERA del worktree y en el mismo disco (así mover es instantáneo). Una que quedó apartada por una caída se devuelve primero.
+ * Devuelve las que apartó.
  */
-async function holdForBuild(dir: string, names: string[]): Promise<string[]> {
+async function holdForBuild(
+  dir: string,
+  holdRoot: string,
+  names: string[],
+): Promise<string[]> {
   const held: string[] = [];
   for (const name of new Set(names)) {
     const from = join(dir, name);
-    const to = join(dir, `${name}${HOLD_SUFFIX}`);
+    const to = join(holdRoot, name);
     if (existsSync(to) && !existsSync(from)) await rename(to, from);
     if (!existsSync(from) || existsSync(to)) continue;
-    await ignorePath(dir, `/${name}${HOLD_SUFFIX}/`).catch(() => undefined);
+    await mkdir(dirname(to), { recursive: true });
     await rename(from, to);
     held.push(name);
   }
   return held;
 }
 
-/** Devuelve lo apartado. Las carpetas que no se pudieron devolver (algo creó una en su lugar) se devuelven en la lista. */
-async function releaseHeld(dir: string, held: string[]): Promise<string[]> {
+/** Devuelve lo apartado a su lugar. Las que no se pudieron devolver (algo creó una carpeta con archivos en su lugar) van en la lista. */
+async function releaseHeld(
+  dir: string,
+  holdRoot: string,
+  held: string[],
+): Promise<string[]> {
   const lost: string[] = [];
   for (const name of held) {
-    const from = join(dir, `${name}${HOLD_SUFFIX}`);
+    const from = join(holdRoot, name);
     const to = join(dir, name);
     try {
       // Si algo dejó una carpeta vacía en su lugar, se quita.
@@ -780,7 +786,12 @@ Para este trabajo no se levantaron contenedores: no puedes correr la aplicación
     const upBegan = Date.now();
     // El Dockerfile suele hacer `COPY . /app`: con `vendor/` o el índice del código en la carpeta, el contexto de la imagen pesa cientos de MB
     // y la imagen se reconstruye (de 5 s a 34 s). Se apartan mientras se construye y se devuelven al terminar.
-    const held = await holdForBuild(dir, [
+    const holdRoot = join(
+      this.config.workDir,
+      'holds',
+      createHash('sha256').update(dir).digest('hex').slice(0, 12),
+    );
+    const held = await holdForBuild(dir, holdRoot, [
       ...(config.dependencyCache ?? []).map((entry) => entry.dir),
       '.codegraph',
     ]);
@@ -794,10 +805,8 @@ Para este trabajo no se levantaron contenedores: no puedes correr la aplicación
         up = await startUp();
       }
     } finally {
-      for (const lost of await releaseHeld(dir, held))
-        onLog(
-          `No se pudo devolver «${lost}» a su lugar: quedó como ${lost}${HOLD_SUFFIX}`,
-        );
+      for (const lost of await releaseHeld(dir, holdRoot, held))
+        onLog(`No se pudo devolver «${lost}» a su lugar: quedó en ${holdRoot}`);
     }
     if (up.code !== 0) {
       throw new Error(
