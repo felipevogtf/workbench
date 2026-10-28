@@ -26,6 +26,13 @@ encuentren el código sin explorar archivo por archivo.
 - **Cómo medir:** cada trabajo registra `⏱ … codegraph X s · IA Y s`. Comparar la fase `IA` y el costo con la ejecución base `6aa948cf…`
   (776 s en total; IA ~450 s; sin CodeGraph).
 
+## Repos con índice (2026-10-28)
+
+Los 11 clones de `<workDir>/repos/`: `melon-web` (232 MB), `melon-ionic` (12 MB), `melontienda-web` (52 MB), `miobra-web` (17 MB), `miobra-ionicv6` (6 MB),
+`miplanta-web` (176 MB), `miplanta-ionic` (7 MB), `miseguridad-web` (50 MB), `miseguridad-ionic` (13 MB), `melon-volumenes-web` (1,7 MB) y `melon-volumenes-pwa`
+(24 MB). Todos están en `codegraph.repos`. Un repo nuevo necesita su `codegraph init` y entrar en esa lista (se hizo con un script al agregar
+`melontienda-web`).
+
 ## Cuándo se crea y se actualiza el índice (2026-10-28)
 
 - **Se crea una vez por repo, a mano:** `codegraph init` en el clon (`/home/agent/work/repos/<repo>`), y el repo se agrega a `codegraph.repos`.

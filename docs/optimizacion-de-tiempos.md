@@ -77,6 +77,25 @@ armar el entorno en frío, no la IA.
   al contexto: hay que moverlas afuera.
 - **Copia de `vendor/` desde la caché:** 8 a 19 s según el disco (24.044 archivos).
 
+## Llevado a todos los proyectos (2026-10-28)
+
+Los proyectos con entorno son `melon-web`, `melontienda-web` (nuevo), `miobra-web`, `miplanta-web`, `miseguridad-web` y `melon-volumenes-web`
+(`miflota-web` sigue pendiente a propósito). En todos están activos la caché de `vendor/` (`dependencyCache`) y el reinicio solo por
+configuración (`restartOnlyForConfig`). Lucy conserva el entorno completo (`dependenciesOnlyForReading` quedó apagado: le gusta poder correr
+comandos).
+
+- **`opcache` revisado en las imágenes:** `dsy-fpm-71-mariadb-ep:2` (MiObra, MiPlanta), `dsy-fpm-73-mariadb:6` (MiSeguridad), `app-php-7.3-alpine:4`
+  (MiMixer) y `app-php-8.1-alpine:1` (Volúmenes) no lo traen; `tienda-melon:6` (Melón Tienda) lo trae con `validate_timestamps=1`, que revisa los
+  archivos cada 2 s. Es seguro no reiniciar al cambiar código PHP.
+- **Ojo con los workers:** un proceso de larga vida (los `messenger:consume` de `supervisor` en MiSeguridad) sigue con el código con que arrancó
+  hasta que se reinicie. Ni los tests ni las rutas HTTP lo notan (php-fpm recarga por pedido), pero un cambio en un handler asíncrono no se ve
+  hasta un reinicio. En Melón Tienda el worker usa `--limit=1` y se reinicia solo.
+- **Cachés sembradas** con un calentamiento por proyecto (`GET /` → 200 en todos): `melon-web` 328 MB, `melontienda-web` 276 MB, `miobra-web` 149 MB,
+  `miplanta-web` 260 MB, `miseguridad-web` 365 MB, `melon-volumenes-web` 275 MB (en `<workDir>/deps/`). Entorno completo medido en el calentamiento:
+  `melon-volumenes-web` 37 s, `miobra-web` 52 s, `melontienda-web` 60 s, `miplanta-web` 65 s, `miseguridad-web` 73 s, `melon-web` ~62 s.
+- **CodeGraph** en los 11 clones (incluidos los de las apps): `codegraph.repos` lista todos. Índices de 1,7 MB (`melon-volumenes-web`) a 232 MB
+  (`melon-web`); el más lento de crear fue `melon-volumenes-pwa` (62 s) y `miplanta-web` (40 s).
+
 ## Pendiente: dependencias compartidas (punto 4)
 
 **Problema.** El runner no instala dependencias: lo hace el agente cuando se le ocurre, y cada worktree las instala de cero (de cinco
