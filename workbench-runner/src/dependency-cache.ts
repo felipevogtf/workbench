@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 
 /** Una carpeta de dependencias que se instala en el worktree (`vendor`, `node_modules`) y el archivo de versiones que la define. */
@@ -55,6 +62,16 @@ export class DependencyCache {
       copied.push(entry.dir);
     }
     return copied;
+  }
+
+  /** Si el worktree ya tiene todas esas carpetas con archivos (puestas desde la caché o instaladas). */
+  async ready(
+    worktree: string,
+    entries: DependencyCacheEntry[],
+  ): Promise<boolean> {
+    for (const entry of entries)
+      if (!(await hasFiles(join(worktree, entry.dir)))) return false;
+    return true;
   }
 
   /**

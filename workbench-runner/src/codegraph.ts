@@ -1,8 +1,9 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { git } from './git';
 import { ignorePath } from './scratch';
 
 /** CodeGraph indexa el código de un repo en un grafo (símbolos, llamadas, dependencias) que los agentes consultan en vez de explorar archivos. */
@@ -49,12 +50,15 @@ export async function prepareIndex(
   config: CodegraphConfig,
   places: { clone: string; worktree: string },
   copy: (from: string, to: string) => Promise<boolean> = copyDir,
+  onLog: (line: string) => void = () => undefined,
 ): Promise<boolean> {
   const target = join(places.worktree, INDEX_DIR);
   const source = join(places.clone, INDEX_DIR);
   await ignorePath(places.worktree, `/${INDEX_DIR}/`);
   if (!existsSync(join(target, 'codegraph.db'))) {
     if (!existsSync(join(source, 'codegraph.db'))) return false;
+    // Un worktree nuevo parte de la rama base de ahora: el índice que se le copia tiene que ser de esa rama, no de cuando se indexó.
+    await refreshClone(config, places.clone, onLog);
     await mkdir(target, { recursive: true });
     if (!(await copy(source, target))) return false;
   }
@@ -67,6 +71,47 @@ export async function prepareIndex(
     },
   ).catch(() => undefined);
   return true;
+}
+
+/**
+ * Pone el índice del clon al día con la rama base: si esa rama avanzó desde la última vez, adelanta el clon a ella (el clon no se usa
+ * para trabajar, solo guarda el índice) y corre `sync`, que es incremental. Un fallo deja el índice como estaba.
+ */
+async function refreshClone(
+  config: CodegraphConfig,
+  clone: string,
+  onLog: (line: string) => void,
+): Promise<void> {
+  try {
+    const sha = (
+      await git(['rev-parse', 'origin/HEAD'], { cwd: clone })
+    ).trim();
+    const marker = join(clone, INDEX_DIR, 'indexed-at');
+    const done = existsSync(marker)
+      ? (await readFile(marker, 'utf8')).trim()
+      : '';
+    if (!sha || done === sha) return;
+
+    const began = Date.now();
+    await ignorePath(clone, `/${INDEX_DIR}/`);
+    await git(['reset', '--hard', sha], { cwd: clone });
+    await execFileAsync(
+      config.bin,
+      [...(config.binArgs ?? []), 'sync', clone],
+      {
+        env: { ...process.env, ...QUIET },
+        timeout: 10 * 60_000,
+      },
+    );
+    await writeFile(marker, sha);
+    onLog(
+      `Índice del clon al día con ${sha.slice(0, 8)}: ${((Date.now() - began) / 1000).toFixed(1)} s`,
+    );
+  } catch (error) {
+    onLog(
+      `No se pudo actualizar el índice del clon: ${(error as Error).message.slice(0, 200)}`,
+    );
+  }
 }
 
 async function copyDir(from: string, to: string): Promise<boolean> {

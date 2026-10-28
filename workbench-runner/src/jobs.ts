@@ -132,12 +132,15 @@ async function runJobSteps(
   watch.lap('repos de consulta');
   // El entorno de pruebas del proyecto, si tiene uno configurado. También lo usa Lucy al crear los tickets (así verifica el
   // plan contra el código instalado antes de que el usuario dé el visto bueno) y el desarrollador lo reutiliza después.
+  // Lucy (tickets y chat) solo lee: con `dependenciesOnlyForReading` le basta con las dependencias, sin levantar contenedores.
+  const readsOnly = job.kind === 'tickets' || job.kind === 'chat';
   let environment = await context.environments?.ensure({
     executionId: job.executionId,
     repo: payload.repo,
     dir: workspace.dir,
     onLog: context.onLog,
     signal: context.signal,
+    lightweight: readsOnly,
   });
   // Lucy mira todos los repos de la tarea, no solo el de su ticket: los que tienen entorno se levantan también, para que
   // tengan sus dependencias instaladas. `docker compose` apunta a uno solo: el del repo principal o, si ese no tiene
@@ -151,6 +154,7 @@ async function runJobSteps(
         dir: other.dir,
         onLog: context.onLog,
         signal: context.signal,
+        lightweight: readsOnly,
       });
       if (!handle?.processEnv.COMPOSE_PROJECT_NAME) continue;
       if (environment?.processEnv.COMPOSE_PROJECT_NAME) {
@@ -172,10 +176,15 @@ async function runJobSteps(
     ];
     for (const place of places) {
       if (!codegraph.repos.includes(place.fullName)) continue;
-      const ready = await prepareIndex(codegraph, {
-        clone: context.workspaces.cloneDir(place.fullName),
-        worktree: place.dir,
-      }).catch(() => false);
+      const ready = await prepareIndex(
+        codegraph,
+        {
+          clone: context.workspaces.cloneDir(place.fullName),
+          worktree: place.dir,
+        },
+        undefined,
+        context.onLog,
+      ).catch(() => false);
       if (ready) graphed.push({ fullName: place.fullName, dir: place.dir });
     }
   }

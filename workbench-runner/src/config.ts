@@ -240,6 +240,10 @@ function environmentFrom(
           `environments["${repo}"].ports: cada puerto necesita name y env, o service y container`,
         );
     }
+    if (env.dependenciesOnlyForReading && !env.dependencyCache?.length)
+      fail(
+        `environments["${repo}"].dependenciesOnlyForReading necesita dependencyCache: sin la caché no hay de dónde sacar las dependencias`,
+      );
     // Son rutas dentro del worktree: una que salga de él copiaría o borraría archivos ajenos.
     for (const entry of env.dependencyCache ?? []) {
       for (const path of [entry?.dir, entry?.lock]) {

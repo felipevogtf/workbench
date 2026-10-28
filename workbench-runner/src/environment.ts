@@ -7,11 +7,15 @@ import {
   copyFile,
   mkdir,
   readFile,
+  readdir,
+  rename,
+  rmdir,
   writeFile,
 } from 'node:fs/promises';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { DependencyCache, type DependencyCacheEntry } from './dependency-cache';
 import { git } from './git';
+import { ignorePath } from './scratch';
 import type { JobKind } from './types';
 
 /** Una base de datos (u otro servicio) que se levanta una vez por ejecución y comparten sus proyectos. */
@@ -66,6 +70,12 @@ export interface EnvironmentConfig {
    * reiniciar (PHP sin `opcache`): por eso se activa proyecto por proyecto. Sin esto se reinicia ante cualquier cambio.
    */
   restartOnlyForConfig?: boolean;
+  /**
+   * Los trabajos de solo lectura (los tickets y el chat de Lucy) reciben las dependencias copiadas de la caché en vez de un entorno con
+   * contenedores: necesitan leer `vendor/`, no correr la aplicación. Requiere `dependencyCache`; si la caché todavía está vacía se levanta
+   * el entorno completo (y de paso la arma).
+   */
+  dependenciesOnlyForReading?: boolean;
   /** Direcciones que deben responder antes de dar el entorno por listo. */
   waitFor?: { url: string; timeoutSeconds?: number }[];
 }
@@ -289,6 +299,43 @@ async function watchedFilesOf(
   }
 }
 
+const HOLD_SUFFIX = '.wb-hold';
+
+/**
+ * Aparta carpetas del worktree (renombrándolas, al instante) para que no entren al contexto de construcción de la imagen. Una que quedó
+ * apartada por una caída se devuelve primero. Quedan fuera de git. Devuelve las que apartó.
+ */
+async function holdForBuild(dir: string, names: string[]): Promise<string[]> {
+  const held: string[] = [];
+  for (const name of new Set(names)) {
+    const from = join(dir, name);
+    const to = join(dir, `${name}${HOLD_SUFFIX}`);
+    if (existsSync(to) && !existsSync(from)) await rename(to, from);
+    if (!existsSync(from) || existsSync(to)) continue;
+    await ignorePath(dir, `/${name}${HOLD_SUFFIX}/`).catch(() => undefined);
+    await rename(from, to);
+    held.push(name);
+  }
+  return held;
+}
+
+/** Devuelve lo apartado. Las carpetas que no se pudieron devolver (algo creó una en su lugar) se devuelven en la lista. */
+async function releaseHeld(dir: string, held: string[]): Promise<string[]> {
+  const lost: string[] = [];
+  for (const name of held) {
+    const from = join(dir, `${name}${HOLD_SUFFIX}`);
+    const to = join(dir, name);
+    try {
+      // Si algo dejó una carpeta vacía en su lugar, se quita.
+      if (existsSync(to) && (await readdir(to)).length === 0) await rmdir(to);
+      await rename(from, to);
+    } catch {
+      lost.push(name);
+    }
+  }
+  return lost;
+}
+
 /** Un hash del contenido de esos archivos: igual = ninguno cambió. */
 async function hashFiles(files: string[]): Promise<string> {
   const hash = createHash('sha256');
@@ -348,6 +395,8 @@ export class Environments {
     dir: string;
     onLog: (line: string) => void;
     signal?: AbortSignal;
+    /** Un trabajo de solo lectura: con `dependenciesOnlyForReading` basta con las dependencias, sin contenedores. */
+    lightweight?: boolean;
   }): Promise<EnvironmentHandle | null> {
     const { repo, onLog } = input;
     if (!this.has(repo.fullName)) return null;
@@ -356,6 +405,15 @@ export class Environments {
     const run = this.executionOf(input.executionId);
     run.lastUsed = Date.now();
     let project = run.projects.get(repo.fullName);
+    if (!project && input.lightweight && config.dependenciesOnlyForReading) {
+      const light = await this.readOnlyEnvironment(
+        repo.fullName,
+        input.dir,
+        config,
+        onLog,
+      );
+      if (light) return light;
+    }
     if (!project) {
       onLog(`Levantando el entorno de ${repo.fullName}…`);
       try {
@@ -395,6 +453,37 @@ export class Environments {
         ...project.processEnv,
         PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
       },
+    };
+  }
+
+  /**
+   * El entorno de un trabajo de solo lectura: las dependencias copiadas de la caché, sin contenedores. `null` si la caché todavía no las
+   * tiene (el proyecto nunca se levantó completo): entonces se levanta el entorno entero, que de paso las deja en la caché.
+   */
+  private async readOnlyEnvironment(
+    fullName: string,
+    dir: string,
+    config: EnvironmentConfig,
+    onLog: (line: string) => void,
+  ): Promise<EnvironmentHandle | null> {
+    const entries = config.dependencyCache ?? [];
+    const began = Date.now();
+    await this.deps.seed(fullName, dir, entries).catch(() => [] as string[]);
+    if (entries.length === 0 || !(await this.deps.ready(dir, entries))) {
+      onLog(
+        'Todavía no hay dependencias en la caché: se levanta el entorno completo para armarla.',
+      );
+      return null;
+    }
+    onLog(
+      `Entorno liviano, sin contenedores: dependencias listas en ${took(began)}`,
+    );
+    return {
+      notice: `
+
+# Sin entorno de pruebas
+Para este trabajo no se levantaron contenedores: no puedes correr la aplicación, comandos de consola (\`bin/console\`) ni pruebas. Las dependencias (${entries.map((entry) => `\`${entry.dir}/\``).join(', ')}) sí están instaladas en la carpeta de trabajo: léelas ahí para verificar el código del que depende el plan.`,
+      processEnv: {},
     };
   }
 
@@ -689,12 +778,26 @@ export class Environments {
         },
       );
     const upBegan = Date.now();
-    let up = await startUp();
-    if (up.code !== 0 && !signal?.aborted) {
-      // Construir varias imágenes a la vez a veces choca en Docker («failed to prepare extraction snapshot»): con lo ya
-      // construido en caché, el segundo intento suele pasar.
-      onLog('docker compose up falló; se reintenta una vez');
+    // El Dockerfile suele hacer `COPY . /app`: con `vendor/` o el índice del código en la carpeta, el contexto de la imagen pesa cientos de MB
+    // y la imagen se reconstruye (de 5 s a 34 s). Se apartan mientras se construye y se devuelven al terminar.
+    const held = await holdForBuild(dir, [
+      ...(config.dependencyCache ?? []).map((entry) => entry.dir),
+      '.codegraph',
+    ]);
+    let up;
+    try {
       up = await startUp();
+      if (up.code !== 0 && !signal?.aborted) {
+        // Construir varias imágenes a la vez a veces choca en Docker («failed to prepare extraction snapshot»): con lo ya
+        // construido en caché, el segundo intento suele pasar.
+        onLog('docker compose up falló; se reintenta una vez');
+        up = await startUp();
+      }
+    } finally {
+      for (const lost of await releaseHeld(dir, held))
+        onLog(
+          `No se pudo devolver «${lost}» a su lugar: quedó como ${lost}${HOLD_SUFFIX}`,
+        );
     }
     if (up.code !== 0) {
       throw new Error(

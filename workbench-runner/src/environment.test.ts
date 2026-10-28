@@ -44,12 +44,15 @@ function setup(
   const containers: string[] = [];
   let fail: ((args: string[]) => boolean) | null = null;
   let composeConfig = '';
+  let onUp: (() => void) | null = null;
   const exec: Exec = async (command, args, options) => {
     calls.push({ command, args, env: options?.env, cwd: options?.cwd });
     if (fail?.(args)) return { code: 1, stdout: '', stderr: 'boom' };
     // `docker ps` devuelve lo que se haya «levantado»
     if (command === 'docker' && args[0] === 'ps')
       return { code: 0, stdout: containers.join('\n'), stderr: '' };
+    if (command === 'docker' && args[0] === 'compose' && args[1] === 'up')
+      onUp?.();
     if (command === 'docker' && args[0] === 'compose' && args[1] === 'config')
       return { code: 0, stdout: composeConfig, stderr: '' };
     return { code: 0, stdout: '', stderr: '' };
@@ -99,6 +102,7 @@ function setup(
     workDir,
     failOn: (f: (args: string[]) => boolean) => (fail = f),
     setComposeConfig: (json: string) => (composeConfig = json),
+    onUp: (hook: () => void) => (onUp = hook),
   };
 }
 
@@ -402,6 +406,97 @@ describe('Environments', () => {
       writeFileSync(join(dir, 'README.md'), 'código cambiado\n');
       await env.ensure(input);
       assert.equal(restarts().length, 1);
+    });
+  });
+
+  describe('read-only jobs without containers', () => {
+    const LIGHT: EnvironmentConfig = {
+      ...WEB,
+      dependencyCache: [{ dir: 'vendor', lock: 'composer.lock' }],
+      dependenciesOnlyForReading: true,
+    };
+    const ups = (calls: { args: string[] }[]) =>
+      calls.filter((c) => c.args[0] === 'compose' && c.args[1] === 'up');
+
+    it('only needs the dependencies: no containers, no tools and a notice that says so', async () => {
+      const { env, calls } = setup({}, { 'acme/web': LIGHT });
+      const dir = await worktree();
+      mkdirSync(join(dir, 'vendor', 'acme'), { recursive: true });
+      writeFileSync(join(dir, 'vendor', 'acme', 'lib.php'), '<?php');
+      const logs: string[] = [];
+
+      const handle = await env.ensure({
+        executionId: 'e1',
+        repo: REPO,
+        dir,
+        lightweight: true,
+        onLog: (line) => logs.push(line),
+      });
+
+      assert.equal(ups(calls).length, 0);
+      assert.deepEqual(handle?.processEnv, {});
+      assert.match(handle?.notice ?? '', /Sin entorno de pruebas/);
+      assert.ok(logs.some((line) => line.includes('Entorno liviano')));
+    });
+
+    it('brings the whole environment up when the cache has nothing yet, so it gets built', async () => {
+      const { env, calls } = setup({}, { 'acme/web': LIGHT });
+      const dir = await worktree();
+
+      const handle = await env.ensure({
+        executionId: 'e1',
+        repo: REPO,
+        dir,
+        lightweight: true,
+        onLog: () => undefined,
+      });
+
+      assert.equal(ups(calls).length, 1);
+      assert.ok(handle?.processEnv.COMPOSE_PROJECT_NAME);
+    });
+
+    it('a job that is not read-only still gets the containers', async () => {
+      const { env, calls } = setup({}, { 'acme/web': LIGHT });
+      const dir = await worktree();
+      mkdirSync(join(dir, 'vendor'), { recursive: true });
+      writeFileSync(join(dir, 'vendor', 'autoload.php'), '<?php');
+
+      await env.ensure({
+        executionId: 'e1',
+        repo: REPO,
+        dir,
+        onLog: () => undefined,
+      });
+
+      assert.equal(ups(calls).length, 1);
+    });
+
+    it('keeps the dependencies and the code index out of the image build and puts them back after', async () => {
+      const { env, onUp } = setup({}, { 'acme/web': LIGHT });
+      const dir = await worktree();
+      mkdirSync(join(dir, 'vendor'), { recursive: true });
+      writeFileSync(join(dir, 'vendor', 'autoload.php'), '<?php');
+      mkdirSync(join(dir, '.codegraph'), { recursive: true });
+      writeFileSync(join(dir, '.codegraph', 'codegraph.db'), 'índice');
+      const during: boolean[] = [];
+      onUp(() => {
+        during.push(
+          existsSync(join(dir, 'vendor')) ||
+            existsSync(join(dir, '.codegraph')),
+        );
+      });
+
+      await env.ensure({
+        executionId: 'e1',
+        repo: REPO,
+        dir,
+        onLog: () => undefined,
+      });
+
+      assert.deepEqual(during, [false], 'not in the build context');
+      assert.ok(existsSync(join(dir, 'vendor', 'autoload.php')));
+      assert.ok(existsSync(join(dir, '.codegraph', 'codegraph.db')));
+      assert.ok(!existsSync(join(dir, 'vendor.wb-hold')));
     });
   });
 

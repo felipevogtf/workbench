@@ -102,4 +102,39 @@ describe('loadConfig', () => {
       /maxBudgetUsd/,
     );
   });
+
+  it('only lets a project read from the dependency cache when it has one', () => {
+    const web = {
+      composeFiles: ['docker-compose.yml'],
+      ports: [{ name: 'app', env: 'COMPOSE_PORT' }],
+    };
+    assert.throws(
+      () =>
+        loadConfig(
+          configFile({
+            ...valid,
+            environments: {
+              'acme/web': { ...web, dependenciesOnlyForReading: true },
+            },
+          }),
+          {},
+        ),
+      /dependencyCache/,
+    );
+    assert.doesNotThrow(() =>
+      loadConfig(
+        configFile({
+          ...valid,
+          environments: {
+            'acme/web': {
+              ...web,
+              dependenciesOnlyForReading: true,
+              dependencyCache: [{ dir: 'vendor', lock: 'composer.lock' }],
+            },
+          },
+        }),
+        {},
+      ),
+    );
+  });
 });

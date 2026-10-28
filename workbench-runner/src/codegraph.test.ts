@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { git } from './git';
 import { codegraphMcpConfig, codegraphNotice, prepareIndex } from './codegraph';
-import { fakeCodegraph, tempDir } from './test-helpers';
+import { createRemote, fakeCodegraph, tempDir } from './test-helpers';
 
 async function repoWithIndex(withIndex: boolean) {
   const clone = tempDir('clone');
@@ -17,6 +17,74 @@ async function repoWithIndex(withIndex: boolean) {
   }
   return { clone, worktree };
 }
+
+describe('index of the clone', () => {
+  /** Un remoto, un clon con índice y un compañero que sube un commit a main. */
+  async function cloneBehindMain() {
+    const bare = createRemote();
+    const clone = tempDir('clone');
+    await git(['clone', bare, clone]);
+    mkdirSync(join(clone, '.codegraph'));
+    writeFileSync(join(clone, '.codegraph', 'codegraph.db'), 'índice');
+
+    const mate = tempDir('mate');
+    await git(['clone', bare, mate]);
+    writeFileSync(join(mate, 'nuevo.txt'), 'x');
+    await git(['add', '--all'], { cwd: mate });
+    await git(['commit', '-m', 'nuevo'], { cwd: mate });
+    await git(['push', 'origin', 'main'], { cwd: mate });
+    await git(['fetch', 'origin'], { cwd: clone });
+
+    const worktree = tempDir('wt');
+    await git(['init', '--initial-branch=main'], { cwd: worktree });
+    return { clone, worktree };
+  }
+
+  it('brings the clone up to the base branch and syncs it before copying, only when the base moved', async () => {
+    const { config, calls } = fakeCodegraph();
+    const { clone, worktree } = await cloneBehindMain();
+    const logs: string[] = [];
+
+    await prepareIndex(config, { clone, worktree }, undefined, (l) =>
+      logs.push(l),
+    );
+
+    assert.ok(
+      existsSync(join(clone, 'nuevo.txt')),
+      'the clone moved to origin/main',
+    );
+    assert.deepEqual(
+      calls().filter((c) => c.includes(clone)),
+      [`sync ${clone} | off`],
+    );
+    assert.ok(logs.some((line) => line.includes('Índice del clon al día')));
+    assert.ok(
+      readFileSync(join(clone, '.codegraph', 'indexed-at'), 'utf8').trim(),
+    );
+
+    // Otro worktree, sin que main haya avanzado: no se vuelve a sincronizar el clon.
+    const second = tempDir('wt2');
+    await git(['init', '--initial-branch=main'], { cwd: second });
+    await prepareIndex(config, { clone, worktree: second });
+    assert.equal(calls().filter((c) => c.includes(clone)).length, 1);
+  });
+
+  it('keeps going with the old index when the clone cannot be updated', async () => {
+    const { config } = fakeCodegraph();
+    const places = await repoWithIndex(true);
+    const logs: string[] = [];
+
+    assert.equal(
+      await prepareIndex(config, places, undefined, (l) => logs.push(l)),
+      true,
+    );
+    assert.ok(
+      logs.some((line) =>
+        line.includes('No se pudo actualizar el índice del clon'),
+      ),
+    );
+  });
+});
 
 describe('codegraph', () => {
   it('copies the index of the clone to a new worktree, keeps it out of git and brings it up to date', async () => {
