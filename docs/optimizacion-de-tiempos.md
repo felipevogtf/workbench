@@ -61,6 +61,22 @@ armar el entorno en frío, no la IA.
   reinicios). Falta medirlo con una ejecución completa.
 - **Ejecución `97ec4f02…` (caché con el orden malo, CodeGraph sin usar):** 675 s en total contra 776 s de la base.
 
+## Tercera ronda (2026-10-28)
+
+- **Reinicio solo si cambió configuración** (`restartOnlyForConfig`, activo solo en `melon-web`): del compose se leen los archivos que se montan
+  sueltos, los archivos del compose y el de variables; solo su cambio reinicia. Verificado en `melon-web`: un cambio de código PHP no reinicia
+  (0 s), uno en `nginx.conf` sí (20 s). Los demás proyectos siguen con la huella de todo el worktree.
+- **Lucy sin contenedores** (`dependenciesOnlyForReading`, activo solo en `melon-web`): los tickets y el chat reciben `vendor/` copiado de la
+  caché y un aviso de que no hay entorno (sin `bin/console` ni la app). Medido: **8.4 s** en vez de ~65 s. Si la caché está vacía se levanta
+  el entorno completo y la arma. Si el chat llega con el entorno de la ejecución ya arriba, lo reutiliza.
+  - **Se pierde:** Lucy ya no puede correr comandos con la app arriba (por ejemplo `bin/console debug:router`, que usó en una ejecución).
+    Si hace falta, se desactiva por proyecto quitando la opción.
+- **Carpetas fuera de la imagen:** al levantar el entorno completo, `vendor/` y `.codegraph/` se mueven fuera del worktree mientras se
+  construye la imagen y se devuelven después (el Dockerfile hace `COPY . /app`). Sin eso, un entorno completo que viene después de un trabajo
+  liviano reconstruía la imagen (`compose up` 35.6 s); ahora 7.8 s. La primera versión las renombraba dentro del worktree y seguían entrando
+  al contexto: hay que moverlas afuera.
+- **Copia de `vendor/` desde la caché:** 8 a 19 s según el disco (24.044 archivos).
+
 ## Pendiente: dependencias compartidas (punto 4)
 
 **Problema.** El runner no instala dependencias: lo hace el agente cuando se le ocurre, y cada worktree las instala de cero (de cinco

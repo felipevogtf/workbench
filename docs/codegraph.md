@@ -26,6 +26,17 @@ encuentren el código sin explorar archivo por archivo.
 - **Cómo medir:** cada trabajo registra `⏱ … codegraph X s · IA Y s`. Comparar la fase `IA` y el costo con la ejecución base `6aa948cf…`
   (776 s en total; IA ~450 s; sin CodeGraph).
 
+## Cuándo se crea y se actualiza el índice (2026-10-28)
+
+- **Se crea una vez por repo, a mano:** `codegraph init` en el clon (`/home/agent/work/repos/<repo>`), y el repo se agrega a `codegraph.repos`.
+  El runner no crea índices solo.
+- **El índice del clon sigue a la rama base.** Al armar un worktree nuevo, antes de copiarle el índice, el runner compara `origin/HEAD` con el
+  commit anotado en `.codegraph/indexed-at`. Si la rama base avanzó, adelanta el clon (`git reset --hard`; el clon no se usa para trabajar),
+  corre `codegraph sync` (incremental, ~1 s si hay pocos cambios) y anota el commit. Si no avanzó, no hace nada. Un fallo deja el índice
+  anterior y queda en el registro del trabajo.
+- **En cada worktree:** copia el índice del clon la primera vez y corre `sync` al comienzo de cada trabajo; durante el trabajo el servidor MCP
+  re-sincroniza solo cuando el agente edita archivos.
+
 ## Verificación de que los agentes lo usan (2026-10-27, noche)
 
 - **Primeras dos ejecuciones con CodeGraph (`97ec4f02…` y `5b8a0cb0…`): 0 llamadas** en todos los trabajos. La instrucción estaba al final del
