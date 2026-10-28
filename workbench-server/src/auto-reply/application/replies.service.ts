@@ -15,15 +15,6 @@ import {
 
 const CONTEXT_MESSAGES = 15;
 const LIST_LIMIT = 50;
-/** Cuántos de los últimos mensajes de la conversación cuentan para saber si el tema es quién escribe. */
-const TOPIC_WINDOW = 6;
-
-/**
- * Si el mensaje, o la conversación reciente, trata de si habla con una IA o pide hablar con Felipe «de verdad», el agente
- * no contesta: ni afirma ni niega nada sobre quién escribe. Se decide aquí, en código, y no solo en el prompt.
- */
-const ASKS_ABOUT_THE_WRITER =
-  /\b(ia|i\.a\.|ai|bot|robot|chatgpt|gpt|claude|inteligencia artificial|automatic[oa])\b|felipe (real|de verdad)|(el|al|con) felipe\b.*\bno\b|eres (felipe|una persona|humano)|hablo con (felipe|una persona)/i;
 
 interface Decision {
   action: 'reply' | 'escalate';
@@ -163,19 +154,6 @@ export class RepliesService {
       contactId,
       CONTEXT_MESSAGES,
     );
-    const recent = [
-      ...conversation.slice(-TOPIC_WINDOW).map((message) => message.text),
-      ...lines.map((line) => line.text),
-    ];
-    if (recent.some((text) => ASKS_ABOUT_THE_WRITER.test(text))) {
-      return {
-        action: 'escalate',
-        messages: [],
-        reason:
-          'La conversación trata de quién escribe o piden hablar con Felipe',
-      };
-    }
-
     const output = await this.writer.write(
       buildPrompt(
         contactName,

@@ -27,7 +27,6 @@ function build(options: {
   agent?: string;
   mode?: 'draft' | 'auto';
   mineAfter?: boolean;
-  context?: { ts: string; fromMe: boolean; text: string }[];
 }) {
   const settings = AutoReplySettings.defaults();
   settings.update({ mode: options.mode ?? 'draft' });
@@ -40,7 +39,6 @@ function build(options: {
     channelFor: () => Promise.resolve('D1'),
     conversationWith: () =>
       Promise.resolve([
-        ...(options.context ?? []),
         { ts: '100.1', fromMe: true, text: 'ya esta' },
         { ts: '101.0', fromMe: false, text: 'oe' },
         ...(options.mineAfter
@@ -98,44 +96,6 @@ describe('RepliesService', () => {
 
     expect(prompts[0]).toContain('Felipe: ya esta');
     expect(prompts[0]).toContain('> Oscar Medina: oe');
-  });
-
-  it.each([
-    'quiero el felipe no ia',
-    'eres un bot?',
-    'estoy hablando con una inteligencia artificial?',
-    'quiero hablar con el felipe real',
-  ])(
-    'does not answer, and does not even ask the agent, to "%s"',
-    async (text) => {
-      const { service, saved, write, sent } = build({
-        found: [message('101.0', text)],
-      });
-
-      await service.run();
-
-      const [draft] = [...saved.values()];
-      expect(draft).toMatchObject({ status: 'escalated', action: 'escalate' });
-      expect(draft.replies).toEqual([]);
-      expect(write).not.toHaveBeenCalled();
-      expect(sent).toEqual([]);
-    },
-  );
-
-  it('does not answer while the conversation is about who is writing', async () => {
-    const { service, saved, write, sent } = build({
-      found: [message('101.0', 'ya lo perdimos')],
-      context: [
-        { ts: '99.0', fromMe: false, text: 'quiero el felipe no ia' },
-        { ts: '99.5', fromMe: true, text: 'ahora soy 100% ia' },
-      ],
-    });
-
-    await service.run();
-
-    expect([...saved.values()][0]).toMatchObject({ status: 'escalated' });
-    expect(write).not.toHaveBeenCalled();
-    expect(sent).toEqual([]);
   });
 
   it('leaves for Felipe what the agent says it should not answer', async () => {
