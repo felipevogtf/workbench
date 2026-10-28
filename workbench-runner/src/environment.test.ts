@@ -43,12 +43,15 @@ function setup(
   }[] = [];
   const containers: string[] = [];
   let fail: ((args: string[]) => boolean) | null = null;
+  let composeConfig = '';
   const exec: Exec = async (command, args, options) => {
     calls.push({ command, args, env: options?.env, cwd: options?.cwd });
     if (fail?.(args)) return { code: 1, stdout: '', stderr: 'boom' };
     // `docker ps` devuelve lo que se haya «levantado»
     if (command === 'docker' && args[0] === 'ps')
       return { code: 0, stdout: containers.join('\n'), stderr: '' };
+    if (command === 'docker' && args[0] === 'compose' && args[1] === 'config')
+      return { code: 0, stdout: composeConfig, stderr: '' };
     return { code: 0, stdout: '', stderr: '' };
   };
   const workDir = tempDir('envwork');
@@ -95,6 +98,7 @@ function setup(
     busy,
     workDir,
     failOn: (f: (args: string[]) => boolean) => (fail = f),
+    setComposeConfig: (json: string) => (composeConfig = json),
   };
 }
 
@@ -321,6 +325,84 @@ describe('Environments', () => {
       true,
     );
     assert.ok(logs.some((line) => line.includes('Reiniciando los servicios')));
+  });
+
+  describe('with restartOnlyForConfig', () => {
+    const ONLY_CONFIG = { ...WEB, restartOnlyForConfig: true };
+
+    async function prepared() {
+      const made = setup({}, { 'acme/web': ONLY_CONFIG });
+      const dir = await worktree();
+      const nginx = join(dir, 'docker', 'app', 'nginx.conf');
+      mkdirSync(join(dir, 'docker', 'app'), { recursive: true });
+      writeFileSync(nginx, 'worker_processes 1;');
+      made.setComposeConfig(
+        JSON.stringify({
+          services: {
+            app: {
+              volumes: [
+                { type: 'bind', source: dir, target: '/app' },
+                {
+                  type: 'bind',
+                  source: nginx,
+                  target: '/etc/nginx/nginx.conf',
+                },
+              ],
+            },
+          },
+        }),
+      );
+      const logs: string[] = [];
+      const input = {
+        executionId: 'exec-1',
+        repo: REPO,
+        dir,
+        onLog: (line: string) => logs.push(line),
+      };
+      const restarts = () =>
+        made.calls.filter(
+          (c) => c.args[0] === 'compose' && c.args[1] === 'restart',
+        );
+      return { ...made, dir, nginx, input, logs, restarts };
+    }
+
+    it('does not restart when only code changed, and restarts when a file mounted on its own did', async () => {
+      const { env, dir, nginx, input, logs, restarts } = await prepared();
+      await env.ensure(input);
+
+      writeFileSync(join(dir, 'README.md'), 'código cambiado\n');
+      await env.ensure(input);
+      assert.equal(restarts().length, 0);
+      assert.ok(
+        logs.some((line) => line.includes('ningún archivo de configuración')),
+      );
+
+      writeFileSync(nginx, 'worker_processes 4;');
+      await env.ensure(input);
+      assert.equal(restarts().length, 1);
+
+      await env.ensure(input);
+      assert.equal(restarts().length, 1, 'nothing changed since that restart');
+    });
+
+    it('also restarts when the compose file changed', async () => {
+      const { env, dir, input, restarts } = await prepared();
+      await env.ensure(input);
+
+      writeFileSync(join(dir, 'docker-compose.yml'), 'services: {}\n');
+      await env.ensure(input);
+      assert.equal(restarts().length, 1);
+    });
+
+    it('falls back to restarting on any change when the compose configuration cannot be read', async () => {
+      const { env, dir, input, restarts, setComposeConfig } = await prepared();
+      setComposeConfig('no es json');
+      await env.ensure(input);
+
+      writeFileSync(join(dir, 'README.md'), 'código cambiado\n');
+      await env.ensure(input);
+      assert.equal(restarts().length, 1);
+    });
   });
 
   it('does not restart when nothing changed since the last start, and does again after a new change', async () => {

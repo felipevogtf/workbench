@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:net';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import {
   appendFile,
   copyFile,
@@ -60,6 +60,12 @@ export interface EnvironmentConfig {
    * su lockfile: ahorran instalarlas de cero en cada ejecución.
    */
   dependencyCache?: DependencyCacheEntry[];
+  /**
+   * Reinicia los servicios al empezar un trabajo solo si cambió algo que lo pide (un archivo montado suelto en un contenedor, el
+   * compose o el archivo de variables), no cualquier archivo de código. Solo es seguro si la imagen ve los cambios de código sin
+   * reiniciar (PHP sin `opcache`): por eso se activa proyecto por proyecto. Sin esto se reinicia ante cualquier cambio.
+   */
+  restartOnlyForConfig?: boolean;
   /** Direcciones que deben responder antes de dar el entorno por listo. */
   waitFor?: { url: string; timeoutSeconds?: number }[];
 }
@@ -204,6 +210,8 @@ interface ProjectEnv {
   failure?: string;
   /** Cómo estaba el worktree la última vez que los servicios se (re)iniciaron: si no cambió, no hace falta reiniciarlos. */
   fingerprint?: string;
+  /** Los archivos cuyo cambio pide reiniciar (con `restartOnlyForConfig`); `undefined` = se usa la huella de todo el worktree. */
+  watched?: string[];
 }
 
 interface ExecutionEnv {
@@ -234,6 +242,61 @@ async function fingerprintOf(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Los archivos de un proyecto cuyo cambio exige reiniciar sus servicios: los que el compose monta sueltos (un archivo, no una
+ * carpeta: si se edita reemplazándolo el contenedor sigue mirando el viejo), los archivos del compose y el de variables.
+ * `undefined` si no se pudo leer la configuración del compose: entonces se reinicia ante cualquier cambio.
+ */
+async function watchedFilesOf(
+  exec: Exec,
+  dir: string,
+  config: EnvironmentConfig,
+  env: NodeJS.ProcessEnv,
+): Promise<string[] | undefined> {
+  const result = await exec(
+    'docker',
+    ['compose', 'config', '--format', 'json'],
+    {
+      cwd: dir,
+      env,
+      timeoutMs: 60_000,
+    },
+  ).catch(() => undefined);
+  if (!result || result.code !== 0) return undefined;
+  try {
+    const parsed = JSON.parse(result.stdout) as {
+      services?: Record<
+        string,
+        { volumes?: { type?: string; source?: string }[] }
+      >;
+    };
+    const files = new Set<string>(
+      [...config.composeFiles, ...(config.envFile ? [config.envFile] : [])].map(
+        (file) => resolve(dir, file),
+      ),
+    );
+    for (const service of Object.values(parsed.services ?? {}))
+      for (const volume of service.volumes ?? []) {
+        if (volume.type !== 'bind' || !volume.source) continue;
+        if (statSync(volume.source, { throwIfNoEntry: false })?.isFile())
+          files.add(volume.source);
+      }
+    return [...files].sort();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Un hash del contenido de esos archivos: igual = ninguno cambió. */
+async function hashFiles(files: string[]): Promise<string> {
+  const hash = createHash('sha256');
+  for (const file of files) {
+    hash.update(file);
+    hash.update(await readFile(file).catch(() => 'ausente'));
+  }
+  return hash.digest('hex');
 }
 
 const took = (since: number) => `${((Date.now() - since) / 1000).toFixed(1)} s`;
@@ -350,10 +413,14 @@ export class Environments {
   ): Promise<void> {
     // Un reinicio tarda ~20 s y solo hace falta si el worktree cambió desde el último: el código se ve sin reiniciar (PHP sin opcache);
     // lo que sí lo pide son los archivos montados sueltos que se editaron en el lugar, y esos son del repo, así que aparecen en la huella.
-    const fingerprint = await fingerprintOf(project.dir);
+    const fingerprint = project.watched
+      ? await hashFiles(project.watched)
+      : await fingerprintOf(project.dir);
     if (fingerprint && fingerprint === project.fingerprint) {
       onLog(
-        'Los servicios siguen al día: nada cambió desde el último reinicio.',
+        project.watched
+          ? 'Los servicios siguen al día: ningún archivo de configuración cambió.'
+          : 'Los servicios siguen al día: nada cambió desde el último reinicio.',
       );
       return;
     }
@@ -637,6 +704,11 @@ export class Environments {
 
     onLog(`⏱ docker compose up: ${took(upBegan)}`);
 
+    // Con `restartOnlyForConfig`, solo los archivos de configuración piden reiniciar después; si no se pueden determinar, se usa todo el worktree.
+    const watched = config.restartOnlyForConfig
+      ? await watchedFilesOf(this.exec, dir, config, env)
+      : undefined;
+
     // Un worktree nuevo parte con las dependencias de la última vez. Se copian DESPUÉS de levantar: el Dockerfile hace `COPY . /app`, y
     // con `vendor/` ya puesto la imagen se reconstruía (de 5 s a 34 s). El contenedor monta el worktree, así que las ve igual.
     const cached = config.dependencyCache ?? [];
@@ -709,7 +781,10 @@ export class Environments {
       schema,
       dir,
       warnings,
-      fingerprint: await fingerprintOf(dir),
+      fingerprint: watched
+        ? await hashFiles(watched)
+        : await fingerprintOf(dir),
+      ...(watched ? { watched } : {}),
     };
   }
 
