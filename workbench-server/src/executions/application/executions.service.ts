@@ -27,7 +27,9 @@ import {
   buildTicketsPrompt,
   MAX_REVIEW_ROUNDS,
   MAX_TICKETS,
+  relatedBranchesBlock,
 } from '@executions/domain/prompts';
+import { mentionedTicketKeys } from '@core/text/ticket-mentions';
 import {
   branchNameFor,
   branchTypeOf,
@@ -1016,6 +1018,13 @@ export class ExecutionsService {
         payload.reviewFrom = ticket.startSha ?? undefined;
       }
     }
+
+    // Si la tarea menciona otros tickets, sus ramas se pueden leer para verificar lo que de ellos depende.
+    payload.prompt += relatedBranchesBlock(
+      mentionedTicketKeys([task?.name, task?.description, plan]).filter(
+        (key) => !execution.branch.toUpperCase().includes(key),
+      ),
+    );
 
     return Job.create({
       executionId: execution.id,

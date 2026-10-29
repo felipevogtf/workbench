@@ -1,14 +1,16 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Injectable } from '@nestjs/common';
+import { dirname, join } from 'node:path';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { runGit } from '@core/git/run-git';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 import {
   ReposCheckout,
   ReposCheckoutPort,
+  ReposOptions,
 } from '@planner/domain/ports/repos-checkout.port';
+import { cloneRelatedBranches } from './clone-related-branches';
 import {
   ParsedRepo,
   REPO_BRANCHES,
@@ -24,9 +26,14 @@ import {
  */
 @Injectable()
 export class GitReposCheckoutAdapter implements ReposCheckoutPort {
+  private readonly logger = new Logger(GitReposCheckoutAdapter.name);
+
   constructor(private readonly config: ConfigService) {}
 
-  async checkout(repoUrls: string[]): Promise<ReposCheckout> {
+  async checkout(
+    repoUrls: string[],
+    options: ReposOptions = {},
+  ): Promise<ReposCheckout> {
     const workdir = await mkdtemp(join(tmpdir(), 'plan-'));
     const dispose = () => rm(workdir, { recursive: true, force: true });
 
@@ -48,7 +55,15 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
 
         const name = repoFolderName(parsed, folders);
         folders.add(name);
-        repos.push(await this.cloneOne(url, parsed, join(workdir, name), name));
+        repos.push(
+          await this.cloneOne(
+            url,
+            parsed,
+            join(workdir, name),
+            name,
+            options.relatedKeys ?? [],
+          ),
+        );
       }
 
       return { path: workdir, repos, dispose };
@@ -58,7 +73,29 @@ export class GitReposCheckoutAdapter implements ReposCheckoutPort {
     }
   }
 
+  /** Clona el repo y, si la tarea menciona otros tickets, sus ramas aparte. */
   private async cloneOne(
+    url: string,
+    parsed: ParsedRepo,
+    dest: string,
+    name: string,
+    keys: readonly string[],
+  ): Promise<PlanRepoInfo> {
+    const repo = await this.cloneMain(url, parsed, dest, name);
+    const credentials = repo.used ? repoCredentials(this.config, parsed) : null;
+    if (!credentials) return repo;
+
+    const branches = await cloneRelatedBranches({
+      credentials,
+      parent: dirname(dest),
+      repoName: name,
+      keys,
+      warn: (message) => this.logger.warn(message),
+    });
+    return branches.length > 0 ? { ...repo, branches } : repo;
+  }
+
+  private async cloneMain(
     url: string,
     parsed: ParsedRepo,
     dest: string,

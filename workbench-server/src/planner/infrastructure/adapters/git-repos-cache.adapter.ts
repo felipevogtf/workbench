@@ -1,6 +1,6 @@
 import { mkdir, readdir, rm, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ATTACHMENTS_DIR } from '@core/attachments/attachments';
@@ -10,6 +10,8 @@ import {
   CachedRepos,
   ReposCachePort,
 } from '@planner/domain/ports/repos-cache.port';
+import type { ReposOptions } from '@planner/domain/ports/repos-checkout.port';
+import { cloneRelatedBranches } from './clone-related-branches';
 import {
   ParsedRepo,
   REPO_BRANCHES,
@@ -36,17 +38,22 @@ export class GitReposCacheAdapter implements ReposCachePort {
 
   constructor(private readonly config: ConfigService) {}
 
-  ensure(issueId: string, repoUrls: string[]): Promise<CachedRepos> {
+  ensure(
+    issueId: string,
+    repoUrls: string[],
+    options: ReposOptions = {},
+  ): Promise<CachedRepos> {
     if (!ISSUE_ID.test(issueId)) {
       return Promise.reject(new Error(`Unsafe task id: ${issueId}`));
     }
 
     // Dos preguntas a la vez sobre la misma tarea comparten una sola actualización.
-    const key = `${issueId}|${repoUrls.join(',')}`;
+    const relatedKeys = options.relatedKeys ?? [];
+    const key = `${issueId}|${repoUrls.join(',')}|${relatedKeys.join(',')}`;
     const running = this.running.get(key);
     if (running) return running;
 
-    const task = this.sync(issueId, repoUrls).finally(() => {
+    const task = this.sync(issueId, repoUrls, relatedKeys).finally(() => {
       this.running.delete(key);
     });
     this.running.set(key, task);
@@ -56,6 +63,7 @@ export class GitReposCacheAdapter implements ReposCachePort {
   private async sync(
     issueId: string,
     repoUrls: string[],
+    relatedKeys: readonly string[],
   ): Promise<CachedRepos> {
     const root = this.root();
     const base = join(root, issueId);
@@ -78,7 +86,16 @@ export class GitReposCacheAdapter implements ReposCachePort {
 
       const name = repoFolderName(parsed, folders);
       folders.add(name);
-      repos.push(await this.syncOne(url, parsed, join(base, name), name));
+      const repo = await this.syncOne(
+        url,
+        parsed,
+        join(base, name),
+        name,
+        relatedKeys,
+      );
+      repos.push(repo);
+      // Las ramas relacionadas viven junto al repo y se conservan mientras la tarea siga mencionándolas.
+      for (const branch of repo.branches ?? []) folders.add(branch.folder);
     }
 
     // Un repo que la tarea ya no tiene no debe quedar al alcance del agente.
@@ -97,7 +114,29 @@ export class GitReposCacheAdapter implements ReposCachePort {
     return { path: base, repos };
   }
 
+  /** Actualiza el repo y, si la tarea menciona otros tickets, trae de nuevo sus ramas aparte. */
   private async syncOne(
+    url: string,
+    parsed: ParsedRepo,
+    dest: string,
+    name: string,
+    keys: readonly string[],
+  ): Promise<PlanRepoInfo> {
+    const repo = await this.syncMain(url, parsed, dest, name);
+    const credentials = repo.used ? repoCredentials(this.config, parsed) : null;
+    if (!credentials) return repo;
+
+    const branches = await cloneRelatedBranches({
+      credentials,
+      parent: dirname(dest),
+      repoName: name,
+      keys,
+      warn: (message) => this.logger.warn(message),
+    });
+    return branches.length > 0 ? { ...repo, branches } : repo;
+  }
+
+  private async syncMain(
     url: string,
     parsed: ParsedRepo,
     dest: string,

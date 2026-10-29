@@ -46,6 +46,9 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Glob',
     'Bash(git log:*)',
     'Bash(git show:*)',
+    'Bash(git diff:*)',
+    'Bash(git branch -r:*)',
+    'Bash(git ls-tree:*)',
   ],
   // Escribe código, pero no hace commit ni push: de eso se encarga el runner.
   'task-developer': [
@@ -57,6 +60,9 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(git status:*)',
     'Bash(git diff:*)',
     'Bash(git log:*)',
+    'Bash(git show:*)',
+    'Bash(git branch -r:*)',
+    'Bash(git ls-tree:*)',
     'Bash(git restore:*)',
     'Bash(git checkout --:*)',
     'Bash(git rm:*)',
@@ -77,6 +83,8 @@ export const MODULE_TOOLS: Record<AgentModule, readonly string[]> = {
     'Bash(git diff:*)',
     'Bash(git log:*)',
     'Bash(git show:*)',
+    'Bash(git branch -r:*)',
+    'Bash(git ls-tree:*)',
     'Bash(npm test:*)',
     'Bash(npm run test:*)',
     'Bash(npm run lint:*)',

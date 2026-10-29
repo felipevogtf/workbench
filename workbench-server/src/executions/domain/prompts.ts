@@ -65,6 +65,24 @@ function recipeBlock(recipe: string | null | undefined): string[] {
   ];
 }
 
+/**
+ * Cuando la tarea menciona otros tickets (el backend de una app, por ejemplo), su trabajo puede estar en otra rama del
+ * repositorio, sin mergear. El clon tiene todas las ramas del remoto: se le explica al agente cómo leerlas sin tocar la suya.
+ */
+export function relatedBranchesBlock(keys: readonly string[]): string {
+  if (keys.length === 0) return '';
+  return [
+    '',
+    '# Ramas de otros tickets',
+    `Esta tarea menciona otros tickets: ${keys.join(', ')}. Su trabajo puede estar en otra rama del repositorio (o de otro de los de la tarea), sin mergear: que no lo veas en tu rama NO significa que no exista ni que esté pendiente.`,
+    'Para verificar algo que dependa de él (un campo de la API, un contrato, una clase) léelo en esa rama, solo lectura:',
+    `- \`git branch -r --list '*${keys[0]}*'\` para encontrar la rama;`,
+    '- `git show origin/<rama>:<ruta>` para leer un archivo y `git ls-tree -r --name-only origin/<rama> <carpeta>` para ver qué hay;',
+    '- `git diff origin/<rama principal>...origin/<rama>` para ver qué cambió esa rama.',
+    'Nunca cambies de rama ni traigas esa rama a la tuya (nada de checkout, merge ni cherry-pick): solo la lees. Si es de otro de los repositorios de la tarea, hazlo desde su carpeta.',
+  ].join('\n');
+}
+
 /** Una tarea de un grupo, tal como la ven los agentes. */
 export interface GroupMember {
   key: string | null;

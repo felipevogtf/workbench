@@ -67,7 +67,8 @@ function build(
   };
 
   const dispose = jest.fn().mockResolvedValue(undefined);
-  const checkout = jest.fn((urls: string[]) =>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const checkout = jest.fn((urls: string[], _options?: unknown) =>
     Promise.resolve({
       path: '/tmp/plan-x',
       repos: urls.map((url) => ({
@@ -154,11 +155,26 @@ describe('PlansService', () => {
     await service.create('i1');
     await settle(store);
 
-    expect(checkout).toHaveBeenCalledWith([
-      'https://github.com/o/api',
-      'https://github.com/o/web',
-    ]);
+    expect(checkout).toHaveBeenCalledWith(
+      ['https://github.com/o/api', 'https://github.com/o/web'],
+      expect.anything(),
+    );
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for the branches of the other tickets the task mentions', async () => {
+    const { service, store, checkout } = build({
+      task: {
+        ...task,
+        name: 'Mostrar el bloqueo (MEL-466)',
+        description: 'La rama MEL-466 del backend ya está lista',
+      },
+    });
+
+    await service.create('i1');
+    await settle(store);
+
+    expect(checkout.mock.calls[0][1]).toEqual({ relatedKeys: ['MEL-466'] });
   });
 
   it('limits the number of repositories per plan', async () => {
@@ -182,7 +198,7 @@ describe('PlansService', () => {
     await service.create('i1');
     await settle(store);
 
-    expect(checkout).toHaveBeenCalledWith([]);
+    expect(checkout).toHaveBeenCalledWith([], expect.anything());
     expect(store[0].status).toBe('ready');
   });
 

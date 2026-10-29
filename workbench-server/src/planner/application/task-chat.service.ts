@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Semaphore } from '@core/async/semaphore';
 import { refsOf } from '@core/attachments/attachments';
 import { userTexts } from '@planner/domain/conversation';
+import { relatedKeysOf } from '@planner/domain/related-branches';
 import { PlanChatMessage } from '@planner/domain/entities/plan.props';
 import { repoUrlsOf } from '@planner/domain/task-repos';
 import { buildTaskChatPrompt } from '@planner/domain/task-chat-prompt';
@@ -104,7 +105,13 @@ export class TaskChatService {
     );
 
     return this.limiter.run(async () => {
-      const cached = await this.repos.ensure(issueId, repoUrlsOf(task));
+      const cached = await this.repos.ensure(issueId, repoUrlsOf(task), {
+        relatedKeys: relatedKeysOf([
+          ...userTexts(messages),
+          task.name,
+          task.description,
+        ]),
+      });
       // Los adjuntos de la conversación quedan a la vista del agente, junto a los repos de la tarea.
       const staged = await this.attachments.stage(
         refsOf(messages),

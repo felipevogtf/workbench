@@ -1625,6 +1625,32 @@ describe('ExecutionsService', () => {
       return execution;
     }
 
+    it('tells every agent about the branches of the other tickets the task mentions', async () => {
+      tasks.task = {
+        ...tasks.task!,
+        description: 'Necesita la rama MEL-466 del backend, que ya está lista',
+      };
+      await reachFirstReview();
+      const review = jobs.items.at(-1)!;
+
+      expect(review.payload.prompt).toContain('# Ramas de otros tickets');
+      expect(review.payload.prompt).toContain('MEL-466');
+      expect(jobs.items[0].payload.prompt).toContain('MEL-466');
+    });
+
+    it('does not mention the own ticket as if it were another one', async () => {
+      tasks.task = {
+        ...tasks.task!,
+        key: 'MEL-12',
+        description: 'Ticket MEL-12 de la tarea',
+      };
+      await reachFirstReview();
+
+      expect(jobs.items.at(-1)!.payload.prompt).not.toContain(
+        '# Ramas de otros tickets',
+      );
+    });
+
     it('tells the reviewer to ask only for what the developer can do', async () => {
       await reachFirstReview();
       const review = jobs.items.at(-1)!;

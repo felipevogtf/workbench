@@ -1,4 +1,5 @@
 import type { AttachmentRef } from '@core/attachments/attachments';
+import type { RelatedBranch } from '../related-branches';
 
 export type PlanStatus = 'pending' | 'generating' | 'ready' | 'failed';
 
@@ -11,6 +12,8 @@ export interface PlanRepoInfo {
   used: boolean;
   /** Motivo cuando no se usó. */
   note: string | null;
+  /** Ramas de otros tickets que la tarea menciona, clonadas aparte para poder verificar lo que de ellas depende. */
+  branches?: RelatedBranch[];
 }
 
 /** Un mensaje de la conversación con la que se pidió una replanificación. */

@@ -118,10 +118,11 @@ describe('TaskChatService', () => {
 
     const reply = await service.reply('i1', ask('¿Qué falta?'));
 
-    expect(ensure).toHaveBeenCalledWith('i1', [
-      'https://github.com/o/api',
-      'https://github.com/o/web',
-    ]);
+    expect(ensure).toHaveBeenCalledWith(
+      'i1',
+      ['https://github.com/o/api', 'https://github.com/o/web'],
+      expect.anything(),
+    );
     expect(runTaskChat).toHaveBeenCalledWith({
       prompt: expect.stringContaining('¿Qué falta?') as string,
       workdir: '/repos/i1',

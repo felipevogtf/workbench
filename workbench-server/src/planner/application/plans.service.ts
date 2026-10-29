@@ -4,6 +4,7 @@ import { WorkQueue } from '@core/queue/work-queue';
 import { Plan } from '@planner/domain/entities/plan.entity';
 import { refsOf, type StagedAttachment } from '@core/attachments/attachments';
 import { userTexts } from '@planner/domain/conversation';
+import { relatedKeysOf } from '@planner/domain/related-branches';
 import {
   PlanChatMessage,
   PlanRepoInfo,
@@ -181,7 +182,14 @@ export class PlansService {
         // Los tickets que el usuario mencionó al conversar también entran al contexto.
         revision ? userTexts(revision.conversation) : [],
       );
-      checkout = await this.checkoutPort.checkout(repoUrlsOf(task));
+      checkout = await this.checkoutPort.checkout(repoUrlsOf(task), {
+        // Si la tarea menciona otros tickets (p. ej. el backend que ya está en su rama), esas ramas también se leen.
+        relatedKeys: relatedKeysOf([
+          task.name,
+          task.description,
+          ...(revision ? userTexts(revision.conversation) : []),
+        ]),
+      });
       repos = checkout.repos;
 
       // Los adjuntos de la conversación se dejan en el directorio del plan (que se borra al terminar).

@@ -1,4 +1,5 @@
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
+import type { ReposOptions } from './repos-checkout.port';
 
 export interface CachedRepos {
   /** Directorio de trabajo del agente; cada repo usado está en una subcarpeta (`PlanRepoInfo.name`). */
@@ -12,7 +13,11 @@ export interface CachedRepos {
  * que es desechable). Cada vez que se piden se actualizan con lo último de su rama principal.
  */
 export interface ReposCachePort {
-  ensure(issueId: string, repoUrls: string[]): Promise<CachedRepos>;
+  ensure(
+    issueId: string,
+    repoUrls: string[],
+    options?: ReposOptions,
+  ): Promise<CachedRepos>;
 }
 
 export const REPOS_CACHE_PORT = Symbol('REPOS_CACHE_PORT');

@@ -62,6 +62,43 @@ describe('buildPlanPrompt', () => {
     expect(prompt).toContain('No hay código disponible');
   });
 
+  it('tells which folder is the branch of another ticket and that its work already exists', () => {
+    const prompt = buildPlanPrompt({
+      task,
+      tickets: [],
+      repos: [
+        {
+          url: 'https://github.com/a/mi-camion',
+          name: 'mi-camion',
+          used: true,
+          note: null,
+          branches: [
+            {
+              key: 'MEL-466',
+              branch: 'feature/MEL-466/mejora',
+              folder: 'mi-camion@MEL-466',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(prompt).toContain('`mi-camion@MEL-466/`');
+    expect(prompt).toContain('`feature/MEL-466/mejora`');
+    expect(prompt).toContain('YA existe');
+  });
+
+  it('does not talk about other branches when there are none', () => {
+    const prompt = buildPlanPrompt({
+      task,
+      tickets: [],
+      repos: [
+        { url: 'https://github.com/a/b', name: 'b', used: true, note: null },
+      ],
+    });
+    expect(prompt).not.toContain('Ramas de otros tickets');
+  });
+
   it('lists the usable repositories by folder and reports the ones that failed', () => {
     const prompt = buildPlanPrompt({
       task,

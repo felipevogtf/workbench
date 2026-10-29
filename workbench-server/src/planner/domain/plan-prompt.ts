@@ -109,6 +109,22 @@ export function repoLines(repos: PlanRepoInfo[]): string[] {
       'No hay código disponible para esta tarea: planifica a nivel funcional, sin inventar archivos ni rutas, e indícalo en el plan.',
     );
   }
+  const branches = used.flatMap((repo) =>
+    (repo.branches ?? []).map((branch) => ({ repo, branch })),
+  );
+  if (branches.length > 0) {
+    lines.push(
+      '',
+      'Ramas de otros tickets que esta tarea menciona. Están clonadas aparte, también de solo lectura, en su propia carpeta:',
+      '',
+      ...branches.map(
+        ({ repo, branch }) =>
+          `- \`${branch.folder}/\` — rama \`${branch.branch}\` de \`${repo.name}\` (ticket ${branch.key})`,
+      ),
+      '',
+      'Si la tarea depende de algo de esas ramas (un campo nuevo de la API, un contrato, una clase), ese trabajo YA existe aunque no esté en la rama principal: léelo ahí para verificar nombres, tipos y comportamiento, y no lo des por no hecho ni por no mergeado. Distingue en el plan lo que existe en la rama principal de lo que solo existe en esas ramas.',
+    );
+  }
   const skipped = repos.filter((repo) => !repo.used);
   if (skipped.length > 0) {
     lines.push(

@@ -5,6 +5,7 @@ import {
   buildPullRequestDescription,
   buildReviewPrompt,
   buildTicketsPrompt,
+  relatedBranchesBlock,
 } from './prompts';
 
 const ticket = (files?: string[]): ExecutionTicket => ({
@@ -26,6 +27,22 @@ const ticket = (files?: string[]): ExecutionTicket => ({
   question: null,
   decisions: [],
   questionsAsked: 0,
+});
+
+describe('the branches of other tickets', () => {
+  it('explains how to read them without leaving the own branch', () => {
+    const block = relatedBranchesBlock(['MEL-466']);
+
+    expect(block).toContain('MEL-466');
+    expect(block).toContain("git branch -r --list '*MEL-466*'");
+    expect(block).toContain('git show origin/<rama>:<ruta>');
+    expect(block).toContain('NO significa que no exista');
+    expect(block).toContain('Nunca cambies de rama');
+  });
+
+  it('says nothing when the task mentions no other ticket', () => {
+    expect(relatedBranchesBlock([])).toBe('');
+  });
 });
 
 describe('the review prompt', () => {
