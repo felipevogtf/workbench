@@ -167,6 +167,7 @@ export class ExecutionChat {
   /** Cómo se llama lo que propone Lucy, en la tarjeta. */
   protected headingOf(proposal: ChatProposal): string {
     if (proposal.kind === 'final-review') return 'Revisión final de toda la rama';
+    if (proposal.kind === 'repo') return `Sumar el repositorio ${proposal.repo}`;
     if (proposal.kind === 'ticket')
       return `Ticket nuevo (${LEVEL[proposal.level]}): ${proposal.title}`;
     return proposal.reopen
@@ -176,12 +177,17 @@ export class ExecutionChat {
 
   /** El texto de la tarjeta (Markdown). */
   protected bodyOf(proposal: ChatProposal): string {
+    if (proposal.kind === 'repo') {
+      const why = proposal.text ? `${proposal.text}\n\n` : '';
+      return `${why}Se suma con la misma rama. No se abre ninguna PR hasta que tenga tickets.`;
+    }
     return proposal.kind === 'final-review'
       ? 'Un revisor lee toda la rama contra el plan, los tickets y las recetas, y deja un informe. No cambia nada por sí sola y gasta una llamada grande.'
       : proposal.text;
   }
 
   protected confirmLabel(proposal: ChatProposal): string {
+    if (proposal.kind === 'repo') return 'Sumar el repositorio';
     if (proposal.kind === 'final-review') return 'Pedir la revisión final';
     if (proposal.kind === 'ticket') return 'Agregar el ticket';
     return proposal.reopen ? 'Reabrir el ticket con esta nota' : 'Dejar la nota';
@@ -202,6 +208,11 @@ export class ExecutionChat {
 
   /** Hace lo propuesto y devuelve lo que Lucy le cuenta al usuario; `null` si no se pudo. */
   private async run(proposal: ChatProposal, retry: boolean): Promise<string | null> {
+    if (proposal.kind === 'repo') {
+      return (await this.store.addRepo(proposal.url))
+        ? `Listo: sumé ${proposal.repo} a la ejecución, con la misma rama. Dime qué hay que hacer ahí y te propongo los tickets.`
+        : null;
+    }
     if (proposal.kind === 'final-review') {
       return (await this.store.requestFinalReview())
         ? 'Pedí la revisión final: un revisor está leyendo toda la rama. Te aviso aquí cuando termine.'

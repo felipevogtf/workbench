@@ -258,6 +258,80 @@ describe('extractProposals — final review', () => {
   });
 });
 
+describe('extractProposals — a repository for the execution', () => {
+  it('turns a REPO line into a proposal with the normalized link and the reason', () => {
+    const { reply, proposals } = extractProposals(
+      'Hace falta leer el otro proyecto.\nREPO https://bitbucket.org/garage-labs/miflota-web.git | Integración con MiFlota',
+      context('completed'),
+    );
+
+    expect(reply).toBe('Hace falta leer el otro proyecto.');
+    expect(proposals).toEqual([
+      {
+        kind: 'repo',
+        repo: 'garage-labs/miflota-web',
+        url: 'https://bitbucket.org/garage-labs/miflota-web',
+        text: 'Integración con MiFlota',
+      },
+    ]);
+  });
+
+  it('accepts it without a reason and written with bold or backticks', () => {
+    const { proposals } = extractProposals(
+      '**REPO https://github.com/acme/billing**',
+      context('completed'),
+    );
+
+    expect(proposals).toMatchObject([
+      { kind: 'repo', repo: 'acme/billing', text: '' },
+    ]);
+  });
+
+  it('does not offer it while the execution is not completed, and leaves the line in the reply', () => {
+    const { reply, proposals } = extractProposals(
+      'REPO https://github.com/acme/billing | x',
+      context('running'),
+    );
+
+    expect(proposals).toEqual([]);
+    expect(reply).toContain('REPO https://github.com/acme/billing');
+  });
+
+  it('leaves in the reply a link that is not valid, one from another host and a repo the execution already has', () => {
+    const lines = [
+      'REPO acme/billing | sin host',
+      'REPO https://gitlab.com/acme/billing | otro host',
+      'REPO https://github.com/acme/web | ya lo tiene',
+    ];
+    const { reply, proposals } = extractProposals(
+      lines.join('\n'),
+      context('completed'),
+    );
+
+    expect(proposals).toEqual([]);
+    expect(reply.split('\n')).toEqual(lines);
+  });
+
+  it('does not offer one more when the execution is already at the limit', () => {
+    const { proposals } = extractProposals(
+      'REPO https://github.com/acme/billing | x',
+      context('completed', { repos: ['acme/web', 'acme/api', 'acme/app'] }),
+    );
+
+    expect(proposals).toEqual([]);
+  });
+
+  it('does not take as a proposal a sentence that starts with the word', () => {
+    const { reply, proposals } = extractProposals(
+      'Repo nuevo: te lo propongo luego.',
+      context('completed'),
+    );
+
+    expect(proposals).toEqual([]);
+    expect(reply).toBe('Repo nuevo: te lo propongo luego.');
+  });
+});
+
 describe('extractProposals — however the model formats the line', () => {
   const text = 'Cambia la ruta a /secured/admin/ea';
 

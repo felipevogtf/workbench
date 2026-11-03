@@ -1,9 +1,11 @@
 import {
+  ExecutionRepo,
   ExecutionStatus,
   ExecutionTicket,
   TICKET_LEVELS,
   TicketLevel,
 } from './entities/execution.props';
+import { MAX_REPOS, parseRepo } from './repo';
 
 /**
  * Una nota para el agente de un ticket. En uno ya hecho de una ejecución completada la nota lo REABRE: vuelve a desarrollo y
@@ -36,8 +38,19 @@ export interface FinalReviewProposal {
   kind: 'final-review';
 }
 
+/** Sumar un repositorio a la ejecución (p. ej. una integración con otro proyecto), sin tocar las etiquetas de la tarea. */
+export interface RepoProposal {
+  kind: 'repo';
+  /** `organización/repo`. */
+  repo: string;
+  /** El enlace completo, normalizado. */
+  url: string;
+  /** Para qué se necesita. */
+  text: string;
+}
+
 export type ChatProposal =
-  NoteProposal | NewTicketProposal | FinalReviewProposal;
+  NoteProposal | NewTicketProposal | FinalReviewProposal | RepoProposal;
 
 export interface ProposalContext {
   tickets: readonly ExecutionTicket[];
@@ -60,10 +73,11 @@ const TICKET =
   /^[ \t]*TICKET[ \t]*(simple|medium|complex)?[ \t]*\|[ \t]*([^|]+?)[ \t]*\|[ \t]*(.+?)[ \t]*$/i;
 const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const FINAL_REVIEW = /^[ \t]*REVISI[OÓ]N[ \t]+FINAL[ \t]*$/i;
+const REPO = /^[ \t]*REPO[ \t]+(\S+)(?:[ \t]*\|[ \t]*(.+?))?[ \t]*$/i;
 
 /**
  * Separa de la respuesta de Lucy las líneas que son propuestas y no texto para leer: `NOTA <número>: <instrucción>`,
- * `TICKET <nivel> | <título> | <descripción> [| <repo>]` y `REVISION FINAL`. Ninguna se ejecuta sola: el usuario las confirma.
+ * `TICKET <nivel> | <título> | <descripción> [| <repo>]`, `REPO <enlace> | <motivo>` y `REVISION FINAL`. Ninguna se ejecuta sola: el usuario las confirma.
  *
  * Una línea que no se puede ofrecer se deja en la respuesta, a la vista: un ticket que no existe, una nota para un ticket
  * hecho cuando la ejecución no está completada (nadie lo volvería a trabajar), o un ticket nuevo o una revisión final
@@ -104,7 +118,9 @@ export function extractProposals(
 function unformatted(line: string): string {
   let text = line.trim().replace(/^(?:(?:[-*+>]|\d+[.)])[ \t]+)+/, '');
   // Si toda la línea va entre marcas (`…`, **…**), se quitan las de las dos puntas.
-  const wrap = /^([*_`]{1,3})(?=(?:NOTA|TICKET|REVISI[OÓ]N)\b)/i.exec(text);
+  const wrap = /^([*_`]{1,3})(?=(?:NOTA|TICKET|REPO|REVISI[OÓ]N)\b)/i.exec(
+    text,
+  );
   if (wrap) {
     text = text.slice(wrap[1].length);
     if (text.endsWith(wrap[1])) text = text.slice(0, -wrap[1].length);
@@ -176,6 +192,31 @@ function proposalOf(
       text: description.slice(0, MAX_DESCRIPTION),
       level: level ?? 'medium',
       repo: context.repos.find((repo) => repo.toLowerCase() === wanted) ?? null,
+    };
+  }
+
+  const repoLine = REPO.exec(line);
+  if (repoLine) {
+    if (!completed || context.repos.length >= MAX_REPOS) return null;
+    let repo: ExecutionRepo;
+    try {
+      repo = parseRepo(repoLine[1]);
+    } catch {
+      // Un enlace que no sirve se deja en la respuesta, a la vista, en vez de ofrecer un botón que fallaría.
+      return null;
+    }
+    if (
+      context.repos.some(
+        (each) => each.toLowerCase() === repo.fullName.toLowerCase(),
+      )
+    ) {
+      return null;
+    }
+    return {
+      kind: 'repo',
+      repo: repo.fullName,
+      url: repo.url,
+      text: (repoLine[2] ?? '').slice(0, MAX_NOTE),
     };
   }
 

@@ -217,9 +217,11 @@ export class FakeRepositories implements RepositoriesGatewayPort {
   /** Lo que devuelve; `null` = no hay forma de leer el código. */
   result: { path: string; repos: ReadableRepo[] } | null = null;
   readonly asked: string[] = [];
+  readonly askedUrls: (readonly string[] | undefined)[] = [];
 
-  ensure(issueId: string) {
+  ensure(issueId: string, repoUrls?: readonly string[]) {
     this.asked.push(issueId);
+    this.askedUrls.push(repoUrls);
     return Promise.resolve(this.result);
   }
 }

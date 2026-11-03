@@ -107,6 +107,11 @@ export class ExecutionsApi {
     return this.http.post<Execution>(`${this.base}/executions/${id}/tickets`, { tickets });
   }
 
+  /** Suma un repositorio a la ejecución sin tocar las etiquetas de la tarea. */
+  addRepo(id: string, url: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/repos`, { url });
+  }
+
   /** Pide la revisión de toda la rama; el informe llega más tarde. */
   requestFinalReview(id: string): Observable<Execution> {
     return this.http.post<Execution>(`${this.base}/executions/${id}/final-review`, {});

@@ -1185,6 +1185,92 @@ describe('ExecutionsService', () => {
       });
     });
 
+    describe('adding a repository', () => {
+      const BILLING = 'https://github.com/acme/billing.git';
+
+      it('adds it with the same branch, without reopening the execution or opening a pull request', async () => {
+        const id = await finished();
+        const before = await current(id);
+
+        await service.addRepo(id, BILLING);
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(execution.targets().map((t) => t.repo.fullName)).toEqual([
+          before.repo.fullName,
+          'acme/billing',
+        ]);
+        expect(execution.extraRepos[0]).toMatchObject({
+          branch: before.branch,
+          baseBranch: null,
+          pullRequestUrl: null,
+          repo: { sshUrl: 'git@github.com:acme/billing.git' },
+        });
+        expect(pullRequests.created).toHaveLength(1);
+      });
+
+      it('lets the tickets that come after it work and publish there', async () => {
+        const id = await finished();
+        await service.addRepo(id, BILLING);
+
+        await service.addTickets(id, [{ ...HOTFIX, repo: 'acme/billing' }]);
+
+        const develop = jobs.items.at(-1)!;
+        expect(develop).toMatchObject({ kind: 'develop' });
+        expect(develop.payload.repo.fullName).toBe('acme/billing');
+        expect(develop.payload.context?.map((c) => c.fullName)).toContain(
+          (await current(id)).repo.fullName,
+        );
+
+        await answer(developed('ccc', 'ddd'));
+        await answer({ output: APPROVED });
+        // Primero se sube el repo de siempre (su PR ya existe y solo se actualiza) y después el nuevo, donde se abre.
+        const first = jobs.items.at(-1)!;
+        expect(first.kind).toBe('publish');
+        expect(first.payload.repo.fullName).toBe(
+          (await current(id)).repo.fullName,
+        );
+        await answer({ baseBranch: 'main' });
+        expect(pullRequests.created).toHaveLength(1);
+
+        const second = jobs.items.at(-1)!;
+        expect(second.kind).toBe('publish');
+        expect(second.payload.repo.fullName).toBe('acme/billing');
+        await answer({ baseBranch: 'main' });
+
+        const execution = await current(id);
+        expect(execution.status).toBe('completed');
+        expect(pullRequests.created).toHaveLength(2);
+        expect(execution.targetOf('acme/billing').pullRequestUrl).toBeTruthy();
+      });
+
+      it('rejects a repeated one, an invalid link, one beyond the limit and one in an execution that is running', async () => {
+        const running = await service.start('issue-1');
+        await expect(
+          service.addRepo(running.id, BILLING),
+        ).rejects.toMatchObject({ kind: 'conflict' });
+        await service.cancel(running.id);
+
+        const id = await finished();
+        const primary = (await current(id)).repo.url;
+        await expect(service.addRepo(id, primary)).rejects.toMatchObject({
+          kind: 'conflict',
+        });
+        await expect(service.addRepo(id, 'acme/billing')).rejects.toThrow(
+          'not valid',
+        );
+        await service.addRepo(id, BILLING);
+        await service.addRepo(id, 'https://github.com/acme/ledger');
+        await expect(
+          service.addRepo(id, 'https://github.com/acme/extra'),
+        ).rejects.toThrow('up to 3');
+        await expect(
+          service.addRepo('no-existe', BILLING),
+        ).rejects.toMatchObject({ kind: 'not-found' });
+        expect((await current(id)).targets()).toHaveLength(3);
+      });
+    });
+
     describe('the final review', () => {
       const REPORT = JSON.stringify({
         summary: 'Falta cubrir una parte del plan',

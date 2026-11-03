@@ -154,6 +154,22 @@ export class Execution {
     ];
   }
 
+  /** Suma un repositorio a los de la ejecución, con la misma rama; la rama base y la PR llegan al publicar. */
+  addRepo(repo: ExecutionRepo): void {
+    if (this.targets().some((t) => t.repo.fullName === repo.fullName)) {
+      throw DomainError.conflict(
+        `${repo.fullName} is already part of the execution`,
+      );
+    }
+    this.props.extraRepos.push({
+      repo,
+      branch: this.props.branch,
+      baseBranch: null,
+      pullRequestUrl: null,
+    });
+    this.touch();
+  }
+
   /** El repositorio de un nombre `organización/repo`; sin nombre (o desconocido), el primero. */
   targetOf(fullName?: string | null): ExecutionTarget {
     const targets = this.targets();

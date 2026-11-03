@@ -94,8 +94,18 @@ export interface FinalReviewProposal {
   kind: 'final-review';
 }
 
+/** Sumar un repositorio a la ejecución (p. ej. una integración con otro proyecto), sin tocar las etiquetas de la tarea. */
+export interface RepoProposal {
+  kind: 'repo';
+  /** `organización/repo`. */
+  repo: string;
+  url: string;
+  /** Para qué se necesita. */
+  text: string;
+}
+
 /** Lo que Lucy propone y el usuario puede confirmar con un botón. */
-export type ChatProposal = NoteProposal | NewTicketProposal | FinalReviewProposal;
+export type ChatProposal = NoteProposal | NewTicketProposal | FinalReviewProposal | RepoProposal;
 
 /** Un ticket nuevo que el usuario manda sumar a una ejecución terminada. */
 export interface NewTicketInput {

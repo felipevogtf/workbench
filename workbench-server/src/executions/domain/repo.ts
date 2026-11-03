@@ -1,6 +1,9 @@
 import { DomainError } from '@core/domain/domain.error';
 import { ExecutionRepo } from './entities/execution.props';
 
+/** Cuántos repositorios puede tener una ejecución (acota el tiempo y el disco). */
+export const MAX_REPOS = 3;
+
 const HOSTS = ['github.com', 'bitbucket.org'];
 const SEGMENT = /^[\w.-]+$/;
 

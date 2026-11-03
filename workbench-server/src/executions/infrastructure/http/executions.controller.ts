@@ -17,6 +17,7 @@ import { Job } from '@executions/domain/entities/job.entity';
 import { parseReview } from '@executions/domain/json-output';
 import {
   AddNoteDto,
+  AddRepoDto,
   AddTicketsDto,
   AnswerQuestionDto,
   StartExecutionDto,
@@ -176,6 +177,16 @@ export class ExecutionsController {
     @Body() dto: AddTicketsDto,
   ): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.addTickets(id, dto.tickets));
+  }
+
+  /** Suma un repositorio a la ejecución sin tocar las etiquetas de la tarea; los tickets que lo usen se suman aparte. */
+  @Post('executions/:id/repos')
+  @HttpCode(201)
+  async addRepo(
+    @Param('id') id: string,
+    @Body() dto: AddRepoDto,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.addRepo(id, dto.url));
   }
 
   /** Pide la revisión de toda la rama, con la ejecución terminada. El informe llega más tarde. */

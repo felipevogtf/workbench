@@ -419,6 +419,8 @@ describe('ExecutionChatService', () => {
       await ask('¿Es factible el ticket 2?');
 
       expect(repositories.asked).toEqual(['issue-1']);
+      // Los repos que lee son los de la ejecución, no los de las etiquetas: puede haber sumado alguno.
+      expect(repositories.askedUrls).toEqual([[REPO.url]]);
       expect(agents.chatWorkdirs).toEqual(['/cache/issue-1']);
       const prompt = agents.chats[0];
       expect(prompt).toContain('acme-web/');

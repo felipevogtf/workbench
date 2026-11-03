@@ -115,6 +115,8 @@ export interface RepositoriesGatewayPort {
    */
   ensure(
     issueId: string,
+    /** Los repos a leer cuando no son los de las etiquetas de la tarea (los de una ejecución que sumó alguno). */
+    repoUrls?: readonly string[],
   ): Promise<{ path: string; repos: ReadableRepo[] } | null>;
 }
 export const REPOSITORIES_GATEWAY_PORT = Symbol(

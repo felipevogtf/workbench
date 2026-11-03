@@ -8,7 +8,7 @@ import {
   TASKS_GATEWAY_PORT,
   type TasksGatewayPort,
 } from '@planner/domain/ports/tasks-gateway.port';
-import { repoUrlsOf } from '@planner/domain/task-repos';
+import { MAX_REPOS_PER_PLAN, repoUrlsOf } from '@planner/domain/task-repos';
 
 /**
  * Los repos de las etiquetas de una tarea, ya clonados y al día (rama principal, solo lectura). Es la
@@ -24,9 +24,21 @@ export class TaskReposService {
     private readonly repos: ReposCachePort,
   ) {}
 
-  /** `null` si la tarea no existe. */
-  async ensure(issueId: string): Promise<CachedRepos | null> {
+  /**
+   * `null` si la tarea no existe. Con `repoUrls` se clonan esos repos en vez de los de las etiquetas (una ejecución puede
+   * haber sumado alguno que la tarea no tiene), hasta el mismo máximo.
+   */
+  async ensure(
+    issueId: string,
+    repoUrls?: readonly string[],
+  ): Promise<CachedRepos | null> {
     const task = await this.tasks.getTask(issueId);
-    return task ? this.repos.ensure(issueId, repoUrlsOf(task)) : null;
+    if (!task) return null;
+    return this.repos.ensure(
+      issueId,
+      repoUrls
+        ? [...new Set(repoUrls)].slice(0, MAX_REPOS_PER_PLAN)
+        : repoUrlsOf(task),
+    );
   }
 }

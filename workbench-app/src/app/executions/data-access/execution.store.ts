@@ -99,6 +99,11 @@ export class ExecutionStore {
     return this.act((id) => this.api.addTickets(id, tickets));
   }
 
+  /** Suma un repositorio a la ejecución. */
+  async addRepo(url: string): Promise<boolean> {
+    return this.act((id) => this.api.addRepo(id, url));
+  }
+
   /** Pide la revisión final de toda la rama. */
   async requestFinalReview(): Promise<boolean> {
     return this.act((id) => this.api.requestFinalReview(id));

@@ -205,3 +205,11 @@ export class AddNoteDto {
   @MaxLength(2_000)
   text!: string;
 }
+
+export class AddRepoDto {
+  /** `https://github.com/<organización>/<repo>` o el equivalente en bitbucket.org. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  url!: string;
+}

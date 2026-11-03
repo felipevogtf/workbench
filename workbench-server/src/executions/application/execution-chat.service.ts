@@ -142,7 +142,11 @@ export class ExecutionChatService {
       if (onRunner) return onRunner;
 
       // El código de los repos (rama principal), clonado por la misma caché del plan; si no hay, se sigue sin él.
-      const code = await this.repositories.ensure(execution.issueId);
+      // Los de la ejecución y no los de las etiquetas: puede haber sumado un repo que la tarea no tiene.
+      const code = await this.repositories.ensure(
+        execution.issueId,
+        execution.targets().map((target) => target.repo.url),
+      );
       const prompt = buildExecutionChatPrompt({ ...input, repos: code?.repos });
       // Con algún repo leíble, Lucy trabaja en la carpeta de la caché; si no, en una vacía.
       const workdir = code?.repos.some((repo) => repo.used)

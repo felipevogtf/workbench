@@ -33,6 +33,7 @@ import { mentionedTicketKeys } from '@core/text/ticket-mentions';
 import {
   branchNameFor,
   branchTypeOf,
+  MAX_REPOS,
   parseRepo,
   type BranchType,
 } from '@executions/domain/repo';
@@ -60,9 +61,6 @@ import {
 } from '@executions/domain/ports/gateways.port';
 
 const MAX_SUMMARY_CHARS = 4000;
-/** Por ahora las PRs solo se abren en Bitbucket. */
-/** Repositorios que puede tocar una misma tarea: cada uno suma una carpeta de trabajo y una PR. */
-const MAX_REPOS = 3;
 /** Preguntas que un desarrollador puede hacer en un mismo ticket: a la tercera se falla con lo que pasó. */
 const MAX_QUESTIONS = 2;
 /** Cuántas dudas se guardan por ticket: las más recientes. */
@@ -425,14 +423,7 @@ export class ExecutionsService {
     if (!execution) {
       throw DomainError.notFound(`Execution with id ${executionId} not found`);
     }
-    // Con la ejecución corriendo (p. ej. el primer ticket sumado ya la reabrió) se puede seguir sumando mientras no se
-    // haya empezado a publicar: el siguiente ticket pendiente los recoge solo.
-    const stageOf = (key: string) =>
-      execution.stages.find((stage) => stage.key === key)?.status;
-    const queueing =
-      execution.status === 'running' &&
-      stageOf('tickets') === 'done' &&
-      stageOf('publish') === 'pending';
+    const queueing = this.isQueueing(execution);
     if (execution.status !== 'completed' && !queueing) {
       throw DomainError.conflict(
         'Tickets can only be added once the execution is completed, or while it is running and has not started publishing',
@@ -462,6 +453,52 @@ export class ExecutionsService {
     if (queueing) return this.executions.save(execution);
     execution.reopen();
     await this.startNextTicket(execution);
+    return this.executions.save(execution);
+  }
+
+  /**
+   * Con la ejecución corriendo (p. ej. el primer ticket sumado ya la reabrió) se puede seguir sumando mientras no se
+   * haya empezado a publicar: el siguiente ticket pendiente lo recoge solo.
+   */
+  private isQueueing(execution: Execution): boolean {
+    const stageOf = (key: string) =>
+      execution.stages.find((stage) => stage.key === key)?.status;
+    return (
+      execution.status === 'running' &&
+      stageOf('tickets') === 'done' &&
+      stageOf('publish') === 'pending'
+    );
+  }
+
+  /**
+   * Suma un repositorio a una ejecución que ya empezó (p. ej. una integración con otro proyecto), sin tocar las etiquetas de
+   * la tarea. Con la misma rama que los demás; no lanza nada: queda a la espera de los tickets que lo usen, que se suman
+   * aparte. Mientras no tenga tickets no se publica ni abre PR.
+   */
+  async addRepo(executionId: string, url: string): Promise<Execution> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    if (execution.status !== 'completed' && !this.isQueueing(execution)) {
+      throw DomainError.conflict(
+        'A repository can only be added once the execution is completed, or while it is running and has not started publishing',
+      );
+    }
+
+    const repo = parseRepo(url);
+    if (execution.targets().some((t) => t.repo.fullName === repo.fullName)) {
+      throw DomainError.conflict(
+        `${repo.fullName} is already part of this execution`,
+      );
+    }
+    if (execution.targets().length >= MAX_REPOS) {
+      throw new DomainError(
+        `An execution can have up to ${MAX_REPOS} repositories`,
+      );
+    }
+
+    execution.addRepo(repo);
     return this.executions.save(execution);
   }
 

@@ -14,9 +14,10 @@ export class RepositoriesGatewayAdapter implements RepositoriesGatewayPort {
 
   async ensure(
     issueId: string,
+    repoUrls?: readonly string[],
   ): Promise<{ path: string; repos: ReadableRepo[] } | null> {
     try {
-      const cached = await this.repos.ensure(issueId);
+      const cached = await this.repos.ensure(issueId, repoUrls);
       if (!cached) return null;
       return {
         path: cached.path,
