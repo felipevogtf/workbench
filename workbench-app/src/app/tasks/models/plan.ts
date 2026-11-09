@@ -20,6 +20,8 @@ export interface Plan {
   repos: PlanRepo[];
   /** Se generó replanificando: actualizando el plan anterior con una conversación. */
   revised: boolean;
+  /** El plan del que parte (el que se editó); `null` en un plan normal. */
+  basedOnPlanId: string | null;
   error: string | null;
   /** Solo viene al pedir un plan por su id (el historial no lo trae). */
   content?: string | null;

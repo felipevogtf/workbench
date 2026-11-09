@@ -1,5 +1,7 @@
 # Planificador editable
 
+Estado: **las tres fases están hechas** (2026-11-09), sin desplegar.
+
 Mejoras al planificador de la tarea, el que genera el plan antes de ejecutar. No tiene relación con Lucy ni con el rediseño de las ejecuciones: es un cambio aparte.
 
 ## El problema
@@ -43,8 +45,9 @@ Listo cuando: desde una tarea se pulsa «Planificar», se abre el organizador co
 1. **Formato del parche.** La IA responde con bloques «reemplaza este fragmento por este otro». Pueden ser varios en una respuesta. El servidor los aplica al markdown del plan.
 2. **Validación.** Si un fragmento no aparece en el plan o aparece más de una vez, el parche se rechaza y se le devuelve el error a la IA para que lo corrija, sin tocar el plan.
 3. **Cuándo se usa.** Con un plan ya listo, «Replanificar» pasa a pedir parches. La IA solo regenera el plan completo si se lo pides o si el plan no existe todavía.
-4. **Versiones.** Cada parche aplicado guarda la versión anterior del plan, para poder volver atrás.
-5. **Tests:** aplicar un parche, parche que no coincide, parche ambiguo, varios parches seguidos y volver a la versión anterior.
+4. **Versiones.** No hizo falta una tabla nueva: cada replanificación ya era una fila de plan nueva con `basedOnPlanId`, así que cada edición es una versión más del historial y la anterior queda intacta.
+5. **Respaldo.** Si los bloques no entran, se le dice a la IA qué falló y los corrige (hasta 2 intentos); como último recurso entrega el plan completo. `SIN CAMBIOS` deja el plan igual.
+6. **Tests:** aplicar un parche, parche que no coincide, parche ambiguo, varios parches seguidos y volver a la versión anterior.
 
 Listo cuando: pedir un cambio puntual modifica solo esas líneas del plan, en segundos, y el resto queda igual.
 

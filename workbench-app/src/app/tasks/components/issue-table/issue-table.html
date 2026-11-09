@@ -24,7 +24,9 @@
             <span class="meta">
               <span class="code">{{ row.code }}</span>
               @if (row.issue.isGroup) {
-                <app-badge tone="info" title="Reúne varias tareas en el organizador">Sesión</app-badge>
+                <app-badge tone="info" title="Reúne varias tareas en el organizador"
+                  >Sesión</app-badge
+                >
               } @else if (row.issue.isLocal) {
                 <app-badge tone="success" title="Tarea local">Local</app-badge>
               } @else {

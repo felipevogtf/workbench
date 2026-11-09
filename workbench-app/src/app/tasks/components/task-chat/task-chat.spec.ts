@@ -17,6 +17,7 @@ const plan = (id: string, status: PlanStatus): Plan => ({
   model: 'm',
   repos: [],
   revised: false,
+  basedOnPlanId: null,
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

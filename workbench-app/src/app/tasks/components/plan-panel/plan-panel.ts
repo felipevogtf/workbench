@@ -44,6 +44,11 @@ export class PlanPanel {
   protected readonly statusLabel = PLAN_STATUS_LABEL;
   protected readonly repoName = repoShortName;
   protected readonly historyOpen = signal(false);
+  /** Resaltar lo que cambió respecto al plan del que parte (solo si se tiene). */
+  protected readonly showChanges = signal(true);
+  protected readonly previousContent = computed(() =>
+    this.showChanges() ? this.store.viewedBaseContent() : null,
+  );
 
   protected onHistoryToggle(event: Event): void {
     this.historyOpen.set((event.target as HTMLDetailsElement).open);

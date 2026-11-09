@@ -16,6 +16,22 @@ describe('MarkdownViewer', () => {
     expect(element.querySelector('code')?.textContent).toBe('código');
   });
 
+  it('highlights what changed against the previous version, only when given one', async () => {
+    const fixture = TestBed.createComponent(MarkdownViewer);
+    fixture.componentRef.setInput('content', 'Uno\n\nDos nuevo');
+    fixture.componentRef.setInput('previous', 'Uno\n\nDos');
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(
+      [...element.querySelectorAll('.md-changed')].map((each) => each.textContent?.trim()),
+    ).toEqual(['Dos nuevo']);
+
+    fixture.componentRef.setInput('previous', null);
+    await fixture.whenStable();
+    expect(element.querySelector('.md-changed')).toBeNull();
+  });
+
   it('joins single line breaks, like Markdown, unless asked to keep them', async () => {
     const joined = await render('línea uno\nlínea dos');
     expect(joined.querySelector('br')).toBeNull();

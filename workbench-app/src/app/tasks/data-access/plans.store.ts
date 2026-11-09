@@ -44,6 +44,11 @@ export class PlansStore {
     const plan = this.viewed();
     return plan ? (this.contents().get(plan.id) ?? null) : null;
   });
+  /** El plan del que parte el que se ve (el que se editó), si se tiene: con él se resalta lo que cambió. */
+  readonly viewedBaseContent = computed(() => {
+    const baseId = this.viewed()?.basedOnPlanId;
+    return baseId ? (this.contents().get(baseId) ?? null) : null;
+  });
   /** El último plan que falló, si es más nuevo que el último listo (para mostrar el motivo). */
   readonly latestFailed = computed(() => {
     const [latest] = this.items();
@@ -136,13 +141,24 @@ export class PlansStore {
   /** Trae el markdown del plan que se muestra, si es de uno listo y aún no se tiene. */
   private async ensureContent(): Promise<void> {
     const plan = this.viewed();
-    if (!plan || plan.status !== 'ready' || this.contents().has(plan.id)) return;
+    if (!plan || plan.status !== 'ready') return;
 
-    try {
-      const full = await firstValueFrom(this.api.getPlan(plan.id));
-      this.contents.update((map) => new Map(map).set(plan.id, full.content ?? ''));
-    } catch (error) {
-      this.toast.error(errorMessage(error));
+    if (!this.contents().has(plan.id)) {
+      try {
+        await this.fetchContent(plan.id);
+      } catch (error) {
+        this.toast.error(errorMessage(error));
+      }
     }
+    // También el plan que se editó, para resaltar lo que cambió. Si ya no existe (se borró) simplemente no se resalta.
+    const baseId = plan.basedOnPlanId;
+    if (baseId && !this.contents().has(baseId)) {
+      await this.fetchContent(baseId).catch(() => undefined);
+    }
+  }
+
+  private async fetchContent(id: string): Promise<void> {
+    const full = await firstValueFrom(this.api.getPlan(id));
+    this.contents.update((map) => new Map(map).set(id, full.content ?? ''));
   }
 }

@@ -111,3 +111,23 @@
     height: auto;
   }
 }
+
+// Lo que cambió respecto a la versión anterior (ver `previous`): una marca al costado y un destello que se apaga solo.
+@keyframes md-changed-flash {
+  from {
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.markdown .md-changed {
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--primary);
+  animation: md-changed-flash 6s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

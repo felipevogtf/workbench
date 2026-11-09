@@ -5,7 +5,7 @@ import {
   computed,
   input,
 } from '@angular/core';
-import { marked } from 'marked';
+import { renderMarkdown } from './markdown-changes';
 
 /**
  * Renderiza Markdown. El HTML resultante se enlaza con `[innerHTML]`, así que pasa por el sanitizador
@@ -23,12 +23,13 @@ export class MarkdownViewer {
   readonly content = input.required<string>();
   /** Respeta los saltos de línea simples (lo que escribe una persona); por defecto se juntan, como en Markdown. */
   readonly breaks = input(false);
+  /** La versión anterior del texto: lo que cambió respecto a ella sale resaltado. Sin ella no se resalta nada. */
+  readonly previous = input<string | null>(null);
 
   protected readonly html = computed(() => {
-    const rendered = marked.parse(this.content(), {
-      async: false,
-      gfm: true,
+    const rendered = renderMarkdown(this.content(), {
       breaks: this.breaks(),
+      previous: this.previous(),
     });
     // Los enlaces del contenido siempre abren aparte y sin acceso a la ventana de origen.
     return rendered.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
