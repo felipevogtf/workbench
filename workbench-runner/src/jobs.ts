@@ -1,3 +1,5 @@
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { probeUsage, runClaude } from './claude';
 import { effectiveTools, type RunnerConfig } from './config';
 import { environmentTools, type Environments } from './environment';
@@ -34,6 +36,39 @@ export function commitIdentity(
   if (!base) return {};
   const name = /\(IA\)$/i.test(base) ? base : `${base} (IA)`;
   return { GIT_AUTHOR_NAME: name, GIT_COMMITTER_NAME: name };
+}
+
+/**
+ * Un archivo que el agente sacó del índice (`git rm --cached`) y no pudo borrar de disco (`rm` pide aprobación) sale como
+ * borrado preparado y, a la vez, como archivo nuevo: `git add --all` lo volvería a agregar y el borrado se perdería. Si lo
+ * sacó del índice es porque quería que no esté: se borra de disco para que el commit lleve el borrado. Los archivos
+ * ignorados no se tocan (ahí `add --all` no los vuelve a agregar).
+ */
+async function finishStagedDeletions(
+  dir: string,
+  onLog: (line: string) => void,
+): Promise<void> {
+  const split = (output: string) => output.split('\0').filter(Boolean);
+  const deleted = split(
+    await git(['diff', '--cached', '--name-only', '--diff-filter=D', '-z'], {
+      cwd: dir,
+    }),
+  );
+  if (deleted.length === 0) return;
+  const untracked = new Set(
+    split(
+      await git(['ls-files', '--others', '--exclude-standard', '-z'], {
+        cwd: dir,
+      }),
+    ),
+  );
+  for (const path of deleted) {
+    if (!untracked.has(path)) continue;
+    await rm(join(dir, path), { force: true });
+    onLog(
+      `Se borró de disco ${path}: el agente lo sacó del índice y no pudo borrarlo.`,
+    );
+  }
 }
 
 /** `true` si hay algo preparado para el commit (`git diff --cached --quiet` sale con 1 cuando lo hay). */
@@ -325,6 +360,7 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
   }
 
   // El agente no hace commit: lo hace el runner con lo que quedó en el worktree.
+  await finishStagedDeletions(workspace.dir, context.onLog);
   const changes = (
     await git(['status', '--porcelain'], { cwd: workspace.dir })
   ).trim();

@@ -162,14 +162,24 @@ describe('runJob', () => {
     }
   });
 
-  it('develop: reports no changes instead of failing when the agent unstaged a file that stays on disk', async () => {
+  it('develop: commits the deletion of a file the agent unstaged but could not delete from disk', async () => {
     const { context, logs } = setup();
     process.env.FAKE_NO_CHANGES = '1';
     process.env.FAKE_UNSTAGE_ONLY = 'README.md';
     try {
       const { result } = await runJob(job('develop'), context);
-      assert.equal(result.headBefore, result.headAfter);
-      assert.ok(logs.some((line) => line.includes('nada que guardar')));
+      assert.notEqual(result.headBefore, result.headAfter);
+      const dir = join(
+        context.config.workDir,
+        'worktrees',
+        'web__workbench__vista-1234abcd',
+      );
+      assert.equal(existsSync(join(dir, 'README.md')), false);
+      assert.match(
+        await git(['show', '--name-status', '--format=', 'HEAD'], { cwd: dir }),
+        /^D\s+README\.md/m,
+      );
+      assert.ok(logs.some((line) => line.includes('Se borró de disco')));
     } finally {
       delete process.env.FAKE_NO_CHANGES;
       delete process.env.FAKE_UNSTAGE_ONLY;
