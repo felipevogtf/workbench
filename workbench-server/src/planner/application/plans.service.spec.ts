@@ -419,6 +419,135 @@ describe('PlansService replanning', () => {
   });
 });
 
+describe('PlansService replanning by edits', () => {
+  const conversation = [
+    { role: 'user' as const, content: 'Agrega un paso de documentación.' },
+  ];
+  const ORIGINAL =
+    '## Objetivo\nCrear el endpoint\n\n## Pasos\n1. Migración\n2. Servicio\n3. Pruebas';
+  const result = (markdown: string) => ({
+    markdown,
+    agentId: 'a',
+    agentName: 'n',
+    model: 'm',
+  });
+  const edit = (search: string, replace: string) =>
+    `<<<<<<< BUSCAR\n${search}\n=======\n${replace}\n>>>>>>> REEMPLAZAR`;
+
+  async function withOriginalPlan() {
+    const built = build();
+    built.runPlan.mockResolvedValueOnce(result(ORIGINAL));
+    const first = await built.service.create('i1');
+    await settle(built.store);
+    return { ...built, first };
+  }
+
+  it('applies only the edited fragments to the previous plan and keeps the rest', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan.mockResolvedValueOnce(
+      result(edit('3. Pruebas', '3. Pruebas\n4. Documentación')),
+    );
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(revised.id)).content).toBe(
+      ORIGINAL.replace('3. Pruebas', '3. Pruebas\n4. Documentación'),
+    );
+    expect(runPlan).toHaveBeenCalledTimes(2);
+    const prompt = runPlan.mock.calls[1][0].prompt;
+    expect(prompt).toContain('NO reescribas el plan');
+  });
+
+  it('keeps the previous plan as it was: the edit becomes a new version', async () => {
+    const { service, store, runPlan, first } = await withOriginalPlan();
+    runPlan.mockResolvedValueOnce(
+      result(edit('2. Servicio', '2. Servicio y API')),
+    );
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(first.id)).content).toBe(ORIGINAL);
+    expect((await service.get(revised.id)).basedOnPlanId).toBe(first.id);
+  });
+
+  it('keeps the plan when the agent says nothing changes', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan.mockResolvedValueOnce(result('SIN CAMBIOS'));
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(revised.id)).content).toBe(ORIGINAL);
+  });
+
+  it('tells the agent why an edit did not apply and uses its corrected one', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan
+      .mockResolvedValueOnce(result(edit('9. Inventado', 'x')))
+      .mockResolvedValueOnce(
+        result(edit('1. Migración', '1. Migración y seed')),
+      );
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    const retry = runPlan.mock.calls[2][0].prompt;
+    expect(retry).toContain('Tu respuesta anterior no se pudo aplicar');
+    expect(retry).toContain('9. Inventado');
+    expect((await service.get(revised.id)).content).toContain(
+      '1. Migración y seed',
+    );
+  });
+
+  it('asks for the whole plan as a last resort when the edits keep failing', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan
+      .mockResolvedValueOnce(result(edit('nada 1', 'x')))
+      .mockResolvedValueOnce(result(edit('nada 2', 'x')))
+      .mockResolvedValueOnce(
+        result('## Objetivo\nPlan nuevo y completo, rehecho desde cero'),
+      );
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    const last = runPlan.mock.calls[3][0].prompt;
+    expect(last).toContain('Entrega el plan completo y actualizado');
+    expect((await service.get(revised.id)).content).toContain(
+      'Plan nuevo y completo',
+    );
+  });
+
+  it('accepts a whole plan instead of edits when it looks like one', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan.mockResolvedValueOnce(result(`${ORIGINAL}\n4. Documentación`));
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(revised.id)).content).toContain(
+      '4. Documentación',
+    );
+    expect(runPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take a short chatty answer for the plan', async () => {
+    const { service, store, runPlan } = await withOriginalPlan();
+    runPlan
+      .mockResolvedValueOnce(result('Listo, ya lo cambié.'))
+      .mockResolvedValueOnce(result(edit('3. Pruebas', '3. Pruebas y docs')));
+
+    const revised = await service.create('i1', {}, { messages: conversation });
+    await settle(store);
+
+    expect((await service.get(revised.id)).content).toBe(
+      ORIGINAL.replace('3. Pruebas', '3. Pruebas y docs'),
+    );
+  });
+});
+
 describe('PlansService replanning with attachments', () => {
   const ref = { id: 'a1', name: 'requisitos.pdf' };
   const conversation = [

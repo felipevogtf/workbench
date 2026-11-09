@@ -200,7 +200,12 @@ describe('buildPlanPrompt', () => {
       expect(prompt).toContain('### Usuario\n¿El endpoint ya existe?');
       expect(prompt).toContain('### Asistente\nSí, está en OrdersController.');
       expect(prompt).toContain('Esta es una replanificación');
-      expect(prompt).toContain('Entrega el plan completo y actualizado');
+      // Con plan anterior se editan solo los fragmentos que cambian, no se reescribe todo.
+      expect(prompt).toContain('NO reescribas el plan');
+      expect(prompt).toContain('<<<<<<< BUSCAR');
+      expect(prompt).toContain('>>>>>>> REEMPLAZAR');
+      expect(prompt).toContain('SIN CAMBIOS');
+      expect(prompt).not.toContain('Entrega el plan completo y actualizado');
       // El plan anterior va antes que la conversación y las instrucciones van al final.
       expect(prompt.indexOf('## Plan anterior')).toBeLessThan(
         prompt.indexOf('## Conversación con el usuario'),
@@ -208,6 +213,38 @@ describe('buildPlanPrompt', () => {
       expect(prompt.indexOf('## Conversación con el usuario')).toBeLessThan(
         prompt.indexOf('## Qué hacer ahora'),
       );
+    });
+
+    it('asks for the whole plan when told to, e.g. after the edits could not be applied', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: {
+          previousPlan: '## Objetivo\nCrear el endpoint',
+          conversation,
+          mode: 'full',
+        },
+      });
+
+      expect(prompt).toContain('Entrega el plan completo y actualizado');
+      expect(prompt).not.toContain('<<<<<<< BUSCAR');
+    });
+
+    it('tells the agent why its previous edits did not apply', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: {
+          previousPlan: '## Objetivo\nCrear el endpoint',
+          conversation,
+          patchError: 'El bloque 1 no coincide con el plan',
+        },
+      });
+
+      expect(prompt).toContain('Tu respuesta anterior no se pudo aplicar');
+      expect(prompt).toContain('El bloque 1 no coincide con el plan');
     });
 
     it('plans from scratch, saying so, when there is no previous plan', () => {

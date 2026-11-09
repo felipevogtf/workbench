@@ -17,6 +17,13 @@ export interface PlanRevision {
   conversation: readonly PlanChatMessage[];
   /** Dónde quedó cada adjunto de la conversación, para que el agente los lea. */
   staged?: ReadonlyMap<string, StagedAttachment>;
+  /**
+   * `patch` (lo normal si hay plan anterior): la IA responde solo con los fragmentos que cambian, en bloques de edición que el
+   * servidor aplica. `full`: entrega el plan completo (sin plan anterior, o cuando los bloques no se pudieron aplicar).
+   */
+  mode?: 'patch' | 'full';
+  /** Por qué falló el intento anterior de aplicar sus bloques; se le dice a la IA para que lo corrija. */
+  patchError?: string;
 }
 
 export interface PlanPromptInput {
@@ -164,10 +171,54 @@ function revisionLines(revision: PlanRevision): string[] {
       },
       revision.staged,
     ),
+    ...(patches(revision) ? patchInstructions(revision) : fullInstructions()),
+  ];
+}
+
+/** Se edita el plan anterior (en vez de rehacerlo) cuando lo hay y no se pidió el plan completo. */
+function patches(revision: PlanRevision): boolean {
+  return !!revision.previousPlan?.trim() && revision.mode !== 'full';
+}
+
+function fullInstructions(): string[] {
+  return [
     '## Qué hacer ahora',
     '',
     'Esta es una replanificación. Actualiza el plan anterior incorporando lo conversado: responde las dudas con lo que el usuario aclaró, aplica sus correcciones, ten en cuenta los tickets que mencionó (arriba) y conserva lo que no se discutió.',
     'Entrega el plan completo y actualizado, con el mismo formato de siempre; no un resumen de los cambios.',
+  ];
+}
+
+function patchInstructions(revision: PlanRevision): string[] {
+  return [
+    '## Qué hacer ahora',
+    '',
+    'Esta es una replanificación. Incorpora lo conversado al plan anterior: responde las dudas con lo que el usuario aclaró, aplica sus correcciones, ten en cuenta los tickets que mencionó (arriba) y conserva lo que no se discutió.',
+    '',
+    '**NO reescribas el plan.** Responde SOLO con bloques de edición, uno por cada fragmento que cambia, con este formato exacto (cada marca en su propia línea):',
+    '',
+    '```',
+    '<<<<<<< BUSCAR',
+    '(el texto actual del plan que se cambia, copiado tal cual)',
+    '=======',
+    '(el texto nuevo)',
+    '>>>>>>> REEMPLAZAR',
+    '```',
+    '',
+    '- BUSCAR debe ser una copia exacta de lo que dice el plan anterior (mismas palabras, signos y saltos de línea) y aparecer UNA sola vez: si el fragmento se repite, incluye líneas de alrededor.',
+    '- Para añadir algo, busca la línea junto a la que va y repítela en REEMPLAZAR con lo nuevo a continuación. Para borrar algo, deja REEMPLAZAR vacío.',
+    '- Pon cada bloque con lo mínimo necesario, no párrafos enteros si solo cambia una línea. Los bloques se aplican en el orden en que los escribas.',
+    '- No escribas nada fuera de los bloques (ni resumen, ni explicaciones, ni el plan). Si la conversación no pide ningún cambio al plan, responde solo `SIN CAMBIOS`.',
+    ...(revision.patchError
+      ? [
+          '',
+          '**Tu respuesta anterior no se pudo aplicar** y el plan sigue como estaba:',
+          '',
+          revision.patchError,
+          '',
+          'Corrige los bloques y vuelve a entregarlos todos.',
+        ]
+      : []),
   ];
 }
 
