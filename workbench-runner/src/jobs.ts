@@ -36,6 +36,13 @@ export function commitIdentity(
   return { GIT_AUTHOR_NAME: name, GIT_COMMITTER_NAME: name };
 }
 
+/** `true` si hay algo preparado para el commit (`git diff --cached --quiet` sale con 1 cuando lo hay). */
+async function hasStagedChanges(dir: string): Promise<boolean> {
+  return (
+    (await git(['diff', '--cached', '--name-only'], { cwd: dir })).trim() !== ''
+  );
+}
+
 /** Tope de la respuesta del agente que viaja al servidor (el cuerpo de una petición es limitado). */
 const MAX_OUTPUT_CHARS = 60_000;
 
@@ -321,10 +328,16 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
   const changes = (
     await git(['status', '--porcelain'], { cwd: workspace.dir })
   ).trim();
+  let staged = false;
   if (changes) {
     const files = changes.split('\n').length;
     context.onLog(`Guardando ${files} archivo(s) modificados…`);
     await git(['add', '--all'], { cwd: workspace.dir });
+    // `status` puede ver cambios que `add --all` deja en nada: un archivo sacado del índice (`git rm --cached`) que sigue en
+    // disco se vuelve a agregar y el borrado se cancela solo. Sin nada preparado, `commit` fallaría y tiraría la ejecución.
+    staged = await hasStagedChanges(workspace.dir);
+  }
+  if (staged) {
     await git(
       [
         'commit',
@@ -336,7 +349,11 @@ También se levantaron los entornos de ${alsoUp.join(', ')}, solo para que sus d
       { cwd: workspace.dir, env: commitIdentity(payload.agent) },
     );
   } else {
-    context.onLog('El agente no dejó cambios en los archivos.');
+    context.onLog(
+      changes
+        ? 'Los cambios del agente no dejaron nada que guardar (por ejemplo, sacó un archivo del índice pero sigue en disco; para borrarlo hay que usar `git rm` sin `--cached`).'
+        : 'El agente no dejó cambios en los archivos.',
+    );
   }
   const headAfter = (
     await git(['rev-parse', 'HEAD'], { cwd: workspace.dir })

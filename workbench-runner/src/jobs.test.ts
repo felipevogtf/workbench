@@ -162,6 +162,20 @@ describe('runJob', () => {
     }
   });
 
+  it('develop: reports no changes instead of failing when the agent unstaged a file that stays on disk', async () => {
+    const { context, logs } = setup();
+    process.env.FAKE_NO_CHANGES = '1';
+    process.env.FAKE_UNSTAGE_ONLY = 'README.md';
+    try {
+      const { result } = await runJob(job('develop'), context);
+      assert.equal(result.headBefore, result.headAfter);
+      assert.ok(logs.some((line) => line.includes('nada que guardar')));
+    } finally {
+      delete process.env.FAKE_NO_CHANGES;
+      delete process.env.FAKE_UNSTAGE_ONLY;
+    }
+  });
+
   it('review: discards the files that running the checks left, so they do not slip into the next commit', async () => {
     const { context, logs } = setup();
     await runJob(job('develop'), context);

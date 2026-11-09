@@ -80,6 +80,15 @@ async function main() {
     fs.writeFileSync(file, 'cambiado por el agente\n');
   }
 
+  // FAKE_UNSTAGE_ONLY: saca del índice un archivo seguido sin borrarlo (`git rm --cached`), como cuando el agente no puede borrarlo.
+  if (process.env.FAKE_UNSTAGE_ONLY) {
+    require('node:child_process').execFileSync(
+      'git',
+      ['rm', '--cached', '--quiet', process.env.FAKE_UNSTAGE_ONLY],
+      { cwd: process.cwd() },
+    );
+  }
+
   let result = 'Hecho';
   if (prompt.includes('Divide el plan')) {
     result =
