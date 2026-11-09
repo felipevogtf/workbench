@@ -1,4 +1,4 @@
-// Minimalista: el chat ocupa el centro sin marcos y a la derecha, una columna de secciones plegables.
+// Dos mitades: a la izquierda el chat y a la derecha el plan (vista previa del markdown), con lo demás del grupo y la ejecución.
 .organizer {
   display: flex;
   flex-direction: column;
@@ -95,28 +95,30 @@
   }
 }
 
-// El plan se ve como un adjunto: al tocarlo se abre completo en el panel lateral.
-.attachment {
+// Mientras no hay plan, la mitad derecha dice qué hacer.
+.organizer__empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-6, 2rem) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-color);
+  text-align: center;
 
-  &:hover {
-    border-color: var(--primary);
+  p {
+    max-width: 32ch;
+    margin: 0;
+    font-size: 0.875rem;
   }
+}
 
-  span {
-    display: flex;
-    flex-direction: column;
-  }
-
-  small {
-    color: var(--text-color);
-  }
+// El plan ya es una tarjeta con borde propio.
+app-plan-panel {
+  display: block;
+  margin-bottom: var(--space-3);
 }
 
 .muted {
@@ -155,7 +157,7 @@
 
 @media (min-width: 1024px) {
   .organizer__body {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .organizer__chat {

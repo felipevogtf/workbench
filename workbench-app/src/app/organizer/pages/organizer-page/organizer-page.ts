@@ -13,7 +13,6 @@ import { Router, RouterLink } from '@angular/router';
 import { AgentsStore } from '@ai-agents/index';
 import { ExecutionPanel, IssueExecutionsStore } from '@executions/index';
 import { IssuesStore } from '@tasks/index';
-import { PLAN_STATUS_LABEL } from '@tasks/models/plan';
 import { PlanPanel } from '@tasks/components/plan-panel/plan-panel';
 import { PlansStore } from '@tasks/data-access/plans.store';
 import { TaskChatStore } from '@tasks/data-access/task-chat.store';
@@ -80,18 +79,20 @@ export class OrganizerPage {
     return session ? (this.issues.issueById().get(session.groupIssueId) ?? null) : null;
   });
   protected readonly assistant = computed(() => this.agents.assistantOf('task-chat'));
-  protected readonly statusLabel = PLAN_STATUS_LABEL;
-  /** Lo que está abierto en el panel lateral: una tarea del grupo o el plan. */
-  protected readonly sheet = signal<{ kind: 'task'; id: string } | { kind: 'plan' } | null>(null);
+  /** La tarea del grupo abierta en el panel lateral. */
+  protected readonly sheet = signal<{ id: string } | null>(null);
   protected readonly sheetTask = computed(() => {
     const open = this.sheet();
-    return open?.kind === 'task' ? (this.issues.issueById().get(open.id) ?? null) : null;
+    return open ? (this.issues.issueById().get(open.id) ?? null) : null;
   });
   protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
   protected readonly notes = signal('');
   protected readonly notesChanged = computed(
     () => this.notes().trim() !== (this.session()?.notes ?? '').trim(),
   );
+
+  /** Cuántos mensajes de la conversación ya entraron en un plan: al replanificar solo viajan los siguientes. */
+  private readonly plannedCount = signal(0);
 
   /** Hay un plan listo: es lo que se puede ejecutar. */
   protected readonly hasReadyPlan = computed(() =>
@@ -135,19 +136,18 @@ export class OrganizerPage {
     }
   }
 
-  /** Pide el plan del grupo con lo conversado (si algo) y deja la conversación limpia: el plan ya la incorporó. */
+  /**
+   * Pide el plan con lo conversado (si algo). La conversación se queda: se sigue viendo y se puede seguir hablando. Al replanificar
+   * solo viaja lo que se dijo después del último plan, porque el plan anterior ya lo incorporó.
+   */
   protected async createPlan(): Promise<void> {
     const messages = this.chat.snapshot();
-    const talked = messages.some((message) => message.role === 'user');
-    const created = await this.plans.generate(talked ? { messages } : {});
+    const fresh = messages.slice(this.plannedCount());
+    const talked = fresh.some((message) => message.role === 'user');
+    const created = await this.plans.generate(talked ? { messages: fresh } : {});
     if (!created) return;
-    if (talked) this.chat.clear();
+    if (talked) this.markPlanned(messages.length);
     this.toast.success(talked ? 'Replanificando con la conversación' : 'Generando el plan');
-    // El panel del plan aparece al final en cuanto hay uno; se espera a que se pinte para llegar a él.
-    setTimeout(
-      () => document.getElementById('plan-panel')?.scrollIntoView({ behavior: 'smooth' }),
-      50,
-    );
   }
 
   protected async remove(): Promise<void> {
@@ -164,11 +164,36 @@ export class OrganizerPage {
     }
   }
 
+  private plannedKey(): string {
+    return `workbench.organizer.planned.${this.store.current()?.groupIssueId ?? ''}`;
+  }
+
+  /** Recuerda hasta qué mensaje llega el último plan (también tras recargar la página). */
+  private markPlanned(count: number): void {
+    this.plannedCount.set(count);
+    try {
+      localStorage.setItem(this.plannedKey(), String(count));
+    } catch {
+      // sin almacenamiento: solo se recuerda mientras la página siga abierta
+    }
+  }
+
+  private restorePlanned(): void {
+    let count = 0;
+    try {
+      count = Number(localStorage.getItem(this.plannedKey())) || 0;
+    } catch {
+      // sin almacenamiento
+    }
+    this.plannedCount.set(Math.min(Math.max(count, 0), this.chat.messages().length));
+  }
+
   private async open(id: string): Promise<void> {
     if (!(await this.store.open(id))) return;
     const groupIssueId = this.store.current()?.groupIssueId;
     if (!groupIssueId) return;
     this.chat.bind(groupIssueId);
+    this.restorePlanned();
     void this.plans.load(groupIssueId, this.destroyRef);
     void this.executions.load(groupIssueId, this.destroyRef);
   }

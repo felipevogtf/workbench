@@ -73,7 +73,7 @@
         </app-chat-panel>
       </section>
 
-      <aside class="organizer__side">
+      <aside class="organizer__side" aria-label="Plan">
         @if (!isTask()) {
           <details class="fold" open>
             <summary>Tareas · {{ session.members.length }}</summary>
@@ -82,7 +82,7 @@
               [groupIssueId]="session.groupIssueId"
               [saving]="store.saving()"
               (changed)="changeMembers($event)"
-              (opened)="sheet.set({ kind: 'task', id: $event })"
+              (opened)="sheet.set({ id: $event })"
             />
           </details>
 
@@ -109,14 +109,19 @@
           </details>
         }
 
-        @if (plan(); as plan) {
-          <button class="attachment" type="button" (click)="sheet.set({ kind: 'plan' })">
-            <app-icon name="paperclip" size="1.1em" />
-            <span>
-              <strong>{{ isTask() ? 'Plan' : 'Plan del grupo' }}</strong>
-              <small>{{ statusLabel[plan.status] }}</small>
-            </span>
-          </button>
+        @if (groupIssue(); as issue) {
+          @if (plan() || planning()) {
+            <app-plan-panel [issue]="issue" />
+          } @else {
+            <div class="organizer__empty">
+              <app-icon name="sparkles" size="1.4rem" />
+              <strong>Todavía no hay plan</strong>
+              <p>
+                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pulsa «Crear plan»:
+                aquí lo verás, y cada cambio que pidas se edita sobre él.
+              </p>
+            </div>
+          }
         }
 
         @if (hasReadyPlan() || executions.executions().length > 0) {
@@ -136,21 +141,8 @@
     </div>
 
     @if (sheet(); as open) {
-      <app-side-sheet
-        [heading]="
-          open.kind === 'plan'
-            ? isTask()
-              ? 'Plan'
-              : 'Plan del grupo'
-            : (sheetTask()?.name ?? 'Tarea')
-        "
-        (closed)="sheet.set(null)"
-      >
-        @if (open.kind === 'plan') {
-          @if (groupIssue(); as issue) {
-            <app-plan-panel [issue]="issue" />
-          }
-        } @else if (sheetTask(); as task) {
+      <app-side-sheet [heading]="sheetTask()?.name ?? 'Tarea'" (closed)="sheet.set(null)">
+        @if (sheetTask(); as task) {
           @if (task.description) {
             <app-markdown-viewer [content]="task.description" />
           } @else {
