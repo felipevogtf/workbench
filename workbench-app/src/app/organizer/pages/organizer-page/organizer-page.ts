@@ -72,6 +72,8 @@ export class OrganizerPage {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly session = this.store.current;
+  /** Es la sesión de una sola tarea: sin grupo, sin tareas que sumar ni notas del grupo. */
+  protected readonly isTask = computed(() => this.session()?.kind === 'task');
   /** La tarea del grupo tal como la guarda la lista de tareas (la usa el panel del plan). */
   protected readonly groupIssue = computed(() => {
     const session = this.session();
@@ -97,7 +99,10 @@ export class OrganizerPage {
   );
   protected readonly planning = computed(() => this.plans.requesting() || !!this.plans.active());
   protected readonly canPlan = computed(
-    () => (this.session()?.members.length ?? 0) > 0 && !this.planning() && !this.chat.sending(),
+    () =>
+      (this.isTask() || (this.session()?.members.length ?? 0) > 0) &&
+      !this.planning() &&
+      !this.chat.sending(),
   );
 
   protected readonly suggestions = [

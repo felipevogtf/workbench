@@ -1,9 +1,16 @@
 import { DomainError } from '@core/domain/domain.error';
 
+/**
+ * `group`: varias tareas que se planifican juntas, con su tarea-grupo. `task`: la sesión de UNA tarea cualquiera, que se planifica
+ * sola; no hay grupo, así que `groupIssueId` es la propia tarea y la sesión nunca la borra ni la renombra.
+ */
+export type OrganizerSessionKind = 'group' | 'task';
+
 export interface OrganizerSessionProps {
   id: string;
   title: string;
-  /** La tarea local que hace de grupo: de ella cuelgan el plan, la conversación y la ejecución. */
+  kind: OrganizerSessionKind;
+  /** La tarea de la que cuelgan el plan, la conversación y la ejecución: la del grupo o, en `task`, la propia tarea. */
   groupIssueId: string;
   createdAt: Date;
 }
@@ -17,10 +24,12 @@ export class OrganizerSession {
   static create(data: {
     title: string;
     groupIssueId: string;
+    kind?: OrganizerSessionKind;
   }): OrganizerSession {
     return new OrganizerSession({
       id: crypto.randomUUID(),
       title: OrganizerSession.cleanTitle(data.title),
+      kind: data.kind ?? 'group',
       groupIssueId: data.groupIssueId,
       createdAt: new Date(),
     });
@@ -41,6 +50,12 @@ export class OrganizerSession {
   }
   get title(): string {
     return this.props.title;
+  }
+  get kind(): OrganizerSessionKind {
+    return this.props.kind;
+  }
+  get isTask(): boolean {
+    return this.props.kind === 'task';
   }
   get groupIssueId(): string {
     return this.props.groupIssueId;

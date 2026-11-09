@@ -1,4 +1,9 @@
-<button class="backdrop" type="button" aria-label="Cerrar el panel" (click)="closed.emit()"></button>
+<button
+  class="backdrop"
+  type="button"
+  aria-label="Cerrar el panel"
+  (click)="closed.emit()"
+></button>
 <aside class="sheet" role="dialog" [attr.aria-label]="heading()">
   <header class="sheet__head">
     <h4>{{ heading() }}</h4>

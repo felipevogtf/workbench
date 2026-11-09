@@ -22,11 +22,23 @@ export class TypeOrmOrganizerSessionRepository implements OrganizerSessionReposi
     return row ? this.toDomain(row) : null;
   }
 
+  async findByGroupIssueId(issueId: string): Promise<OrganizerSession | null> {
+    const row = await this.ormRepo.findOne({
+      where: { group_issue_id: issueId },
+    });
+    return row ? this.toDomain(row) : null;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.ormRepo.delete({ id });
+  }
+
   async save(session: OrganizerSession): Promise<OrganizerSession> {
     const props = session.toProps();
     const saved = await this.ormRepo.save({
       id: props.id,
       title: props.title,
+      kind: props.kind,
       group_issue_id: props.groupIssueId,
       created_at: props.createdAt,
     });
@@ -37,6 +49,7 @@ export class TypeOrmOrganizerSessionRepository implements OrganizerSessionReposi
     return OrganizerSession.reconstruct({
       id: row.id,
       title: row.title,
+      kind: row.kind,
       groupIssueId: row.group_issue_id,
       createdAt: row.created_at,
     });

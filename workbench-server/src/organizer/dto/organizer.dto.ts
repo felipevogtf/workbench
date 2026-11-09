@@ -48,6 +48,7 @@ export class SetMembersDto {
 export class SessionSummaryDto {
   id!: string;
   title!: string;
+  kind!: 'group' | 'task';
   groupIssueId!: string;
   memberCount!: number;
   createdAt!: string;
@@ -62,6 +63,8 @@ export class SessionMemberDto {
 export class SessionDetailDto {
   id!: string;
   title!: string;
+  /** `task`: la sesión de una tarea suelta (sin grupo, sin tareas que sumar). */
+  kind!: 'group' | 'task';
   /** La tarea del grupo: con este id se conversa, se planifica y se ejecuta, como con cualquier tarea. */
   groupIssueId!: string;
   notes!: string | null;

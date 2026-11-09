@@ -8,9 +8,15 @@
     </app-alert>
   } @else if (session(); as session) {
     <header class="organizer__header">
-      <a class="organizer__back" routerLink="/organizer">
-        <app-icon name="arrow-left" size="1em" /> Organizador
-      </a>
+      @if (isTask()) {
+        <a class="organizer__back" [routerLink]="['/tasks/issues', session.groupIssueId]">
+          <app-icon name="arrow-left" size="1em" /> Volver a la tarea
+        </a>
+      } @else {
+        <a class="organizer__back" routerLink="/organizer">
+          <app-icon name="arrow-left" size="1em" /> Organizador
+        </a>
+      }
       <h3>{{ session.title }}</h3>
       <div class="organizer__actions">
         <button
@@ -41,76 +47,103 @@
         <app-chat-panel
           [inline]="true"
           [store]="chat"
-          [heading]="'Planifica el grupo con ' + (assistant()?.name ?? 'la IA')"
+          [heading]="
+            (isTask() ? 'Planifica la tarea con ' : 'Planifica el grupo con ') +
+            (assistant()?.name ?? 'la IA')
+          "
           [assistant]="assistant()"
           [context]="session.title"
-          emptyTitle="¿Cómo organizamos estas tareas?"
-          placeholder="Pregunta, aclara dependencias o pide el plan del grupo…"
+          [emptyTitle]="
+            isTask() ? '¿Qué quieres aclarar de esta tarea?' : '¿Cómo organizamos estas tareas?'
+          "
+          [placeholder]="
+            isTask()
+              ? 'Aclara la tarea, pregunta por el código o pide el plan…'
+              : 'Pregunta, aclara dependencias o pide el plan del grupo…'
+          "
           [suggestions]="suggestions"
         >
           <p chat-empty>
-            La IA conoce las tareas del grupo, sus tickets, el plan y el código de sus repos.
+            @if (isTask()) {
+              La IA conoce la tarea, su ticket, el plan y el código de sus repos.
+            } @else {
+              La IA conoce las tareas del grupo, sus tickets, el plan y el código de sus repos.
+            }
           </p>
         </app-chat-panel>
       </section>
 
       <aside class="organizer__side">
-        <details class="fold" open>
-          <summary>Tareas · {{ session.members.length }}</summary>
-          <app-members-panel
-            [members]="session.members"
-            [groupIssueId]="session.groupIssueId"
-            [saving]="store.saving()"
-            (changed)="changeMembers($event)"
-            (opened)="sheet.set({ kind: 'task', id: $event })"
-          />
-        </details>
+        @if (!isTask()) {
+          <details class="fold" open>
+            <summary>Tareas · {{ session.members.length }}</summary>
+            <app-members-panel
+              [members]="session.members"
+              [groupIssueId]="session.groupIssueId"
+              [saving]="store.saving()"
+              (changed)="changeMembers($event)"
+              (opened)="sheet.set({ kind: 'task', id: $event })"
+            />
+          </details>
 
-        <details class="fold">
-          <summary>Notas</summary>
-          <p class="muted">Qué depende de qué o lo que los agentes deban tener presente.</p>
-          <textarea
-            class="notes"
-            rows="4"
-            aria-label="Notas del grupo"
-            [value]="notes()"
-            (input)="notes.set($any($event.target).value)"
-          ></textarea>
-          <button
-            app-button
-            variant="secondary"
-            size="sm"
-            type="button"
-            [disabled]="!notesChanged() || store.saving()"
-            (click)="saveNotes()"
-          >
-            Guardar notas
-          </button>
-        </details>
+          <details class="fold">
+            <summary>Notas</summary>
+            <p class="muted">Qué depende de qué o lo que los agentes deban tener presente.</p>
+            <textarea
+              class="notes"
+              rows="4"
+              aria-label="Notas del grupo"
+              [value]="notes()"
+              (input)="notes.set($any($event.target).value)"
+            ></textarea>
+            <button
+              app-button
+              variant="secondary"
+              size="sm"
+              type="button"
+              [disabled]="!notesChanged() || store.saving()"
+              (click)="saveNotes()"
+            >
+              Guardar notas
+            </button>
+          </details>
+        }
 
         @if (plan(); as plan) {
           <button class="attachment" type="button" (click)="sheet.set({ kind: 'plan' })">
             <app-icon name="paperclip" size="1.1em" />
             <span>
-              <strong>Plan del grupo</strong>
+              <strong>{{ isTask() ? 'Plan' : 'Plan del grupo' }}</strong>
               <small>{{ statusLabel[plan.status] }}</small>
             </span>
           </button>
         }
 
         @if (hasReadyPlan() || executions.executions().length > 0) {
-          <app-execution-panel class="execution" [issueId]="session.groupIssueId" [canRun]="hasReadyPlan()" />
+          <app-execution-panel
+            class="execution"
+            [issueId]="session.groupIssueId"
+            [canRun]="hasReadyPlan()"
+          />
         }
 
-        <button class="organizer__delete" type="button" (click)="remove()">
-          <app-icon name="trash" size="1em" /> Eliminar sesión
-        </button>
+        @if (!isTask()) {
+          <button class="organizer__delete" type="button" (click)="remove()">
+            <app-icon name="trash" size="1em" /> Eliminar sesión
+          </button>
+        }
       </aside>
     </div>
 
     @if (sheet(); as open) {
       <app-side-sheet
-        [heading]="open.kind === 'plan' ? 'Plan del grupo' : (sheetTask()?.name ?? 'Tarea')"
+        [heading]="
+          open.kind === 'plan'
+            ? isTask()
+              ? 'Plan'
+              : 'Plan del grupo'
+            : (sheetTask()?.name ?? 'Tarea')
+        "
         (closed)="sheet.set(null)"
       >
         @if (open.kind === 'plan') {

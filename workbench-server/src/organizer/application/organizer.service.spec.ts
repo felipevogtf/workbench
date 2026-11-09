@@ -9,21 +9,35 @@ import { OrganizerService } from './organizer.service';
 describe('OrganizerService', () => {
   let stored: OrganizerSession[];
   let groups: Map<string, GroupInfo & { title: string }>;
+  let tasks: Map<string, { name: string; isGroup: boolean }>;
   let service: OrganizerService;
 
   beforeEach(() => {
     stored = [];
     groups = new Map();
+    tasks = new Map();
     const sessions: OrganizerSessionRepositoryPort = {
       findAll: () => Promise.resolve([...stored].reverse()),
       findById: (id) =>
         Promise.resolve(stored.find((each) => each.id === id) ?? null),
+      findByGroupIssueId: (issueId) =>
+        Promise.resolve(
+          stored.find((each) => each.groupIssueId === issueId) ?? null,
+        ),
       save: (session) => {
         if (!stored.includes(session)) stored.push(session);
         return Promise.resolve(session);
       },
+      delete: (id) => {
+        stored = stored.filter((each) => each.id !== id);
+        return Promise.resolve();
+      },
     };
     const gateway: GroupsGatewayPort = {
+      findTask: (id) => {
+        const task = tasks.get(id);
+        return Promise.resolve(task ? { id, ...task } : null);
+      },
       createGroup: (data) => {
         const id = `group-${groups.size + 1}`;
         groups.set(id, {
@@ -110,6 +124,67 @@ describe('OrganizerService', () => {
     expect(await service.list()).toEqual([]);
     await expect(service.get(session.id)).rejects.toMatchObject({
       kind: 'not-found',
+    });
+  });
+
+  describe('a session of a single task', () => {
+    beforeEach(() => {
+      tasks.set('t1', { name: 'Anular guías', isGroup: false });
+    });
+
+    it('is created from the task itself, with no group and no tasks to add', async () => {
+      const { session, group } = await service.openForTask('t1');
+
+      expect(session.kind).toBe('task');
+      expect(session.title).toBe('Anular guías');
+      expect(session.groupIssueId).toBe('t1');
+      expect(group.members).toEqual([]);
+      expect(groups.size).toBe(0);
+    });
+
+    it('reopens the same session instead of creating another one', async () => {
+      const first = await service.openForTask('t1');
+      const second = await service.openForTask('t1');
+
+      expect(second.session.id).toBe(first.session.id);
+      expect(stored).toHaveLength(1);
+    });
+
+    it('does not open a session for a task that does not exist or for a group', async () => {
+      await expect(service.openForTask('nope')).rejects.toMatchObject({
+        kind: 'not-found',
+      });
+      tasks.set('g1', { name: 'Grupo', isGroup: true });
+      await expect(service.openForTask('g1')).rejects.toThrow('group');
+    });
+
+    it('stays out of the list of groups', async () => {
+      await service.openForTask('t1');
+      await service.create({ title: 'A', projectId: 'p1' });
+
+      expect((await service.list()).map((entry) => entry.session.kind)).toEqual(
+        ['group'],
+      );
+    });
+
+    it('cannot be renamed or get tasks added, because that would touch the task', async () => {
+      const { session } = await service.openForTask('t1');
+
+      await expect(
+        service.update(session.id, { title: 'Otro' }),
+      ).rejects.toThrow('no group');
+      await expect(service.setMembers(session.id, ['2'])).rejects.toThrow(
+        'no group',
+      );
+    });
+
+    it('removes only the session, never the task', async () => {
+      const { session } = await service.openForTask('t1');
+
+      await service.remove(session.id);
+
+      expect(stored).toEqual([]);
+      expect(tasks.has('t1')).toBe(true);
     });
   });
 });

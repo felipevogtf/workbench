@@ -5,6 +5,7 @@ import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import {
   GroupInfo,
   GroupsGatewayPort,
+  TaskInfo,
 } from '@organizer/domain/ports/groups-gateway.port';
 
 const MAX_NOTES_CHARS = 20_000;
@@ -16,6 +17,13 @@ export class GroupsGatewayAdapter implements GroupsGatewayPort {
     private readonly groups: IssueGroupsService,
     private readonly tasks: TasksFacade,
   ) {}
+
+  async findTask(id: string): Promise<TaskInfo | null> {
+    const issue = await this.tasks.findIssue(id);
+    return issue
+      ? { id: issue.id, name: issue.name, isGroup: issue.isGroup }
+      : null;
+  }
 
   async createGroup(data: {
     title: string;

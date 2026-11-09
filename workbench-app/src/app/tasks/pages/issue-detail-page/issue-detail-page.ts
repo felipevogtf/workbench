@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { OrganizerStore } from '@organizer/data-access/organizer.store';
 import { errorMessage } from '@core/api/api-error';
 import { formatDay, formatHours } from '@shared/util/date';
 import { Alert } from '@shared/ui/alert/alert';
@@ -93,6 +94,7 @@ export class IssueDetailPage {
   private readonly labelsStore = inject(LabelsStore);
   private readonly confirm = inject(ConfirmDialog);
   private readonly router = inject(Router);
+  private readonly organizer = inject(OrganizerStore);
 
   /** Dónde vuelve el botón «volver» y cómo se llama ese lugar. */
   protected readonly back = computed(() => {
@@ -161,6 +163,21 @@ export class IssueDetailPage {
   );
 
   /** Pide un plan con el agente por defecto del planificador y lleva la vista hasta él. */
+  protected readonly planning = signal(false);
+
+  /** Abre el organizador con esta tarea (su sesión se crea la primera vez y después se reabre). */
+  protected async plan(): Promise<void> {
+    const issue = this.issue();
+    if (!issue || this.planning()) return;
+    this.planning.set(true);
+    try {
+      const id = await this.organizer.openForTask(issue.id);
+      if (id) await this.router.navigate(['/organizer', id]);
+    } finally {
+      this.planning.set(false);
+    }
+  }
+
   protected async generatePlan(): Promise<void> {
     await this.plansStore.generate();
     // El panel aparece al final en cuanto hay un plan; se espera a que se pinte para llegar a él.

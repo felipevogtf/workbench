@@ -1,7 +1,11 @@
+/** `group`: varias tareas en un grupo. `task`: una sola tarea que se planifica sin grupo (no se renombra ni se le suman tareas). */
+export type OrganizerSessionKind = 'group' | 'task';
+
 /** Una sesión del organizador, tal como sale en la lista. */
 export interface OrganizerSessionSummary {
   id: string;
   title: string;
+  kind: OrganizerSessionKind;
   /** La tarea del grupo: con su id se conversa, se planifica y se ejecuta, como con cualquier tarea. */
   groupIssueId: string;
   memberCount: number;
@@ -19,6 +23,7 @@ export interface OrganizerMember {
 export interface OrganizerSession {
   id: string;
   title: string;
+  kind: OrganizerSessionKind;
   groupIssueId: string;
   /** Las notas del grupo: qué depende de qué. */
   notes: string | null;

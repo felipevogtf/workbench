@@ -53,6 +53,19 @@ export class OrganizerStore {
     }
   }
 
+  /** Abre (o crea) la sesión de una tarea suelta y devuelve su id, o `null` si no se pudo. */
+  async openForTask(issueId: string): Promise<string | null> {
+    this.savingState.set(true);
+    try {
+      return (await firstValueFrom(this.api.forTask(issueId))).id;
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+      return null;
+    } finally {
+      this.savingState.set(false);
+    }
+  }
+
   async create(input: NewOrganizerSession): Promise<OrganizerSession | null> {
     this.savingState.set(true);
     try {
@@ -61,6 +74,7 @@ export class OrganizerStore {
         {
           id: created.id,
           title: created.title,
+          kind: created.kind,
           groupIssueId: created.groupIssueId,
           memberCount: created.members.length,
           createdAt: created.createdAt,

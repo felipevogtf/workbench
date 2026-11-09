@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -34,6 +35,14 @@ export class OrganizerController {
   @Post()
   async create(@Body() dto: CreateSessionDto): Promise<SessionDetailDto> {
     return this.toDetail(await this.organizer.create(dto));
+  }
+
+  /** La sesión de una tarea suelta (se crea la primera vez y después se reabre la misma). */
+  @Post('for-task/:issueId')
+  async forTask(
+    @Param('issueId', ParseUUIDPipe) issueId: string,
+  ): Promise<SessionDetailDto> {
+    return this.toDetail(await this.organizer.openForTask(issueId));
   }
 
   @Get(':id')
@@ -71,6 +80,7 @@ export class OrganizerController {
     return {
       id: session.id,
       title: session.title,
+      kind: session.kind,
       groupIssueId: session.groupIssueId,
       memberCount,
       createdAt: session.createdAt.toISOString(),
@@ -81,6 +91,7 @@ export class OrganizerController {
     return {
       id: session.id,
       title: session.title,
+      kind: session.kind,
       groupIssueId: session.groupIssueId,
       notes: group.notes,
       members: group.members,

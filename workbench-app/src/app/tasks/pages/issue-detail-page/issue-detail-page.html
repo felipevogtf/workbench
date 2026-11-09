@@ -18,6 +18,18 @@
           <app-icon name="sparkles" />
         }
       </button>
+      @if (!issue.isGroup) {
+        <button
+          actions
+          app-button
+          type="button"
+          [loading]="planning()"
+          title="Abre el organizador con esta tarea: aclaras con la IA y, cuando quieras, creas el plan"
+          (click)="plan()"
+        >
+          <app-icon name="sparkles" size="1em" /> Planificar
+        </button>
+      }
       <button actions app-button variant="secondary" type="button" (click)="editOpen.set(true)">
         <app-icon name="edit" size="1em" /> Editar
       </button>

@@ -22,6 +22,11 @@ export class OrganizerApi {
     return this.http.get<OrganizerSession>(`${this.base}/${id}`);
   }
 
+  /** La sesión de una tarea suelta: se crea la primera vez y después se reabre la misma. */
+  forTask(issueId: string): Observable<OrganizerSession> {
+    return this.http.post<OrganizerSession>(`${this.base}/for-task/${issueId}`, {});
+  }
+
   create(input: NewOrganizerSession): Observable<OrganizerSession> {
     return this.http.post<OrganizerSession>(this.base, input);
   }

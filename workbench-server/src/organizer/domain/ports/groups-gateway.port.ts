@@ -12,8 +12,18 @@ export interface GroupInfo {
   members: GroupMemberInfo[];
 }
 
+/** Una tarea cualquiera, para abrirle una sesión. */
+export interface TaskInfo {
+  id: string;
+  name: string;
+  /** Es la tarea-grupo de un organizador, no una tarea suelta. */
+  isGroup: boolean;
+}
+
 /** Contrato propio del organizador hacia los grupos del módulo tasks. */
 export interface GroupsGatewayPort {
+  /** Una tarea por su id; `null` si no existe. */
+  findTask(id: string): Promise<TaskInfo | null>;
   /** Crea la tarea del grupo y devuelve su id. */
   createGroup(data: {
     title: string;
