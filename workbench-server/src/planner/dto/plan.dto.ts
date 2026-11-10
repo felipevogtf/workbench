@@ -51,6 +51,8 @@ export class TaskChatReplyDto {
   tickets!: string[];
   /** La tarea tenía un plan listo, que el agente tuvo a la vista. */
   hasPlan!: boolean;
+  /** El usuario pidió cambiar el plan (o crearlo): hay que replanificar con la conversación. */
+  updatesPlan!: boolean;
 }
 
 export class CreatePlanDto {

@@ -6,7 +6,10 @@ import { userTexts } from '@planner/domain/conversation';
 import { relatedKeysOf } from '@planner/domain/related-branches';
 import { PlanChatMessage } from '@planner/domain/entities/plan.props';
 import { repoUrlsOf } from '@planner/domain/task-repos';
-import { buildTaskChatPrompt } from '@planner/domain/task-chat-prompt';
+import {
+  buildTaskChatPrompt,
+  splitPlanMarker,
+} from '@planner/domain/task-chat-prompt';
 import {
   AGENTS_GATEWAY_PORT,
   type AgentsGatewayPort,
@@ -48,6 +51,8 @@ export interface TaskChatReply {
   tickets: string[];
   /** La tarea tenía un plan listo, que el agente tuvo a la vista. */
   hasPlan: boolean;
+  /** El usuario pidió cambiar el plan (o crearlo): quien llama debe replanificar con la conversación. */
+  updatesPlan: boolean;
 }
 
 /**
@@ -130,8 +135,10 @@ export class TaskChatService {
         workdir: cached.path,
       });
 
+      const { text, updatesPlan } = splitPlanMarker(result.markdown);
       return {
-        reply: result.markdown,
+        reply: text,
+        updatesPlan,
         agentName: result.agentName,
         model: result.model,
         tickets: tickets.map((ticket) => ticket.key),

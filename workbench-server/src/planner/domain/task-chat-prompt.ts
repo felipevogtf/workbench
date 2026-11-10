@@ -14,6 +14,21 @@ import { TicketData } from './ports/tickets-gateway.port';
 export const MAX_CHAT_HISTORY_MESSAGES = 20;
 const MAX_CHAT_HISTORY_CHARS = 40_000;
 
+/** La línea con la que el agente avisa de que el usuario pidió un cambio al plan; el servidor la quita de la respuesta. */
+export const UPDATE_PLAN_MARKER = '[[ACTUALIZAR_PLAN]]';
+
+/** Separa la marca de actualizar el plan de la respuesta que se le muestra al usuario. */
+export function splitPlanMarker(markdown: string): {
+  text: string;
+  updatesPlan: boolean;
+} {
+  if (!markdown.includes(UPDATE_PLAN_MARKER)) {
+    return { text: markdown, updatesPlan: false };
+  }
+  const text = markdown.split(UPDATE_PLAN_MARKER).join('').trim();
+  return { text, updatesPlan: true };
+}
+
 export interface TaskChatPromptInput {
   task: TaskContext;
   /** Tickets de Plane leídos (los de la tarea y los que el usuario mencionó en el chat). */
@@ -76,6 +91,7 @@ export function buildTaskChatPrompt({
       },
       staged,
     ),
-    'Responde al último mensaje del usuario. Si lo conversado cambia el plan, di qué cambiarías: el plan solo se actualiza cuando el usuario pulsa «Replanificar».',
+    'Responde al último mensaje del usuario.',
+    `Si el usuario pide cambiar el plan (o crearlo, cuando todavía no hay), di en una o dos frases qué cambias y termina la respuesta con una última línea que contenga solo ${UPDATE_PLAN_MARKER}. El sistema aplica el cambio al plan por su cuenta: no le pidas al usuario que pulse nada y no reescribas el plan en la respuesta. Si el usuario solo pregunta o comenta, responde sin esa línea.`,
   ].join('\n');
 }

@@ -44,6 +44,7 @@ describe('TaskChat', () => {
           model: 'm',
           tickets: [],
           hasPlan: true,
+          updatesPlan: false,
         }),
       ),
     };

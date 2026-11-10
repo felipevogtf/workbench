@@ -21,6 +21,7 @@ describe('OrganizerPage planning', () => {
     bind: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
     sending: ReturnType<typeof signal<boolean>>;
+    onUpdatesPlan: (() => void) | null;
   };
   let generate: ReturnType<typeof vi.fn>;
 
@@ -41,6 +42,7 @@ describe('OrganizerPage planning', () => {
       bind: vi.fn(),
       clear: vi.fn(),
       sending: signal(false),
+      onUpdatesPlan: null,
     };
     const fakes = [
       {
@@ -137,5 +139,32 @@ describe('OrganizerPage planning', () => {
     await page.createPlan();
 
     expect(generate).toHaveBeenLastCalledWith({ messages });
+  });
+
+  it('applies a change to the plan by itself when the AI understood the user asked for one', async () => {
+    create();
+    TestBed.tick();
+
+    chat.onUpdatesPlan?.();
+    TestBed.tick();
+    await Promise.resolve();
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith({ messages });
+  });
+
+  it('waits for the reply to finish before applying the change', async () => {
+    create();
+    chat.sending.set(true);
+    TestBed.tick();
+
+    chat.onUpdatesPlan?.();
+    TestBed.tick();
+    expect(generate).not.toHaveBeenCalled();
+
+    chat.sending.set(false);
+    TestBed.tick();
+    await Promise.resolve();
+    expect(generate).toHaveBeenCalledTimes(1);
   });
 });

@@ -28,21 +28,24 @@
         >
           <app-icon name="trash" size="1.1rem" />
         </button>
-        <button
-          app-button
-          size="sm"
-          type="button"
-          [disabled]="!canPlan()"
-          [loading]="planning()"
-          (click)="createPlan()"
-        >
-          <app-icon name="sparkles" size="1em" />
-          {{ hasReadyPlan() ? 'Replanificar' : 'Crear plan' }}
-        </button>
+        @if (!hasReadyPlan()) {
+          <button
+            app-button
+            variant="secondary"
+            size="sm"
+            type="button"
+            [disabled]="!canPlan()"
+            [loading]="planning()"
+            (click)="createPlan()"
+          >
+            <app-icon name="sparkles" size="1em" /> Crear plan
+          </button>
+        }
+        <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
       </div>
     </header>
 
-    <div class="organizer__body">
+    <div class="organizer__body" [style.--chat-share]="chatShare()">
       <section class="organizer__chat" aria-label="Chat con la IA">
         <app-chat-panel
           [inline]="true"
@@ -72,6 +75,19 @@
           </p>
         </app-chat-panel>
       </section>
+
+      <div
+        class="organizer__divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ajustar el ancho del chat y del plan"
+        tabindex="0"
+        [attr.aria-valuenow]="chatShare()"
+        aria-valuemin="25"
+        aria-valuemax="75"
+        (pointerdown)="dragDivider($event)"
+        (keydown)="nudgeDivider($event)"
+      ></div>
 
       <aside class="organizer__side" aria-label="Plan">
         @if (!isTask()) {
@@ -111,25 +127,17 @@
 
         @if (groupIssue(); as issue) {
           @if (plan() || planning()) {
-            <app-plan-panel [issue]="issue" />
+            <app-plan-panel [issue]="issue" [bare]="true" />
           } @else {
             <div class="organizer__empty">
               <app-icon name="sparkles" size="1.4rem" />
               <strong>Todavía no hay plan</strong>
               <p>
-                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pulsa «Crear plan»:
-                aquí lo verás, y cada cambio que pidas se edita sobre él.
+                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan:
+                aquí lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
               </p>
             </div>
           }
-        }
-
-        @if (hasReadyPlan() || executions.executions().length > 0) {
-          <app-execution-panel
-            class="execution"
-            [issueId]="session.groupIssueId"
-            [canRun]="hasReadyPlan()"
-          />
         }
 
         @if (!isTask()) {

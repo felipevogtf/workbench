@@ -1,5 +1,7 @@
-<app-card id="plan-panel">
-  <h4 card-header>Plan de ejecución</h4>
+<app-card id="plan-panel" [bare]="bare()">
+  @if (!bare()) {
+    <h4 card-header>Plan de ejecución</h4>
+  }
 
   <div class="plan">
     @if (store.active(); as active) {

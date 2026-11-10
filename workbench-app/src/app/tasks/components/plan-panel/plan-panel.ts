@@ -36,6 +36,8 @@ const TONES: Record<PlanStatus, BadgeTone> = {
 })
 export class PlanPanel {
   readonly issue = input.required<Issue>();
+  /** Sin marco ni título: el plan se apoya directo en la página que lo muestra. */
+  readonly bare = input(false);
 
   protected readonly store = inject(PlansStore);
   private readonly confirm = inject(ConfirmDialog);

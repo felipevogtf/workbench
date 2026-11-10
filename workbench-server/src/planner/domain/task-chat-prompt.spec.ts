@@ -3,6 +3,7 @@ import { TaskContext } from './ports/tasks-gateway.port';
 import {
   buildTaskChatPrompt,
   MAX_CHAT_HISTORY_MESSAGES,
+  splitPlanMarker,
 } from './task-chat-prompt';
 
 const task: TaskContext = {
@@ -97,7 +98,7 @@ describe('buildTaskChatPrompt', () => {
   });
 
   it('tells that replanning is what updates the plan', () => {
-    expect(buildTaskChatPrompt(base)).toContain('pulsa «Replanificar»');
+    expect(buildTaskChatPrompt(base)).toContain('[[ACTUALIZAR_PLAN]]');
   });
 
   it('cuts a huge plan', () => {
@@ -158,5 +159,21 @@ describe('buildTaskChatPrompt with attachments', () => {
     expect(prompt.indexOf('# Conversación')).toBeLessThan(
       prompt.indexOf('.attachments/a1-informe.pdf'),
     );
+  });
+});
+
+describe('splitPlanMarker', () => {
+  it('removes the marker and says the plan must be updated', () => {
+    expect(splitPlanMarker('Quito el paso 2.\n\n[[ACTUALIZAR_PLAN]]')).toEqual({
+      text: 'Quito el paso 2.',
+      updatesPlan: true,
+    });
+  });
+
+  it('leaves a plain answer alone', () => {
+    expect(splitPlanMarker('El paso 2 depende de la migración.')).toEqual({
+      text: 'El paso 2 depende de la migración.',
+      updatesPlan: false,
+    });
   });
 });

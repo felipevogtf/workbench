@@ -2,12 +2,15 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
 
 /**
  * Card del portfolio. Slots: `[card-header]`, contenido y `[card-footer]`.
- * Con `interactive` reacciona al hover (borde, escala y sombra).
+ * Con `interactive` reacciona al hover (borde, escala y sombra); con `bare` no lleva marco ni relleno.
  */
 @Component({
   selector: 'app-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-interactive]': 'interactive() ? "" : null' },
+  host: {
+    '[attr.data-interactive]': 'interactive() ? "" : null',
+    '[attr.data-bare]': 'bare() ? "" : null',
+  },
   template: `
     <div class="card__header"><ng-content select="[card-header]" /></div>
     <div class="card__body"><ng-content /></div>
@@ -26,6 +29,13 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
         border-color 0.1s ease-in,
         box-shadow 0.1s ease-in,
         transform 0.1s ease-in;
+    }
+
+    /* Sin marco: el contenido se apoya directo en la página. */
+    :host([data-bare]) {
+      padding: 0;
+      border: none;
+      background: none;
     }
 
     :host([data-interactive]:hover) {
@@ -63,4 +73,5 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
 })
 export class Card {
   readonly interactive = input(false, { transform: booleanAttribute });
+  readonly bare = input(false, { transform: booleanAttribute });
 }

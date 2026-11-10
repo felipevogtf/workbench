@@ -44,6 +44,8 @@ export interface TaskChatReply {
   tickets: string[];
   /** La tarea tenía un plan listo, que la IA tuvo a la vista. */
   hasPlan: boolean;
+  /** El usuario pidió cambiar el plan (o crearlo): hay que replanificar con la conversación. */
+  updatesPlan: boolean;
 }
 
 /** En cola o generándose: mientras haya uno, el panel se refresca solo. */

@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
@@ -11,7 +12,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AgentsStore } from '@ai-agents/index';
-import { ExecutionPanel, IssueExecutionsStore } from '@executions/index';
+import { IssueExecutionsStore, RunPlanButton } from '@executions/index';
 import { IssuesStore } from '@tasks/index';
 import { PlanPanel } from '@tasks/components/plan-panel/plan-panel';
 import { PlansStore } from '@tasks/data-access/plans.store';
@@ -29,6 +30,20 @@ import { MembersPanel } from '../../components/members-panel/members-panel';
 import { SideSheet } from '../../components/side-sheet/side-sheet';
 import { OrganizerStore } from '../../data-access/organizer.store';
 
+const SHARE_KEY = 'workbench.organizer.chat-share';
+const MIN_SHARE = 25;
+const MAX_SHARE = 75;
+
+function readShare(): number {
+  try {
+    const saved = Number(localStorage.getItem(SHARE_KEY));
+    if (saved >= MIN_SHARE && saved <= MAX_SHARE) return saved;
+  } catch {
+    // sin almacenamiento
+  }
+  return 50;
+}
+
 /**
  * Una sesión del organizador (`/organizer/:id`): las tareas que se hacen juntas, un chat a pantalla completa con la IA para
  * planificarlas, el plan de todas y, cuando está bien, la ejecución. El grupo es una tarea más (`groupIssueId`): el chat, el plan y
@@ -40,7 +55,7 @@ import { OrganizerStore } from '../../data-access/organizer.store';
     RouterLink,
     ChatPanel,
     PlanPanel,
-    ExecutionPanel,
+    RunPlanButton,
     MarkdownViewer,
     MembersPanel,
     SideSheet,
@@ -69,6 +84,7 @@ export class OrganizerPage {
   private readonly toast = inject(Toast);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly session = this.store.current;
   /** Es la sesión de una sola tarea: sin grupo, sin tareas que sumar ni notas del grupo. */
@@ -93,6 +109,11 @@ export class OrganizerPage {
 
   /** Cuántos mensajes de la conversación ya entraron en un plan: al replanificar solo viajan los siguientes. */
   private readonly plannedCount = signal(0);
+
+  /** Qué parte de la pantalla ocupa el chat (el resto es el plan), en %; se arrastra el divisor para cambiarlo. */
+  protected readonly chatShare = signal(readShare());
+  /** La IA entendió que se pidió un cambio al plan mientras había otro en marcha: se aplica en cuanto termine. */
+  private readonly pendingReplan = signal(false);
 
   /** Hay un plan listo: es lo que se puede ejecutar. */
   protected readonly hasReadyPlan = computed(() =>
@@ -124,6 +145,50 @@ export class OrganizerPage {
       const notes = this.session()?.notes ?? '';
       untracked(() => this.notes.set(notes));
     });
+    // Cuando la IA entiende que se pidió un cambio al plan, se aplica solo: no hace falta pulsar nada.
+    this.chat.onUpdatesPlan = () => this.pendingReplan.set(true);
+    effect(() => {
+      if (!this.pendingReplan() || this.planning() || this.chat.sending()) return;
+      untracked(() => {
+        this.pendingReplan.set(false);
+        void this.createPlan();
+      });
+    });
+  }
+
+  /** Arrastrar el divisor entre el chat y el plan. */
+  protected dragDivider(event: PointerEvent): void {
+    const body = this.host.nativeElement.querySelector('.organizer__body');
+    if (!body) return;
+    event.preventDefault();
+    const box = body.getBoundingClientRect();
+    const move = (moved: PointerEvent) =>
+      this.setShare(((moved.clientX - box.left) / box.width) * 100, false);
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      this.setShare(this.chatShare(), true);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  }
+
+  protected nudgeDivider(event: KeyboardEvent): void {
+    const step = event.key === 'ArrowLeft' ? -5 : event.key === 'ArrowRight' ? 5 : 0;
+    if (!step) return;
+    event.preventDefault();
+    this.setShare(this.chatShare() + step, true);
+  }
+
+  private setShare(percent: number, save: boolean): void {
+    const share = Math.min(MAX_SHARE, Math.max(MIN_SHARE, Math.round(percent)));
+    this.chatShare.set(share);
+    if (!save) return;
+    try {
+      localStorage.setItem(SHARE_KEY, String(share));
+    } catch {
+      // sin almacenamiento: el ancho vale mientras la página siga abierta
+    }
   }
 
   protected async changeMembers(ids: string[]): Promise<void> {

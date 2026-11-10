@@ -131,6 +131,7 @@ describe('TaskChatService', () => {
       reply: 'Respuesta.',
       agentName: 'default-task-chat',
       hasPlan: false,
+      updatesPlan: false,
     });
   });
 

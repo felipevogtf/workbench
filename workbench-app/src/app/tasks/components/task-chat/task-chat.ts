@@ -57,6 +57,10 @@ export class TaskChat {
   constructor() {
     void this.agents.load();
     effect(() => this.chat.bind(this.issue().id));
+    // Si la IA entendió que se pidió un cambio al plan, se aplica sin tener que pulsar «Replanificar».
+    this.chat.onUpdatesPlan = () => {
+      if (this.canReplan()) void this.replan();
+    };
   }
 
   protected async replan(): Promise<void> {

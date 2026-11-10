@@ -11,6 +11,7 @@ const reply = (text: string): TaskChatReply => ({
   model: 'm',
   tickets: [],
   hasPlan: true,
+  updatesPlan: false,
 });
 
 describe('TaskChatStore', () => {
@@ -73,5 +74,36 @@ describe('TaskChatStore', () => {
     void store.send('x'.repeat(40_000));
 
     expect(store.snapshot()[0].content).toHaveLength(30_000);
+  });
+
+  it('tells when the AI understood the user asked to change the plan, once its answer is in the conversation', async () => {
+    vi.useFakeTimers();
+    try {
+      const updates = vi.fn(() => expect(store.messages().at(-1)?.role).toBe('assistant'));
+      store.onUpdatesPlan = updates;
+      api.chatTask.mockReturnValue(of({ ...reply('Quito el paso 2.'), updatesPlan: true }));
+
+      await store.send('quita el paso 2');
+      await vi.runAllTimersAsync();
+
+      expect(updates).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not tell anything for a plain answer', async () => {
+    vi.useFakeTimers();
+    try {
+      const updates = vi.fn();
+      store.onUpdatesPlan = updates;
+
+      await store.send('¿qué hace el paso 2?');
+      await vi.runAllTimersAsync();
+
+      expect(updates).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
