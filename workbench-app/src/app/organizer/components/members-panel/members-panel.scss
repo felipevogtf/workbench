@@ -23,7 +23,9 @@
   align-items: center;
   gap: var(--space-1);
   max-width: 100%;
-  padding: 2px var(--space-2) 2px 4px;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2) 0 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--background);
@@ -76,7 +78,7 @@
 }
 
 .chip--add {
-  padding: 2px var(--space-3);
+  padding: 0 var(--space-3);
   border-style: dashed;
   cursor: pointer;
 
