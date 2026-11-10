@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Card } from '@shared/ui/card/card';
 import { formatHours } from '@shared/util/date';
 import { WorkedDay } from '../../domain/group-by-day';
 
@@ -9,16 +8,20 @@ const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', 
 /** En qué tickets se trabajó cada día de la semana, con las horas de cada uno. */
 @Component({
   selector: 'app-tickets-by-day',
-  imports: [RouterLink, Card],
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="days">
       @for (day of days(); track day.date) {
-        <app-card>
-          <div card-header class="day__head">
-            <h4 class="day__name">{{ label(day.date) }}</h4>
+        <!-- Cerrados por defecto: sin \`open\`. -->
+        <details class="day">
+          <summary class="day__head">
+            <span class="day__name">{{ label(day.date) }}</span>
+            <span class="day__count">
+              {{ day.issues.length }} {{ day.issues.length === 1 ? 'ticket' : 'tickets' }}
+            </span>
             <span class="day__total">{{ formatHours(day.totalHours) }}</span>
-          </div>
+          </summary>
           <ul class="issues">
             @for (issue of day.issues; track issue.id) {
               <li class="issue">
@@ -30,7 +33,7 @@ const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', 
               </li>
             }
           </ul>
-        </app-card>
+        </details>
       }
     </div>
   `,
@@ -41,18 +44,36 @@ const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', 
       gap: var(--space-4);
     }
 
+    .day {
+      padding: 0 var(--space-4);
+      border: 1px solid var(--border);
+      border-radius: var(--border-radius);
+      background: var(--background);
+    }
+
     .day__head {
       display: flex;
       align-items: baseline;
-      justify-content: space-between;
       gap: var(--space-3);
+      padding: var(--space-3) 0;
+      cursor: pointer;
+    }
+
+    .day[open] > .day__head {
+      border-bottom: 1px solid var(--border);
     }
 
     .day__name {
-      margin: 0;
+      flex: 1;
       font-weight: 600;
       color: var(--primary);
       text-transform: capitalize;
+    }
+
+    .day__count {
+      font-size: 0.8125rem;
+      color: var(--text-color);
+      white-space: nowrap;
     }
 
     .day__total {
@@ -74,6 +95,9 @@ const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', 
       align-items: baseline;
       gap: var(--space-3);
       padding: var(--space-3) 0;
+    }
+
+    .issue + .issue {
       border-top: 1px solid var(--border);
     }
 
