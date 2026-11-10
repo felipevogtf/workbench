@@ -65,34 +65,10 @@
   overflow-y: auto;
 }
 
-// Cada sección es una caja con borde y un título que se pliega.
-.fold,
-.attachment {
-  align-self: stretch;
-  margin-bottom: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--background);
-}
-
-// El panel de ejecución ya es una tarjeta con borde: no se envuelve en otra caja.
-.execution {
+// Las tareas del grupo, en fichas sobre el plan.
+.members {
   display: block;
-  margin-bottom: var(--space-3);
-}
-
-.fold {
-  summary {
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  &[open] > summary {
-    margin-bottom: var(--space-3);
-  }
+  margin-bottom: var(--space-4);
 }
 
 // Mientras no hay plan, la mitad derecha dice qué hacer.
@@ -125,19 +101,6 @@ app-plan-panel {
   margin: 0 0 var(--space-2);
   font-size: 0.875rem;
   color: var(--text-color);
-}
-
-.notes {
-  display: block;
-  width: 100%;
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--border-radius);
-  background: var(--background);
-  color: inherit;
-  font: inherit;
-  resize: vertical;
 }
 
 .organizer__delete {

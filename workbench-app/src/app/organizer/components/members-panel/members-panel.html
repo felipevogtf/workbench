@@ -1,69 +1,89 @@
 <div class="panel">
-  @if (members().length === 0) {
-    <p class="muted">Sin tareas todavía. Busca abajo las que quieras planificar juntas.</p>
-  } @else {
-    <ol
-      class="members"
-      aria-label="Tareas del grupo, en el orden en que se hacen; arrastra para reordenar"
-      cdkDropList
-      (cdkDropListDropped)="drop($event)"
-    >
-      @for (member of members(); track member.id; let index = $index) {
-        <li class="member" cdkDrag [cdkDragDisabled]="saving()">
-          <span class="member__order" aria-hidden="true">{{ index + 1 }}</span>
-          <button class="member__text" type="button" (click)="opened.emit(member.id)">
-            @if (member.key) {
-              <strong>{{ member.key }}</strong>
-            }
+  <ol
+    class="chips"
+    aria-label="Tareas del grupo, en el orden en que se hacen; arrastra para reordenar"
+    cdkDropList
+    cdkDropListOrientation="mixed"
+    (cdkDropListDropped)="drop($event)"
+  >
+    @for (member of members(); track member.id; let index = $index) {
+      <li class="chip" cdkDrag [cdkDragDisabled]="saving()">
+        <span class="chip__order" aria-hidden="true">{{ index + 1 }}</span>
+        <button
+          class="chip__text"
+          type="button"
+          [title]="member.name"
+          (click)="opened.emit(member.id)"
+        >
+          @if (member.key) {
+            <strong>{{ member.key }}</strong>
+          } @else {
             {{ member.name }}
-          </button>
-          <button
-            app-icon-button
-            type="button"
-            label="Quitar del grupo"
-            [disabled]="saving()"
-            (click)="remove(member.id)"
-          >
-            <app-icon name="x" size="1em" />
-          </button>
-        </li>
-      }
-    </ol>
+          }
+        </button>
+        <button
+          class="chip__remove"
+          type="button"
+          [attr.aria-label]="'Quitar ' + (member.key || member.name) + ' del grupo'"
+          [disabled]="saving()"
+          (click)="remove(member.id)"
+        >
+          <app-icon name="x" size="0.9em" />
+        </button>
+      </li>
+    }
+    <li class="chips__add">
+      <button
+        class="chip chip--add"
+        type="button"
+        [disabled]="full() || saving()"
+        [attr.aria-expanded]="adding()"
+        (click)="toggleAdd()"
+      >
+        <app-icon name="plus" size="1em" /> Sumar
+        <small>{{ members().length }}/{{ maxMembers }}</small>
+      </button>
+    </li>
+  </ol>
+
+  @if (members().length === 0 && !adding()) {
+    <p class="muted">
+      Sin tareas todavía. Pulsa «Sumar» para elegir las que quieras planificar juntas.
+    </p>
   }
 
-  <div class="add">
-    <label class="add__label" for="member-search">
-      Sumar una tarea ({{ members().length }}/{{ maxMembers }})
-    </label>
-    <input
-      id="member-search"
-      class="add__input"
-      type="search"
-      autocomplete="off"
-      placeholder="Código (MEL-123), nombre o proyecto"
-      [disabled]="full() || saving()"
-      [value]="search()"
-      (input)="search.set($any($event.target).value)"
-    />
-    @if (suggestions().length > 0) {
-      <ul class="suggestions" aria-label="Tareas que coinciden">
-        @for (entry of suggestions(); track entry.id) {
-          <li>
-            <button type="button" class="suggestion" (click)="add(entry.id)">
-              <app-icon name="plus" size="1em" />
-              <span>
-                @if (entry.code) {
-                  <strong>{{ entry.code }}</strong>
-                }
-                {{ entry.name }}
-                <small>{{ entry.project }}</small>
-              </span>
-            </button>
-          </li>
-        }
-      </ul>
-    } @else if (search().trim().length >= 2) {
-      <p class="muted">Ninguna tarea abierta coincide.</p>
-    }
-  </div>
+  @if (adding()) {
+    <div class="add">
+      <input
+        class="add__input"
+        type="search"
+        autocomplete="off"
+        aria-label="Buscar una tarea para sumar"
+        placeholder="Código (MEL-123), nombre o proyecto"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+        (keydown.escape)="toggleAdd()"
+      />
+      @if (suggestions().length > 0) {
+        <ul class="suggestions" aria-label="Tareas que coinciden">
+          @for (entry of suggestions(); track entry.id) {
+            <li>
+              <button type="button" class="suggestion" (click)="add(entry.id)">
+                <app-icon name="plus" size="1em" />
+                <span>
+                  @if (entry.code) {
+                    <strong>{{ entry.code }}</strong>
+                  }
+                  {{ entry.name }}
+                  <small>{{ entry.project }}</small>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else if (search().trim().length >= 2) {
+        <p class="muted">Ninguna tarea abierta coincide.</p>
+      }
+    </div>
+  }
 </div>

@@ -10,19 +10,18 @@ import {
 import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
 import { Icon } from '@shared/ui/icon/icon';
-import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { MAX_GROUP_MEMBERS, OrganizerMember } from '../../models/organizer';
 
 /** Cuántas coincidencias se ofrecen al buscar una tarea para sumar. */
 const MAX_SUGGESTIONS = 8;
 
 /**
- * Las tareas del grupo, en el orden en que se hacen (se reordenan arrastrando), y un buscador para sumar otras. Cada cambio
+ * Las tareas del grupo como fichas, en el orden en que se hacen (se reordenan arrastrando), y un buscador para sumar otras. Cada cambio
  * se avisa con la lista completa y ordenada: quien lo guarda es la pantalla.
  */
 @Component({
   selector: 'app-members-panel',
-  imports: [CdkDrag, CdkDropList, Icon, IconButton],
+  imports: [CdkDrag, CdkDropList, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './members-panel.html',
   styleUrl: './members-panel.scss',
@@ -40,6 +39,8 @@ export class MembersPanel {
 
   protected readonly maxMembers = MAX_GROUP_MEMBERS;
   protected readonly search = signal('');
+  /** El buscador para sumar tareas está abierto. */
+  protected readonly adding = signal(false);
 
   private readonly issues = inject(IssuesStore);
   private readonly projects = inject(ProjectsStore);
@@ -76,6 +77,12 @@ export class MembersPanel {
   protected add(id: string): void {
     if (this.full()) return;
     this.changed.emit([...this.members().map((member) => member.id), id]);
+    this.search.set('');
+    this.adding.set(false);
+  }
+
+  protected toggleAdd(): void {
+    this.adding.update((open) => !open);
     this.search.set('');
   }
 

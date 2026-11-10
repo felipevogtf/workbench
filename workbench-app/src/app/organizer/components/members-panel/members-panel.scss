@@ -9,45 +9,50 @@
   gap: var(--space-3);
 }
 
-.members {
+.chips {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.member {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  background: var(--background);
-  cursor: grab;
+.chip {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: 2px var(--space-2) 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: grab;
 }
 
-.member__order {
+.chip__order {
   display: grid;
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
   background: color-mix(in srgb, var(--text-color) 14%, transparent);
-  color: inherit;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
-.member__text {
+.chip__text {
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
-  text-align: left;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 
   &:hover {
@@ -55,8 +60,38 @@
   }
 }
 
+.chip__remove {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--danger);
+  }
+}
+
+.chip--add {
+  padding: 2px var(--space-3);
+  border-style: dashed;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  small {
+    color: var(--text-color);
+  }
+}
+
 .cdk-drag-preview {
-  padding: var(--space-2) var(--space-3);
+  padding: 2px var(--space-3);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
@@ -65,7 +100,7 @@
 }
 
 .cdk-drag-animating,
-.members.cdk-drop-list-dragging .member:not(.cdk-drag-placeholder) {
+.chips.cdk-drop-list-dragging .chip:not(.cdk-drag-placeholder) {
   transition: transform 200ms ease;
 }
 
@@ -73,11 +108,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.add__label {
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 
 .add__input {

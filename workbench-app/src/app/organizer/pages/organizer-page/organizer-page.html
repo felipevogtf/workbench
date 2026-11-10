@@ -92,38 +92,14 @@
 
       <aside class="organizer__side" aria-label="Plan">
         @if (!isTask()) {
-          <details class="fold" open>
-            <summary>Tareas · {{ session.members.length }}</summary>
-            <app-members-panel
-              [members]="session.members"
-              [groupIssueId]="session.groupIssueId"
-              [saving]="store.saving()"
-              (changed)="changeMembers($event)"
-              (opened)="sheet.set({ id: $event })"
-            />
-          </details>
-
-          <details class="fold">
-            <summary>Notas</summary>
-            <p class="muted">Qué depende de qué o lo que los agentes deban tener presente.</p>
-            <textarea
-              class="notes"
-              rows="4"
-              aria-label="Notas del grupo"
-              [value]="notes()"
-              (input)="notes.set($any($event.target).value)"
-            ></textarea>
-            <button
-              app-button
-              variant="secondary"
-              size="sm"
-              type="button"
-              [disabled]="!notesChanged() || store.saving()"
-              (click)="saveNotes()"
-            >
-              Guardar notas
-            </button>
-          </details>
+          <app-members-panel
+            class="members"
+            [members]="session.members"
+            [groupIssueId]="session.groupIssueId"
+            [saving]="store.saving()"
+            (changed)="changeMembers($event)"
+            (opened)="sheet.set({ id: $event })"
+          />
         }
 
         @if (groupIssue(); as issue) {
@@ -134,8 +110,8 @@
               <app-icon name="sparkles" size="1.4rem" />
               <strong>Todavía no hay plan</strong>
               <p>
-                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan:
-                aquí lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
+                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan: aquí
+                lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
               </p>
             </div>
           }
@@ -149,17 +125,19 @@
       </aside>
     </div>
 
-    @if (sheet(); as open) {
-      <app-side-sheet [heading]="sheetTask()?.name ?? 'Tarea'" (closed)="sheet.set(null)">
-        @if (sheetTask(); as task) {
-          @if (task.description) {
-            <app-markdown-viewer [content]="task.description" />
-          } @else {
-            <p class="muted">Esta tarea no tiene descripción.</p>
-          }
+    <app-dialog
+      [heading]="sheetTask()?.name ?? 'Tarea'"
+      [open]="sheet() !== null"
+      (openChange)="$event || sheet.set(null)"
+    >
+      @if (sheetTask(); as task) {
+        @if (task.description) {
+          <app-markdown-viewer [content]="task.description" />
+        } @else {
+          <p class="muted">Esta tarea no tiene descripción.</p>
         }
-      </app-side-sheet>
-    }
+      }
+    </app-dialog>
   } @else {
     <div class="stack" aria-busy="true">
       <app-skeleton height="48px" />

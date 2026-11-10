@@ -20,6 +20,7 @@ import { TaskChatStore } from '@tasks/data-access/task-chat.store';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
+import { Dialog } from '@shared/ui/dialog/dialog';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
@@ -27,7 +28,6 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { MembersPanel } from '../../components/members-panel/members-panel';
-import { SideSheet } from '../../components/side-sheet/side-sheet';
 import { OrganizerStore } from '../../data-access/organizer.store';
 
 const SHARE_KEY = 'workbench.organizer.chat-share';
@@ -58,7 +58,7 @@ function readShare(): number {
     RunPlanButton,
     MarkdownViewer,
     MembersPanel,
-    SideSheet,
+    Dialog,
     Alert,
     Button,
     Icon,
@@ -95,17 +95,13 @@ export class OrganizerPage {
     return session ? (this.issues.issueById().get(session.groupIssueId) ?? null) : null;
   });
   protected readonly assistant = computed(() => this.agents.assistantOf('task-chat'));
-  /** La tarea del grupo abierta en el panel lateral. */
+  /** La tarea del grupo abierta en una ventana. */
   protected readonly sheet = signal<{ id: string } | null>(null);
   protected readonly sheetTask = computed(() => {
     const open = this.sheet();
     return open ? (this.issues.issueById().get(open.id) ?? null) : null;
   });
   protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
-  protected readonly notes = signal('');
-  protected readonly notesChanged = computed(
-    () => this.notes().trim() !== (this.session()?.notes ?? '').trim(),
-  );
 
   /** Cuántos mensajes de la conversación ya entraron en un plan: al replanificar solo viajan los siguientes. */
   private readonly plannedCount = signal(0);
@@ -139,11 +135,6 @@ export class OrganizerPage {
     effect(() => {
       const id = this.id();
       untracked(() => void this.open(id));
-    });
-    // Las notas del grupo reflejan las de la sesión (también tras guardarlas).
-    effect(() => {
-      const notes = this.session()?.notes ?? '';
-      untracked(() => this.notes.set(notes));
     });
     // Cuando la IA entiende que se pidió un cambio al plan, se aplica solo: no hace falta pulsar nada.
     this.chat.onUpdatesPlan = () => this.pendingReplan.set(true);
@@ -193,12 +184,6 @@ export class OrganizerPage {
 
   protected async changeMembers(ids: string[]): Promise<void> {
     await this.store.setMembers(this.id(), ids);
-  }
-
-  protected async saveNotes(): Promise<void> {
-    if (await this.store.update(this.id(), { notes: this.notes().trim() })) {
-      this.toast.success('Notas guardadas');
-    }
   }
 
   /**
