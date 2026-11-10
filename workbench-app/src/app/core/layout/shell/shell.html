@@ -4,11 +4,13 @@
   <button app-icon-button type="button" label="Abrir menú" (click)="openDrawer()">
     <app-icon name="menu" />
   </button>
-  <span class="topbar__brand"><app-icon name="logo" size="1.1rem" /> Workbench</span>
-  @if (topbar.subtitle(); as subtitle) {
-    <span class="topbar__divider" aria-hidden="true">/</span>
-    <h1 class="topbar__subtitle" [title]="subtitle">{{ subtitle }}</h1>
-  }
+  <app-icon name="logo" size="1.5rem" />
+  <div class="topbar__title">
+    <span class="topbar__brand">Workbench</span>
+    @if (topbar.subtitle(); as subtitle) {
+      <h1 class="topbar__subtitle" [title]="subtitle">{{ subtitle }}</h1>
+    }
+  </div>
   <div class="topbar__actions">
     <ng-container [ngTemplateOutlet]="topbar.actions()" />
   </div>
