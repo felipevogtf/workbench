@@ -132,8 +132,8 @@
       (openChange)="$event || sheet.set(null)"
     >
       @if (sheetTask(); as task) {
-        @if (task.description) {
-          <app-markdown-viewer [content]="task.description" />
+        @if (sheetDescription(); as description) {
+          <app-markdown-viewer [content]="description" [breaks]="true" />
         } @else {
           <p class="muted">Esta tarea no tiene descripción.</p>
         }

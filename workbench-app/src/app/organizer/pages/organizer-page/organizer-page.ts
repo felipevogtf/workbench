@@ -26,6 +26,7 @@ import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Toast } from '@shared/ui/toast/toast';
+import { readableTicket } from '@shared/util/ticket-markdown';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { MembersPanel } from '../../components/members-panel/members-panel';
 import { OrganizerStore } from '../../data-access/organizer.store';
@@ -100,6 +101,11 @@ export class OrganizerPage {
   protected readonly sheetTask = computed(() => {
     const open = this.sheet();
     return open ? (this.issues.issueById().get(open.id) ?? null) : null;
+  });
+  /** La descripción de la tarea abierta, arreglada para leerse (listas y saltos de línea). */
+  protected readonly sheetDescription = computed(() => {
+    const description = this.sheetTask()?.description;
+    return description ? readableTicket(description) : null;
   });
   protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
 
