@@ -30,6 +30,8 @@ export interface Issue {
   dueDate: string | null;
   /** ISO si la tarea está cerrada (historial); null si está abierta. */
   closedAt: string | null;
+  /** ISO si la tarea está pausada (fuera de las abiertas, se ve en «Pausadas»); null si no. */
+  pausedAt: string | null;
 }
 
 /** Campos editables. `undefined` = sin cambios; `null` = limpiar el valor. */
@@ -55,8 +57,8 @@ export interface IssueFilters {
   stateKeys: string[] | null;
   labelId: string;
   origin: 'all' | 'plane' | 'local' | 'session';
-  /** `open`: pendientes y finalizadas. `closed`: el historial. */
-  view: 'open' | 'closed';
+  /** `open`: pendientes y finalizadas. `paused`: las puestas en pausa. `closed`: el historial. */
+  view: 'open' | 'paused' | 'closed';
 }
 
 export const DEFAULT_ISSUE_FILTERS: IssueFilters = {

@@ -15,6 +15,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-dialog';
 import { IssueTable } from '../../components/issue-table/issue-table';
+import { HourTotalsStore } from '../../data-access/hour-totals.store';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
 import { ProjectsStore } from '../../data-access/projects.store';
@@ -73,6 +74,7 @@ export class IssueListPage {
   ]);
   protected readonly viewOptions: SegmentOption[] = [
     { value: 'open', label: 'Abiertas' },
+    { value: 'paused', label: 'Pausadas' },
     { value: 'closed', label: 'Cerradas' },
   ];
   protected readonly labelOptions = computed<SelectOption[]>(() => [
@@ -101,6 +103,7 @@ export class IssueListPage {
     void this.projectsStore.load();
     void this.statesStore.load();
     void this.labelsStore.load();
+    void inject(HourTotalsStore).load();
 
     this.filterForm.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
       this.store.setFilters(value as Partial<IssueFilters>);
@@ -109,7 +112,7 @@ export class IssueListPage {
   }
 
   protected setView(view: string): void {
-    this.store.setFilters({ view: view as 'open' | 'closed' });
+    this.store.setFilters({ view: view as IssueFilters['view'] });
     this.limit.set(PAGE_SIZE);
   }
 
@@ -121,8 +124,17 @@ export class IssueListPage {
   /** Cierra (o reabre, en el historial) todas las tareas que se ven con los filtros actuales. */
   protected async bulkToggle(): Promise<void> {
     const issues = this.store.filtered();
-    const closing = this.store.filters().view === 'open';
     const count = issues.length;
+    if (this.store.filters().view === 'paused') {
+      const resume = await this.confirm.ask({
+        title: 'Reanudar tareas',
+        message: `Se reanudarán las ${count} tareas que ves ahora y volverán a las abiertas.`,
+        confirmLabel: 'Reanudar',
+      });
+      if (resume) await this.store.resume(issues.map((issue) => issue.id));
+      return;
+    }
+    const closing = this.store.filters().view === 'open';
     const confirmed = await this.confirm.ask({
       title: closing ? 'Cerrar tareas' : 'Reabrir tareas',
       message: closing
@@ -139,6 +151,11 @@ export class IssueListPage {
   protected toggleClosed(issue: Issue): void {
     if (issue.closedAt) void this.store.reopen([issue.id]);
     else void this.store.close([issue.id]);
+  }
+
+  protected togglePaused(issue: Issue): void {
+    if (issue.pausedAt) void this.store.resume([issue.id]);
+    else void this.store.pause([issue.id]);
   }
 
   protected clearFilters(): void {

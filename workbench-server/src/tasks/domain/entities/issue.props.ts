@@ -19,5 +19,6 @@ export interface IssueProps {
   syncedAt: Date;
   /** Cuándo se cerró (historial); null si está abierta. Solo del workbench: el sync no la toca. */
   closedAt: Date | null;
+  pausedAt: Date | null;
   createdAt: Date;
 }

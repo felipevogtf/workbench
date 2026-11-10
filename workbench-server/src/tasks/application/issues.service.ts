@@ -123,6 +123,16 @@ export class IssuesService {
     return this.issueRepository.setClosed(ids, null);
   }
 
+  /** Pausa tareas: salen del listado de pendientes hasta que se reanuden. Cuenta solo las que cambian. */
+  pauseIssues(ids: string[]): Promise<number> {
+    return this.issueRepository.setPaused(ids, new Date());
+  }
+
+  /** Reanuda tareas pausadas; vuelven al listado con el estado que tenían. */
+  resumeIssues(ids: string[]): Promise<number> {
+    return this.issueRepository.setPaused(ids, null);
+  }
+
   async syncByProject(
     projectId: string,
   ): Promise<{ created: number; updated: number }> {
@@ -177,6 +187,7 @@ export class IssuesService {
           priority: raw.priority,
           estimatedHours: raw.estimatePoint,
           closedAt: null,
+          pausedAt: null,
           stateId: null,
           projectId: project.id,
           labelIds: [],

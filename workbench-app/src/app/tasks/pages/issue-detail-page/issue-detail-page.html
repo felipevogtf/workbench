@@ -96,6 +96,12 @@
               <dt>Horas estimadas</dt>
               <dd>{{ formatHours(issue.estimatedHours) }}</dd>
             </div>
+            @if (issue.pausedAt && !issue.closedAt) {
+              <div>
+                <dt>Pausa</dt>
+                <dd>Pausada desde el {{ formatDay(issue.pausedAt) }}</dd>
+              </div>
+            }
             @if (issue.closedAt) {
               <div>
                 <dt>Cierre</dt>
@@ -129,6 +135,12 @@
             (click)="transferOpen.set(true)"
           >
             <app-icon name="arrow-outward" size="1em" /> Transferir tarea
+          </button>
+        }
+        @if (!issue.closedAt) {
+          <button app-button block variant="secondary" type="button" (click)="togglePaused()">
+            <app-icon name="clock" size="1em" />
+            {{ issue.pausedAt ? 'Reanudar tarea' : 'Pausar tarea' }}
           </button>
         }
         <button

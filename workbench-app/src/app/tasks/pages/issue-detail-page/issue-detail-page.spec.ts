@@ -28,6 +28,7 @@ const issue: Issue = {
   startDate: null,
   dueDate: null,
   closedAt: null,
+  pausedAt: null,
 };
 
 describe('IssueDetailPage', () => {

@@ -30,6 +30,7 @@ export class Issue {
       dueDate: null,
       estimatedHours: null,
       closedAt: null,
+      pausedAt: null,
       syncedAt: new Date(),
       createdAt: new Date(),
     });
@@ -171,6 +172,10 @@ export class Issue {
 
   get closedAt(): Date | null {
     return this.props.closedAt;
+  }
+
+  get pausedAt(): Date | null {
+    return this.props.pausedAt;
   }
 
   get estimatedHours(): number | null {

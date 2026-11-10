@@ -18,4 +18,6 @@ export class IssueResponseDto {
   estimatedHours!: number | null;
   /** ISO si la tarea está cerrada (historial); null si está abierta. */
   closedAt!: string | null;
+  /** ISO si la tarea está pausada (fuera del listado de pendientes); null si no. */
+  pausedAt!: string | null;
 }

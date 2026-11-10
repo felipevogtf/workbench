@@ -22,6 +22,7 @@ function issue(patch: Partial<Issue> = {}): Issue {
     startDate: null,
     dueDate: null,
     closedAt: null,
+    pausedAt: null,
     ...patch,
   };
 }
@@ -74,6 +75,22 @@ describe('matchesFilters', () => {
     const closed = issue({ stateId: 's9', closedAt: '2026-10-06T12:00:00Z' });
     expect(match(closed, filters({ view: 'closed' }))).toBe(true);
     expect(match(issue(), filters({ view: 'closed' }))).toBe(false);
+  });
+
+  it('keeps paused issues out of the open view, whatever their state', () => {
+    const paused = issue({ pausedAt: '2026-10-06T12:00:00Z' });
+    expect(match(paused, DEFAULT_ISSUE_FILTERS)).toBe(false);
+  });
+
+  it('shows only the paused issues in the paused view, ignoring the state', () => {
+    const paused = issue({ stateId: 's9', pausedAt: '2026-10-06T12:00:00Z' });
+    expect(match(paused, filters({ view: 'paused' }))).toBe(true);
+    expect(match(issue(), filters({ view: 'paused' }))).toBe(false);
+  });
+
+  it('does not show a closed issue in the paused view, even if it was paused before', () => {
+    const closed = issue({ pausedAt: '2026-10-06T12:00:00Z', closedAt: '2026-10-07T12:00:00Z' });
+    expect(match(closed, filters({ view: 'paused' }))).toBe(false);
   });
 
   it('still applies the other filters in the closed view', () => {

@@ -59,6 +59,20 @@ export class IssuesController {
     return { updated: await this.issuesService.reopenIssues(dto.ids ?? []) };
   }
 
+  /** Pausa tareas (salen del listado de pendientes). Cuerpo: `{ ids: string[] }`. */
+  @Post('pause')
+  @HttpCode(200)
+  async pause(@Body() dto: CloseIssuesDto): Promise<{ updated: number }> {
+    return { updated: await this.issuesService.pauseIssues(dto.ids ?? []) };
+  }
+
+  /** Reanuda tareas pausadas. Cuerpo: `{ ids: string[] }`. */
+  @Post('resume')
+  @HttpCode(200)
+  async resume(@Body() dto: CloseIssuesDto): Promise<{ updated: number }> {
+    return { updated: await this.issuesService.resumeIssues(dto.ids ?? []) };
+  }
+
   @Post(':id/state/:stateId')
   async setState(
     @Param('id') id: string,
@@ -110,6 +124,7 @@ export class IssuesController {
       priority: issue.priority,
       estimatedHours: issue.estimatedHours,
       closedAt: issue.closedAt ? issue.closedAt.toISOString() : null,
+      pausedAt: issue.pausedAt ? issue.pausedAt.toISOString() : null,
       stateId: issue.stateId,
       projectId: issue.projectId,
       labelIds: issue.labelIds,

@@ -19,7 +19,8 @@ import { TasksApi } from './tasks.api';
 
 /**
  * `true` si la tarea cumple todos los filtros activos. En la vista `open` se ocultan las cerradas y
- * se aplican los estados elegidos; en `closed` solo se ven las cerradas (los estados no aplican).
+ * las pausadas y se aplican los estados elegidos; en `paused` solo se ven las pausadas (no cerradas)
+ * y en `closed` solo las cerradas; en esas dos los estados no aplican.
  */
 export function matchesFilters(
   issue: Issue,
@@ -30,7 +31,13 @@ export function matchesFilters(
 ): boolean {
   if (filters.view === 'closed') {
     if (issue.closedAt === null) return false;
-  } else if (issue.closedAt !== null || !activeStates.has(stateKey(issue))) {
+  } else if (filters.view === 'paused') {
+    if (issue.pausedAt === null || issue.closedAt !== null) return false;
+  } else if (
+    issue.closedAt !== null ||
+    issue.pausedAt !== null ||
+    !activeStates.has(stateKey(issue))
+  ) {
     return false;
   }
 
@@ -150,6 +157,37 @@ export class IssuesStore extends ResourceStore<Issue> {
       );
       this.toast.success(
         `${updated} ${updated === 1 ? 'tarea' : 'tareas'} ${closed ? 'cerrada' : 'reabierta'}${updated === 1 ? '' : 's'}`,
+      );
+      return updated;
+    } catch (error) {
+      this.toast.error(errorMessage(error));
+      return 0;
+    }
+  }
+
+  /** Pausa tareas: salen de las abiertas y quedan en «Pausadas». */
+  async pause(ids: string[]): Promise<number> {
+    return this.changePaused(ids, true);
+  }
+
+  /** Reanuda tareas pausadas; vuelven a las abiertas con el estado que tenían. */
+  async resume(ids: string[]): Promise<number> {
+    return this.changePaused(ids, false);
+  }
+
+  private async changePaused(ids: string[], paused: boolean): Promise<number> {
+    if (ids.length === 0) return 0;
+    try {
+      const { updated } = await firstValueFrom(
+        paused ? this.api.pauseIssues(ids) : this.api.resumeIssues(ids),
+      );
+      const pausedAt = paused ? new Date().toISOString() : null;
+      const changed = new Set(ids);
+      this.items.update((list) =>
+        list.map((issue) => (changed.has(issue.id) ? { ...issue, pausedAt } : issue)),
+      );
+      this.toast.success(
+        `${updated} ${updated === 1 ? 'tarea' : 'tareas'} ${paused ? 'pausada' : 'reanudada'}${updated === 1 ? '' : 's'}`,
       );
       return updated;
     } catch (error) {

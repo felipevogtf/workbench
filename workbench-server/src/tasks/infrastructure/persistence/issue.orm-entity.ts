@@ -82,6 +82,9 @@ export class IssueOrmEntity {
   @Column({ type: 'timestamp', nullable: true })
   closed_at!: Date | null;
 
+  @Column({ type: 'timestamp', nullable: true })
+  paused_at!: Date | null;
+
   @UpdateDateColumn()
   synced_at!: Date;
 

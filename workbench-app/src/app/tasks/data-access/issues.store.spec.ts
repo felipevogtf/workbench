@@ -27,6 +27,7 @@ function issue(id: string, stateId: string | null, closedAt: string | null = nul
     startDate: null,
     dueDate: null,
     closedAt,
+    pausedAt: null,
   };
 }
 
@@ -36,7 +37,10 @@ const states: State[] = [
 ];
 
 describe('IssuesStore', () => {
-  let api: Record<'listIssues' | 'closeIssues' | 'reopenIssues', ReturnType<typeof vi.fn>>;
+  let api: Record<
+    'listIssues' | 'closeIssues' | 'reopenIssues' | 'pauseIssues' | 'resumeIssues',
+    ReturnType<typeof vi.fn>
+  >;
   let store: IssuesStore;
   let toast: Toast;
   const hidden = signal<ReadonlySet<string>>(new Set());
@@ -54,6 +58,8 @@ describe('IssuesStore', () => {
       ),
       closeIssues: vi.fn(),
       reopenIssues: vi.fn(),
+      pauseIssues: vi.fn(),
+      resumeIssues: vi.fn(),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -109,6 +115,31 @@ describe('IssuesStore', () => {
 
     expect(ids().sort()).toEqual(['a', 'c', 'd']);
     expect(toast.messages()[0].message).toBe('1 tarea reabierta');
+  });
+
+  it('pauses issues: they leave the open view and show up in the paused one', async () => {
+    api.pauseIssues.mockReturnValue(of({ updated: 1 }));
+
+    await store.pause(['a']);
+
+    expect(api.pauseIssues).toHaveBeenCalledWith(['a']);
+    expect(ids()).toEqual(['c']);
+    store.setFilters({ view: 'paused' });
+    expect(ids()).toEqual(['a']);
+    expect(toast.messages()[0].message).toBe('1 tarea pausada');
+  });
+
+  it('resumes paused issues: they come back to the open view', async () => {
+    api.pauseIssues.mockReturnValue(of({ updated: 1 }));
+    api.resumeIssues.mockReturnValue(of({ updated: 1 }));
+    await store.pause(['a']);
+
+    await store.resume(['a']);
+
+    expect(ids().sort()).toEqual(['a', 'c']);
+    expect(toast.messages().map((toastMessage) => toastMessage.message)).toContain(
+      '1 tarea reanudada',
+    );
   });
 
   it('does not touch the list when the server fails', async () => {

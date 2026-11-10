@@ -27,6 +27,7 @@ const fromPlane = () =>
     dueDate: null,
     estimatedHours: null,
     closedAt: null,
+    pausedAt: null,
     syncedAt: new Date(),
     createdAt: new Date(),
   });

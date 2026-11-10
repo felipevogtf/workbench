@@ -44,7 +44,7 @@
 
   <div class="statebar">
     <app-segmented-control
-      label="Ver tareas abiertas o cerradas"
+      label="Ver tareas abiertas, pausadas o cerradas"
       [options]="viewOptions"
       [value]="store.filters().view"
       (valueChange)="setView($event)"
@@ -98,13 +98,21 @@
       <p class="count" aria-live="polite">
         {{ store.filtered().length }}
         {{ store.filtered().length === 1 ? 'tarea' : 'tareas' }}
-        {{ store.filters().view === 'closed' ? 'cerradas' : '' }}
+        {{
+          store.filters().view === 'closed'
+            ? 'cerradas'
+            : store.filters().view === 'paused'
+              ? 'pausadas'
+              : ''
+        }}
       </p>
       <button app-button variant="secondary" size="sm" type="button" (click)="bulkToggle()">
         {{
           store.filters().view === 'open'
             ? 'Cerrar las ' + store.filtered().length + ' tareas'
-            : 'Reabrir las ' + store.filtered().length + ' tareas'
+            : store.filters().view === 'paused'
+              ? 'Reanudar las ' + store.filtered().length + ' tareas'
+              : 'Reabrir las ' + store.filtered().length + ' tareas'
         }}
       </button>
     </div>
@@ -113,6 +121,7 @@
       (edit)="openEdit($event)"
       (remove)="remove($event)"
       (toggleClosed)="toggleClosed($event)"
+      (togglePaused)="togglePaused($event)"
     />
     @if (hiddenCount() > 0) {
       <div class="more">

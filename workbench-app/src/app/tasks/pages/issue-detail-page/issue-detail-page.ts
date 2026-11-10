@@ -185,6 +185,13 @@ export class IssueDetailPage {
     else void this.store.close([issue.id]);
   }
 
+  protected togglePaused(): void {
+    const issue = this.issue();
+    if (!issue) return;
+    if (issue.pausedAt) void this.store.resume([issue.id]);
+    else void this.store.pause([issue.id]);
+  }
+
   protected async transfer(targetId: string): Promise<void> {
     const issue = this.issue();
     if (!issue) return;

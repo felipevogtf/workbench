@@ -23,6 +23,7 @@ const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
     estimatedHours: null,
     syncedAt: new Date(),
     closedAt: null,
+    pausedAt: null,
     createdAt: new Date(),
     ...extra,
   });

@@ -18,6 +18,7 @@ const issue = (name: string, local = true) =>
     priority: null,
     estimatedHours: null,
     closedAt: null,
+    pausedAt: null,
     stateId: null,
     projectId: 'p1',
     labelIds: [],

@@ -92,6 +92,22 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     return affected;
   }
 
+  async setPaused(ids: string[], pausedAt: Date | null): Promise<number> {
+    if (ids.length === 0) return 0;
+
+    // Igual que `setClosed`: una sentencia, solo las que cambian, sin mover `synced_at`.
+    const [, affected] = await this.issueRepository.manager.query<
+      [unknown, number]
+    >(
+      `UPDATE issues SET paused_at = $2
+        WHERE id = ANY($1::uuid[])
+          AND paused_at IS ${pausedAt ? '' : 'NOT '}NULL
+        `,
+      [ids, pausedAt],
+    );
+    return affected;
+  }
+
   async nextLocalSequence(projectId: string): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       // Advisory lock por proyecto: serializa dos inserts concurrentes en el
@@ -134,6 +150,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       startDate: issueOrmEntity.start_date,
       dueDate: issueOrmEntity.due_date,
       closedAt: issueOrmEntity.closed_at,
+      pausedAt: issueOrmEntity.paused_at,
       syncedAt: issueOrmEntity.synced_at,
       createdAt: issueOrmEntity.created_at,
     };
@@ -152,6 +169,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       local_sequence: issue.localSequence,
       estimated_hours: issue.estimatedHours,
       closed_at: issue.closedAt,
+      paused_at: issue.pausedAt,
       external_state: issue.externalState,
       description: issue.description,
       priority: issue.priority,

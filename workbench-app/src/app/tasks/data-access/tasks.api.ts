@@ -63,6 +63,15 @@ export class TasksApi {
     return this.http.post<{ updated: number }>(`${this.base}/issues/reopen`, { ids });
   }
 
+  /** Pausa tareas (salen de las abiertas). Devuelve cuántas cambiaron. */
+  pauseIssues(ids: string[]): Observable<{ updated: number }> {
+    return this.http.post<{ updated: number }>(`${this.base}/issues/pause`, { ids });
+  }
+
+  resumeIssues(ids: string[]): Observable<{ updated: number }> {
+    return this.http.post<{ updated: number }>(`${this.base}/issues/resume`, { ids });
+  }
+
   /** Proyectos y tareas de Plane, en un solo paso. */
   sync(): Observable<SyncResult> {
     return this.http.post<SyncResult>(`${this.base}/sync`, {});

@@ -11,6 +11,7 @@
         <th scope="col">Prioridad</th>
         <th scope="col">Etiquetas</th>
         <th scope="col">Estimado</th>
+        <th scope="col">Desarrollado</th>
         <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
     </thead>
@@ -50,6 +51,7 @@
             </span>
           </td>
           <td class="muted nowrap">{{ formatHours(row.issue.estimatedHours) }}</td>
+          <td class="muted nowrap">{{ formatHours(row.worked) }}</td>
           <td class="actions">
             <app-menu
               [label]="'Acciones de ' + row.issue.name"
@@ -93,8 +95,11 @@
             <app-tag [color]="label.color">{{ label.name }}</app-tag>
           }
         </div>
-        @if (row.issue.estimatedHours !== null) {
-          <p class="card__line">Estimado {{ formatHours(row.issue.estimatedHours) }}</p>
+        @if (row.issue.estimatedHours !== null || row.worked !== null) {
+          <p class="card__line">
+            Estimado {{ formatHours(row.issue.estimatedHours) }} · Desarrollado
+            {{ formatHours(row.worked) }}
+          </p>
         }
 
         <ng-container card-footer>
