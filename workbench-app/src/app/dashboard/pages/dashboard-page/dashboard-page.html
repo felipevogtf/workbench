@@ -95,6 +95,27 @@
             <p class="tile__value">{{ formatHours(store.totalHours()) }}</p>
           </app-card>
           <app-card>
+            <h4 card-header>Estimadas</h4>
+            @if (store.estimate(); as estimate) {
+              @if (estimate.estimatedTickets === 0) {
+                <p class="tile__value">—</p>
+                <p class="tile__hint">Ningún ticket trabajado tiene estimado.</p>
+              } @else {
+                <p
+                  class="tile__value"
+                  [class.tile__value--over]="estimate.workedHours > estimate.estimatedHours"
+                >
+                  {{ formatHours(estimate.workedHours) }}
+                  <span class="tile__of">de {{ formatHours(estimate.estimatedHours) }}</span>
+                </p>
+                <p class="tile__hint">
+                  Desarrollado frente a lo estimado, en {{ estimate.estimatedTickets }} de
+                  {{ estimate.tickets }} tickets con estimado.
+                </p>
+              }
+            }
+          </app-card>
+          <app-card>
             <h4 card-header>Tickets trabajados</h4>
             <p class="tile__value">{{ store.issueCount() }}</p>
           </app-card>
@@ -109,6 +130,13 @@
             <h4 id="dashboard-tickets" class="section-title">Tickets por proyecto</h4>
             <app-tickets-by-project [projects]="store.workedProjects()" />
           </section>
+
+          @if (store.mode() === 'week') {
+            <section class="layout__days" aria-labelledby="dashboard-days">
+              <h4 id="dashboard-days" class="section-title">Tickets por día</h4>
+              <app-tickets-by-day [days]="store.workedDays()" />
+            </section>
+          }
 
           @if (store.chart(); as chart) {
             <section class="layout__side">

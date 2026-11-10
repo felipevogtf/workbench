@@ -63,6 +63,23 @@ h4[card-header] {
   color: var(--primary);
 }
 
+.tile__of {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-color);
+}
+
+.tile__hint {
+  margin: var(--space-1) 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-color);
+}
+
+// Se pasó de lo estimado.
+.tile__value--over {
+  color: var(--danger);
+}
+
 .layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -83,7 +100,7 @@ h4[card-header] {
 
 @media (min-width: 768px) {
   .tiles {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .filters__period {

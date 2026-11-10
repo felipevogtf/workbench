@@ -16,6 +16,7 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { formatDay, formatHours } from '@shared/util/date';
 import { HoursByDay } from '../../components/hours-by-day/hours-by-day';
+import { TicketsByDay } from '../../components/tickets-by-day/tickets-by-day';
 import { TicketsByProject } from '../../components/tickets-by-project/tickets-by-project';
 import { DashboardStore } from '../../data-access/dashboard.store';
 import { bucketTitle } from '../../domain/buckets';
@@ -47,6 +48,7 @@ const MODE_OPTIONS: SegmentOption[] = [
     Skeleton,
     HoursByDay,
     TicketsByProject,
+    TicketsByDay,
   ],
   providers: [DashboardStore],
   changeDetection: ChangeDetectionStrategy.OnPush,

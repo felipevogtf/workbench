@@ -4,4 +4,5 @@ export class TimeReportResponseDto {
   totalHours!: number;
   byDay!: { date: string; hours: number }[];
   byIssue!: { issueId: string; hours: number }[];
+  byDayIssue!: { date: string; issueId: string; hours: number }[];
 }

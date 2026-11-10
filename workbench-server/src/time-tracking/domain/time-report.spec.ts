@@ -30,6 +30,11 @@ describe('buildTimeReport', () => {
         { issueId: 'a', hours: 4.5 },
         { issueId: 'b', hours: 4 },
       ],
+      byDayIssue: [
+        { date: '2026-10-05', issueId: 'b', hours: 4 },
+        { date: '2026-10-07', issueId: 'a', hours: 3.5 },
+        { date: '2026-10-09', issueId: 'a', hours: 1 },
+      ],
     });
   });
 
@@ -50,6 +55,7 @@ describe('buildTimeReport', () => {
       totalHours: 0,
       byDay: [],
       byIssue: [],
+      byDayIssue: [],
     });
   });
 });

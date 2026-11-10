@@ -14,6 +14,8 @@ export interface WorkedIssue {
   /** `MEL-123`, o `#12` si el proyecto no tiene identificador. */
   code: string;
   hours: number;
+  /** Lo que se estimó para la tarea; `null` si no tiene estimado. */
+  estimatedHours: number | null;
 }
 
 export interface WorkedProject {
@@ -58,6 +60,7 @@ export function groupByProject(
       name: issue?.name ?? 'Tarea no disponible',
       code: issue ? issueCode(issue, project?.identifier) : '—',
       hours,
+      estimatedHours: issue?.estimatedHours ?? null,
     });
   }
 

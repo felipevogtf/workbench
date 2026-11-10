@@ -15,7 +15,22 @@
             <a class="issue__name break-anywhere" [routerLink]="['/tasks/issues', issue.id]">{{
               issue.name
             }}</a>
-            <span class="issue__hours">{{ formatHours(issue.hours) }}</span>
+            <span
+              class="issue__hours"
+              [class.issue__hours--over]="
+                issue.estimatedHours !== null && issue.hours > issue.estimatedHours
+              "
+              [title]="
+                issue.estimatedHours === null
+                  ? 'Sin horas estimadas'
+                  : 'Desarrollado de lo estimado'
+              "
+            >
+              {{ formatHours(issue.hours) }}
+              @if (issue.estimatedHours !== null) {
+                <span class="issue__estimate">/ {{ formatHours(issue.estimatedHours) }}</span>
+              }
+            </span>
           </li>
         }
       </ul>

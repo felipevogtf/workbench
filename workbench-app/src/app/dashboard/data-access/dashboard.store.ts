@@ -3,6 +3,8 @@ import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { IssuesStore, ProjectsStore } from '@tasks/index';
 import { todayIso } from '@shared/util/date';
+import { EstimateComparison, compareToEstimate } from '../domain/estimate-comparison';
+import { WorkedDay, groupByDay } from '../domain/group-by-day';
 import { WorkedProject, groupByProject } from '../domain/group-by-project';
 import { BucketedHours, bucketHours } from '../domain/buckets';
 import {
@@ -70,6 +72,17 @@ export class DashboardStore {
     const report = this.reportState();
     return report
       ? groupByProject(report.byIssue, this.issues.issueById(), this.projects.projectById())
+      : [];
+  });
+
+  /** Lo desarrollado frente a lo estimado en los tickets trabajados que tienen estimado. */
+  readonly estimate = computed<EstimateComparison>(() => compareToEstimate(this.workedProjects()));
+
+  /** En qué tickets se trabajó cada día; solo tiene sentido al ver una semana. */
+  readonly workedDays = computed<WorkedDay[]>(() => {
+    const report = this.reportState();
+    return report
+      ? groupByDay(report.byDayIssue, this.issues.issueById(), this.projects.projectById())
       : [];
   });
 

@@ -21,6 +21,7 @@ const report = (from: string, to: string, extra: Partial<TimeReport> = {}): Time
   totalHours: 0,
   byDay: [],
   byIssue: [],
+  byDayIssue: [],
   ...extra,
 });
 

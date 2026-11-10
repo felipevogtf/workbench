@@ -60,3 +60,13 @@
   color: var(--primary);
   white-space: nowrap;
 }
+
+.issue__estimate {
+  font-weight: 400;
+  color: var(--text-color);
+}
+
+// Se pasó de lo estimado.
+.issue__hours--over {
+  color: var(--danger);
+}

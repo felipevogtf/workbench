@@ -17,6 +17,10 @@ export interface IssueHours {
   hours: number;
 }
 
+export interface DayIssueHours extends IssueHours {
+  date: string;
+}
+
 /** Horas registradas entre dos fechas (ambas incluidas), por día y por tarea. */
 export interface TimeReport {
   from: string;
@@ -26,6 +30,8 @@ export interface TimeReport {
   byDay: DayHours[];
   /** Las tareas con horas, de la que más tiene a la que menos. */
   byIssue: IssueHours[];
+  /** Qué tareas tuvieron horas cada día: del día más antiguo al más reciente y, dentro, de la que más a la que menos. */
+  byDayIssue: DayIssueHours[];
 }
 
 /** Convierte `YYYY-MM-DD` en milisegundos UTC, o lanza si no es una fecha real. */
@@ -63,10 +69,19 @@ export function buildTimeReport(
 ): TimeReport {
   const days = new Map<string, number>();
   const issues = new Map<string, number>();
+  const dayIssues = new Map<string, DayIssueHours>();
 
   for (const entry of entries) {
     days.set(entry.date, (days.get(entry.date) ?? 0) + entry.hours);
     issues.set(entry.issueId, (issues.get(entry.issueId) ?? 0) + entry.hours);
+    const key = `${entry.date}|${entry.issueId}`;
+    const current = dayIssues.get(key) ?? {
+      date: entry.date,
+      issueId: entry.issueId,
+      hours: 0,
+    };
+    current.hours += entry.hours;
+    dayIssues.set(key, current);
   }
 
   return {
@@ -79,5 +94,13 @@ export function buildTimeReport(
     byIssue: [...issues.entries()]
       .map(([issueId, hours]) => ({ issueId, hours: round(hours) }))
       .sort((a, b) => b.hours - a.hours || a.issueId.localeCompare(b.issueId)),
+    byDayIssue: [...dayIssues.values()]
+      .map((item) => ({ ...item, hours: round(item.hours) }))
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          b.hours - a.hours ||
+          a.issueId.localeCompare(b.issueId),
+      ),
   };
 }
