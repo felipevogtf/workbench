@@ -52,7 +52,7 @@ describe('buildPlanPrompt', () => {
     expect(prompt).toContain('**Título:** Vista de órdenes de carga');
     expect(prompt).toContain('**Proyecto:** Melón');
     expect(prompt).toContain('**Vencimiento:** 2026-10-20');
-    expect(prompt).toContain('**Horas estimadas:** 6');
+    expect(prompt).not.toContain('Horas estimadas');
     expect(prompt).toContain('**Etiquetas:** MiCamión Web');
     expect(prompt).not.toContain('**Inicio:**');
   });
@@ -200,12 +200,10 @@ describe('buildPlanPrompt', () => {
       expect(prompt).toContain('### Usuario\n¿El endpoint ya existe?');
       expect(prompt).toContain('### Asistente\nSí, está en OrdersController.');
       expect(prompt).toContain('Esta es una replanificación');
-      // Con plan anterior se editan solo los fragmentos que cambian, no se reescribe todo.
-      expect(prompt).toContain('NO reescribas el plan');
-      expect(prompt).toContain('<<<<<<< BUSCAR');
-      expect(prompt).toContain('>>>>>>> REEMPLAZAR');
-      expect(prompt).toContain('SIN CAMBIOS');
-      expect(prompt).not.toContain('Entrega el plan completo y actualizado');
+      // Se reescribe entero, desde cero, sin dejar rastro de la conversación.
+      expect(prompt).toContain('DESDE CERO');
+      expect(prompt).toContain('No dejes rastro de la conversación');
+      expect(prompt).not.toContain('<<<<<<< BUSCAR');
       // El plan anterior va antes que la conversación y las instrucciones van al final.
       expect(prompt.indexOf('## Plan anterior')).toBeLessThan(
         prompt.indexOf('## Conversación con el usuario'),
@@ -215,36 +213,27 @@ describe('buildPlanPrompt', () => {
       );
     });
 
-    it('asks for the whole plan when told to, e.g. after the edits could not be applied', () => {
-      const prompt = buildPlanPrompt({
-        task,
-        tickets: [],
-        repos: [],
-        revision: {
-          previousPlan: '## Objetivo\nCrear el endpoint',
-          conversation,
-          mode: 'full',
-        },
-      });
+    it('always asks for a concrete plan with no estimates, replanned or not', () => {
+      for (const revision of [
+        undefined,
+        { previousPlan: '## Objetivo\nx', conversation },
+      ]) {
+        const prompt = buildPlanPrompt({
+          task,
+          tickets: [],
+          repos: [],
+          revision,
+        });
 
-      expect(prompt).toContain('Entrega el plan completo y actualizado');
-      expect(prompt).not.toContain('<<<<<<< BUSCAR');
-    });
-
-    it('tells the agent why its previous edits did not apply', () => {
-      const prompt = buildPlanPrompt({
-        task,
-        tickets: [],
-        repos: [],
-        revision: {
-          previousPlan: '## Objetivo\nCrear el endpoint',
-          conversation,
-          patchError: 'El bloque 1 no coincide con el plan',
-        },
-      });
-
-      expect(prompt).toContain('Tu respuesta anterior no se pudo aplicar');
-      expect(prompt).toContain('El bloque 1 no coincide con el plan');
+        expect(prompt).toContain('## Reglas del plan');
+        expect(prompt).toContain('Sé concreto');
+        expect(prompt).toContain('No estimes');
+        expect(
+          prompt.endsWith(
+            'sin historial ni menciones a versiones anteriores ni a lo conversado.',
+          ),
+        ).toBe(true);
+      }
     });
 
     it('plans from scratch, saying so, when there is no previous plan', () => {

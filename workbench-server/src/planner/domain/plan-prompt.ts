@@ -17,13 +17,6 @@ export interface PlanRevision {
   conversation: readonly PlanChatMessage[];
   /** Dónde quedó cada adjunto de la conversación, para que el agente los lea. */
   staged?: ReadonlyMap<string, StagedAttachment>;
-  /**
-   * `patch` (lo normal si hay plan anterior): la IA responde solo con los fragmentos que cambian, en bloques de edición que el
-   * servidor aplica. `full`: entrega el plan completo (sin plan anterior, o cuando los bloques no se pudieron aplicar).
-   */
-  mode?: 'patch' | 'full';
-  /** Por qué falló el intento anterior de aplicar sus bloques; se le dice a la IA para que lo corrija. */
-  patchError?: string;
 }
 
 export interface PlanPromptInput {
@@ -53,7 +46,6 @@ export function taskLines(task: TaskContext): string[] {
     ],
     ['Inicio', task.startDate],
     ['Vencimiento', task.dueDate],
-    ['Horas estimadas', task.estimatedHours],
     ['Etiquetas', task.labels.map((label) => label.name).join(', ') || null],
   ];
   for (const [label, value] of facts) {
@@ -171,54 +163,34 @@ function revisionLines(revision: PlanRevision): string[] {
       },
       revision.staged,
     ),
-    ...(patches(revision) ? patchInstructions(revision) : fullInstructions()),
+    ...rewriteInstructions(),
   ];
 }
 
-/** Se edita el plan anterior (en vez de rehacerlo) cuando lo hay y no se pidió el plan completo. */
-function patches(revision: PlanRevision): boolean {
-  return !!revision.previousPlan?.trim() && revision.mode !== 'full';
-}
-
-function fullInstructions(): string[] {
+/** Una replanificación no edita el plan: se escribe de nuevo, entero, como si la información aclarada hubiera estado desde el principio. */
+function rewriteInstructions(): string[] {
   return [
     '## Qué hacer ahora',
     '',
-    'Esta es una replanificación. Actualiza el plan anterior incorporando lo conversado: responde las dudas con lo que el usuario aclaró, aplica sus correcciones, ten en cuenta los tickets que mencionó (arriba) y conserva lo que no se discutió.',
-    'Entrega el plan completo y actualizado, con el mismo formato de siempre; no un resumen de los cambios.',
+    'Esta es una replanificación. Escribe el plan completo y definitivo DESDE CERO, como si hubieras tenido desde el principio toda la información: la de la tarea y sus tickets, y lo aclarado en la conversación. El plan anterior es solo una referencia de lo que ya estaba resuelto: no lo edites ni lo comentes.',
+    '',
+    '- Integra lo aclarado en los pasos mismos: el dato, la decisión o el criterio van dentro del paso al que corresponden.',
+    '- No dejes rastro de la conversación ni del plan anterior: nada de «el usuario aclaró», «según lo conversado», «actualizado» o «resuelto», ni listas o secciones que respondan dudas.',
+    '- Lo que el usuario descartó no aparece. Lo que sigue sin definirse y bloquea el trabajo va como duda abierta, y solo eso.',
+    '- Entrega el plan completo con el formato de siempre, no un resumen de cambios.',
   ];
 }
 
-function patchInstructions(revision: PlanRevision): string[] {
+/** Reglas que valen para todo plan, nuevo o replanificado, y que prevalecen sobre el formato del agente si este dice otra cosa. */
+function planRules(): string[] {
   return [
-    '## Qué hacer ahora',
     '',
-    'Esta es una replanificación. Incorpora lo conversado al plan anterior: responde las dudas con lo que el usuario aclaró, aplica sus correcciones, ten en cuenta los tickets que mencionó (arriba) y conserva lo que no se discutió.',
+    '## Reglas del plan',
     '',
-    '**NO reescribas el plan.** Responde SOLO con bloques de edición, uno por cada fragmento que cambia, con este formato exacto (cada marca en su propia línea):',
-    '',
-    '```',
-    '<<<<<<< BUSCAR',
-    '(el texto actual del plan que se cambia, copiado tal cual)',
-    '=======',
-    '(el texto nuevo)',
-    '>>>>>>> REEMPLAZAR',
-    '```',
-    '',
-    '- BUSCAR debe ser una copia exacta de lo que dice el plan anterior (mismas palabras, signos y saltos de línea) y aparecer UNA sola vez: si el fragmento se repite, incluye líneas de alrededor.',
-    '- Para añadir algo, busca la línea junto a la que va y repítela en REEMPLAZAR con lo nuevo a continuación. Para borrar algo, deja REEMPLAZAR vacío.',
-    '- Pon cada bloque con lo mínimo necesario, no párrafos enteros si solo cambia una línea. Los bloques se aplican en el orden en que los escribas.',
-    '- No escribas nada fuera de los bloques (ni resumen, ni explicaciones, ni el plan). Si la conversación no pide ningún cambio al plan, responde solo `SIN CAMBIOS`.',
-    ...(revision.patchError
-      ? [
-          '',
-          '**Tu respuesta anterior no se pudo aplicar** y el plan sigue como estaba:',
-          '',
-          revision.patchError,
-          '',
-          'Corrige los bloques y vuelve a entregarlos todos.',
-        ]
-      : []),
+    '- Sé concreto: cada paso es una acción que se pueda hacer y verificar (qué archivo o módulo tocar y qué cambiar), sin relleno ni generalidades.',
+    '- No estimes: no pongas horas, días, tamaños ni esfuerzo, y omite cualquier sección de estimación que tu formato pida.',
+    '- Las dudas son solo lo que de verdad falta por definir. Nunca pongas respuestas ni aclaraciones en una sección de dudas.',
+    '- Escribe el plan como una especificación final: sin historial ni menciones a versiones anteriores ni a lo conversado.',
   ];
 }
 
@@ -240,5 +212,6 @@ export function buildPlanPrompt({
     ...ticketLines(tickets, '## Tickets citados en la tarea'),
     ...repoLines(repos),
     ...(revision ? revisionLines(revision) : []),
+    ...planRules(),
   ].join('\n');
 }
