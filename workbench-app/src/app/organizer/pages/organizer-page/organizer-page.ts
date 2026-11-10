@@ -220,6 +220,26 @@ export class OrganizerPage {
     if (talked) this.markPlanned(messages.length);
   }
 
+  /** Hay un plan que borrar para empezar de cero. */
+  protected readonly canReset = computed(() => !this.planning() && this.plans.plans().length > 0);
+
+  /**
+   * Borra el plan (y su historial) para planificar otra vez desde cero. La conversación se queda: el próximo plan se hace con toda
+   * ella, no solo con lo dicho después del último.
+   */
+  protected async reset(): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Borrar el plan',
+      message: this.isTask()
+        ? 'Se borran el plan de la tarea y su historial. La conversación se conserva. Esto no se puede deshacer.'
+        : 'Se borran el plan del grupo y su historial. La conversación se conserva. Esto no se puede deshacer.',
+      confirmLabel: 'Borrar el plan',
+      tone: 'danger',
+    });
+    if (!confirmed || !(await this.plans.removeAll())) return;
+    this.markPlanned(0);
+  }
+
   protected async remove(): Promise<void> {
     const session = this.session();
     if (!session) return;

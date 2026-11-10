@@ -66,6 +66,30 @@ describe('PlansStore', () => {
     expect(api.getPlan).toHaveBeenCalledTimes(2);
   });
 
+  it('deletes every plan of the task to start over, keeping one that is still being generated', async () => {
+    api.listPlans.mockReturnValue(
+      of([plan('c', 'generating'), plan('b', 'ready'), plan('a', 'failed')]),
+    );
+    await store.load('i1');
+
+    await expect(store.removeAll()).resolves.toBe(true);
+
+    expect(api.deletePlan.mock.calls.map((call) => call[0])).toEqual(['b', 'a']);
+    expect(store.plans().map((each) => each.id)).toEqual(['c']);
+    expect(store.viewed()).toBeNull();
+  });
+
+  it('keeps what it could not delete and reports the failure', async () => {
+    await store.load('i1');
+    api.deletePlan.mockReturnValueOnce(throwError(() => new Error('boom')));
+    const errors = vi.spyOn(toast, 'error');
+
+    await expect(store.removeAll()).resolves.toBe(false);
+
+    expect(errors).toHaveBeenCalled();
+    expect(store.plans().length).toBeGreaterThan(0);
+  });
+
   it('adds a requested plan to the top and follows it while it is active', async () => {
     await store.load('i1');
     api.createPlan.mockReturnValue(of(plan('c', 'pending')));

@@ -103,6 +103,24 @@ export class PlansStore {
     }
   }
 
+  /** Borra todos los planes de la tarea (menos el que se esté generando), para empezar de cero. */
+  async removeAll(): Promise<boolean> {
+    const ids = this.items()
+      .filter((plan) => !isPlanActive(plan))
+      .map((plan) => plan.id);
+    try {
+      for (const id of ids) await firstValueFrom(this.api.deletePlan(id));
+    } catch (error) {
+      await this.refresh();
+      this.toast.error(errorMessage(error));
+      return false;
+    }
+    this.items.update((list) => list.filter((plan) => isPlanActive(plan)));
+    this.viewedId.set(null);
+    this.toast.success('Planes eliminados');
+    return true;
+  }
+
   /** Vuelve a pedir el historial; si un plan terminó, pasa a mostrarlo. */
   async refresh(): Promise<void> {
     if (!this.issueId) return;

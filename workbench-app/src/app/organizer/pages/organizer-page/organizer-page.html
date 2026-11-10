@@ -23,6 +23,15 @@
           }
         </button>
       }
+      <button
+        app-icon-button
+        type="button"
+        label="Borrar el plan y empezar de cero"
+        [disabled]="!canReset()"
+        (click)="reset()"
+      >
+        <app-icon name="refresh" size="1.1rem" />
+      </button>
       <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
       @if (!isTask()) {
         <button

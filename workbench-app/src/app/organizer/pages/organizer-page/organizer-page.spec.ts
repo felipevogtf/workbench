@@ -24,8 +24,14 @@ describe('OrganizerPage planning', () => {
     onUpdatesPlan: (() => void) | null;
   };
   let generate: ReturnType<typeof vi.fn>;
+  let removeAll: ReturnType<typeof vi.fn>;
+  let ask: ReturnType<typeof vi.fn>;
 
-  function create(): { createPlan(): Promise<void>; plannedKey(): string } {
+  function create(): {
+    createPlan(): Promise<void>;
+    plannedKey(): string;
+    reset(): Promise<void>;
+  } {
     const session = {
       id: 's1',
       title: 'Tarea',
@@ -36,6 +42,8 @@ describe('OrganizerPage planning', () => {
       createdAt: '',
     };
     generate = vi.fn(() => Promise.resolve(true));
+    removeAll = vi.fn(() => Promise.resolve(true));
+    ask = vi.fn(() => Promise.resolve(true));
     chat = {
       messages: signal(messages),
       snapshot: vi.fn(() => chat.messages()),
@@ -56,7 +64,7 @@ describe('OrganizerPage planning', () => {
       },
       { provide: AgentsStore, useValue: { load: vi.fn(), assistantOf: () => null } },
       { provide: IssuesStore, useValue: { load: vi.fn(), issueById: signal(new Map()) } },
-      { provide: ConfirmDialog, useValue: {} },
+      { provide: ConfirmDialog, useValue: { ask } },
       { provide: Toast, useValue: { success: vi.fn(), error: vi.fn() } },
       { provide: Router, useValue: {} },
     ];
@@ -76,6 +84,7 @@ describe('OrganizerPage planning', () => {
               active: signal(null),
               load: vi.fn(),
               generate,
+              removeAll,
             },
           },
           { provide: TaskChatStore, useValue: chat },
@@ -166,5 +175,36 @@ describe('OrganizerPage planning', () => {
     TestBed.tick();
     await Promise.resolve();
     expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts over: deletes the plans after asking, and keeps the conversation', async () => {
+    const page = create();
+    await page.createPlan();
+
+    await page.reset();
+
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(removeAll).toHaveBeenCalledTimes(1);
+    expect(chat.clear).not.toHaveBeenCalled();
+    expect(chat.messages()).toHaveLength(3);
+    // El plan nuevo se hace con toda la conversación, no solo con lo dicho después del último.
+    await page.createPlan();
+    expect(generate).toHaveBeenLastCalledWith({ messages });
+  });
+
+  it('does nothing if the user does not confirm, or if the plans could not be deleted', async () => {
+    const page = create();
+    await page.createPlan();
+
+    ask.mockResolvedValueOnce(false);
+    await page.reset();
+    expect(removeAll).not.toHaveBeenCalled();
+
+    removeAll.mockResolvedValueOnce(false);
+    await page.reset();
+
+    // Nada se borró: lo planificado sigue contando y la conversación no vuelve a viajar.
+    await page.createPlan();
+    expect(generate).toHaveBeenLastCalledWith({});
   });
 });
