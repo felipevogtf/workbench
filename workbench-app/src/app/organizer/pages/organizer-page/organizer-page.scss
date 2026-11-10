@@ -157,3 +157,15 @@ app-plan-panel {
     padding-left: var(--space-3);
   }
 }
+
+// Dos columnas que se desplazan por separado: sus barras son finas y casi invisibles hasta que se pasa el ratón por encima.
+.organizer__side,
+.organizer__chat ::ng-deep .panel__messages {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.2s ease-in;
+
+  &:hover {
+    scrollbar-color: color-mix(in srgb, var(--text-color) 40%, transparent) transparent;
+  }
+}
