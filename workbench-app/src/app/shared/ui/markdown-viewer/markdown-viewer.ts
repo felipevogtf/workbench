@@ -16,7 +16,11 @@ import { renderMarkdown } from './markdown-changes';
   selector: 'app-markdown-viewer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  template: `<div class="markdown" [class.markdown--document]="document()" [innerHTML]="html()"></div>`,
+  template: `<div
+    class="markdown"
+    [class.markdown--document]="document()"
+    [innerHTML]="html()"
+  ></div>`,
   styleUrl: './markdown-viewer.scss',
 })
 export class MarkdownViewer {
