@@ -25,7 +25,12 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  // El plan es lo que se lee: va sobre blanco, separado del fondo gris de la página.
+  background: #fff;
   overflow-y: auto;
 }
 
@@ -100,10 +105,6 @@ app-plan-panel {
 
   .organizer__chat {
     height: 100%;
-  }
-
-  .organizer__side {
-    padding-left: var(--space-3);
   }
 }
 

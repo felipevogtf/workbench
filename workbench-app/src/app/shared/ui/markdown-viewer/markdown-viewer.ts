@@ -16,13 +16,19 @@ import { renderMarkdown } from './markdown-changes';
   selector: 'app-markdown-viewer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  template: `<div class="markdown" [innerHTML]="html()"></div>`,
+  template: `<div
+    class="markdown"
+    [class.markdown--document]="document()"
+    [innerHTML]="html()"
+  ></div>`,
   styleUrl: './markdown-viewer.scss',
 })
 export class MarkdownViewer {
   readonly content = input.required<string>();
   /** Respeta los saltos de línea simples (lo que escribe una persona); por defecto se juntan, como en Markdown. */
   readonly breaks = input(false);
+  /** Para leer un documento largo (un plan): títulos de sección marcados, más aire y un ancho de línea cómodo. */
+  readonly document = input(false);
   /** La versión anterior del texto: lo que cambió respecto a ella sale resaltado. Sin ella no se resalta nada. */
   readonly previous = input<string | null>(null);
 

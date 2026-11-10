@@ -58,7 +58,7 @@ const TONES: Record<PlanStatus, BadgeTone> = {
 
       <app-dialog heading="Plan de ejecución" [wide]="true" [(open)]="open">
         @if (store.viewedContent(); as content) {
-          <app-markdown-viewer [content]="content" />
+          <app-markdown-viewer [content]="content" [document]="true" />
         }
       </app-dialog>
     } @else if (store.active() || store.requesting()) {

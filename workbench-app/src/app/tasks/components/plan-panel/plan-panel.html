@@ -87,7 +87,7 @@
       }
 
       @if (store.viewedContent(); as content) {
-        <app-markdown-viewer [content]="content" />
+        <app-markdown-viewer [content]="content" [document]="true" />
       } @else {
         <p class="plan__muted"><app-spinner size="1em" /> Cargando el plan…</p>
       }

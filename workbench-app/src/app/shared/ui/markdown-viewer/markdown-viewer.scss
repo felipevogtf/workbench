@@ -56,12 +56,15 @@
     text-underline-offset: 3px;
   }
 
+  // El código en línea se lee como un resaltado: fondo marcado, borde fino y el color del texto (no gris).
   code {
     padding: 0.1em 0.4em;
+    border: 1px solid rgba(20, 20, 20, 0.09);
     border-radius: 6px;
-    background: var(--tone-neutral-bg);
+    background: rgba(20, 20, 20, 0.07);
+    color: var(--primary);
     font-family: var(--font-mono);
-    font-size: 0.875em;
+    font-size: 0.9em;
   }
 
   pre {
@@ -74,6 +77,7 @@
 
     code {
       padding: 0;
+      border: 0;
       background: none;
     }
   }
@@ -129,5 +133,35 @@
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
+  }
+}
+
+// Un documento largo (el plan): se hojea por sus secciones, así que los títulos se marcan y las frases en negrita pesan más.
+.markdown--document {
+  max-width: 78ch;
+  font-size: 1rem;
+
+  h2 {
+    margin: 2em 0 0.7em;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.3rem;
+  }
+
+  h3 {
+    margin: 1.4em 0 0.5em;
+    font-size: 1.05rem;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+
+  li {
+    padding-bottom: 6px;
+  }
+
+  > :first-child {
+    margin-top: 0;
   }
 }
