@@ -67,6 +67,19 @@
   }
 }
 
+.windows {
+  margin-bottom: var(--space-5);
+
+  h2 {
+    margin: 0 0 var(--space-1);
+    font-size: 1.0625rem;
+  }
+
+  .note {
+    margin: 0 0 var(--space-3);
+  }
+}
+
 .agents {
   margin-top: var(--space-6);
 

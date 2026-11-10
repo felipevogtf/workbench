@@ -9,6 +9,9 @@ const KINDS: readonly { kind: string; label: string }[] = [
   { kind: 'develop', label: 'Desarrollo' },
   { kind: 'review', label: 'Revisión' },
   { kind: 'publish', label: 'Subida y medición' },
+  { kind: 'planner', label: 'Planificador' },
+  { kind: 'chat', label: 'Chats' },
+  { kind: 'other', label: 'Revisión de PR y otros' },
 ];
 
 /**
@@ -153,6 +156,21 @@ const KINDS: readonly { kind: string; label: string }[] = [
     .chart__part[data-kind='publish'],
     .chart__swatch[data-kind='publish'] {
       background: var(--text-color);
+    }
+
+    .chart__part[data-kind='planner'],
+    .chart__swatch[data-kind='planner'] {
+      background: var(--danger);
+    }
+
+    .chart__part[data-kind='chat'],
+    .chart__swatch[data-kind='chat'] {
+      background: var(--tone-success-fg);
+    }
+
+    .chart__part[data-kind='other'],
+    .chart__swatch[data-kind='other'] {
+      background: color-mix(in srgb, var(--text-color) 45%, white);
     }
 
     .chart__label {

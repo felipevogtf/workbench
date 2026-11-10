@@ -43,6 +43,14 @@ export class TypeOrmUsageSnapshotRepository implements UsageSnapshotRepositoryPo
     return orm ? this.toDomain(orm) : null;
   }
 
+  async findSince(date: Date): Promise<UsageSnapshot[]> {
+    const rows = await this.repository.find({
+      where: { taken_at: MoreThanOrEqual(date) },
+      order: { taken_at: 'ASC' },
+    });
+    return rows.map((orm) => this.toDomain(orm));
+  }
+
   private toDomain(orm: UsageSnapshotOrmEntity): UsageSnapshot {
     const limits: UsageLimits = {
       fiveHour:

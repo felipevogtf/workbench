@@ -34,7 +34,7 @@ export interface DayUsage {
   date: string;
   tokens: number;
   costUsd: number;
-  /** Tokens por etapa (`tickets`, `develop`, `review`, `publish`). */
+  /** Tokens por etapa (`tickets`, `develop`, `review`, `publish`) o por lo que pidió el servidor (`planner`, `chat`, `other`). */
   byKind: Record<string, number>;
   /** Puntos de la semana que habría costado; `null` sin calibración. */
   estimatedPoints: number | null;
@@ -50,6 +50,22 @@ export interface AgentUsage {
   estimatedPoints: number | null;
 }
 
+/** Una ventana de 5 horas del plan: cuánto se llegó a usar de toda la cuenta y cuánto gastó el Workbench dentro. */
+export interface WindowUsage {
+  /** `2026-10-25`: el día en que empezó, en la zona horaria de quien mira. */
+  date: string;
+  /** ISO. */
+  startsAt: string;
+  /** ISO. */
+  resetsAt: string;
+  /** La mayor fracción (0 a 1) vista en la ventana. */
+  peak: number;
+  /** Cuántas medidas del plan hay dentro: con pocas, el pico real puede ser mayor. */
+  measures: number;
+  tokens: number;
+  costUsd: number;
+}
+
 export interface UsageOverview {
   current: {
     fiveHour: UsageWindow | null;
@@ -63,6 +79,8 @@ export interface UsageOverview {
     sevenDay: { costPerPoint: number | null; samples: number };
   };
   days: DayUsage[];
+  /** Las ventanas de 5 horas del período, de la más antigua a la más nueva. */
+  windows: WindowUsage[];
   byAgent: AgentUsage[];
   today: { tokens: number; costUsd: number; estimatedPoints: number | null };
   week: { tokens: number; costUsd: number; estimatedPoints: number | null };

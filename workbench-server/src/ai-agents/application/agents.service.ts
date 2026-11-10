@@ -1,6 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DomainError } from '@core/domain/domain.error';
 import { AgentProvidersService } from '@ai-agents/application/agent-providers.service';
+import { AiCall } from '@ai-agents/domain/ai-call';
+import {
+  AI_CALL_REPOSITORY_PORT,
+  type AiCallRepositoryPort,
+} from '@ai-agents/domain/ports/ai-call-repository.port';
 import { AgentEffort, AgentLevel } from '@ai-agents/domain/effort';
 import { AgentModule } from '@ai-agents/domain/modules';
 import { AgentProvider, DEFAULT_PROVIDER } from '@ai-agents/domain/providers';
@@ -67,7 +73,11 @@ export class AgentsService {
     @Inject(AGENT_RUNNER_PORT)
     private readonly runner: AgentRunnerPort,
     private readonly providers: AgentProvidersService,
+    @Inject(AI_CALL_REPOSITORY_PORT)
+    private readonly calls: AiCallRepositoryPort,
   ) {}
+
+  private readonly logger = new Logger(AgentsService.name);
 
   async create(data: CreateAgentData): Promise<Agent> {
     await this.assertNameAvailable(data.name);
@@ -150,14 +160,43 @@ export class AgentsService {
     this.providers.assertEnabled(agent.provider);
     const model = data.model?.trim() || agent.model;
 
-    const output = await this.runner.run({
-      agent,
-      prompt: data.prompt,
-      workdir: data.workdir,
-      model,
-    });
+    // Lo que gastó la llamada se guarda aunque ésta falle; si no se puede guardar, la llamada sigue igual.
+    const saving: Promise<void>[] = [];
+    try {
+      const output = await this.runner.run({
+        agent,
+        prompt: data.prompt,
+        workdir: data.workdir,
+        model,
+        onUsage: (usage) => {
+          saving.push(
+            this.calls
+              .save({
+                id: randomUUID(),
+                at: new Date(),
+                module: agent.module,
+                agentId: agent.id,
+                agentName: agent.name,
+                model,
+                ...usage,
+              })
+              .catch((error: unknown) =>
+                this.logger.warn(
+                  `The usage of an AI call could not be saved: ${error instanceof Error ? error.message : String(error)}`,
+                ),
+              ),
+          );
+        },
+      });
+      return { output, agentId: agent.id, agentName: agent.name, model };
+    } finally {
+      await Promise.all(saving);
+    }
+  }
 
-    return { output, agentId: agent.id, agentName: agent.name, model };
+  /** Lo que gastaron las llamadas a la IA hechas desde el servidor desde una fecha. */
+  callsSince(since: Date): Promise<AiCall[]> {
+    return this.calls.findSince(since);
   }
 
   private async assertNameAvailable(name: string): Promise<void> {

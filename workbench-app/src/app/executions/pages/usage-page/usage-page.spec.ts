@@ -38,6 +38,7 @@ function overview(extra: Partial<UsageOverview> = {}): UsageOverview {
         estimatedPoints: null,
       },
     ],
+    windows: [],
     byAgent: [],
     today: { tokens: 500, costUsd: 0.2, estimatedPoints: null },
     week: { tokens: 1500, costUsd: 0.6, estimatedPoints: null },

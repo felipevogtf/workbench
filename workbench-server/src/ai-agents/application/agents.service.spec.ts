@@ -30,14 +30,19 @@ function build(initial: Agent[]) {
     },
   };
   const runner = { run: jest.fn().mockResolvedValue('plan') };
+  const calls = {
+    save: jest.fn().mockResolvedValue(undefined),
+    findSince: jest.fn().mockResolvedValue([]),
+  };
   const providers = new AgentProvidersService({
     list: () => [
       { id: 'claude', label: 'Claude', models: ['m'], enabled: true },
     ],
   });
   return {
-    service: new AgentsService(repo, runner, providers),
+    service: new AgentsService(repo, runner, providers, calls),
     runner,
+    calls,
     agents,
   };
 }
@@ -99,6 +104,34 @@ describe('AgentsService modules', () => {
 
     expect(result.agentName).toBe('plan');
     expect(runner.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps what a call spent, and does not fail if it cannot be saved', async () => {
+    const { service, runner, calls } = build([make('plan', 'planner', true)]);
+    const usage = {
+      tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+      costUsd: 0.5,
+    };
+    runner.run.mockImplementation(
+      (input: { onUsage: (u: unknown) => void }) => {
+        input.onUsage(usage);
+        return Promise.resolve('plan');
+      },
+    );
+
+    await service.run({ module: 'planner', prompt: 'x', workdir: '/tmp' });
+    expect(calls.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'planner',
+        agentName: 'plan',
+        ...usage,
+      }),
+    );
+
+    calls.save.mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      service.run({ module: 'planner', prompt: 'x', workdir: '/tmp' }),
+    ).resolves.toMatchObject({ output: 'plan' });
   });
 
   it('refuses an agent that belongs to another module', async () => {

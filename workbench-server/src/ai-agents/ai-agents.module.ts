@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AgentOrmEntity } from './infrastructure/persistence/agent.orm-entity';
+import { AiCallOrmEntity } from './infrastructure/persistence/ai-call.orm-entity';
+import { AI_CALL_REPOSITORY_PORT } from './domain/ports/ai-call-repository.port';
+import { TypeOrmAiCallRepository } from './infrastructure/repositories/typeorm-ai-call.repository';
 import { AgentsController } from './infrastructure/http/agents.controller';
 import { AgentsService } from './application/agents.service';
 import { AGENT_REPOSITORY_PORT } from './domain/ports/agent-repository.port';
@@ -16,11 +19,12 @@ import { AntigravityCliAgentRunnerAdapter } from './infrastructure/adapters/anti
 import { ClaudeCliAgentRunnerAdapter } from './infrastructure/adapters/claude-cli-agent-runner.adapter';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AgentOrmEntity])],
+  imports: [TypeOrmModule.forFeature([AgentOrmEntity, AiCallOrmEntity])],
   controllers: [AgentsController, AgentProvidersController],
   providers: [
     AgentsService,
     { provide: AGENT_REPOSITORY_PORT, useClass: TypeOrmAgentRepository },
+    { provide: AI_CALL_REPOSITORY_PORT, useClass: TypeOrmAiCallRepository },
     AgentProvidersService,
     { provide: PROVIDER_CATALOG_PORT, useClass: EnvProviderCatalogAdapter },
     ClaudeCliAgentRunnerAdapter,

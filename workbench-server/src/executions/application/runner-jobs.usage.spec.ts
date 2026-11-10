@@ -5,6 +5,7 @@ import { RunnerJobsService } from './runner-jobs.service';
 import { RunnersService } from './runners.service';
 import { UsageService } from './usage.service';
 import {
+  InMemoryAiCalls,
   InMemoryJobs,
   InMemoryRunners,
   InMemoryUsageSnapshots,
@@ -28,7 +29,7 @@ describe('RunnerJobsService: what a job spent', () => {
       {
         handleFinished: () => Promise.resolve(),
       } as unknown as ExecutionsService,
-      new UsageService(snapshots, jobs),
+      new UsageService(snapshots, jobs, new InMemoryAiCalls()),
     );
     await jobs.save(
       Job.create({

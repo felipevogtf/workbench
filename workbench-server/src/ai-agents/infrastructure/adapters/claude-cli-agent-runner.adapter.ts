@@ -6,6 +6,7 @@ import {
 } from '@ai-agents/domain/ports/agent-runner.port';
 import { runCli } from './cli-process';
 import { redact, timeoutMs } from './cli-config';
+import { parseClaudeJson } from './claude-output';
 
 /**
  * Ejecuta el CLI de Claude en modo no interactivo (`claude -p`).
@@ -16,9 +17,12 @@ import { redact, timeoutMs } from './cli-config';
 export class ClaudeCliAgentRunnerAdapter implements AgentRunnerPort {
   constructor(private readonly config: ConfigService) {}
 
-  run(input: AgentRunInput): Promise<string> {
+  async run(input: AgentRunInput): Promise<string> {
     const args = [
       '-p',
+      // En JSON el CLI informa también los tokens y el costo de la llamada.
+      '--output-format',
+      'json',
       '--model',
       input.model || input.agent.model,
       '--append-system-prompt',
@@ -28,7 +32,7 @@ export class ClaudeCliAgentRunnerAdapter implements AgentRunnerPort {
       args.push('--allowedTools', input.agent.allowedTools.join(','));
     }
 
-    return runCli({
+    const stdout = await runCli({
       label: 'Claude CLI',
       bin: this.config.get<string>('CLAUDE_BIN') || 'claude',
       args,
@@ -38,5 +42,15 @@ export class ClaudeCliAgentRunnerAdapter implements AgentRunnerPort {
       sanitize: (text) => redact(this.config, text),
       notFoundHint: 'Install it or set CLAUDE_BIN',
     });
+
+    const reply = parseClaudeJson(stdout);
+    // Aunque la llamada falle, gastó: se cuenta igual.
+    if (reply.usage) input.onUsage?.(reply.usage);
+    if (reply.isError || !reply.text) {
+      throw new Error(
+        `Claude CLI failed: ${redact(this.config, reply.text || stdout).slice(0, 2000)}`,
+      );
+    }
+    return reply.text;
   }
 }

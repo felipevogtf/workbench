@@ -13,6 +13,7 @@ import { RunnersService } from './application/runners.service';
 import { EXECUTION_REPOSITORY_PORT } from './domain/ports/execution-repository.port';
 import {
   AGENTS_GATEWAY_PORT,
+  AI_CALLS_GATEWAY_PORT,
   PLANS_GATEWAY_PORT,
   PULL_REQUESTS_GATEWAY_PORT,
   RECIPES_GATEWAY_PORT,
@@ -23,6 +24,7 @@ import { JOB_REPOSITORY_PORT } from './domain/ports/job-repository.port';
 import { USAGE_SNAPSHOT_REPOSITORY_PORT } from './domain/ports/usage-snapshot-repository.port';
 import { RUNNER_REPOSITORY_PORT } from './domain/ports/runner-repository.port';
 import { AgentsGatewayAdapter } from './infrastructure/adapters/agents-gateway.adapter';
+import { AiCallsGatewayAdapter } from './infrastructure/adapters/ai-calls-gateway.adapter';
 import { PlansGatewayAdapter } from './infrastructure/adapters/plans-gateway.adapter';
 import { PullRequestsGatewayAdapter } from './infrastructure/adapters/pull-requests-gateway.adapter';
 import { RecipesGatewayAdapter } from './infrastructure/adapters/recipes-gateway.adapter';
@@ -77,6 +79,7 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
     { provide: TASKS_GATEWAY_PORT, useClass: TasksGatewayAdapter },
     { provide: PLANS_GATEWAY_PORT, useClass: PlansGatewayAdapter },
     { provide: AGENTS_GATEWAY_PORT, useClass: AgentsGatewayAdapter },
+    { provide: AI_CALLS_GATEWAY_PORT, useClass: AiCallsGatewayAdapter },
     { provide: RECIPES_GATEWAY_PORT, useClass: RecipesGatewayAdapter },
     {
       provide: REPOSITORIES_GATEWAY_PORT,

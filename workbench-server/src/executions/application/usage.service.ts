@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Job } from '@executions/domain/entities/job.entity';
 import {
+  AI_CALLS_GATEWAY_PORT,
+  type AiCallsGatewayPort,
+} from '@executions/domain/ports/gateways.port';
+import {
   JOB_REPOSITORY_PORT,
   type JobRepositoryPort,
 } from '@executions/domain/ports/job-repository.port';
@@ -11,6 +15,7 @@ import {
 import {
   NO_TOKENS,
   UsageLimits,
+  UsageSnapshot,
   UsageTokens,
   UsageWindow,
   addTokens,
@@ -60,6 +65,88 @@ export interface DayUsage {
   estimatedPoints: number | null;
 }
 
+/** Una ventana de 5 horas del plan: cuánto se llegó a usar de toda la cuenta y cuánto gastó el Workbench dentro. */
+export interface WindowUsage {
+  /** El día en que empezó, en la zona horaria de quien mira. */
+  date: string;
+  /** ISO. */
+  startsAt: string;
+  /** ISO. */
+  resetsAt: string;
+  /** La mayor fracción (0 a 1) vista en la ventana; es el piso del uso real si no hubo medidas al final. */
+  peak: number;
+  /** Cuántas medidas del plan hay dentro: con pocas, el pico real puede ser mayor. */
+  measures: number;
+  tokens: number;
+  costUsd: number;
+}
+
+/** Algo que gastó tokens: un trabajo del runner o una llamada del servidor. */
+interface Spend {
+  at: Date;
+  tokens: number;
+  costUsd: number;
+  kind: string;
+  agent: { id: string; name: string } | null;
+}
+
+const WINDOW_MS = 5 * 3_600_000;
+/** Dos medidas cuyo reinicio difiere en menos que esto son de la misma ventana. */
+const SAME_WINDOW_MS = 60_000;
+
+/**
+ * Cómo se llama en el gráfico lo que gastó cada módulo del servidor. Los chats van juntos (también con el
+ * chat de la ejecución que contesta el runner, que es un trabajo de tipo `chat`).
+ */
+function kindOfModule(module: string): string {
+  if (module === 'planner') return 'planner';
+  if (module === 'task-chat' || module === 'task-tickets' || module === 'chat')
+    return 'chat';
+  return 'other';
+}
+
+/** Las ventanas de 5 horas que dejan ver las medidas del plan, con lo gastado dentro de cada una. */
+function windowsOf(
+  measures: readonly UsageSnapshot[],
+  spends: readonly Spend[],
+  timeZone: string,
+): WindowUsage[] {
+  const groups: { resetsAt: number; peak: number; count: number }[] = [];
+  for (const measure of measures) {
+    const window = measure.limits.fiveHour;
+    if (!window) continue;
+    const resetsAt = Date.parse(window.resetsAt);
+    const last = groups.find(
+      (group) => Math.abs(group.resetsAt - resetsAt) <= SAME_WINDOW_MS,
+    );
+    if (last) {
+      last.peak = Math.max(last.peak, window.used);
+      last.count += 1;
+    } else {
+      groups.push({ resetsAt, peak: window.used, count: 1 });
+    }
+  }
+
+  return groups
+    .sort((a, b) => a.resetsAt - b.resetsAt)
+    .map((group) => {
+      const start = group.resetsAt - WINDOW_MS;
+      const inside = spends.filter(
+        (spend) =>
+          spend.at.getTime() >= start && spend.at.getTime() < group.resetsAt,
+      );
+      return {
+        date: dayOf(new Date(start), timeZone),
+        startsAt: new Date(start).toISOString(),
+        resetsAt: new Date(group.resetsAt).toISOString(),
+        peak: group.peak,
+        measures: group.count,
+        tokens: inside.reduce((sum, spend) => sum + spend.tokens, 0),
+        costUsd: inside.reduce((sum, spend) => sum + spend.costUsd, 0),
+      };
+    });
+}
+
 /** Lo que gastó un agente en el período (los trabajos sin agente, como subir la rama, van juntos con `agentId` nulo). */
 export interface AgentUsage {
   agentId: string | null;
@@ -82,6 +169,8 @@ export interface UsageOverview {
   refreshing: boolean;
   calibration: Calibration;
   days: DayUsage[];
+  /** Las ventanas de 5 horas del período, de la más antigua a la más nueva, con cuánto se llegó a usar en cada una. */
+  windows: WindowUsage[];
   /** Lo mismo que el gráfico, repartido por agente, de mayor a menor gasto. */
   byAgent: AgentUsage[];
   today: { tokens: number; costUsd: number; estimatedPoints: number | null };
@@ -127,6 +216,8 @@ export class UsageService {
     @Inject(USAGE_SNAPSHOT_REPOSITORY_PORT)
     private readonly snapshots: UsageSnapshotRepositoryPort,
     @Inject(JOB_REPOSITORY_PORT) private readonly jobs: JobRepositoryPort,
+    @Inject(AI_CALLS_GATEWAY_PORT)
+    private readonly aiCalls: AiCallsGatewayPort,
   ) {}
 
   /** Guarda una medida del plan (la trae cada trabajo, o una llamada mínima). Sin datos del plan no hace nada. */
@@ -290,13 +381,38 @@ export class UsageService {
     days: number,
     now = new Date(),
   ): Promise<UsageOverview> {
-    const [latest, calibration, jobs] = await Promise.all([
+    const since = new Date(now.getTime() - (days + 1) * 86_400_000);
+    const [latest, calibration, jobs, calls, measures] = await Promise.all([
       this.snapshots.findLatest(),
       this.calibration(now.getTime()),
-      this.jobs.findFinishedSince(
-        new Date(now.getTime() - (days + 1) * 86_400_000),
-      ),
+      this.jobs.findFinishedSince(since),
+      this.aiCalls.since(since),
+      this.snapshots.findSince(since),
     ]);
+
+    // Lo gastado, venga de un trabajo del runner o de una llamada del servidor (planificador, chats…).
+    const spends: Spend[] = [];
+    for (const job of jobs) {
+      if (!job.finishedAt || !job.usage) continue;
+      spends.push({
+        at: job.finishedAt,
+        tokens: totalTokens(job.usage.tokens),
+        costUsd: job.costUsd ?? 0,
+        kind: job.kind,
+        agent: job.payload.agent,
+      });
+    }
+    for (const call of calls) {
+      spends.push({
+        at: call.at,
+        tokens: totalTokens(call.tokens),
+        costUsd: call.costUsd,
+        kind: kindOfModule(call.module),
+        agent: call.agentId
+          ? { id: call.agentId, name: call.agentName ?? '' }
+          : null,
+      });
+    }
 
     const perDay = new Map<string, DayUsage>();
     const today = dayOf(now, timeZone);
@@ -314,18 +430,15 @@ export class UsageService {
       });
     }
     const perAgent = new Map<string, AgentUsage>();
-    for (const job of jobs) {
-      const entry = job.finishedAt
-        ? perDay.get(dayOf(job.finishedAt, timeZone))
-        : undefined;
-      if (!entry || !job.usage) continue;
-      const tokens = totalTokens(job.usage.tokens);
+    for (const spend of spends) {
+      const entry = perDay.get(dayOf(spend.at, timeZone));
+      if (!entry) continue;
+      const { tokens, agent } = spend;
       entry.tokens += tokens;
-      entry.costUsd += job.costUsd ?? 0;
-      entry.byKind[job.kind] = (entry.byKind[job.kind] ?? 0) + tokens;
+      entry.costUsd += spend.costUsd;
+      entry.byKind[spend.kind] = (entry.byKind[spend.kind] ?? 0) + tokens;
 
       // Lo mismo, por agente: lo que gastó cada trabajador en el período.
-      const agent = job.payload.agent;
       const key = agent?.id ?? 'none';
       const mine = perAgent.get(key) ?? {
         agentId: agent?.id ?? null,
@@ -337,7 +450,7 @@ export class UsageService {
       };
       mine.jobs += 1;
       mine.tokens += tokens;
-      mine.costUsd += job.costUsd ?? 0;
+      mine.costUsd += spend.costUsd;
       perAgent.set(key, mine);
     }
 
@@ -381,6 +494,7 @@ export class UsageService {
         (!latest || latest.takenAt.getTime() < this.refreshAskedAt),
       calibration,
       days: series,
+      windows: windowsOf(measures, spends, timeZone),
       byAgent,
       today: sum(series.filter((day) => day.date === today)),
       week: sum(series.slice(-7)),

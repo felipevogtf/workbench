@@ -75,6 +75,28 @@ export interface AgentChatReply {
 }
 export const AGENTS_GATEWAY_PORT = Symbol('EXECUTIONS_AGENTS_GATEWAY_PORT');
 
+/** Lo que gastó una llamada a la IA hecha desde el servidor (planificador, chats, revisión de PR…). */
+export interface ServerAiCall {
+  at: Date;
+  /** El módulo que llamó: `planner`, `task-chat`, `task-tickets`, `pr-review`… */
+  module: string;
+  agentId: string | null;
+  agentName: string | null;
+  tokens: {
+    input: number;
+    output: number;
+    cacheWrite: number;
+    cacheRead: number;
+  };
+  costUsd: number;
+}
+
+export interface AiCallsGatewayPort {
+  /** Las llamadas a la IA que hizo el servidor desde una fecha. */
+  since(date: Date): Promise<ServerAiCall[]>;
+}
+export const AI_CALLS_GATEWAY_PORT = Symbol('EXECUTIONS_AI_CALLS_GATEWAY_PORT');
+
 export interface NewPullRequest {
   host: string;
   /** `organización/repo`. */

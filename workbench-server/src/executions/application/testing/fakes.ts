@@ -4,6 +4,8 @@ import { Runner } from '@executions/domain/entities/runner.entity';
 import type { ExecutionRepositoryPort } from '@executions/domain/ports/execution-repository.port';
 import type {
   AgentsGatewayPort,
+  AiCallsGatewayPort,
+  ServerAiCall,
   ExecutionAgentModule,
   ExecutionTask,
   NewPullRequest,
@@ -254,5 +256,22 @@ export class InMemoryUsageSnapshots implements UsageSnapshotRepositoryPort {
       .filter((item) => item.takenAt.getTime() >= date.getTime())
       .sort((a, b) => a.takenAt.getTime() - b.takenAt.getTime());
     return Promise.resolve(later[0] ?? null);
+  }
+  findSince(date: Date): Promise<UsageSnapshot[]> {
+    return Promise.resolve(
+      this.items
+        .filter((item) => item.takenAt.getTime() >= date.getTime())
+        .sort((a, b) => a.takenAt.getTime() - b.takenAt.getTime()),
+    );
+  }
+}
+
+export class InMemoryAiCalls implements AiCallsGatewayPort {
+  readonly items: ServerAiCall[] = [];
+
+  since(date: Date): Promise<ServerAiCall[]> {
+    return Promise.resolve(
+      this.items.filter((item) => item.at.getTime() >= date.getTime()),
+    );
   }
 }

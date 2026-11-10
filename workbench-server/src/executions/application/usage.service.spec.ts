@@ -7,7 +7,11 @@ import {
   parseLimits,
 } from '@executions/domain/usage';
 import { UsageService } from './usage.service';
-import { InMemoryJobs, InMemoryUsageSnapshots } from './testing/fakes';
+import {
+  InMemoryAiCalls,
+  InMemoryJobs,
+  InMemoryUsageSnapshots,
+} from './testing/fakes';
 
 const NOW = new Date('2026-10-26T12:00:00Z');
 const RESETS_5H = '2026-10-26T14:00:00.000Z';
@@ -69,12 +73,14 @@ function job(
 describe('UsageService', () => {
   let snapshots: InMemoryUsageSnapshots;
   let jobs: InMemoryJobs;
+  let aiCalls: InMemoryAiCalls;
   let service: UsageService;
 
   beforeEach(() => {
     snapshots = new InMemoryUsageSnapshots();
     jobs = new InMemoryJobs();
-    service = new UsageService(snapshots, jobs);
+    aiCalls = new InMemoryAiCalls();
+    service = new UsageService(snapshots, jobs, aiCalls);
   });
 
   const snapshot = (at: string, value: UsageLimits) =>
@@ -415,6 +421,121 @@ describe('UsageService', () => {
       expect(overview.byAgent.every((a) => a.estimatedPoints === null)).toBe(
         true,
       );
+    });
+
+    describe('what the server asked the AI (planner, chats…)', () => {
+      const call = (
+        module: string,
+        at: string,
+        input: number,
+        agent: { id: string; name: string } | null = null,
+      ) =>
+        aiCalls.items.push({
+          at: new Date(at),
+          module,
+          agentId: agent?.id ?? null,
+          agentName: agent?.name ?? null,
+          tokens: tokens(input),
+          costUsd: input / 1000,
+        });
+
+      it('counts it by day, apart by kind, together with the jobs of the runner', async () => {
+        jobs.items.push(
+          job('e1', 'develop', {
+            start: '2026-10-26T10:00:00Z',
+            end: '2026-10-26T10:30:00Z',
+            cost: 1,
+            usage: { tokens: tokens(1000), limits: null },
+          }),
+        );
+        call('planner', '2026-10-26T09:00:00Z', 400);
+        call('task-chat', '2026-10-26T09:30:00Z', 100);
+        call('task-tickets', '2026-10-26T09:40:00Z', 50);
+        call('pr-review', '2026-10-26T09:50:00Z', 20);
+
+        const today = (await service.overview('UTC', 1, NOW)).days[0];
+
+        expect(today.tokens).toBe(1570);
+        expect(today.costUsd).toBeCloseTo(1.57);
+        expect(today.byKind).toEqual({
+          develop: 1000,
+          planner: 400,
+          chat: 150,
+          other: 20,
+        });
+      });
+
+      it('shows the agent that made the call among the workers', async () => {
+        const planner = { id: 'ag-plan', name: 'default-planner' };
+        call('planner', '2026-10-26T09:00:00Z', 400, planner);
+        call('planner', '2026-10-26T10:00:00Z', 200, planner);
+
+        const { byAgent } = await service.overview('UTC', 1, NOW);
+
+        expect(byAgent).toHaveLength(1);
+        expect(byAgent[0]).toMatchObject({
+          agentId: 'ag-plan',
+          agentName: 'default-planner',
+          jobs: 2,
+          tokens: 600,
+        });
+      });
+    });
+
+    describe('the 5-hour windows of the period', () => {
+      it('shows each window with the highest use seen and what the Workbench spent inside it', async () => {
+        // Ventana A: termina a las 14:00 (empezó a las 09:00). Ventana B: termina a las 19:00.
+        await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
+        await snapshot('2026-10-26T11:30:00Z', limits(0.55, 0.04, RESETS_5H));
+        await snapshot(
+          '2026-10-26T15:00:00Z',
+          limits(0.1, 0.05, '2026-10-26T19:00:00.000Z'),
+        );
+        jobs.items.push(
+          job('e1', 'develop', {
+            start: '2026-10-26T10:00:00Z',
+            end: '2026-10-26T10:30:00Z',
+            cost: 1,
+            usage: { tokens: tokens(1000), limits: null },
+          }),
+        );
+        aiCalls.items.push({
+          at: new Date('2026-10-26T11:00:00Z'),
+          module: 'planner',
+          agentId: null,
+          agentName: null,
+          tokens: tokens(300),
+          costUsd: 0.3,
+        });
+
+        const { windows } = await service.overview('UTC', 2, NOW);
+
+        expect(windows).toHaveLength(2);
+        expect(windows[0]).toMatchObject({
+          date: '2026-10-26',
+          startsAt: '2026-10-26T09:00:00.000Z',
+          resetsAt: RESETS_5H,
+          peak: 0.55,
+          measures: 2,
+          tokens: 1300,
+        });
+        expect(windows[0].costUsd).toBeCloseTo(1.3);
+        expect(windows[1]).toMatchObject({ peak: 0.1, measures: 1, tokens: 0 });
+      });
+
+      it('treats measures whose reset differs by seconds as the same window', async () => {
+        await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
+        await snapshot(
+          '2026-10-26T11:00:00Z',
+          limits(0.3, 0.03, '2026-10-26T14:00:00.900Z'),
+        );
+
+        expect((await service.overview('UTC', 1, NOW)).windows).toHaveLength(1);
+      });
+
+      it('has no windows before the first measure', async () => {
+        expect((await service.overview('UTC', 1, NOW)).windows).toEqual([]);
+      });
     });
 
     it('leaves out of the agents what is outside the period, and the jobs that were not measured', async () => {
