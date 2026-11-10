@@ -1,4 +1,4 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
@@ -6,11 +6,12 @@ import { filter, map } from 'rxjs';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Sidebar } from '../sidebar/sidebar';
+import { Topbar } from '../topbar/topbar';
 
 /** Estructura de la app: sidebar de módulos + contenido. Móvil: barra superior y drawer. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, Sidebar, Icon, IconButton],
+  imports: [NgTemplateOutlet, RouterOutlet, Sidebar, Icon, IconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown.escape)': 'closeDrawer()',
@@ -23,6 +24,7 @@ export class Shell {
   private readonly document = inject(DOCUMENT);
 
   private readonly router = inject(Router);
+  protected readonly topbar = inject(Topbar);
 
   protected readonly drawerOpen = signal(false);
 

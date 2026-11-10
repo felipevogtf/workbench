@@ -7,43 +7,42 @@
       </a>
     </app-alert>
   } @else if (session(); as session) {
-    <header class="organizer__header">
-      @if (isTask()) {
-        <a class="organizer__back" [routerLink]="['/tasks/issues', session.groupIssueId]">
-          <app-icon name="arrow-left" size="1em" /> Volver a la tarea
-        </a>
-      } @else {
-        <a class="organizer__back" routerLink="/organizer">
-          <app-icon name="arrow-left" size="1em" /> Organizador
-        </a>
-      }
-      <h3>{{ session.title }}</h3>
-      <div class="organizer__actions">
+    <ng-template #topbarActions>
+      @if (!hasReadyPlan()) {
         <button
           app-icon-button
           type="button"
-          label="Borrar la conversación"
-          [disabled]="chat.messages().length === 0"
-          (click)="chat.clear()"
+          label="Crear el plan"
+          [disabled]="!canPlan()"
+          (click)="createPlan()"
+        >
+          @if (planning()) {
+            <app-spinner size="1.1rem" />
+          } @else {
+            <app-icon name="sparkles" size="1.1rem" />
+          }
+        </button>
+      }
+      <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
+      @if (!isTask()) {
+        <button
+          app-icon-button
+          type="button"
+          tone="danger"
+          label="Eliminar la sesión"
+          (click)="remove()"
         >
           <app-icon name="trash" size="1.1rem" />
         </button>
-        @if (!hasReadyPlan()) {
-          <button
-            app-button
-            variant="secondary"
-            size="sm"
-            type="button"
-            [disabled]="!canPlan()"
-            [loading]="planning()"
-            (click)="createPlan()"
-          >
-            <app-icon name="sparkles" size="1em" /> Crear plan
-          </button>
-        }
-        <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
-      </div>
-    </header>
+      }
+      <a
+        app-icon-button
+        label="Cerrar y volver"
+        [routerLink]="isTask() ? ['/tasks/issues', session.groupIssueId] : ['/organizer']"
+      >
+        <app-icon name="x" size="1.2rem" />
+      </a>
+    </ng-template>
 
     <div class="organizer__body" [style.--chat-share]="chatShare()">
       <section class="organizer__chat" aria-label="Chat con la IA">
@@ -115,12 +114,6 @@
               </p>
             </div>
           }
-        }
-
-        @if (!isTask()) {
-          <button class="organizer__delete" type="button" (click)="remove()">
-            <app-icon name="trash" size="1em" /> Eliminar sesión
-          </button>
         }
       </aside>
     </div>

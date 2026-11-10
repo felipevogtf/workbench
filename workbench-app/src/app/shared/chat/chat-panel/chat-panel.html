@@ -189,6 +189,18 @@
               (change)="onPick(picker)"
             />
           }
+          @if (inline()) {
+            <button
+              app-icon-button
+              class="composer__clip"
+              type="button"
+              label="Borrar la conversación"
+              [disabled]="chat.messages().length === 0 || chat.sending()"
+              (click)="chat.clear()"
+            >
+              <app-icon name="trash" size="1.1rem" />
+            </button>
+          }
           <span class="composer__hint">Enter envía · Mayús+Enter, nueva línea</span>
           <button
             class="panel__send"

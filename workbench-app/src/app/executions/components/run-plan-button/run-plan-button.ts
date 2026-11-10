@@ -1,36 +1,48 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Button } from '@shared/ui/button/button';
 import { Icon } from '@shared/ui/icon/icon';
+import { IconButton } from '@shared/ui/icon-button/icon-button';
+import { Spinner } from '@shared/ui/spinner/spinner';
 import { Toast } from '@shared/ui/toast/toast';
 import { IssueExecutionsStore } from '../../data-access/issue-executions.store';
 import { RunnerLauncher } from '../../data-access/runner-launcher';
 
 /**
- * «Ejecutar plan»: un solo botón (para una barra superior) que lanza la ejecución con el último plan, despertando antes al runner
+ * «Ejecutar plan»: un botón de solo icono (para una barra superior) que lanza la ejecución con el último plan, despertando antes al runner
  * si hace falta. Mientras hay una ejecución en marcha, lleva a ella. El estado vive en `IssueExecutionsStore`, que provee la página.
  */
 @Component({
   selector: 'app-run-plan-button',
-  imports: [RouterLink, Button, Icon],
+  imports: [RouterLink, Icon, IconButton, Spinner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (store.active(); as active) {
-      <a app-button size="sm" variant="secondary" [routerLink]="['/executions', active.id]">
-        <app-icon name="play" size="1em" /> Ver ejecución
+      <a
+        app-icon-button
+        label="Ver la ejecución en curso"
+        [routerLink]="['/executions', active.id]"
+      >
+        <app-spinner size="1.1rem" />
       </a>
     } @else {
       <button
-        app-button
-        size="sm"
+        app-icon-button
         type="button"
-        [loading]="store.starting() || launching()"
-        [disabled]="!canRun() || launching()"
-        [title]="canRun() ? '' : 'Primero genera un plan de ejecución'"
+        [label]="
+          launching()
+            ? 'Iniciando el runner…'
+            : canRun()
+              ? 'Ejecutar el plan'
+              : 'Primero genera un plan'
+        "
+        [disabled]="!canRun() || launching() || store.starting()"
         (click)="run()"
       >
-        <app-icon name="play" size="1em" />
-        {{ launching() ? 'Iniciando el runner…' : 'Ejecutar plan' }}
+        @if (launching() || store.starting()) {
+          <app-spinner size="1.1rem" />
+        } @else {
+          <app-icon name="play" size="1.1rem" />
+        }
       </button>
     }
   `,

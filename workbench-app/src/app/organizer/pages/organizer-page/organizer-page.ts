@@ -3,12 +3,14 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  TemplateRef,
   computed,
   effect,
   inject,
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AgentsStore } from '@ai-agents/index';
@@ -17,6 +19,7 @@ import { IssuesStore } from '@tasks/index';
 import { PlanPanel } from '@tasks/components/plan-panel/plan-panel';
 import { PlansStore } from '@tasks/data-access/plans.store';
 import { TaskChatStore } from '@tasks/data-access/task-chat.store';
+import { Topbar } from '../../../core/layout/topbar/topbar';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
@@ -25,6 +28,7 @@ import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
 import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
+import { Spinner } from '@shared/ui/spinner/spinner';
 import { Toast } from '@shared/ui/toast/toast';
 import { readableTicket } from '@shared/util/ticket-markdown';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
@@ -65,6 +69,7 @@ function readShare(): number {
     Icon,
     IconButton,
     Skeleton,
+    Spinner,
   ],
   providers: [PlansStore, TaskChatStore, IssueExecutionsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,6 +91,9 @@ export class OrganizerPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly topbar = inject(Topbar);
+  /** Los botones de la sesión, que viven en la barra superior de la app. */
+  private readonly topbarActions = viewChild<TemplateRef<unknown>>('topbarActions');
 
   protected readonly session = this.store.current;
   /** Es la sesión de una sola tarea: sin grupo, sin tareas que sumar ni notas del grupo. */
@@ -142,6 +150,13 @@ export class OrganizerPage {
       const id = this.id();
       untracked(() => void this.open(id));
     });
+    // El título y los botones de la sesión van en la barra superior de la app.
+    effect(() => {
+      const subtitle = this.session()?.title ?? null;
+      const actions = this.topbarActions() ?? null;
+      untracked(() => this.topbar.set({ subtitle, actions }));
+    });
+    this.destroyRef.onDestroy(() => this.topbar.clear());
     // Cuando la IA entiende que se pidió un cambio al plan, se aplica solo: no hace falta pulsar nada.
     this.chat.onUpdatesPlan = () => this.pendingReplan.set(true);
     effect(() => {
