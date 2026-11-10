@@ -19,7 +19,7 @@ export function readableTicket(text: string): string {
       continue;
     }
 
-    const line = raw.replace(/\s+$/, '').replace(/\$/, '');
+    const line = raw.replace(/\s+$/, '').replace(/\\$/, '');
     const previous = out[out.length - 1];
     if (
       ITEM.test(line) &&
