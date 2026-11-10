@@ -22,7 +22,11 @@ interface Row {
 const MAX_WINDOWS = 5;
 
 const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric' });
-const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' });
+const HOUR = new Intl.DateTimeFormat('es-CL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 
 /**
  * Lo que gastó cada trabajador en el período: trabajos, tokens (exactos), qué parte del total del Workbench
@@ -48,11 +52,14 @@ const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digi
               <th scope="col" class="num">De la semana</th>
             } @else {
               @for (column of columns(); track column.key) {
-                <th scope="col" class="num" [title]="column.title">
-                  {{ column.label }}
-                  @if (column.current) {
-                    <span class="now">ahora</span>
-                  }
+                <th scope="col" class="num win" [title]="column.title">
+                  <span class="win__day">
+                    {{ column.day }}
+                    @if (column.current) {
+                      <span class="now">ahora</span>
+                    }
+                  </span>
+                  <span class="win__hours">{{ column.hours }}</span>
                 </th>
               }
             }
@@ -148,10 +155,30 @@ const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digi
       color: var(--text-color);
     }
 
+    th.win {
+      padding-inline: var(--space-3);
+      line-height: 1.3;
+    }
+
+    .win__day,
+    .win__hours {
+      display: block;
+    }
+
+    .win__hours {
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+
+    td.num {
+      white-space: nowrap;
+      padding-inline: var(--space-3);
+    }
+
     th .now {
       margin-left: var(--space-1);
       padding: 1px var(--space-2);
-      font-size: 0.75rem;
+      font-size: 0.6875rem;
       border-radius: 999px;
       background: var(--tone-success-bg);
       color: var(--tone-success-fg);
@@ -165,6 +192,10 @@ const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digi
 
     .who__name {
       font-weight: 600;
+      /* El nombre no se parte letra por letra cuando la tabla es ancha. */
+      overflow-wrap: normal;
+      word-break: normal;
+      white-space: nowrap;
     }
 
     .who__system {
@@ -221,7 +252,8 @@ export class UsageByAgent {
       const end = new Date(window.endsAt);
       return {
         key: window.resetsAt,
-        label: `${DAY.format(start)} ${HOUR.format(start)}–${HOUR.format(end)}`,
+        day: DAY.format(start),
+        hours: `${HOUR.format(start)}–${HOUR.format(end)}`,
         title: `Ventana de 5 horas: ${formatTokens(window.tokens)} tokens en total`,
         current: start.getTime() <= this.now() && this.now() < end.getTime(),
       };
