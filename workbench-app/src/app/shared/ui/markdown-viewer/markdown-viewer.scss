@@ -138,7 +138,6 @@
 
 // Un documento largo (el plan): se hojea por sus secciones, así que los títulos se marcan y las frases en negrita pesan más.
 .markdown--document {
-  max-width: 78ch;
   font-size: 1rem;
 
   h2 {
