@@ -73,12 +73,16 @@ export interface WindowUsage {
   startsAt: string;
   /** ISO. */
   resetsAt: string;
+  /** ISO. Cuándo terminó de verdad: antes que `resetsAt` si la ventana se reinició antes de tiempo. */
+  endsAt: string;
   /** La mayor fracción (0 a 1) vista en la ventana; es el piso del uso real si no hubo medidas al final. */
   peak: number;
   /** Cuántas medidas del plan hay dentro: con pocas, el pico real puede ser mayor. */
   measures: number;
   tokens: number;
   costUsd: number;
+  /** Tokens por origen: etapa del runner (`develop`, `review`…) o lo que pidió el servidor (`planner`, `chat`, `other`). */
+  byKind: Record<string, number>;
 }
 
 /** Algo que gastó tokens: un trabajo del runner o una llamada del servidor. */
@@ -127,24 +131,33 @@ function windowsOf(
     }
   }
 
-  return groups
-    .sort((a, b) => a.resetsAt - b.resetsAt)
-    .map((group) => {
-      const start = group.resetsAt - WINDOW_MS;
-      const inside = spends.filter(
-        (spend) =>
-          spend.at.getTime() >= start && spend.at.getTime() < group.resetsAt,
-      );
-      return {
-        date: dayOf(new Date(start), timeZone),
-        startsAt: new Date(start).toISOString(),
-        resetsAt: new Date(group.resetsAt).toISOString(),
-        peak: group.peak,
-        measures: group.count,
-        tokens: inside.reduce((sum, spend) => sum + spend.tokens, 0),
-        costUsd: inside.reduce((sum, spend) => sum + spend.costUsd, 0),
-      };
-    });
+  const sorted = groups.sort((a, b) => a.resetsAt - b.resetsAt);
+  return sorted.map((group, index) => {
+    const start = group.resetsAt - WINDOW_MS;
+    // Si la ventana se reinició antes de tiempo (por ejemplo al llegar al tope), termina donde empieza la siguiente.
+    const next = sorted[index + 1];
+    const end = next
+      ? Math.min(group.resetsAt, next.resetsAt - WINDOW_MS)
+      : group.resetsAt;
+    const inside = spends.filter(
+      (spend) => spend.at.getTime() >= start && spend.at.getTime() < end,
+    );
+    const byKind: Record<string, number> = {};
+    for (const spend of inside) {
+      byKind[spend.kind] = (byKind[spend.kind] ?? 0) + spend.tokens;
+    }
+    return {
+      date: dayOf(new Date(start), timeZone),
+      startsAt: new Date(start).toISOString(),
+      resetsAt: new Date(group.resetsAt).toISOString(),
+      endsAt: new Date(end).toISOString(),
+      peak: group.peak,
+      measures: group.count,
+      tokens: inside.reduce((sum, spend) => sum + spend.tokens, 0),
+      costUsd: inside.reduce((sum, spend) => sum + spend.costUsd, 0),
+      byKind,
+    };
+  });
 }
 
 /** Lo que gastó un agente en el período (los trabajos sin agente, como subir la rama, van juntos con `agentId` nulo). */

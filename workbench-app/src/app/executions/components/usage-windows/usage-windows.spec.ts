@@ -10,10 +10,12 @@ function window(startHour: number, extra: Partial<WindowUsage> = {}): WindowUsag
     date: '2026-10-26',
     startsAt: new Date(start).toISOString(),
     resetsAt: new Date(start + 5 * 3_600_000).toISOString(),
+    endsAt: new Date(start + 5 * 3_600_000).toISOString(),
     peak: 0.4,
     measures: 3,
     tokens: 12_000,
     costUsd: 1,
+    byKind: { develop: 9_000, planner: 3_000 },
     ...extra,
   };
 }
@@ -44,6 +46,21 @@ describe('UsageWindows', () => {
 
     expect(el.querySelectorAll('.now')).toHaveLength(1);
     expect(el.querySelector('tbody tr')?.classList).toContain('is-current');
+  });
+
+  it('says where the spending came from, biggest first', () => {
+    const el = render([window(10)]);
+
+    const origins = [...el.querySelectorAll('.origin')].map((o) => o.textContent?.trim());
+    expect(origins).toEqual(['Desarrollo 75 %', 'Planificador 25 %']);
+  });
+
+  it('marks only the last window as current when one restarted early', () => {
+    // La primera iba a terminar después de `now`, pero terminó antes porque empezó otra.
+    const early = window(8, { endsAt: new Date(NOW - 3_600_000).toISOString() });
+    const el = render([early, window(10)]);
+
+    expect(el.querySelectorAll('.now')).toHaveLength(1);
   });
 
   it('says "at least" when there are few measures inside the window', () => {

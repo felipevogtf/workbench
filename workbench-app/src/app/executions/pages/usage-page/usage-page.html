@@ -73,18 +73,6 @@
       </div>
     </section>
 
-    @if (overview.windows.length > 0) {
-      <section class="windows" aria-label="Consumo por ventana de 5 horas">
-        <h2>Ventanas de 5 horas</h2>
-        <p class="note">
-          Lo que llegó a marcar tu cuenta en cada ventana y lo que gastó el Workbench dentro. Solo
-          hay medidas cuando corre algo en el runner o pulsas «Actualizar», así que el uso real
-          puede haber sido mayor.
-        </p>
-        <app-usage-windows [windows]="overview.windows" [now]="store.now()" />
-      </section>
-    }
-
     <section class="chart" aria-label="Gasto por día">
       <header class="chart__head">
         <h2>Gasto por día</h2>
@@ -116,6 +104,18 @@
         <h2>Por trabajador</h2>
         <p class="note">Los últimos {{ overview.days.length }} días, solo del Workbench.</p>
         <app-usage-by-agent [rows]="overview.byAgent" [agents]="agents.agents()" />
+      </section>
+    }
+
+    @if (overview.windows.length > 0) {
+      <section class="windows" aria-label="Consumo por ventana de 5 horas">
+        <h2>Ventanas de 5 horas</h2>
+        <p class="note">
+          Lo que llegó a marcar tu cuenta en cada ventana y lo que gastó el Workbench dentro. Solo
+          hay medidas cuando corre algo en el runner o pulsas «Actualizar», así que el uso real
+          puede haber sido mayor.
+        </p>
+        <app-usage-windows [windows]="overview.windows" [now]="store.now()" />
       </section>
     }
   }

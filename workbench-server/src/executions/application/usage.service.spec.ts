@@ -523,6 +523,64 @@ describe('UsageService', () => {
         expect(windows[1]).toMatchObject({ peak: 0.1, measures: 1, tokens: 0 });
       });
 
+      it('splits what was spent in a window by where it came from', async () => {
+        await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
+        jobs.items.push(
+          job('e1', 'develop', {
+            start: '2026-10-26T10:00:00Z',
+            end: '2026-10-26T10:30:00Z',
+            cost: 1,
+            usage: { tokens: tokens(1000), limits: null },
+          }),
+        );
+        aiCalls.items.push({
+          at: new Date('2026-10-26T11:00:00Z'),
+          module: 'planner',
+          agentId: null,
+          agentName: null,
+          tokens: tokens(300),
+          costUsd: 0.3,
+        });
+
+        const [window] = (await service.overview('UTC', 1, NOW)).windows;
+
+        expect(window.byKind).toEqual({ develop: 1000, planner: 300 });
+      });
+
+      it('ends a window where the next one starts when it restarted early', async () => {
+        // La primera iba a terminar a las 14:00 (empezó a las 09:00), pero a las 11:00 empezó otra (termina a las 16:00).
+        await snapshot('2026-10-26T10:00:00Z', limits(1, 0.03, RESETS_5H));
+        await snapshot(
+          '2026-10-26T11:30:00Z',
+          limits(0.1, 0.03, '2026-10-26T16:00:00.000Z'),
+        );
+        aiCalls.items.push(
+          {
+            at: new Date('2026-10-26T10:30:00Z'),
+            module: 'planner',
+            agentId: null,
+            agentName: null,
+            tokens: tokens(100),
+            costUsd: 0,
+          },
+          {
+            at: new Date('2026-10-26T11:30:00Z'),
+            module: 'planner',
+            agentId: null,
+            agentName: null,
+            tokens: tokens(50),
+            costUsd: 0,
+          },
+        );
+
+        const { windows } = await service.overview('UTC', 1, NOW);
+
+        expect(windows[0].endsAt).toBe('2026-10-26T11:00:00.000Z');
+        expect(windows[0].tokens).toBe(100);
+        expect(windows[1].endsAt).toBe('2026-10-26T16:00:00.000Z');
+        expect(windows[1].tokens).toBe(50);
+      });
+
       it('treats measures whose reset differs by seconds as the same window', async () => {
         await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
         await snapshot(

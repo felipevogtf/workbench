@@ -58,13 +58,29 @@ export interface WindowUsage {
   startsAt: string;
   /** ISO. */
   resetsAt: string;
+  /** ISO. Cuándo terminó de verdad: antes que `resetsAt` si la ventana se reinició antes de tiempo. */
+  endsAt: string;
   /** La mayor fracción (0 a 1) vista en la ventana. */
   peak: number;
   /** Cuántas medidas del plan hay dentro: con pocas, el pico real puede ser mayor. */
   measures: number;
   tokens: number;
   costUsd: number;
+  /** Tokens por origen (`develop`, `review`, `planner`, `chat`…). */
+  byKind: Record<string, number>;
 }
+
+/** Cómo se llama cada origen del gasto. */
+export const KIND_LABELS: Record<string, string> = {
+  tickets: 'Tickets',
+  develop: 'Desarrollo',
+  review: 'Revisión',
+  final: 'Revisión final',
+  publish: 'Subida y medición',
+  planner: 'Planificador',
+  chat: 'Chats',
+  other: 'Revisión de PR y otros',
+};
 
 export interface UsageOverview {
   current: {

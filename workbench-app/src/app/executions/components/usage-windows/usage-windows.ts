@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { WindowUsage, formatFraction, formatTokens } from '../../models/usage';
+import { KIND_LABELS, WindowUsage, formatFraction, formatTokens } from '../../models/usage';
 
 /** Cuántas ventanas se muestran: las más recientes. */
 const MAX_WINDOWS = 10;
@@ -14,6 +14,8 @@ interface Row {
   /** Pocas medidas: el pico real puede haber sido mayor. */
   partial: boolean;
   tokens: string;
+  /** De dónde vino el gasto, de mayor a menor. */
+  origins: { label: string; share: number }[];
 }
 
 const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -46,6 +48,13 @@ const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digi
                 {{ row.label }}
                 @if (row.current) {
                   <span class="now">ahora</span>
+                }
+                @if (row.origins.length > 0) {
+                  <span class="origins">
+                    @for (origin of row.origins; track origin.label) {
+                      <span class="origin">{{ origin.label }} {{ origin.share }} %</span>
+                    }
+                  </span>
                 }
               </td>
               <td>
@@ -115,6 +124,22 @@ const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digi
       color: var(--tone-success-fg);
     }
 
+    .origins {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
+      margin-top: var(--space-1);
+    }
+
+    .origin {
+      padding: 1px var(--space-2);
+      font-size: 0.75rem;
+      font-weight: 400;
+      border-radius: 999px;
+      background: var(--tone-neutral-bg);
+      color: var(--text-color);
+    }
+
     .peak {
       display: inline-flex;
       align-items: center;
@@ -152,10 +177,17 @@ export class UsageWindows {
       .slice(0, MAX_WINDOWS)
       .map((window) => {
         const start = new Date(window.startsAt);
-        const end = new Date(window.resetsAt);
+        const end = new Date(window.endsAt);
         return {
           key: window.resetsAt,
           label: `${DAY.format(start)} · ${HOUR.format(start)} – ${HOUR.format(end)}`,
+          origins: Object.entries(window.byKind)
+            .filter(([, tokens]) => tokens > 0)
+            .sort(([, a], [, b]) => b - a)
+            .map(([kind, tokens]) => ({
+              label: KIND_LABELS[kind] ?? kind,
+              share: Math.round((tokens / (window.tokens || 1)) * 100),
+            })),
           current: start.getTime() <= this.now() && this.now() < end.getTime(),
           percent: Math.min(100, Math.round(window.peak * 100)),
           peak: formatFraction(window.peak),
