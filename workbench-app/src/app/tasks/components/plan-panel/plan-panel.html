@@ -18,7 +18,7 @@
 
     @if (store.latestFailed(); as failed) {
       <app-alert tone="danger" heading="El último plan falló">
-        {{ failed.error }} Puedes volver a intentarlo con el botón de IA del encabezado.
+        {{ failed.error }} Pídelo de nuevo en el chat.
       </app-alert>
     }
 
@@ -35,19 +35,6 @@
             {{ plan.agentName }} · {{ plan.model }} · {{ plan.createdAt | timeAgo }}
           </span>
           <span class="plan__tools">
-            @if (store.viewedBaseContent() !== null) {
-              <button
-                app-button
-                variant="ghost"
-                size="sm"
-                type="button"
-                [attr.aria-pressed]="showChanges()"
-                title="Resalta lo que cambió respecto al plan anterior"
-                (click)="showChanges.set(!showChanges())"
-              >
-                {{ showChanges() ? 'Ocultar cambios' : 'Ver cambios' }}
-              </button>
-            }
             <button
               app-icon-button
               type="button"
@@ -100,7 +87,7 @@
       }
 
       @if (store.viewedContent(); as content) {
-        <app-markdown-viewer [content]="content" [previous]="previousContent()" />
+        <app-markdown-viewer [content]="content" />
       } @else {
         <p class="plan__muted"><app-spinner size="1em" /> Cargando el plan…</p>
       }

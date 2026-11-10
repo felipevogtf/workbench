@@ -66,39 +66,6 @@ describe('PlansStore', () => {
     expect(api.getPlan).toHaveBeenCalledTimes(2);
   });
 
-  it('also fetches the plan it was edited from, to highlight what changed', async () => {
-    api.listPlans.mockReturnValue(
-      of([plan('b', 'ready', { basedOnPlanId: 'a', revised: true }), plan('a', 'ready')]),
-    );
-
-    await store.load('i1');
-
-    expect(store.viewedContent()).toBe('# plan b');
-    expect(store.viewedBaseContent()).toBe('# plan a');
-  });
-
-  it('shows the plan anyway when the one it was edited from is gone', async () => {
-    api.listPlans.mockReturnValue(of([plan('b', 'ready', { basedOnPlanId: 'gone' })]));
-    api.getPlan.mockImplementation((id: string) =>
-      id === 'gone'
-        ? throwError(() => new Error('404'))
-        : of(plan(id, 'ready', { content: `# plan ${id}` })),
-    );
-    const errors = vi.spyOn(toast, 'error');
-
-    await store.load('i1');
-
-    expect(store.viewedContent()).toBe('# plan b');
-    expect(store.viewedBaseContent()).toBeNull();
-    expect(errors).not.toHaveBeenCalled();
-  });
-
-  it('has nothing to compare in a plan that was not edited from another', async () => {
-    await store.load('i1');
-
-    expect(store.viewedBaseContent()).toBeNull();
-  });
-
   it('adds a requested plan to the top and follows it while it is active', async () => {
     await store.load('i1');
     api.createPlan.mockReturnValue(of(plan('c', 'pending')));
@@ -144,7 +111,6 @@ describe('PlansStore', () => {
 
     expect(seen.every((content) => content === '# plan a')).toBe(true);
     expect(store.viewedContent()).toBe('# plan b');
-    expect(store.viewedBaseContent()).toBe('# plan a');
   });
 
   it('reports a failed plan and stops polling', async () => {

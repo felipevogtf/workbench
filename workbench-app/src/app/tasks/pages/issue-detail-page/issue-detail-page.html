@@ -4,20 +4,6 @@
       <a back app-button variant="ghost" size="sm" [routerLink]="back().path">
         <app-icon name="arrow-left" size="1em" /> {{ back().label }}
       </a>
-      <button
-        actions
-        app-icon-button
-        type="button"
-        label="Generar plan de ejecución con IA (lee el código de las etiquetas con repositorio)"
-        [disabled]="generating()"
-        (click)="generatePlan()"
-      >
-        @if (generating()) {
-          <app-spinner size="1.1rem" />
-        } @else {
-          <app-icon name="sparkles" />
-        }
-      </button>
       @if (!issue.isGroup) {
         <button
           actions
@@ -54,7 +40,7 @@
         <app-hours-panel [estimatedHours]="issue.estimatedHours" />
 
         @if (plansStore.plans().length > 0 || plansStore.requesting()) {
-          <app-plan-panel [issue]="issue" />
+          <app-plan-summary />
         }
 
         @if (hasReadyPlan() || executionsStore.executions().length > 0) {

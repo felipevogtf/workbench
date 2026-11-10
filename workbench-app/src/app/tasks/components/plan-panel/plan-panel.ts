@@ -24,8 +24,8 @@ const TONES: Record<PlanStatus, BadgeTone> = {
 };
 
 /**
- * «Plan de ejecución» de una tarea. Solo se muestra cuando ya se pidió un plan: se genera con el
- * botón de IA del encabezado del detalle y aquí se ve el avance, el resultado y el historial.
+ * «Plan de ejecución» de una tarea. Se ve en el organizador, junto al chat con el que se crea
+ * y se edita; aquí está el avance, el resultado y el historial.
  */
 @Component({
   selector: 'app-plan-panel',
@@ -46,11 +46,6 @@ export class PlanPanel {
   protected readonly statusLabel = PLAN_STATUS_LABEL;
   protected readonly repoName = repoShortName;
   protected readonly historyOpen = signal(false);
-  /** Resaltar lo que cambió respecto al plan del que parte (solo si se tiene). */
-  protected readonly showChanges = signal(true);
-  protected readonly previousContent = computed(() =>
-    this.showChanges() ? this.store.viewedBaseContent() : null,
-  );
 
   protected onHistoryToggle(event: Event): void {
     this.historyOpen.set((event.target as HTMLDetailsElement).open);

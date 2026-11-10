@@ -29,7 +29,7 @@ import { Spinner } from '@shared/ui/spinner/spinner';
 import { Tag } from '@shared/ui/tag/tag';
 import { PriorityBadge } from '../../components/priority-badge/priority-badge';
 import { HoursPanel } from '../../components/hours-panel/hours-panel';
-import { PlanPanel } from '../../components/plan-panel/plan-panel';
+import { PlanSummary } from '../../components/plan-summary/plan-summary';
 import { TaskChat } from '../../components/task-chat/task-chat';
 import { ExecutionPanel, IssueExecutionsStore } from '@executions/index';
 import { PlansStore } from '../../data-access/plans.store';
@@ -63,7 +63,7 @@ import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
     PriorityBadge,
     IssueFormDialog,
     TransferIssueDialog,
-    PlanPanel,
+    PlanSummary,
     ExecutionPanel,
     TaskChat,
     HoursPanel,
@@ -157,12 +157,7 @@ export class IssueDetailPage {
     });
   }
 
-  /** Pidiendo o generando un plan: el botón de IA espera. */
-  protected readonly generating = computed(
-    () => this.plansStore.requesting() || !!this.plansStore.active(),
-  );
-
-  /** Pide un plan con el agente por defecto del planificador y lleva la vista hasta él. */
+  /** Se está abriendo el organizador. */
   protected readonly planning = signal(false);
 
   /** Abre el organizador con esta tarea (su sesión se crea la primera vez y después se reabre). */
@@ -176,15 +171,6 @@ export class IssueDetailPage {
     } finally {
       this.planning.set(false);
     }
-  }
-
-  protected async generatePlan(): Promise<void> {
-    await this.plansStore.generate();
-    // El panel aparece al final en cuanto hay un plan; se espera a que se pinte para llegar a él.
-    setTimeout(
-      () => document.getElementById('plan-panel')?.scrollIntoView({ behavior: 'smooth' }),
-      50,
-    );
   }
 
   protected async changeState(stateId: string): Promise<void> {

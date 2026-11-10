@@ -44,11 +44,6 @@ export class PlansStore {
     const plan = this.viewed();
     return plan ? (this.contents().get(plan.id) ?? null) : null;
   });
-  /** El plan del que parte el que se ve (el que se editó), si se tiene: con él se resalta lo que cambió. */
-  readonly viewedBaseContent = computed(() => {
-    const baseId = this.viewed()?.basedOnPlanId;
-    return baseId ? (this.contents().get(baseId) ?? null) : null;
-  });
   /** El último plan que falló, si es más nuevo que el último listo (para mostrar el motivo). */
   readonly latestFailed = computed(() => {
     const [latest] = this.items();
@@ -123,8 +118,8 @@ export class PlansStore {
     }
 
     const finished = wasActive && this.items().find((plan) => plan.id === wasActive.id);
-    // El plan nuevo se trae completo (y el que editó, para resaltar los cambios) antes de pasar a mostrarlo: así la vista previa
-    // se actualiza de una vez, sin pasar por «Cargando el plan…».
+    // El plan nuevo se trae completo antes de pasar a mostrarlo: así la vista previa se actualiza de una vez, sin pasar por
+    // «Cargando el plan…».
     if (finished?.status === 'ready') {
       await this.ensureContent(finished);
       this.viewedId.set(finished.id);
@@ -156,11 +151,6 @@ export class PlansStore {
       } catch (error) {
         this.toast.error(errorMessage(error));
       }
-    }
-    // También el plan que se editó, para resaltar lo que cambió. Si ya no existe (se borró) simplemente no se resalta.
-    const baseId = plan.basedOnPlanId;
-    if (baseId && !this.contents().has(baseId)) {
-      await this.fetchContent(baseId).catch(() => undefined);
     }
   }
 
