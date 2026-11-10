@@ -58,7 +58,7 @@ export class AddIssuesDialog {
       this.issuesStore
         .issues()
         // Las cerradas son historial: no se ofrecen para agregar al tablero.
-        .filter((issue) => !issue.closedAt && !this.assigned().has(issue.id))
+        .filter((issue) => !issue.closedAt && !issue.pausedAt && !this.assigned().has(issue.id))
         .map((issue) => ({
           issue,
           label: `${projects.get(issue.projectId)?.name ?? '—'} · ${issueCode(issue, projects.get(issue.projectId)?.identifier)}`,

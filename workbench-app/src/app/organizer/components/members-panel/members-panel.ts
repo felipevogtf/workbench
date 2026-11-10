@@ -53,7 +53,7 @@ export class MembersPanel {
     const projectById = this.projects.projectById();
     return this.issues
       .issues()
-      .filter((issue) => issue.closedAt === null && !taken.has(issue.id))
+      .filter((issue) => issue.closedAt === null && issue.pausedAt === null && !taken.has(issue.id))
       .filter((issue) => issue.id !== this.groupIssueId())
       .map((issue) => ({
         id: issue.id,
