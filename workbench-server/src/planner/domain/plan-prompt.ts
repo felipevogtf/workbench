@@ -17,6 +17,13 @@ export interface PlanRevision {
   conversation: readonly PlanChatMessage[];
   /** Dónde quedó cada adjunto de la conversación, para que el agente los lea. */
   staged?: ReadonlyMap<string, StagedAttachment>;
+  /**
+   * `patch` (lo normal si hay plan anterior): la IA responde solo con los fragmentos que cambian, en bloques de edición que el
+   * servidor aplica. `full`: entrega el plan completo (sin plan anterior, o cuando los bloques no se pudieron aplicar).
+   */
+  mode?: 'patch' | 'full';
+  /** Por qué falló el intento anterior de aplicar sus bloques; se le dice a la IA para que lo corrija. */
+  patchError?: string;
 }
 
 export interface PlanPromptInput {
@@ -163,21 +170,31 @@ function revisionLines(revision: PlanRevision): string[] {
       },
       revision.staged,
     ),
-    ...rewriteInstructions(),
+    ...(patches(revision) ? patchInstructions(revision) : fullInstructions()),
   ];
 }
 
-/** Una replanificación no edita el plan: se escribe de nuevo, entero, como si la información aclarada hubiera estado desde el principio. */
-function rewriteInstructions(): string[] {
+/** Se edita el plan anterior (en vez de rehacerlo) cuando lo hay y no se pidió el plan completo. */
+function patches(revision: PlanRevision): boolean {
+  return !!revision.previousPlan?.trim() && revision.mode !== 'full';
+}
+
+/** Cómo debe quedar el plan tras un cambio, sea por edición o reescribiéndolo. */
+function cleanPlanRules(): string[] {
+  return [
+    '- Integra lo aclarado en el paso o la sección a la que corresponde: el dato, la decisión o el criterio van dentro del paso mismo.',
+    '- No dejes rastro de la conversación ni del plan anterior: nada de «el usuario aclaró», «según lo conversado», «actualizado» o «resuelto», ni listas o secciones que respondan dudas.',
+    '- Lo que quedó respondido sale de las dudas (bórralo, no lo respondas ahí); lo que el usuario descartó no aparece. Las dudas son solo lo que sigue sin definirse.',
+  ];
+}
+
+function fullInstructions(): string[] {
   return [
     '## Qué hacer ahora',
     '',
-    'Esta es una replanificación. Escribe el plan completo y definitivo DESDE CERO, como si hubieras tenido desde el principio toda la información: la de la tarea y sus tickets, y lo aclarado en la conversación. El plan anterior es solo una referencia de lo que ya estaba resuelto: no lo edites ni lo comentes.',
-    '',
-    '- Integra lo aclarado en los pasos mismos: el dato, la decisión o el criterio van dentro del paso al que corresponden.',
-    '- No dejes rastro de la conversación ni del plan anterior: nada de «el usuario aclaró», «según lo conversado», «actualizado» o «resuelto», ni listas o secciones que respondan dudas.',
-    '- Lo que el usuario descartó no aparece. Lo que sigue sin definirse y bloquea el trabajo va como duda abierta, y solo eso.',
-    '- Entrega el plan completo con el formato de siempre, no un resumen de cambios.',
+    'Esta es una replanificación. Escribe el plan completo como si lo hubieras hecho desde cero con toda la información: la de la tarea, sus tickets y lo aclarado en la conversación. El plan anterior es la base: conserva lo que no cambia, y lo que cambia queda integrado en su lugar.',
+    ...cleanPlanRules(),
+    'Entrega el plan completo, con el mismo formato de siempre; no un resumen de los cambios.',
   ];
 }
 
@@ -191,6 +208,42 @@ function planRules(): string[] {
     '- No estimes: no pongas horas, días, tamaños ni esfuerzo, y omite cualquier sección de estimación que tu formato pida.',
     '- Las dudas son solo lo que de verdad falta por definir. Nunca pongas respuestas ni aclaraciones en una sección de dudas.',
     '- Escribe el plan como una especificación final: sin historial ni menciones a versiones anteriores ni a lo conversado.',
+  ];
+}
+
+function patchInstructions(revision: PlanRevision): string[] {
+  return [
+    '## Qué hacer ahora',
+    '',
+    'Esta es una replanificación. Cambia el plan anterior con lo conversado, pero el resultado debe leerse como si el plan se hubiera escrito desde cero con toda esa información: modifica solo lo que haga falta, y cada cambio déjalo como lo habrías escrito desde el principio.',
+    '',
+    ...cleanPlanRules(),
+    '',
+    '**NO reescribas el plan entero.** Responde SOLO con bloques de edición, uno por cada fragmento que cambia, con este formato exacto (cada marca en su propia línea):',
+    '',
+    '```',
+    '<<<<<<< BUSCAR',
+    '(el texto actual del plan que se cambia, copiado tal cual)',
+    '=======',
+    '(el texto nuevo)',
+    '>>>>>>> REEMPLAZAR',
+    '```',
+    '',
+    '- BUSCAR debe ser una copia exacta de lo que dice el plan anterior (mismas palabras, signos y saltos de línea) y aparecer UNA sola vez: si el fragmento se repite, incluye líneas de alrededor.',
+    '- Para añadir algo, busca la línea junto a la que va y repítela en REEMPLAZAR con lo nuevo a continuación. Para borrar algo, deja REEMPLAZAR vacío.',
+    '- Si un cambio obliga a tocar otras partes para que el plan siga coherente (pasos que cambian de número o de orden, riesgos, pruebas, dudas), edítalas también.',
+    '- Pon cada bloque con lo mínimo necesario, no párrafos enteros si solo cambia una línea. Los bloques se aplican en el orden en que los escribas.',
+    '- No escribas nada fuera de los bloques (ni resumen, ni explicaciones, ni el plan). Si la conversación no pide ningún cambio al plan, responde solo `SIN CAMBIOS`.',
+    ...(revision.patchError
+      ? [
+          '',
+          '**Tu respuesta anterior no se pudo aplicar** y el plan sigue como estaba:',
+          '',
+          revision.patchError,
+          '',
+          'Corrige los bloques y vuelve a entregarlos todos.',
+        ]
+      : []),
   ];
 }
 

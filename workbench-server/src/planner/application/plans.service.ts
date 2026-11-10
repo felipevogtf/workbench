@@ -16,6 +16,12 @@ import {
   type PlanPromptInput,
 } from '@planner/domain/plan-prompt';
 import {
+  NO_CHANGES,
+  PlanPatchError,
+  applyPlanPatches,
+  parsePlanPatches,
+} from '@planner/domain/plan-patch';
+import {
   AGENTS_GATEWAY_PORT,
   type AgentsGatewayPort,
 } from '@planner/domain/ports/agents-gateway.port';
@@ -50,6 +56,10 @@ export { MAX_REPOS_PER_PLAN };
 /** Máximo de tickets de Plane citados que se leen por plan. */
 export const MAX_TICKETS_PER_PLAN = 3;
 const TICKET_TIMEOUT_MS = 10_000;
+/** Cuántas veces se le pide a la IA los bloques de edición antes de pedirle el plan completo. */
+const MAX_PATCH_ATTEMPTS = 2;
+/** Una respuesta sin bloques solo se acepta como plan completo si tiene al menos esta parte del plan anterior. */
+const MIN_FULL_PLAN_RATIO = 0.5;
 
 @Injectable()
 export class PlansService {
@@ -228,7 +238,11 @@ export class PlansService {
     }
   }
 
-  /** El contenido del plan: la IA lo escribe entero, también al replanificar (lo anterior solo le sirve de referencia). */
+  /**
+   * El contenido del plan. Un plan nuevo lo escribe la IA entero. Al replanificar, la IA responde solo con los fragmentos que
+   * cambian y aquí se aplican al plan anterior; si no entran, se le dice por qué y lo corrige, y como último recurso entrega el
+   * plan completo.
+   */
   private async generate(
     plan: Plan,
     input: PlanPromptInput,
@@ -239,18 +253,68 @@ export class PlansService {
     agentName: string;
     model: string;
   }> {
-    const result = await this.agents.runPlan({
-      agentId: plan.requestedAgentId ?? undefined,
-      model: plan.requestedModel ?? undefined,
-      prompt: buildPlanPrompt(input),
-      workdir,
-    });
-    return {
-      content: result.markdown,
+    const run = async (revision: PlanPromptInput['revision']) => {
+      const result = await this.agents.runPlan({
+        agentId: plan.requestedAgentId ?? undefined,
+        model: plan.requestedModel ?? undefined,
+        prompt: buildPlanPrompt({ ...input, revision }),
+        workdir,
+      });
+      return {
+        output: result.markdown,
+        agentId: result.agentId,
+        agentName: result.agentName,
+        model: result.model,
+      };
+    };
+    const done = (
+      content: string,
+      result: Awaited<ReturnType<typeof run>>,
+    ) => ({
+      content,
       agentId: result.agentId,
       agentName: result.agentName,
       model: result.model,
-    };
+    });
+
+    const { revision } = input;
+    const previous = revision?.previousPlan?.trim()
+      ? revision.previousPlan
+      : null;
+    if (!revision || !previous) {
+      const result = await run(revision);
+      return done(result.output, result);
+    }
+
+    let patchError: string | undefined;
+    for (let attempt = 1; attempt <= MAX_PATCH_ATTEMPTS; attempt++) {
+      const result = await run({ ...revision, mode: 'patch', patchError });
+      try {
+        return done(this.patched(previous, result.output), result);
+      } catch (error) {
+        if (!(error instanceof PlanPatchError)) throw error;
+        patchError = error.message;
+        this.logger.warn(
+          `Plan edit ${attempt}/${MAX_PATCH_ATTEMPTS} did not apply for issue ${plan.issueId}: ${patchError}`,
+        );
+      }
+    }
+    const result = await run({ ...revision, mode: 'full' });
+    return done(result.output, result);
+  }
+
+  /** El plan anterior con los bloques de edición aplicados; lanza `PlanPatchError` si la respuesta no se puede aplicar. */
+  private patched(previous: string, output: string): string {
+    const patches = parsePlanPatches(output);
+    if (patches.length > 0) return applyPlanPatches(previous, patches);
+    if (NO_CHANGES.test(output)) return previous;
+    // Sin bloques: la IA pudo entregar el plan completo, y eso se acepta si lo parece.
+    if (output.trim().length >= previous.trim().length * MIN_FULL_PLAN_RATIO) {
+      return output;
+    }
+    throw new PlanPatchError(
+      'Tu respuesta no trae bloques de edición ni el plan completo. Responde solo con los bloques «<<<<<<< BUSCAR … ======= … >>>>>>> REEMPLAZAR», o con `SIN CAMBIOS` si el plan no cambia.',
+    );
   }
 
   /** Deja los adjuntos al alcance del agente. Si no se pueden dejar, el plan sigue sin ellos. */
