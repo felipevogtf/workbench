@@ -160,3 +160,18 @@
 li:last-child > .suggestion {
   border-bottom: none;
 }
+
+// «Sumar» se estira a la altura de las demás fichas, sea cual sea.
+.chips__add {
+  display: flex;
+
+  .chip {
+    align-self: stretch;
+  }
+}
+
+.chip__text,
+.chip__remove {
+  min-height: 0;
+  line-height: 1.25;
+}
