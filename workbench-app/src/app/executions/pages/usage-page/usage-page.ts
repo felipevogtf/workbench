@@ -56,6 +56,11 @@ export class UsagePage {
     { value: 'tokens', label: 'Tokens' },
     { value: 'points', label: '% estimado de la semana' },
   ];
+  protected readonly agentView = signal<'period' | 'windows'>('period');
+  protected readonly agentViewOptions = [
+    { value: 'period', label: 'Semanal' },
+    { value: 'windows', label: 'Por ventana' },
+  ];
   protected readonly tokens = formatTokens;
   protected readonly points = formatPoints;
 
@@ -80,6 +85,10 @@ export class UsagePage {
 
   protected setUnit(value: string): void {
     this.unit.set(value === 'points' && this.canEstimate() ? 'points' : 'tokens');
+  }
+
+  protected setAgentView(value: string): void {
+    this.agentView.set(value === 'windows' ? 'windows' : 'period');
   }
 
   protected refresh(): void {

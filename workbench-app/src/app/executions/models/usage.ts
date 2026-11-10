@@ -67,7 +67,7 @@ export interface WindowUsage {
   tokens: number;
   costUsd: number;
   /** Tokens por agente (su id; `none` para lo que no tiene agente, como subir la rama). */
-  byAgent: Record<string, number>;
+  byAgent: Record<string, { tokens: number; costUsd: number; estimatedPoints: number | null }>;
 }
 
 export interface UsageOverview {

@@ -554,10 +554,31 @@ describe('UsageService', () => {
         const [window] = (await service.overview('UTC', 1, NOW)).windows;
 
         expect(window.byAgent).toEqual({
-          'ag-david': 1000,
-          'ag-plan': 300,
-          none: 5,
+          'ag-david': { tokens: 1000, costUsd: 1, estimatedPoints: null },
+          'ag-plan': { tokens: 300, costUsd: 0.3, estimatedPoints: null },
+          none: { tokens: 5, costUsd: 0, estimatedPoints: null },
         });
+      });
+
+      it('estimates the points of the window each agent cost when it can', async () => {
+        jest.spyOn(service, 'calibration').mockResolvedValue({
+          fiveHour: { costPerPoint: 0.1, samples: 5 },
+          sevenDay: { costPerPoint: null, samples: 0 },
+        });
+        await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
+        jobs.items.push(
+          job('e1', 'develop', {
+            start: '2026-10-26T10:00:00Z',
+            end: '2026-10-26T10:30:00Z',
+            cost: 1,
+            usage: { tokens: tokens(1000), limits: null },
+            agent: { id: 'ag-david', name: 'david' },
+          }),
+        );
+
+        const [window] = (await service.overview('UTC', 1, NOW)).windows;
+
+        expect(window.byAgent['ag-david'].estimatedPoints).toBeCloseTo(10);
       });
 
       it('ends a window where the next one starts when it restarted early', async () => {

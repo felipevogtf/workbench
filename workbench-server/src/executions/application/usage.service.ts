@@ -81,8 +81,16 @@ export interface WindowUsage {
   measures: number;
   tokens: number;
   costUsd: number;
-  /** Tokens por agente (su id; `none` para lo que no tiene agente, como subir la rama). */
-  byAgent: Record<string, number>;
+  /** Lo que gastó cada agente (su id; `none` para lo que no tiene agente, como subir la rama). */
+  byAgent: Record<
+    string,
+    {
+      tokens: number;
+      costUsd: number;
+      /** Puntos porcentuales de la ventana de 5 horas que habría costado; `null` sin calibración. */
+      estimatedPoints: number | null;
+    }
+  >;
 }
 
 /** Algo que gastó tokens: un trabajo del runner o una llamada del servidor. */
@@ -114,6 +122,8 @@ function windowsOf(
   measures: readonly UsageSnapshot[],
   spends: readonly Spend[],
   timeZone: string,
+  /** Cuánto cuesta 1 punto de la ventana de 5 horas; `null` sin calibración. */
+  costPerPoint: number | null,
 ): WindowUsage[] {
   const groups: { resetsAt: number; peak: number; count: number }[] = [];
   for (const measure of measures) {
@@ -142,10 +152,22 @@ function windowsOf(
     const inside = spends.filter(
       (spend) => spend.at.getTime() >= start && spend.at.getTime() < end,
     );
-    const byAgent: Record<string, number> = {};
+    const byAgent: WindowUsage['byAgent'] = {};
     for (const spend of inside) {
       const key = spend.agent?.id ?? 'none';
-      byAgent[key] = (byAgent[key] ?? 0) + spend.tokens;
+      const mine = byAgent[key] ?? {
+        tokens: 0,
+        costUsd: 0,
+        estimatedPoints: null,
+      };
+      mine.tokens += spend.tokens;
+      mine.costUsd += spend.costUsd;
+      byAgent[key] = mine;
+    }
+    if (costPerPoint) {
+      for (const mine of Object.values(byAgent)) {
+        mine.estimatedPoints = mine.costUsd / costPerPoint;
+      }
     }
     return {
       date: dayOf(new Date(start), timeZone),
@@ -508,7 +530,12 @@ export class UsageService {
         (!latest || latest.takenAt.getTime() < this.refreshAskedAt),
       calibration,
       days: series,
-      windows: windowsOf(measures, spends, timeZone),
+      windows: windowsOf(
+        measures,
+        spends,
+        timeZone,
+        calibration.fiveHour.costPerPoint,
+      ),
       byAgent,
       today: sum(series.filter((day) => day.date === today)),
       week: sum(series.slice(-7)),
