@@ -13,11 +13,14 @@ dialog {
   max-height: calc(100dvh - var(--space-5));
   margin: auto 0 0;
   border-radius: var(--border-radius) var(--border-radius) 0 0;
-  box-shadow: var(--shadow-overlay);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.28),
+    0 4px 16px rgba(0, 0, 0, 0.12);
   overflow: hidden;
 
   &::backdrop {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(15, 15, 20, 0.55);
+    backdrop-filter: blur(3px);
   }
 
   &[open] {
@@ -40,7 +43,8 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-2) var(--space-5);
+  padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
 
   h3 {
     font-weight: 700;
@@ -50,7 +54,7 @@ header {
 }
 
 .dialog__body {
-  padding: var(--space-2) var(--space-5) var(--space-4);
+  padding: var(--space-4) var(--space-5);
   overflow-y: auto;
   color: var(--text-color);
 }
@@ -74,10 +78,14 @@ footer ::ng-deep > * {
   dialog {
     width: min(560px, calc(100vw - 2 * var(--space-5)));
     margin: auto;
-    border-radius: var(--border-radius);
+    border-radius: calc(var(--border-radius) * 1.5);
 
     &[open] {
       animation: fade-in 0.15s ease-out;
+    }
+
+    &.dialog--wide {
+      width: min(760px, calc(100vw - 2 * var(--space-5)));
     }
   }
 

@@ -126,6 +126,7 @@
     </div>
 
     <app-dialog
+      [wide]="true"
       [heading]="sheetTask()?.name ?? 'Tarea'"
       [open]="sheet() !== null"
       (openChange)="$event || sheet.set(null)"

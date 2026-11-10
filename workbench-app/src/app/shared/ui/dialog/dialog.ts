@@ -22,6 +22,7 @@ import { IconButton } from '../icon-button/icon-button';
   template: `
     <dialog
       #dialog
+      [class.dialog--wide]="wide()"
       [attr.aria-labelledby]="titleId"
       (close)="open.set(false)"
       tabindex="-1"
@@ -47,6 +48,8 @@ export class Dialog {
 
   readonly open = model(false);
   readonly heading = input.required<string>();
+  /** Más ancho, para contenido de lectura (un ticket, un plan). */
+  readonly wide = input(false);
 
   protected readonly titleId = `dialog-title-${Dialog.nextId++}`;
 
