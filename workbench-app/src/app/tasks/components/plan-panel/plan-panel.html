@@ -4,7 +4,7 @@
   }
 
   <div class="plan">
-    @if (store.active(); as active) {
+    @if (!bare() && store.active(); as active) {
       <p class="plan__progress" role="status">
         <app-spinner size="1em" />
         {{ active.status === 'pending' ? 'En cola…' : 'Generando el plan…' }} puede tardar unos
@@ -23,78 +23,80 @@
     }
 
     @if (store.viewed(); as plan) {
-      <div class="plan__meta">
-        <app-badge [tone]="tone(plan.status)" dot>{{ statusLabel[plan.status] }}</app-badge>
-        @if (plan.revised) {
-          <app-badge dashed title="Se generó actualizando el plan anterior con una conversación">
-            Replanificado
-          </app-badge>
-        }
-        <span class="plan__muted">
-          {{ plan.agentName }} · {{ plan.model }} · {{ plan.createdAt | timeAgo }}
-        </span>
-        <span class="plan__tools">
-          @if (store.viewedBaseContent() !== null) {
-            <button
-              app-button
-              variant="ghost"
-              size="sm"
-              type="button"
-              [attr.aria-pressed]="showChanges()"
-              title="Resalta lo que cambió respecto al plan anterior"
-              (click)="showChanges.set(!showChanges())"
-            >
-              {{ showChanges() ? 'Ocultar cambios' : 'Ver cambios' }}
-            </button>
+      @if (!bare()) {
+        <div class="plan__meta">
+          <app-badge [tone]="tone(plan.status)" dot>{{ statusLabel[plan.status] }}</app-badge>
+          @if (plan.revised) {
+            <app-badge dashed title="Se generó actualizando el plan anterior con una conversación">
+              Replanificado
+            </app-badge>
           }
-          <button
-            app-icon-button
-            type="button"
-            label="Copiar el plan"
-            [disabled]="!store.viewedContent()"
-            (click)="copy()"
-          >
-            <app-icon name="copy" size="1.1rem" />
-          </button>
-          <button
-            app-icon-button
-            type="button"
-            label="Descargar el plan como .md"
-            [disabled]="!store.viewedContent()"
-            (click)="download()"
-          >
-            <app-icon name="download" size="1.1rem" />
-          </button>
-          @if (plan.status === 'ready' || plan.status === 'failed') {
+          <span class="plan__muted">
+            {{ plan.agentName }} · {{ plan.model }} · {{ plan.createdAt | timeAgo }}
+          </span>
+          <span class="plan__tools">
+            @if (store.viewedBaseContent() !== null) {
+              <button
+                app-button
+                variant="ghost"
+                size="sm"
+                type="button"
+                [attr.aria-pressed]="showChanges()"
+                title="Resalta lo que cambió respecto al plan anterior"
+                (click)="showChanges.set(!showChanges())"
+              >
+                {{ showChanges() ? 'Ocultar cambios' : 'Ver cambios' }}
+              </button>
+            }
             <button
               app-icon-button
               type="button"
-              tone="danger"
-              label="Eliminar este plan"
-              (click)="remove(plan)"
+              label="Copiar el plan"
+              [disabled]="!store.viewedContent()"
+              (click)="copy()"
             >
-              <app-icon name="trash" size="1.1rem" />
+              <app-icon name="copy" size="1.1rem" />
             </button>
-          }
-        </span>
-      </div>
+            <button
+              app-icon-button
+              type="button"
+              label="Descargar el plan como .md"
+              [disabled]="!store.viewedContent()"
+              (click)="download()"
+            >
+              <app-icon name="download" size="1.1rem" />
+            </button>
+            @if (plan.status === 'ready' || plan.status === 'failed') {
+              <button
+                app-icon-button
+                type="button"
+                tone="danger"
+                label="Eliminar este plan"
+                (click)="remove(plan)"
+              >
+                <app-icon name="trash" size="1.1rem" />
+              </button>
+            }
+          </span>
+        </div>
 
-      @if (plan.repos.length > 0) {
-        <ul class="plan__used" aria-label="Repositorios del plan">
-          @for (repo of plan.repos; track repo.url) {
-            <li [class.is-skipped]="!repo.used">
-              <app-icon name="code" size="1em" />
-              {{ repoName(repo.url) }}
-              @if (!repo.used) {
-                <span class="plan__muted">— no se pudo leer: {{ repo.note }}</span>
-              }
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="plan__muted">
-          Este plan se hizo sin código: la tarea no tiene una etiqueta con repositorio.
-        </p>
+        @if (plan.repos.length > 0) {
+          <ul class="plan__used" aria-label="Repositorios del plan">
+            @for (repo of plan.repos; track repo.url) {
+              <li [class.is-skipped]="!repo.used">
+                <app-icon name="code" size="1em" />
+                {{ repoName(repo.url) }}
+                @if (!repo.used) {
+                  <span class="plan__muted">— no se pudo leer: {{ repo.note }}</span>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="plan__muted">
+            Este plan se hizo sin código: la tarea no tiene una etiqueta con repositorio.
+          </p>
+        }
       }
 
       @if (store.viewedContent(); as content) {
@@ -104,7 +106,7 @@
       }
     }
 
-    @if (history().length > 0) {
+    @if (!bare() && history().length > 0) {
       <details class="plan__history" [open]="historyOpen()" (toggle)="onHistoryToggle($event)">
         <summary>Historial ({{ history().length }})</summary>
         <ul>

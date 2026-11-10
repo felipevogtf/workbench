@@ -65,6 +65,7 @@
               : 'Pregunta, aclara dependencias o pide el plan del grupo…'
           "
           [suggestions]="suggestions"
+          [busy]="planning() ? 'Actualizando el plan…' : null"
         >
           <p chat-empty>
             @if (isTask()) {

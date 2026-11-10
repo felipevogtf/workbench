@@ -212,7 +212,6 @@ export class OrganizerPage {
     const created = await this.plans.generate(talked ? { messages: fresh } : {});
     if (!created) return;
     if (talked) this.markPlanned(messages.length);
-    this.toast.success(talked ? 'Replanificando con la conversación' : 'Generando el plan');
   }
 
   protected async remove(): Promise<void> {

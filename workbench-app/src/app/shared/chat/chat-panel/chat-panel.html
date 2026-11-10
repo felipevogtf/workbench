@@ -95,6 +95,12 @@
         </div>
       }
 
+      @if (!chat.sending() && busy(); as busy) {
+        <div class="panel__pending" role="status">
+          <app-spinner size="1em" [label]="busy" /> {{ busy }}
+        </div>
+      }
+
       @if (chat.error(); as error) {
         <app-alert tone="danger" heading="No se pudo responder">
           {{ error }}

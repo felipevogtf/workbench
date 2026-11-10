@@ -60,6 +60,8 @@ export class ChatPanel {
   readonly suggestions = input<readonly string[]>([]);
   /** Ocupa el espacio que le da la pantalla, siempre abierto y sin el botón flotante (el chat de una pantalla propia). */
   readonly inline = input(false);
+  /** Algo que la IA está haciendo aparte de contestar (ej. «Actualizando el plan…»): se muestra como el «Pensando…». */
+  readonly busy = input<string | null>(null);
 
   /** Lo escrito, solo para saber si el botón de enviar tiene algo que enviar. */
   protected readonly draft = signal('');
