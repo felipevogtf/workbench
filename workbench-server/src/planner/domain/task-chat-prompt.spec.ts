@@ -167,6 +167,7 @@ describe('splitPlanMarker', () => {
     expect(splitPlanMarker('Quito el paso 2.\n\n[[ACTUALIZAR_PLAN]]')).toEqual({
       text: 'Quito el paso 2.',
       updatesPlan: true,
+      rebuildsPlan: false,
     });
   });
 
@@ -174,6 +175,22 @@ describe('splitPlanMarker', () => {
     expect(splitPlanMarker('El paso 2 depende de la migración.')).toEqual({
       text: 'El paso 2 depende de la migración.',
       updatesPlan: false,
+      rebuildsPlan: false,
     });
+  });
+
+  it('tells when the user asked to rebuild the plan from scratch, which also means it changes', () => {
+    expect(splitPlanMarker('Lo rehago.\n\n[[REHACER_PLAN]]')).toEqual({
+      text: 'Lo rehago.',
+      updatesPlan: true,
+      rebuildsPlan: true,
+    });
+  });
+
+  it('teaches the agent both marks', () => {
+    const prompt = buildTaskChatPrompt(base);
+
+    expect(prompt).toContain('[[ACTUALIZAR_PLAN]]');
+    expect(prompt).toContain('[[REHACER_PLAN]]');
   });
 });

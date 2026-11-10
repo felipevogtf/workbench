@@ -123,7 +123,7 @@ export class OrganizerPage {
   /** Qué parte de la pantalla ocupa el chat (el resto es el plan), en %; se arrastra el divisor para cambiarlo. */
   protected readonly chatShare = signal(readShare());
   /** La IA entendió que se pidió un cambio al plan mientras había otro en marcha: se aplica en cuanto termine. */
-  private readonly pendingReplan = signal(false);
+  private readonly pendingReplan = signal<'update' | 'rebuild' | null>(null);
 
   /** Hay un plan listo: es lo que se puede ejecutar. */
   protected readonly hasReadyPlan = computed(() =>
@@ -158,12 +158,16 @@ export class OrganizerPage {
     });
     this.destroyRef.onDestroy(() => this.topbar.clear());
     // Cuando la IA entiende que se pidió un cambio al plan, se aplica solo: no hace falta pulsar nada.
-    this.chat.onUpdatesPlan = () => this.pendingReplan.set(true);
+    this.chat.onUpdatesPlan = (rebuild) =>
+      this.pendingReplan.update((current) =>
+        rebuild || current === 'rebuild' ? 'rebuild' : 'update',
+      );
     effect(() => {
-      if (!this.pendingReplan() || this.planning() || this.chat.sending()) return;
+      const pending = this.pendingReplan();
+      if (!pending || this.planning() || this.chat.sending()) return;
       untracked(() => {
-        this.pendingReplan.set(false);
-        void this.createPlan();
+        this.pendingReplan.set(null);
+        void this.createPlan(pending === 'rebuild');
       });
     });
   }
@@ -209,13 +213,19 @@ export class OrganizerPage {
 
   /**
    * Pide el plan con lo conversado (si algo). La conversación se queda: se sigue viendo y se puede seguir hablando. Al replanificar
-   * solo viaja lo que se dijo después del último plan, porque el plan anterior ya lo incorporó.
+   * solo viaja lo que se dijo después del último plan, porque el plan anterior ya lo incorporó. Con `rebuild` se hace de cero, sin
+   * partir del plan anterior (que queda en el historial), con toda la conversación.
    */
-  protected async createPlan(): Promise<void> {
+  protected async createPlan(rebuild = false): Promise<void> {
     const messages = this.chat.snapshot();
-    const fresh = messages.slice(this.plannedCount());
-    const talked = fresh.some((message) => message.role === 'user');
-    const created = await this.plans.generate(talked ? { messages: fresh } : {});
+    const sent = rebuild ? messages : messages.slice(this.plannedCount());
+    const talked = sent.some((message) => message.role === 'user');
+    const request = talked
+      ? rebuild
+        ? { messages: sent, fromScratch: true }
+        : { messages: sent }
+      : {};
+    const created = await this.plans.generate(request);
     if (!created) return;
     if (talked) this.markPlanned(messages.length);
   }

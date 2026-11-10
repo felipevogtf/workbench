@@ -1,5 +1,6 @@
 import {
   buildPlanPrompt,
+  citedPaths,
   MAX_DESCRIPTION_CHARS,
   MAX_PREVIOUS_PLAN_CHARS,
 } from './plan-prompt';
@@ -153,7 +154,7 @@ describe('buildPlanPrompt', () => {
       repos: [],
     });
     expect(prompt).toContain('[…descripción recortada…]');
-    expect(prompt.length).toBeLessThan(MAX_DESCRIPTION_CHARS + 1500);
+    expect(prompt.length).toBeLessThan(MAX_DESCRIPTION_CHARS + 3000);
   });
 
   it('marks a task without description', () => {
@@ -263,10 +264,58 @@ describe('buildPlanPrompt', () => {
           revision,
         });
 
-        expect(prompt).toContain('## Reglas del plan');
-        expect(prompt).toContain('Sé concreto');
+        expect(prompt).toContain('## Cómo escribir el plan');
+        expect(prompt).toContain('concreto y sin relleno');
         expect(prompt).toContain('No estimes');
       }
+    });
+
+    it('asks for the plan as a brief for whoever turns it into tickets, and for little reading', () => {
+      const prompt = buildPlanPrompt({ task, tickets: [], repos: [] });
+
+      for (const section of [
+        '## Objetivo',
+        '## Alcance',
+        '## Decisiones',
+        '## Criterios de aceptación',
+        '## Orden y dependencias',
+        '## Puntos de partida en el código',
+        '## Riesgos',
+        '## Dudas abiertas',
+      ]) {
+        expect(prompt).toContain(section);
+      }
+      expect(prompt).toContain('dividirá en tickets');
+      expect(prompt).toContain('No recorras el repositorio');
+    });
+
+    it('points to the files the previous plan cited, to read them first', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: {
+          previousPlan:
+            'Toca `api/src/Orders/Controller.php:42` y `web/app/orders.ts`, no `npm test`.',
+          conversation,
+        },
+      });
+
+      expect(prompt).toContain('## Archivos que citaba el plan anterior');
+      expect(prompt).toContain('- `api/src/Orders/Controller.php`');
+      expect(prompt).toContain('- `web/app/orders.ts`');
+      expect(prompt).not.toContain('- `npm test`');
+    });
+
+    it('has no starting points when there is no previous plan', () => {
+      const prompt = buildPlanPrompt({
+        task,
+        tickets: [],
+        repos: [],
+        revision: { previousPlan: null, conversation },
+      });
+
+      expect(prompt).not.toContain('Archivos que citaba');
     });
 
     it('plans from scratch, saying so, when there is no previous plan', () => {
@@ -331,5 +380,23 @@ describe('buildPlanPrompt replanning with attachments', () => {
       '- requisitos.pdf (PDF, 4 KB): `.attachments/a1-requisitos.pdf`',
     );
     expect(prompt).toContain('herramienta Read');
+  });
+});
+
+describe('citedPaths', () => {
+  it('takes files in backticks without the line number, once each', () => {
+    expect(
+      citedPaths(
+        'Ver `a/b/c.php:10-20`, `a/b/c.php`, `x/y.ts` y la URL `https://x.io/a/b.js`; no `git log` ni `src/carpeta`.',
+      ),
+    ).toEqual(['a/b/c.php', 'x/y.ts']);
+  });
+
+  it('stops at the maximum', () => {
+    const plan = Array.from({ length: 40 }, (_, n) => `\`d/f${n}.ts\``).join(
+      ' ',
+    );
+
+    expect(citedPaths(plan, 10)).toHaveLength(10);
   });
 });

@@ -1,5 +1,9 @@
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
-import type { ReposOptions } from './repos-checkout.port';
+
+/** Claves de ticket (`MEL-466`) que la tarea menciona: sus ramas, si existen, se clonan aparte junto a cada repo. */
+export interface ReposOptions {
+  relatedKeys?: readonly string[];
+}
 
 export interface CachedRepos {
   /** Directorio de trabajo del agente; cada repo usado está en una subcarpeta (`PlanRepoInfo.name`). */
@@ -9,8 +13,7 @@ export interface CachedRepos {
 }
 
 /**
- * Copias de los repos de una tarea que se conservan entre usos (a diferencia de `ReposCheckoutPort`,
- * que es desechable). Cada vez que se piden se actualizan con lo último de su rama principal.
+ * Copias de los repos de una tarea que se conservan entre usos (las usan el plan y el chat de la tarea). Cada vez que se piden se actualizan con lo último de su rama principal.
  */
 export interface ReposCachePort {
   ensure(

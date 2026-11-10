@@ -34,6 +34,18 @@ export interface PlanPromptInput {
   revision?: PlanRevision | null;
 }
 
+/** Los archivos (con extensión) que un plan cita entre comillas invertidas, sin el número de línea; sin repetir y como mucho `max`. */
+export function citedPaths(plan: string, max = 25): string[] {
+  const found = new Set<string>();
+  for (const match of plan.matchAll(/`([^`\s]+)`/g)) {
+    const token = match[1].replace(/:\d+(?:[-–]\d+)?$/, '');
+    if (/^https?:/.test(token)) continue;
+    if (/\/[^/]+\.[A-Za-z0-9]{1,8}$/.test(token)) found.add(token);
+    if (found.size >= max) break;
+  }
+  return [...found];
+}
+
 export function truncate(text: string, max: number): string {
   return text.length > max
     ? `${text.slice(0, max)}\n[…descripción recortada…]`
@@ -159,6 +171,7 @@ function revisionLines(revision: PlanRevision): string[] {
         ? `${previous.slice(0, MAX_PREVIOUS_PLAN_CHARS).trimEnd()}\n[…plan recortado…]`
         : previous
       : '(No hay un plan anterior: elabora el plan desde cero teniendo en cuenta la conversación.)',
+    ...startingPoints(previous),
     '',
     '## Conversación con el usuario sobre el plan',
     '',
@@ -171,6 +184,20 @@ function revisionLines(revision: PlanRevision): string[] {
       revision.staged,
     ),
     ...(patches(revision) ? patchInstructions(revision) : fullInstructions()),
+  ];
+}
+
+/** Los archivos que citaba el plan anterior: ya se sabe que importan, y por ahí se empieza a leer. */
+function startingPoints(previous: string | undefined): string[] {
+  const paths = previous ? citedPaths(previous) : [];
+  if (paths.length === 0) return [];
+  return [
+    '',
+    '## Archivos que citaba el plan anterior',
+    '',
+    'Léelos primero: ya se sabe que son relevantes. Comprueba que siguen como se describió y parte de ahí, en vez de explorar el repositorio desde cero.',
+    '',
+    ...paths.map((path) => `- \`${path}\``),
   ];
 }
 
@@ -198,16 +225,30 @@ function fullInstructions(): string[] {
   ];
 }
 
-/** Reglas que valen para todo plan, nuevo o replanificado, y que prevalecen sobre el formato del agente si este dice otra cosa. */
+/**
+ * Cómo se escribe el plan, en cualquier petición (nuevo o replanificado). Prevalece sobre el formato del prompt del agente: el plan es
+ * un encargo que otro agente (el que arma los tickets) recibe y verifica contra el código.
+ */
 function planRules(): string[] {
   return [
     '',
-    '## Reglas del plan',
+    '## Cómo escribir el plan',
     '',
-    '- Sé concreto: cada paso es una acción que se pueda hacer y verificar (qué archivo o módulo tocar y qué cambiar), sin relleno ni generalidades.',
-    '- No estimes: no pongas horas, días, tamaños ni esfuerzo, y omite cualquier sección de estimación que tu formato pida.',
-    '- Las dudas son solo lo que de verdad falta por definir. Nunca pongas respuestas ni aclaraciones en una sección de dudas.',
-    '- Escribe el plan como una especificación final: sin historial ni menciones a versiones anteriores ni a lo conversado.',
+    'Este plan es un encargo: otro agente lo recibirá, leerá el código por su cuenta y lo dividirá en tickets. Escribe qué hay que lograr, qué se decidió y cómo se comprobará, no una lista de cambios línea por línea. Estas reglas prevalecen sobre cualquier formato que se te haya indicado antes.',
+    '',
+    'Estructura (Markdown, en español):',
+    '- `## Objetivo`: qué se logra y por qué, en 2-3 líneas.',
+    '- `## Alcance`: qué incluye y qué NO incluye.',
+    '- `## Decisiones`: cada decisión tomada, con su razón.',
+    '- `## Criterios de aceptación`: verificables, agrupados por repositorio (un `###` por repositorio).',
+    '- `## Orden y dependencias`: qué va antes y por qué, sobre todo entre repositorios.',
+    '- `## Puntos de partida en el código`: pistas verificadas (módulos, archivos, contratos clave) por repositorio; no una lista exhaustiva.',
+    '- `## Riesgos`.',
+    '- `## Dudas abiertas`: solo lo que de verdad falta por definir y bloquea el trabajo; omítela si no hay. Nunca respuestas ni aclaraciones.',
+    '',
+    'Lectura del código: léelo solo para decidir y para dar puntos de partida fiables (comprobar que lo que das por existente existe, y el contrato o patrón a seguir). No recorras el repositorio ni detalles cada cambio: el agente que reciba el plan lo hará. Cuando ya esté claro, deja de leer.',
+    '',
+    'Estilo: concreto y sin relleno. No estimes horas, días ni esfuerzo, y omite cualquier sección de estimación que tu formato pida. Escribe como una especificación final: sin historial ni menciones a versiones anteriores ni a lo conversado.',
   ];
 }
 

@@ -16,17 +16,19 @@ export class TaskChatStore extends ChatConversation {
 
   protected readonly storagePrefix = 'workbench.chat.task.';
 
-  /** Lo que se hace cuando la IA entendió que el usuario pidió cambiar el plan (ya con su respuesta en la conversación). */
-  onUpdatesPlan: (() => void) | null = null;
+  /** Lo que se hace cuando la IA entendió que el usuario pidió cambiar el plan, o rehacerlo desde cero (`rebuild`), ya con su respuesta en la conversación. */
+  onUpdatesPlan: ((rebuild: boolean) => void) | null = null;
 
   protected upload(file: File): Promise<ChatAttachment> {
     return firstValueFrom(this.attachments.upload(file));
   }
 
   protected async request(issueId: string, messages: ChatMessage[]): Promise<string> {
-    const { reply, updatesPlan } = await firstValueFrom(this.api.chatTask(issueId, messages));
+    const { reply, updatesPlan, rebuildsPlan } = await firstValueFrom(
+      this.api.chatTask(issueId, messages),
+    );
     // Después de que la respuesta entre a la conversación.
-    if (updatesPlan) setTimeout(() => this.onUpdatesPlan?.(), 0);
+    if (updatesPlan) setTimeout(() => this.onUpdatesPlan?.(rebuildsPlan), 0);
     return reply;
   }
 }

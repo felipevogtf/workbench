@@ -37,7 +37,9 @@ export class PlansController {
     const plan = await this.plansService.create(
       issueId,
       { agentId: dto?.agentId, model: dto?.model },
-      dto?.messages ? { messages: dto.messages } : undefined,
+      dto?.messages
+        ? { messages: dto.messages, fromScratch: dto.fromScratch }
+        : undefined,
     );
     return this.toDto(plan);
   }

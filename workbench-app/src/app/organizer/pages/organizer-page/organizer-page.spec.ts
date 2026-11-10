@@ -21,7 +21,7 @@ describe('OrganizerPage planning', () => {
     bind: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
     sending: ReturnType<typeof signal<boolean>>;
-    onUpdatesPlan: (() => void) | null;
+    onUpdatesPlan: ((rebuild: boolean) => void) | null;
   };
   let generate: ReturnType<typeof vi.fn>;
   let removeAll: ReturnType<typeof vi.fn>;
@@ -154,7 +154,7 @@ describe('OrganizerPage planning', () => {
     create();
     TestBed.tick();
 
-    chat.onUpdatesPlan?.();
+    chat.onUpdatesPlan?.(false);
     TestBed.tick();
     await Promise.resolve();
 
@@ -167,7 +167,7 @@ describe('OrganizerPage planning', () => {
     chat.sending.set(true);
     TestBed.tick();
 
-    chat.onUpdatesPlan?.();
+    chat.onUpdatesPlan?.(false);
     TestBed.tick();
     expect(generate).not.toHaveBeenCalled();
 
@@ -206,5 +206,25 @@ describe('OrganizerPage planning', () => {
     // Nada se borró: lo planificado sigue contando y la conversación no vuelve a viajar.
     await page.createPlan();
     expect(generate).toHaveBeenLastCalledWith({});
+  });
+
+  it('rebuilds from scratch with the whole conversation when the AI understood that was asked', async () => {
+    const page = create();
+    await page.createPlan();
+    chat.messages.set([
+      ...messages,
+      say('assistant', 'Hecho'),
+      say('user', 'Mejor rehazlo de cero'),
+    ]);
+    TestBed.tick();
+
+    chat.onUpdatesPlan?.(true);
+    TestBed.tick();
+    await Promise.resolve();
+
+    expect(generate).toHaveBeenLastCalledWith({
+      messages: chat.messages(),
+      fromScratch: true,
+    });
   });
 });

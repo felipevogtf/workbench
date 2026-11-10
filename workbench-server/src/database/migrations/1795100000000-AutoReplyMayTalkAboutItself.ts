@@ -13,9 +13,7 @@ const BULLET =
  * Felipe solo pidió que lo que sale a su nombre no lleve firma ni aviso de IA: el agente puede seguir una broma sobre el
  * tema como cualquier otra conversación. Se quitan las reglas que lo hacían callar.
  */
-export class AutoReplyMayTalkAboutItself1795100000000
-  implements MigrationInterface
-{
+export class AutoReplyMayTalkAboutItself1795100000000 implements MigrationInterface {
   name = 'AutoReplyMayTalkAboutItself1795100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

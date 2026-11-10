@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 // Lo que traía `default-planner` desde el inicio (ver AgentModules1791800000000).
-const ORIGINAL_PROMPT = [
+export const ORIGINAL_PROMPT = [
   'Eres un planificador tecnico senior. Con la tarea que se describe al final y, si se indican, los repositorios',
   'disponibles (cada uno en su carpeta), escribe un plan de ejecucion. Solo lectura: no modifiques nada.',
   '',
@@ -30,7 +30,7 @@ const ORIGINAL_PROMPT = [
 ].join('\n');
 
 // Un plan concreto, sin estimaciones, escrito como especificación final (también al replanificar).
-const CONCRETE_PROMPT = [
+export const CONCRETE_PROMPT = [
   'Eres un planificador técnico senior. Con la tarea que se describe al final y, si se indican, los repositorios',
   'disponibles (cada uno en su carpeta), escribe un plan de ejecución. Solo lectura: no modifiques nada.',
   '',

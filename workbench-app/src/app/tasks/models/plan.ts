@@ -33,6 +33,8 @@ export interface PlanRequest {
   agentId?: string;
   /** Replanificar: la conversación con la que se actualiza el último plan. */
   messages?: ChatMessage[];
+  /** Con `messages`: rehacer el plan desde cero, sin partir del anterior (que queda en el historial). */
+  fromScratch?: boolean;
 }
 
 /** La respuesta del chat de una tarea. */
@@ -46,6 +48,8 @@ export interface TaskChatReply {
   hasPlan: boolean;
   /** El usuario pidió cambiar el plan (o crearlo): hay que replanificar con la conversación. */
   updatesPlan: boolean;
+  /** Además, hay que rehacerlo desde cero (sin partir del plan anterior). */
+  rebuildsPlan: boolean;
 }
 
 /** En cola o generándose: mientras haya uno, el panel se refresca solo. */

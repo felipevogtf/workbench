@@ -17,16 +17,25 @@ const MAX_CHAT_HISTORY_CHARS = 40_000;
 /** La línea con la que el agente avisa de que el usuario pidió un cambio al plan; el servidor la quita de la respuesta. */
 export const UPDATE_PLAN_MARKER = '[[ACTUALIZAR_PLAN]]';
 
-/** Separa la marca de actualizar el plan de la respuesta que se le muestra al usuario. */
+/** La línea con la que el agente avisa de que el usuario pidió rehacer el plan desde cero (no editarlo). */
+export const REBUILD_PLAN_MARKER = '[[REHACER_PLAN]]';
+
+/** Separa las marcas de actualizar o rehacer el plan de la respuesta que se le muestra al usuario. */
 export function splitPlanMarker(markdown: string): {
   text: string;
   updatesPlan: boolean;
+  rebuildsPlan: boolean;
 } {
-  if (!markdown.includes(UPDATE_PLAN_MARKER)) {
-    return { text: markdown, updatesPlan: false };
-  }
-  const text = markdown.split(UPDATE_PLAN_MARKER).join('').trim();
-  return { text, updatesPlan: true };
+  const rebuildsPlan = markdown.includes(REBUILD_PLAN_MARKER);
+  const updatesPlan = rebuildsPlan || markdown.includes(UPDATE_PLAN_MARKER);
+  if (!updatesPlan) return { text: markdown, updatesPlan, rebuildsPlan };
+  const text = markdown
+    .split(REBUILD_PLAN_MARKER)
+    .join('')
+    .split(UPDATE_PLAN_MARKER)
+    .join('')
+    .trim();
+  return { text, updatesPlan, rebuildsPlan };
 }
 
 export interface TaskChatPromptInput {
@@ -93,5 +102,6 @@ export function buildTaskChatPrompt({
     ),
     'Responde al último mensaje del usuario.',
     `Si el usuario pide cambiar el plan (o crearlo, cuando todavía no hay), di en una o dos frases qué cambias y termina la respuesta con una última línea que contenga solo ${UPDATE_PLAN_MARKER}. El sistema aplica el cambio al plan por su cuenta: no le pidas al usuario que pulse nada y no reescribas el plan en la respuesta. Si el usuario solo pregunta o comenta, responde sin esa línea.`,
+    `Si el usuario pide rehacer el plan, empezar de cero o ignorar el plan actual (no cambiar partes de él), di en una frase que lo rehaces y termina con una última línea que contenga solo ${REBUILD_PLAN_MARKER} en lugar de la anterior.`,
   ].join('\n');
 }

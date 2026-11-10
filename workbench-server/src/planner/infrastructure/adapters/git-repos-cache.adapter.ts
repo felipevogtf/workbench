@@ -9,8 +9,8 @@ import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 import {
   CachedRepos,
   ReposCachePort,
+  type ReposOptions,
 } from '@planner/domain/ports/repos-cache.port';
-import type { ReposOptions } from '@planner/domain/ports/repos-checkout.port';
 import { cloneRelatedBranches } from './clone-related-branches';
 import {
   ParsedRepo,

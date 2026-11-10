@@ -66,19 +66,18 @@ function build(
     },
   };
 
-  const dispose = jest.fn().mockResolvedValue(undefined);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const checkout = jest.fn((urls: string[], _options?: unknown) =>
-    Promise.resolve({
-      path: '/tmp/plan-x',
-      repos: urls.map((url) => ({
-        url,
-        name: url.split('/').pop() ?? '',
-        used: true,
-        note: null,
-      })),
-      dispose,
-    }),
+  const ensure = jest.fn(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_issueId: string, urls: string[], _options?: unknown) =>
+      Promise.resolve({
+        path: '/tmp/plan-x',
+        repos: urls.map((url) => ({
+          url,
+          name: url.split('/').pop() ?? '',
+          used: true,
+          note: null,
+        })),
+      }),
   );
   const runPlan = jest.fn<Promise<PlanRunResult>, [PlanRunRequest]>(() =>
     options.runFails
@@ -114,7 +113,7 @@ function build(
         Promise.resolve(options.task === undefined ? task : options.task),
     },
     { runPlan, runTaskChat: jest.fn() },
-    { checkout },
+    { ensure },
     {
       getProjectIdentifiers: () => Promise.resolve(['MEL']),
       getTicket,
@@ -122,7 +121,7 @@ function build(
     1,
     { stage },
   );
-  return { service, store, checkout, runPlan, dispose, getTicket, stage };
+  return { service, store, ensure, runPlan, getTicket, stage };
 }
 
 /** Espera a que el worker en segundo plano deje la cola vacía. */
@@ -149,21 +148,22 @@ describe('PlansService', () => {
     expect(await service.listByIssue('i1')).toHaveLength(1);
   });
 
-  it('clones the repos of the labels (ordered by label name, deduplicated) and always cleans up', async () => {
-    const { service, store, checkout, dispose } = build();
+  it('reads the repos of the labels (ordered by label name, deduplicated) from the cache of the task', async () => {
+    const { service, store, ensure } = build();
 
     await service.create('i1');
     await settle(store);
 
-    expect(checkout).toHaveBeenCalledWith(
+    // Con la copia de la tarea (la misma del chat): solo se actualiza, no se vuelve a clonar.
+    expect(ensure).toHaveBeenCalledWith(
+      'i1',
       ['https://github.com/o/api', 'https://github.com/o/web'],
       expect.anything(),
     );
-    expect(dispose).toHaveBeenCalledTimes(1);
   });
 
   it('asks for the branches of the other tickets the task mentions', async () => {
-    const { service, store, checkout } = build({
+    const { service, store, ensure } = build({
       task: {
         ...task,
         name: 'Mostrar el bloqueo (MEL-466)',
@@ -174,7 +174,7 @@ describe('PlansService', () => {
     await service.create('i1');
     await settle(store);
 
-    expect(checkout.mock.calls[0][1]).toEqual({ relatedKeys: ['MEL-466'] });
+    expect(ensure.mock.calls[0][2]).toEqual({ relatedKeys: ['MEL-466'] });
   });
 
   it('limits the number of repositories per plan', async () => {
@@ -182,35 +182,34 @@ describe('PlansService', () => {
       name: `l${n}`,
       repoUrl: `https://github.com/o/r${n}`,
     }));
-    const { service, store, checkout } = build({ task: { ...task, labels } });
+    const { service, store, ensure } = build({ task: { ...task, labels } });
 
     await service.create('i1');
     await settle(store);
 
-    expect(checkout.mock.calls[0][0]).toHaveLength(MAX_REPOS_PER_PLAN);
+    expect(ensure.mock.calls[0][1]).toHaveLength(MAX_REPOS_PER_PLAN);
   });
 
   it('plans without code when the task has no repositories', async () => {
-    const { service, store, checkout } = build({
+    const { service, store, ensure } = build({
       task: { ...task, labels: [{ name: 'x', repoUrl: null }] },
     });
 
     await service.create('i1');
     await settle(store);
 
-    expect(checkout).toHaveBeenCalledWith([], expect.anything());
+    expect(ensure).toHaveBeenCalledWith('i1', [], expect.anything());
     expect(store[0].status).toBe('ready');
   });
 
-  it('records the failure and still cleans up when the agent fails', async () => {
-    const { service, store, dispose } = build({ runFails: true });
+  it('records the failure when the agent fails', async () => {
+    const { service, store } = build({ runFails: true });
 
     await service.create('i1');
     await settle(store);
 
     expect(store[0].status).toBe('failed');
     expect(store[0].error).toBe('cli exploded');
-    expect(dispose).toHaveBeenCalledTimes(1);
   });
 
   it('rejects an unknown task', async () => {
@@ -292,6 +291,27 @@ describe('PlansService replanning', () => {
     expect(prompt).toContain('Y no hace falta tocar el controlador.');
     // El historial queda: el plan anterior y el nuevo.
     expect(await service.listByIssue('i1')).toHaveLength(2);
+  });
+
+  it('can rebuild from scratch: no previous plan, which stays in the history', async () => {
+    const { service, store, runPlan } = build();
+    const first = await service.create('i1');
+    await settle(store);
+
+    const rebuilt = await service.create(
+      'i1',
+      {},
+      { messages: conversation, fromScratch: true },
+    );
+    await settle(store);
+
+    expect(rebuilt.basedOnPlanId).toBeNull();
+    expect(rebuilt.conversation).toEqual(conversation);
+    const prompt = promptOf(runPlan, 1);
+    expect(prompt).toContain('No hay un plan anterior');
+    expect(prompt).not.toContain('## Objetivo\nok');
+    expect(await service.listByIssue('i1')).toHaveLength(2);
+    expect((await service.get(first.id)).status).toBe('ready');
   });
 
   it('only gives the agent the last plan, not the whole history', async () => {

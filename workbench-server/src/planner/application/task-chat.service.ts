@@ -53,6 +53,8 @@ export interface TaskChatReply {
   hasPlan: boolean;
   /** El usuario pidió cambiar el plan (o crearlo): quien llama debe replanificar con la conversación. */
   updatesPlan: boolean;
+  /** Además, el usuario pidió rehacerlo desde cero en vez de editarlo. */
+  rebuildsPlan: boolean;
 }
 
 /**
@@ -135,10 +137,13 @@ export class TaskChatService {
         workdir: cached.path,
       });
 
-      const { text, updatesPlan } = splitPlanMarker(result.markdown);
+      const { text, updatesPlan, rebuildsPlan } = splitPlanMarker(
+        result.markdown,
+      );
       return {
         reply: text,
         updatesPlan,
+        rebuildsPlan,
         agentName: result.agentName,
         model: result.model,
         tickets: tickets.map((ticket) => ticket.key),

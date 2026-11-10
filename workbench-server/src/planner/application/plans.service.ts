@@ -34,10 +34,9 @@ import {
   type PlanRepositoryPort,
 } from '@planner/domain/ports/plan-repository.port';
 import {
-  REPOS_CHECKOUT_PORT,
-  type ReposCheckout,
-  type ReposCheckoutPort,
-} from '@planner/domain/ports/repos-checkout.port';
+  REPOS_CACHE_PORT,
+  type ReposCachePort,
+} from '@planner/domain/ports/repos-cache.port';
 import {
   TASKS_GATEWAY_PORT,
   type TaskContext,
@@ -73,8 +72,8 @@ export class PlansService {
     private readonly tasks: TasksGatewayPort,
     @Inject(AGENTS_GATEWAY_PORT)
     private readonly agents: AgentsGatewayPort,
-    @Inject(REPOS_CHECKOUT_PORT)
-    private readonly checkoutPort: ReposCheckoutPort,
+    @Inject(REPOS_CACHE_PORT)
+    private readonly repoCache: ReposCachePort,
     @Inject(TICKETS_GATEWAY_PORT)
     private readonly tickets: TicketsGatewayPort,
     @Inject(PLANNER_CONCURRENCY)
@@ -94,12 +93,12 @@ export class PlansService {
    * Deja un plan en cola. Quien encola nunca genera: solo despierta a los workers.
    *
    * Con `revision` es una replanificación: el plan nuevo parte del último plan listo (solo ese, aunque
-   * el historial tenga más) y de la conversación que se le pasa.
+   * el historial tenga más) y de la conversación que se le pasa. Con `fromScratch` no parte de ningún plan anterior.
    */
   async create(
     issueId: string,
     override: { agentId?: string; model?: string } = {},
-    revision?: { messages: PlanChatMessage[] },
+    revision?: { messages: PlanChatMessage[]; fromScratch?: boolean },
   ): Promise<Plan> {
     const task = await this.tasks.getTask(issueId);
     if (!task) {
@@ -130,7 +129,8 @@ export class PlansService {
       const latest = (await this.plans.findByIssueId(issueId)).find(
         (candidate) => candidate.status === 'ready' && candidate.content,
       );
-      basedOnPlanId = latest?.id ?? null;
+      // «Rehacer»: se parte de cero, sin el plan anterior (que queda en el historial).
+      basedOnPlanId = revision.fromScratch ? null : (latest?.id ?? null);
     }
 
     const plan = await this.plans.save(
@@ -183,7 +183,6 @@ export class PlansService {
   private async execute(plan: Plan): Promise<void> {
     this.logger.log(`Planning issue ${plan.issueId}`);
     let repos: PlanRepoInfo[] = [];
-    let checkout: ReposCheckout | null = null;
 
     try {
       const task = await this.tasks.getTask(plan.issueId);
@@ -195,14 +194,18 @@ export class PlansService {
         // Los tickets que el usuario mencionó al conversar también entran al contexto.
         revision ? userTexts(revision.conversation) : [],
       );
-      checkout = await this.checkoutPort.checkout(repoUrlsOf(task), {
-        // Si la tarea menciona otros tickets (p. ej. el backend que ya está en su rama), esas ramas también se leen.
-        relatedKeys: relatedKeysOf([
-          task.name,
-          task.description,
-          ...(revision ? userTexts(revision.conversation) : []),
-        ]),
-      });
+      const checkout = await this.repoCache.ensure(
+        plan.issueId,
+        repoUrlsOf(task),
+        {
+          // Si la tarea menciona otros tickets (p. ej. el backend que ya está en su rama), esas ramas también se leen.
+          relatedKeys: relatedKeysOf([
+            task.name,
+            task.description,
+            ...(revision ? userTexts(revision.conversation) : []),
+          ]),
+        },
+      );
       repos = checkout.repos;
 
       // Los adjuntos de la conversación se dejan en el directorio del plan (que se borra al terminar).
@@ -227,8 +230,6 @@ export class PlansService {
       const message = this.errorMessage(error);
       this.logger.warn(`Plan failed for issue ${plan.issueId}: ${message}`);
       plan.fail(message, repos);
-    } finally {
-      if (checkout) await checkout.dispose().catch(() => undefined);
     }
 
     try {

@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -53,6 +54,8 @@ export class TaskChatReplyDto {
   hasPlan!: boolean;
   /** El usuario pidió cambiar el plan (o crearlo): hay que replanificar con la conversación. */
   updatesPlan!: boolean;
+  /** Además, hay que rehacerlo desde cero (sin partir del plan anterior). */
+  rebuildsPlan!: boolean;
 }
 
 export class CreatePlanDto {
@@ -76,6 +79,11 @@ export class CreatePlanDto {
   @ValidateNested({ each: true })
   @Type(() => PlanChatMessageDto)
   messages?: PlanChatMessageDto[];
+
+  /** Con `messages`: rehacer el plan desde cero, sin partir del anterior (que queda en el historial). */
+  @IsOptional()
+  @IsBoolean()
+  fromScratch?: boolean;
 }
 
 export class PlanResponseDto {

@@ -12,6 +12,7 @@ const reply = (text: string): TaskChatReply => ({
   tickets: [],
   hasPlan: true,
   updatesPlan: false,
+  rebuildsPlan: false,
 });
 
 describe('TaskChatStore', () => {
@@ -102,6 +103,24 @@ describe('TaskChatStore', () => {
       await vi.runAllTimersAsync();
 
       expect(updates).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tells whether the AI understood the user wants the plan rebuilt from scratch', async () => {
+    vi.useFakeTimers();
+    try {
+      const updates = vi.fn();
+      store.onUpdatesPlan = updates;
+      api.chatTask.mockReturnValue(
+        of({ ...reply('Lo rehago.'), updatesPlan: true, rebuildsPlan: true }),
+      );
+
+      await store.send('rehazlo de cero');
+      await vi.runAllTimersAsync();
+
+      expect(updates).toHaveBeenCalledWith(true);
     } finally {
       vi.useRealTimers();
     }

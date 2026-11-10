@@ -8,9 +8,7 @@ const RULE = [
 ].join('\n');
 
 /** El agente respondió una broma sobre si era una IA afirmando que era Felipe: se le prohíbe tocar el tema. */
-export class AutoReplyNeverAboutItself1795000000000
-  implements MigrationInterface
-{
+export class AutoReplyNeverAboutItself1795000000000 implements MigrationInterface {
   name = 'AutoReplyNeverAboutItself1795000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

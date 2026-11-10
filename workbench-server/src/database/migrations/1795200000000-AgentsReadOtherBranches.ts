@@ -1,6 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-const READ_GIT = ['Bash(git show:*)', 'Bash(git branch -r:*)', 'Bash(git ls-tree:*)'];
+const READ_GIT = [
+  'Bash(git show:*)',
+  'Bash(git branch -r:*)',
+  'Bash(git ls-tree:*)',
+];
 
 // Qué herramientas de lectura de git se les suman a los agentes de cada módulo (lo que ya tengan se respeta).
 const ADDED: Record<string, string[]> = {
@@ -13,9 +17,7 @@ const ADDED: Record<string, string[]> = {
  * Los agentes de la ejecución pueden leer la rama de otro ticket que la tarea mencione (el backend que una app necesita,
  * ya hecho pero sin mergear): `git show`, `git ls-tree` y `git branch -r`, todo de solo lectura. Solo se suma lo que falta.
  */
-export class AgentsReadOtherBranches1795200000000
-  implements MigrationInterface
-{
+export class AgentsReadOtherBranches1795200000000 implements MigrationInterface {
   name = 'AgentsReadOtherBranches1795200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
