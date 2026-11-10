@@ -47,18 +47,18 @@ export class Sidebar {
     { initialValue: this.router.url },
   );
 
-  /** Grupos abiertos por el usuario (se recuerdan entre visitas). */
+  /** El grupo abierto, como mucho uno (se recuerda entre visitas). */
   private readonly openGroups = signal<ReadonlySet<string>>(this.restore());
 
   constructor() {
     // Al navegar dentro de un grupo, se abre solo (ej. al entrar por un enlace directo).
     effect(() => {
       const url = this.url();
-      const active = this.items().filter((item) => this.hasActiveChild(item, url));
+      const active = this.items().find((item) => this.hasActiveChild(item, url));
       untracked(() => {
-        const missing = active.filter((item) => !this.openGroups().has(item.label));
-        if (missing.length > 0) {
-          this.setOpenGroups(new Set([...this.openGroups(), ...missing.map((item) => item.label)]));
+        // Solo un grupo abierto a la vez: el de la ruta actual reemplaza al que estuviera abierto.
+        if (active && !this.openGroups().has(active.label)) {
+          this.setOpenGroups(new Set([active.label]));
         }
       });
     });
@@ -73,9 +73,8 @@ export class Sidebar {
   }
 
   protected toggle(item: NavItem): void {
-    const next = new Set(this.openGroups());
-    if (!next.delete(item.label)) next.add(item.label);
-    this.setOpenGroups(next);
+    // Abrir un grupo cierra el que estuviera abierto.
+    this.setOpenGroups(this.isOpen(item) ? new Set() : new Set([item.label]));
   }
 
   protected groupId(item: NavItem): string {
@@ -94,7 +93,8 @@ export class Sidebar {
   private restore(): ReadonlySet<string> {
     try {
       const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-      return new Set(Array.isArray(stored) ? stored.filter((v) => typeof v === 'string') : []);
+      const groups = Array.isArray(stored) ? stored.filter((v) => typeof v === 'string') : [];
+      return new Set(groups.slice(0, 1));
     } catch {
       return new Set();
     }

@@ -17,6 +17,12 @@ const GROUP: NavItem = {
     { label: 'Estados', icon: 'circle-dot', path: '/tasks/states' },
   ],
 };
+const OTHER_GROUP: NavItem = {
+  label: 'Automatización',
+  icon: 'sparkles',
+  order: 3,
+  children: [{ label: 'Ejecuciones', icon: 'list-checks', path: '/executions' }],
+};
 const LINK: NavItem = { label: 'Kanban', icon: 'kanban', order: 2, path: '/kanban' };
 
 describe('Sidebar', () => {
@@ -28,10 +34,12 @@ describe('Sidebar', () => {
           { path: 'tasks/issues', component: Blank },
           { path: 'tasks/states', component: Blank },
           { path: 'kanban', component: Blank },
+          { path: 'executions', component: Blank },
           { path: 'other', component: Blank },
         ]),
         provideNavItem(LINK),
         provideNavItem(GROUP),
+        provideNavItem(OTHER_GROUP),
       ],
     });
   });
@@ -42,15 +50,17 @@ describe('Sidebar', () => {
     return fixture;
   }
 
-  const groupButton = (root: HTMLElement) =>
-    root.querySelector<HTMLButtonElement>('button.nav-group')!;
+  const groupButton = (root: HTMLElement, label = 'Tareas') =>
+    [...root.querySelectorAll<HTMLButtonElement>('button.nav-group')].find((button) =>
+      button.textContent?.includes(label),
+    )!;
 
   it('lists the entries by order, with the group as a button', () => {
     const root: HTMLElement = render().nativeElement;
     const labels = [...root.querySelectorAll('nav > ul > li > .nav-link')].map((el) =>
       el.textContent?.trim(),
     );
-    expect(labels).toEqual(['Tareas', 'Kanban']);
+    expect(labels).toEqual(['Tareas', 'Kanban', 'Automatización']);
     expect(groupButton(root).getAttribute('aria-expanded')).toBe('false');
   });
 
@@ -67,6 +77,34 @@ describe('Sidebar', () => {
     groupButton(root).click();
     fixture.detectChanges();
     expect(root.querySelector('.nav-sub')).toBeNull();
+  });
+
+  it('keeps only one group open: opening another closes the first', () => {
+    const fixture = render();
+    const root: HTMLElement = fixture.nativeElement;
+
+    groupButton(root, 'Tareas').click();
+    fixture.detectChanges();
+    groupButton(root, 'Automatización').click();
+    fixture.detectChanges();
+
+    expect(groupButton(root, 'Tareas').getAttribute('aria-expanded')).toBe('false');
+    expect(groupButton(root, 'Automatización').getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelectorAll('.nav-sub')).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem('workbench.sidebar.open-groups')!)).toEqual([
+      'Automatización',
+    ]);
+  });
+
+  it('restores at most one open group', () => {
+    localStorage.setItem(
+      'workbench.sidebar.open-groups',
+      JSON.stringify(['Tareas', 'Automatización']),
+    );
+
+    const root: HTMLElement = render().nativeElement;
+
+    expect(root.querySelectorAll('.nav-sub')).toHaveLength(1);
   });
 
   it('opens by itself when the current route is inside the group', async () => {
