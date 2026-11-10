@@ -112,6 +112,9 @@ export class PlansStore {
   async refresh(): Promise<void> {
     if (!this.issueId) return;
     const wasActive = this.active();
+    // Mientras se genera uno nuevo, se sigue mostrando el que se veía (sin esto, al llegar el nuevo la vista pasaría a él vacía).
+    const shown = this.viewed();
+    if (wasActive && shown) this.viewedId.set(shown.id);
     try {
       this.items.set(await firstValueFrom(this.api.listPlans(this.issueId)));
     } catch {
@@ -120,7 +123,12 @@ export class PlansStore {
     }
 
     const finished = wasActive && this.items().find((plan) => plan.id === wasActive.id);
-    if (finished?.status === 'ready') this.viewedId.set(finished.id);
+    // El plan nuevo se trae completo (y el que editó, para resaltar los cambios) antes de pasar a mostrarlo: así la vista previa
+    // se actualiza de una vez, sin pasar por «Cargando el plan…».
+    if (finished?.status === 'ready') {
+      await this.ensureContent(finished);
+      this.viewedId.set(finished.id);
+    }
     await this.ensureContent();
     this.syncPolling();
   }
@@ -139,8 +147,7 @@ export class PlansStore {
   }
 
   /** Trae el markdown del plan que se muestra, si es de uno listo y aún no se tiene. */
-  private async ensureContent(): Promise<void> {
-    const plan = this.viewed();
+  private async ensureContent(plan: Plan | null = this.viewed()): Promise<void> {
     if (!plan || plan.status !== 'ready') return;
 
     if (!this.contents().has(plan.id)) {

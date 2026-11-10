@@ -123,6 +123,30 @@ describe('PlansStore', () => {
     expect(store.viewedContent()).toBe('# listo');
   });
 
+  it('keeps showing the previous plan until the edited one is fully fetched, never an empty view', async () => {
+    api.listPlans.mockReturnValue(of([plan('a', 'ready')]));
+    await store.load('i1');
+    api.listPlans.mockReturnValue(
+      of([plan('b', 'generating', { basedOnPlanId: 'a' }), plan('a', 'ready')]),
+    );
+    await store.refresh();
+    expect(store.viewedContent()).toBe('# plan a');
+
+    const seen: (string | null)[] = [];
+    api.listPlans.mockReturnValue(
+      of([plan('b', 'ready', { basedOnPlanId: 'a' }), plan('a', 'ready')]),
+    );
+    api.getPlan.mockImplementation((id: string) => {
+      seen.push(store.viewedContent());
+      return of(plan(id, 'ready', { content: `# plan ${id}` }));
+    });
+    await store.refresh();
+
+    expect(seen.every((content) => content === '# plan a')).toBe(true);
+    expect(store.viewedContent()).toBe('# plan b');
+    expect(store.viewedBaseContent()).toBe('# plan a');
+  });
+
   it('reports a failed plan and stops polling', async () => {
     api.listPlans.mockReturnValue(of([plan('c', 'generating')]));
     await store.load('i1');
