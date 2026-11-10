@@ -95,6 +95,20 @@ describe('BoardViewStore', () => {
     expect(ids('doing')).toEqual(['c']);
   });
 
+  it('hides the paused issues from the columns, and brings them back when resumed', () => {
+    issues.update((list) =>
+      list.map((issue) =>
+        issue.id === 'b' ? { ...issue, pausedAt: '2026-10-06T12:00:00Z' } : issue,
+      ),
+    );
+    expect(ids('todo')).toEqual(['a']);
+
+    issues.update((list) =>
+      list.map((issue) => (issue.id === 'b' ? { ...issue, pausedAt: null } : issue)),
+    );
+    expect(ids('todo')).toEqual(['a', 'b']);
+  });
+
   it('moves a card at once and tells the server the column and the index', async () => {
     const pending = store.move('a', 'doing', 0);
 

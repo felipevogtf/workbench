@@ -24,7 +24,8 @@
   gap: var(--space-1);
   max-width: 100%;
   box-sizing: border-box;
-  min-height: 2.25rem;
+  // Misma altura para las tareas y para «Sumar», sea cual sea su contenido.
+  height: 2.5rem;
   padding: 0 var(--space-2) 0 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -161,13 +162,8 @@ li:last-child > .suggestion {
   border-bottom: none;
 }
 
-// «Sumar» se estira a la altura de las demás fichas, sea cual sea.
 .chips__add {
   display: flex;
-
-  .chip {
-    align-self: stretch;
-  }
 }
 
 .chip__text,

@@ -29,10 +29,14 @@ export class BoardViewStore {
   readonly loading = this.loadingState.asReadonly();
   readonly loaded = this.loadedState.asReadonly();
   readonly error = this.errorState.asReadonly();
-  /** Tareas del tablero sin las cerradas (el historial no se muestra). */
+  /** Tareas del tablero sin las cerradas (el historial) ni las pausadas. */
   private readonly openIssues = computed(
     () =>
-      new Map([...this.issues.visibleIssueById()].filter(([, issue]) => issue.closedAt === null)),
+      new Map(
+        [...this.issues.visibleIssueById()].filter(
+          ([, issue]) => issue.closedAt === null && issue.pausedAt === null,
+        ),
+      ),
   );
   readonly cardCount = computed(() =>
     this.columns().reduce((total, column) => total + column.issueIds.length, 0),
