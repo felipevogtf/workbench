@@ -81,8 +81,8 @@ export interface WindowUsage {
   measures: number;
   tokens: number;
   costUsd: number;
-  /** Tokens por origen: etapa del runner (`develop`, `review`…) o lo que pidió el servidor (`planner`, `chat`, `other`). */
-  byKind: Record<string, number>;
+  /** Tokens por agente (su id; `none` para lo que no tiene agente, como subir la rama). */
+  byAgent: Record<string, number>;
 }
 
 /** Algo que gastó tokens: un trabajo del runner o una llamada del servidor. */
@@ -142,9 +142,10 @@ function windowsOf(
     const inside = spends.filter(
       (spend) => spend.at.getTime() >= start && spend.at.getTime() < end,
     );
-    const byKind: Record<string, number> = {};
+    const byAgent: Record<string, number> = {};
     for (const spend of inside) {
-      byKind[spend.kind] = (byKind[spend.kind] ?? 0) + spend.tokens;
+      const key = spend.agent?.id ?? 'none';
+      byAgent[key] = (byAgent[key] ?? 0) + spend.tokens;
     }
     return {
       date: dayOf(new Date(start), timeZone),
@@ -155,7 +156,7 @@ function windowsOf(
       measures: group.count,
       tokens: inside.reduce((sum, spend) => sum + spend.tokens, 0),
       costUsd: inside.reduce((sum, spend) => sum + spend.costUsd, 0),
-      byKind,
+      byAgent,
     };
   });
 }

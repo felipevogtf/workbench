@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { Agent, agentLabel } from '@ai-agents/index';
 import { Avatar } from '@shared/ui/avatar/avatar';
 import { Icon } from '@shared/ui/icon/icon';
-import { AgentUsage, formatPoints, formatTokens } from '../../models/usage';
+import { AgentUsage, WindowUsage, formatPoints, formatTokens } from '../../models/usage';
 
 interface Row {
   key: string;
@@ -14,7 +14,15 @@ interface Row {
   tokens: string;
   share: number;
   points: string | null;
+  /** Tokens en cada ventana de 5 horas mostrada, en el mismo orden que las columnas. */
+  perWindow: string[];
 }
+
+/** Cuántas ventanas de 5 horas se muestran: las más recientes. */
+const MAX_WINDOWS = 3;
+
+const DAY = new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric' });
+const HOUR = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' });
 
 /**
  * Lo que gastó cada trabajador en el período: trabajos, tokens (exactos), qué parte del total del Workbench
@@ -37,6 +45,14 @@ interface Row {
             <th scope="col" class="num">Tokens</th>
             <th scope="col">Del total</th>
             <th scope="col" class="num">De la semana</th>
+            @for (column of columns(); track column.key) {
+              <th scope="col" class="num" [title]="column.title">
+                {{ column.label }}
+                @if (column.current) {
+                  <span class="now">ahora</span>
+                }
+              </th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -65,6 +81,9 @@ interface Row {
                 </span>
               </td>
               <td class="num muted">{{ row.points ?? '—' }}</td>
+              @for (tokens of row.perWindow; track $index) {
+                <td class="num">{{ tokens }}</td>
+              }
             </tr>
           }
         </tbody>
@@ -110,6 +129,15 @@ interface Row {
 
     .muted {
       color: var(--text-color);
+    }
+
+    th .now {
+      margin-left: var(--space-1);
+      padding: 1px var(--space-2);
+      font-size: 0.75rem;
+      border-radius: 999px;
+      background: var(--tone-success-bg);
+      color: var(--tone-success-fg);
     }
 
     .who {
@@ -161,6 +189,26 @@ export class UsageByAgent {
   /** Los trabajadores de ahora, para mostrar su nombre y su imagen. */
   readonly agents = input<readonly Agent[]>([]);
 
+  /** Las ventanas de 5 horas más recientes, la de ahora primero. */
+  readonly windows = input<readonly WindowUsage[]>([]);
+  /** Para saber cuál es la ventana de ahora. */
+  readonly now = input<number>(Date.now());
+
+  private readonly recent = computed(() => [...this.windows()].reverse().slice(0, MAX_WINDOWS));
+
+  protected readonly columns = computed(() =>
+    this.recent().map((window) => {
+      const start = new Date(window.startsAt);
+      const end = new Date(window.endsAt);
+      return {
+        key: window.resetsAt,
+        label: `${DAY.format(start)} ${HOUR.format(start)}–${HOUR.format(end)}`,
+        title: `Ventana de 5 horas: ${formatTokens(window.tokens)} tokens en total`,
+        current: start.getTime() <= this.now() && this.now() < end.getTime(),
+      };
+    }),
+  );
+
   protected readonly table = computed<Row[]>(() => {
     const total = this.rows().reduce((sum, row) => sum + row.tokens, 0);
     return this.rows().map((row) => {
@@ -181,6 +229,10 @@ export class UsageByAgent {
         tokens: formatTokens(row.tokens),
         share: total > 0 ? Math.round((row.tokens / total) * 100) : 0,
         points: row.estimatedPoints === null ? null : formatPoints(row.estimatedPoints),
+        perWindow: this.recent().map((window) => {
+          const tokens = window.byAgent[row.agentId ?? 'none'] ?? 0;
+          return tokens > 0 ? formatTokens(tokens) : '—';
+        }),
       };
     });
   });

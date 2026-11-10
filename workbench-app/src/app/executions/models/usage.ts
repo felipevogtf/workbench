@@ -66,21 +66,9 @@ export interface WindowUsage {
   measures: number;
   tokens: number;
   costUsd: number;
-  /** Tokens por origen (`develop`, `review`, `planner`, `chat`…). */
-  byKind: Record<string, number>;
+  /** Tokens por agente (su id; `none` para lo que no tiene agente, como subir la rama). */
+  byAgent: Record<string, number>;
 }
-
-/** Cómo se llama cada origen del gasto. */
-export const KIND_LABELS: Record<string, string> = {
-  tickets: 'Tickets',
-  develop: 'Desarrollo',
-  review: 'Revisión',
-  final: 'Revisión final',
-  publish: 'Subida y medición',
-  planner: 'Planificador',
-  chat: 'Chats',
-  other: 'Revisión de PR y otros',
-};
 
 export interface UsageOverview {
   current: {

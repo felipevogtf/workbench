@@ -19,7 +19,6 @@ import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { UsageByAgent } from '../../components/usage-by-agent/usage-by-agent';
 import { ChartUnit, UsageChart } from '../../components/usage-chart/usage-chart';
 import { UsageMeter } from '../../components/usage-meter/usage-meter';
-import { UsageWindows } from '../../components/usage-windows/usage-windows';
 import { UsageStore, USAGE_STALE_SECONDS } from '../../data-access/usage.store';
 import { formatPoints, formatTokens } from '../../models/usage';
 
@@ -42,7 +41,6 @@ import { formatPoints, formatTokens } from '../../models/usage';
     UsageByAgent,
     UsageChart,
     UsageMeter,
-    UsageWindows,
   ],
   providers: [UsageStore],
   changeDetection: ChangeDetectionStrategy.OnPush,

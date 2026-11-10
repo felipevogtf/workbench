@@ -523,7 +523,7 @@ describe('UsageService', () => {
         expect(windows[1]).toMatchObject({ peak: 0.1, measures: 1, tokens: 0 });
       });
 
-      it('splits what was spent in a window by where it came from', async () => {
+      it('splits what was spent in a window by agent', async () => {
         await snapshot('2026-10-26T10:00:00Z', limits(0.2, 0.03, RESETS_5H));
         jobs.items.push(
           job('e1', 'develop', {
@@ -531,20 +531,33 @@ describe('UsageService', () => {
             end: '2026-10-26T10:30:00Z',
             cost: 1,
             usage: { tokens: tokens(1000), limits: null },
+            agent: { id: 'ag-david', name: 'david' },
           }),
         );
         aiCalls.items.push({
           at: new Date('2026-10-26T11:00:00Z'),
           module: 'planner',
-          agentId: null,
-          agentName: null,
+          agentId: 'ag-plan',
+          agentName: 'planner',
           tokens: tokens(300),
           costUsd: 0.3,
         });
+        jobs.items.push(
+          job('e1', 'publish', {
+            start: '2026-10-26T11:10:00Z',
+            end: '2026-10-26T11:20:00Z',
+            cost: 0,
+            usage: { tokens: tokens(5), limits: null },
+          }),
+        );
 
         const [window] = (await service.overview('UTC', 1, NOW)).windows;
 
-        expect(window.byKind).toEqual({ develop: 1000, planner: 300 });
+        expect(window.byAgent).toEqual({
+          'ag-david': 1000,
+          'ag-plan': 300,
+          none: 5,
+        });
       });
 
       it('ends a window where the next one starts when it restarted early', async () => {
