@@ -27,6 +27,7 @@ function makeIssue(id: string, stateId: string | null): Issue {
     stateId,
     projectId: 'p1',
     labelIds: [],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     closedAt: null,

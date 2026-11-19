@@ -24,6 +24,7 @@ function issue(id: string, stateId: string | null, closedAt: string | null = nul
     stateId,
     projectId: 'p1',
     labelIds: [],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     closedAt,

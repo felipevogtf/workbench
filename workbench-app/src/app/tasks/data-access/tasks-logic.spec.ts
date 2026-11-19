@@ -19,6 +19,7 @@ function issue(patch: Partial<Issue> = {}): Issue {
     stateId: 's1',
     projectId: 'p1',
     labelIds: ['l1'],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     closedAt: null,

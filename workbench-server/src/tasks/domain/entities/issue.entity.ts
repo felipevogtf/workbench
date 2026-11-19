@@ -3,6 +3,10 @@ import { IssueProps } from './issue.props';
 
 export const ISSUE_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'];
 
+/** Hasta cuántos proyectos puede tener una tarea (lo mismo que admite una ejecución). */
+export const MAX_PROJECT_REPOS = 3;
+const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
+
 export class Issue {
   private constructor(private props: IssueProps) {
     this.validateIdentity();
@@ -26,6 +30,7 @@ export class Issue {
       priority: null,
       stateId: null,
       labelIds: [],
+      projectRepos: [],
       startDate: null,
       dueDate: null,
       estimatedHours: null,
@@ -136,6 +141,10 @@ export class Issue {
 
   get projectId(): string {
     return this.props.projectId;
+  }
+
+  get projectRepos(): string[] {
+    return [...this.props.projectRepos];
   }
 
   get labelIds(): string[] {
@@ -250,6 +259,25 @@ export class Issue {
 
   setLabels(labelIds: string[]): void {
     this.props.labelIds = [...new Set(labelIds)];
+  }
+
+  /** Los repositorios de los proyectos de la tarea (`organización/repo`), sin repetir y en minúsculas. */
+  setProjectRepos(repos: readonly string[]): void {
+    const normalized = [
+      ...new Set(repos.map((repo) => repo.trim().toLowerCase())),
+    ];
+    if (normalized.length > MAX_PROJECT_REPOS) {
+      throw new DomainError(
+        `A task can have at most ${MAX_PROJECT_REPOS} projects`,
+      );
+    }
+    const invalid = normalized.find((repo) => !REPO_PATTERN.test(repo));
+    if (invalid !== undefined) {
+      throw new DomainError(
+        `A project must look like "organization/repository", got "${invalid}"`,
+      );
+    }
+    this.props.projectRepos = normalized;
   }
 
   setState(stateId: string | null): void {

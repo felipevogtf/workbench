@@ -11,7 +11,9 @@ import {
   untracked,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
+import { type Project, ProjectsApi } from '@projects/index';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { ChipPicker, ChipOption } from '@shared/ui/chip-picker/chip-picker';
@@ -61,6 +63,7 @@ export class IssueFormDialog {
   private readonly projectsStore = inject(TaskProjectsStore);
   private readonly statesStore = inject(StatesStore);
   private readonly labelsStore = inject(LabelsStore);
+  private readonly projectsApi = inject(ProjectsApi);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -73,6 +76,8 @@ export class IssueFormDialog {
     estimatedHours: [''],
   });
   protected readonly labelIds = signal<string[]>([]);
+  protected readonly projectRepos = signal<string[]>([]);
+  private readonly repoProjects = signal<Project[]>([]);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -93,7 +98,20 @@ export class IssueFormDialog {
       .map((label) => ({ value: label.id, label: label.name, color: label.color })),
   );
 
+  /** Los proyectos (repositorios) entre los que se elige; los de la tarea que ya no existan se siguen mostrando. */
+  protected readonly repoProjectOptions = computed<ChipOption[]>(() => {
+    const known = this.repoProjects().map((project) => ({
+      value: project.repo,
+      label: project.name,
+    }));
+    const missing = this.projectRepos()
+      .filter((repo) => !known.some((option) => option.value === repo))
+      .map((repo) => ({ value: repo, label: repo }));
+    return [...known, ...missing];
+  });
+
   constructor() {
+    void this.loadRepoProjects();
     // Cada vez que se abre, el formulario parte de la tarea (o de valores vacíos al crear).
     effect(() => {
       if (!this.open()) return;
@@ -101,6 +119,14 @@ export class IssueFormDialog {
       const projectId = this.defaultProjectId();
       untracked(() => this.fill(issue, projectId));
     });
+  }
+
+  private async loadRepoProjects(): Promise<void> {
+    try {
+      this.repoProjects.set(await firstValueFrom(this.projectsApi.list()));
+    } catch {
+      // Sin la lista se puede seguir: la tarea usa sus etiquetas.
+    }
   }
 
   protected invalid(name: 'name' | 'projectId'): boolean {
@@ -142,6 +168,7 @@ export class IssueFormDialog {
       estimatedHours: issue?.estimatedHours?.toString() ?? '',
     });
     this.labelIds.set(issue ? [...issue.labelIds] : []);
+    this.projectRepos.set(issue ? [...issue.projectRepos] : []);
     this.error.set(null);
 
     for (const name of [
@@ -171,12 +198,13 @@ export class IssueFormDialog {
       dueDate: value.dueDate || null,
       estimatedHours: value.estimatedHours === '' ? null : Number(value.estimatedHours),
       labelIds: this.labelIds(),
+      projectRepos: this.projectRepos(),
     };
   }
 
   /** Al editar solo se envía lo permitido (las de Plane rechazan el resto). */
   private patch(issue: Issue): Partial<IssueInput> {
-    const { stateId, estimatedHours, labelIds } = this.input();
-    return issue.isLocal ? this.input() : { stateId, estimatedHours, labelIds };
+    const { stateId, estimatedHours, labelIds, projectRepos } = this.input();
+    return issue.isLocal ? this.input() : { stateId, estimatedHours, labelIds, projectRepos };
   }
 }

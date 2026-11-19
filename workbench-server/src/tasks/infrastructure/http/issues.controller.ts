@@ -128,6 +128,7 @@ export class IssuesController {
       stateId: issue.stateId,
       projectId: issue.projectId,
       labelIds: issue.labelIds,
+      projectRepos: issue.projectRepos,
       startDate: issue.startDate,
       dueDate: issue.dueDate,
     };

@@ -23,6 +23,7 @@ const fromPlane = () =>
     stateId: null,
     projectId: 'p1',
     labelIds: [],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     estimatedHours: null,
@@ -121,6 +122,27 @@ describe('Issue', () => {
       issue.setEstimatedHours(5);
       issue.syncFromRemote({ ...remote, estimatedHours: null });
       expect(issue.estimatedHours).toBe(5);
+    });
+  });
+
+  describe('projects of the task', () => {
+    it('keeps the repositories in lowercase, without repeats and in order', () => {
+      const issue = fromPlane();
+
+      issue.setProjectRepos([' Acme/Web ', 'acme/api', 'acme/web']);
+
+      expect(issue.projectRepos).toEqual(['acme/web', 'acme/api']);
+    });
+
+    it('rejects a repository that is not organization/repository, and more than three', () => {
+      const issue = fromPlane();
+
+      expect(() => issue.setProjectRepos(['sin-organizacion'])).toThrow(
+        DomainError,
+      );
+      expect(() => issue.setProjectRepos(['a/1', 'a/2', 'a/3', 'a/4'])).toThrow(
+        DomainError,
+      );
     });
   });
 });

@@ -13,6 +13,8 @@ export class IssueResponseDto {
   stateId!: string | null;
   projectId!: string;
   labelIds!: readonly string[];
+  /** Los repositorios de los proyectos de la tarea; vacío = los de sus etiquetas. */
+  projectRepos!: readonly string[];
   startDate!: string | null;
   dueDate!: string | null;
   estimatedHours!: number | null;

@@ -23,6 +23,8 @@ export interface ProjectProps {
   content: string;
   /** Otros repositorios que hay que tener a mano para probar este (ej. la web de la que depende la app). */
   dependsOn: string[];
+  /** El enlace para clonar: `https://github.com/org/repo` o `https://bitbucket.org/org/repo`. `null` si no se conoce. */
+  repoUrl: string | null;
   mainBranch: string;
   /** Clave del entorno en `runner.config.json` si no es el propio repositorio. Solo una referencia: el runner decide qué se ejecuta. */
   runnerEnvironment: string | null;
@@ -39,6 +41,7 @@ export interface ProjectInput {
   content: string;
   dependsOn?: readonly string[];
   name?: string | null;
+  repoUrl?: string | null;
   mainBranch?: string;
   runnerEnvironment?: string | null;
   architectureRules?: string;
@@ -79,6 +82,40 @@ function optionalRef(
 ): string | null {
   const text = value?.trim();
   return text ? ref(text, field) : null;
+}
+
+const REPO_HOSTS = ['github.com', 'bitbucket.org'];
+
+/**
+ * El enlace de un repositorio: https, solo github.com o bitbucket.org, sin credenciales ni puerto, y que apunte
+ * al mismo `org/repo` del proyecto. Lo que llega a un clone no puede traer opciones de git ni credenciales.
+ */
+function repoLink(
+  value: string | null | undefined,
+  repo: string,
+): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new DomainError('The repository link is not a valid URL');
+  }
+  const path = url.pathname.replace(/^\/|\/$|\.git$/g, '');
+  if (
+    url.protocol !== 'https:' ||
+    !REPO_HOSTS.includes(url.hostname) ||
+    url.username ||
+    url.password ||
+    url.port ||
+    path.toLowerCase() !== repo
+  ) {
+    throw new DomainError(
+      `The repository link must be https://github.com/${repo} or https://bitbucket.org/${repo}`,
+    );
+  }
+  return `https://${url.hostname}/${path}`;
 }
 
 type Normalized = Omit<ProjectProps, 'id' | 'createdAt' | 'updatedAt'>;
@@ -128,6 +165,7 @@ function normalized(input: Required<ProjectInput>): Normalized {
     name,
     content,
     dependsOn,
+    repoUrl: repoLink(input.repoUrl, repo),
     mainBranch: ref(input.mainBranch, 'The main branch'),
     runnerEnvironment: optionalRef(
       input.runnerEnvironment,
@@ -152,6 +190,7 @@ export class Project {
       ...normalized({
         dependsOn: [],
         name: null,
+        repoUrl: null,
         mainBranch: DEFAULT_MAIN_BRANCH,
         runnerEnvironment: null,
         architectureRules: '',
@@ -174,6 +213,8 @@ export class Project {
       content: changes.content ?? this.props.content,
       dependsOn: changes.dependsOn ?? this.props.dependsOn,
       name: changes.name === undefined ? this.props.name : changes.name,
+      repoUrl:
+        changes.repoUrl === undefined ? this.props.repoUrl : changes.repoUrl,
       mainBranch: changes.mainBranch ?? this.props.mainBranch,
       runnerEnvironment:
         changes.runnerEnvironment === undefined
@@ -203,6 +244,9 @@ export class Project {
   }
   get dependsOn(): readonly string[] {
     return this.props.dependsOn;
+  }
+  get repoUrl(): string | null {
+    return this.props.repoUrl;
   }
   get mainBranch(): string {
     return this.props.mainBranch;

@@ -25,6 +25,8 @@ export interface Issue {
   stateId: string | null;
   projectId: string;
   labelIds: string[];
+  /** Los proyectos (repositorios `org/repo`) de la tarea; vacío = los de sus etiquetas. */
+  projectRepos: string[];
   /** `YYYY-MM-DD`. */
   startDate: string | null;
   dueDate: string | null;
@@ -45,6 +47,7 @@ export interface IssueInput {
   dueDate?: string | null;
   estimatedHours?: number | null;
   labelIds?: string[];
+  projectRepos?: string[];
 }
 
 export interface IssueFilters {

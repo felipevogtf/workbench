@@ -32,8 +32,10 @@ export interface GroupContext {
   description: string;
   /** Las tareas del grupo, en orden; `key` es su código de Plane (`MEL-12`), si lo tiene. */
   members: { id: string; key: string | null; name: string }[];
-  /** Las etiquetas de las tareas del grupo (de ahí salen sus repositorios). */
+  /** Las etiquetas de las tareas del grupo (de ahí salen sus repositorios si las tareas no tienen proyectos propios). */
   labels: Label[];
+  /** Los proyectos (`org/repo`) de las tareas del grupo, sin repetir y en orden. */
+  projectRepos: string[];
 }
 
 /**
@@ -117,6 +119,9 @@ export class TasksFacade {
       ),
       members: entries.map(({ id, key, name }) => ({ id, key, name })),
       labels: await this.labels.findByIds(labelIds),
+      projectRepos: [
+        ...new Set(members.flatMap((member) => member.projectRepos)),
+      ],
     };
   }
 

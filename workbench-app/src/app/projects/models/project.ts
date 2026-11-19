@@ -5,6 +5,8 @@ export interface Project {
   repo: string;
   /** Nombre visible; el del repositorio si no se puso otro. */
   name: string;
+  /** El enlace para clonar (github.com o bitbucket.org); `null` si no se conoce. */
+  repoUrl: string | null;
   /** La receta, en Markdown. */
   content: string;
   /** Otros repositorios que hay que tener a mano para probar este. */
@@ -25,6 +27,8 @@ export interface ProjectInput {
   content: string;
   dependsOn: string[];
   name: string;
+  /** Vacío para quitarlo. */
+  repoUrl: string;
   mainBranch: string;
   /** Vacío para quitarla. */
   runnerEnvironment: string;

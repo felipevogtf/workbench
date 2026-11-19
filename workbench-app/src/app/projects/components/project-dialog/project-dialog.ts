@@ -8,7 +8,14 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormGroup,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { Button } from '@shared/ui/button/button';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
@@ -25,6 +32,22 @@ import {
   RepositoryOption,
   parseRepos,
 } from '../../models/project';
+
+/** El enlace del repositorio, si se escribió, es de GitHub o Bitbucket y apunta al mismo organización/repositorio. */
+function linkMatchesRepo(group: AbstractControl): ValidationErrors | null {
+  const { repo, repoUrl } = (group as FormGroup).getRawValue() as {
+    repo: string;
+    repoUrl: string;
+  };
+  const url = repoUrl.trim();
+  if (!url) return null;
+  const match = /^https:\/\/(?:github\.com|bitbucket\.org)\/([^/]+\/[^/]+?)(?:\.git)?\/?$/i.exec(
+    url,
+  );
+  return match !== null && match[1].toLowerCase() === repo.trim().toLowerCase()
+    ? null
+    : { link: true };
+}
 
 /** Crea o edita la receta de un repositorio: su texto (Markdown, con vista previa) y de quién depende. */
 @Component({
@@ -99,6 +122,20 @@ import {
 
         <app-form-field label="Nombre" for="project-name" hint="Cómo se ve en la lista. Si lo dejas vacío, el nombre del repositorio.">
           <app-text-input inputId="project-name" formControlName="name" />
+        </app-form-field>
+
+        <app-form-field
+          label="Enlace del repositorio"
+          for="project-url"
+          hint="Para clonarlo: https://github.com/organización/repo o https://bitbucket.org/organización/repo. Sin él, el proyecto solo sirve como receta."
+          [error]="urlInvalid() ? 'Debe ser un enlace de GitHub o Bitbucket al mismo organización/repositorio' : null"
+        >
+          <app-text-input
+            inputId="project-url"
+            formControlName="repoUrl"
+            placeholder="https://github.com/garage-labs/miobra-ionicv6"
+            [invalid]="urlInvalid()"
+          />
         </app-form-field>
 
         <app-form-field
@@ -223,11 +260,12 @@ export class ProjectDialog {
     dependsOn: ['', [this.validRepos]],
     content: ['', [Validators.maxLength(20_000)]],
     name: ['', [Validators.maxLength(100)]],
+    repoUrl: ['', [Validators.maxLength(300)]],
     mainBranch: [DEFAULT_MAIN_BRANCH, [Validators.required, Validators.pattern(REF_PATTERN)]],
     runnerEnvironment: ['', [Validators.maxLength(100)]],
     architectureRules: ['', [Validators.maxLength(10_000)]],
     verifyCommand: ['', [Validators.maxLength(500), Validators.pattern(/^[^\r\n]*$/)]],
-  });
+  }, { validators: [linkMatchesRepo] });
 
   private readonly repoValue = toSignal(this.form.controls.repo.valueChanges, { initialValue: '' });
 
@@ -261,6 +299,7 @@ export class ProjectDialog {
         dependsOn: parseRepos(value.dependsOn),
         content: value.content.trim(),
         name: value.name.trim(),
+        repoUrl: value.repoUrl.trim(),
         mainBranch: value.mainBranch.trim(),
         runnerEnvironment: value.runnerEnvironment.trim(),
         architectureRules: value.architectureRules.trim(),
@@ -278,6 +317,7 @@ export class ProjectDialog {
       dependsOn: project?.dependsOn.join(', ') ?? '',
       content: project?.content ?? RECIPE_TEMPLATE,
       name: project?.name ?? '',
+      repoUrl: project?.repoUrl ?? '',
       mainBranch: project?.mainBranch ?? DEFAULT_MAIN_BRANCH,
       runnerEnvironment: project?.runnerEnvironment ?? '',
       architectureRules: project?.architectureRules ?? '',
@@ -296,6 +336,11 @@ export class ProjectDialog {
   protected dependsInvalid(): boolean {
     const control = this.form.controls.dependsOn;
     return control.touched && control.invalid;
+  }
+
+  /** El enlace debe ser de GitHub o Bitbucket y apuntar al repositorio del proyecto (el servidor lo vuelve a comprobar). */
+  protected urlInvalid(): boolean {
+    return this.form.hasError('link') && this.form.controls.repoUrl.touched;
   }
 
   protected branchInvalid(): boolean {

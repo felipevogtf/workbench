@@ -11,6 +11,7 @@ const project = (repo: string, extra: Partial<Project> = {}): Project => ({
   content: '## Probar\n- `npm test` con docker-compose',
   dependsOn: [],
   name: repo.split('/')[1],
+  repoUrl: null,
   mainBranch: 'main',
   runnerEnvironment: null,
   architectureRules: '',

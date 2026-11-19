@@ -13,6 +13,8 @@ export interface IssueProps {
   stateId: string | null;
   projectId: string;
   labelIds: string[];
+  /** Los proyectos (repositorios, `org/repo`) en que se trabaja esta tarea, en orden. Vacío = los de sus etiquetas. */
+  projectRepos: string[];
   startDate: string | null;
   dueDate: string | null;
   estimatedHours: number | null;

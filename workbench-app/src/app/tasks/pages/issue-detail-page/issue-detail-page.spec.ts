@@ -25,6 +25,7 @@ const issue: Issue = {
   stateId: 's1',
   projectId: 'p1',
   labelIds: [],
+  projectRepos: [],
   startDate: null,
   dueDate: null,
   closedAt: null,

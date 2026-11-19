@@ -68,6 +68,9 @@ export class IssueOrmEntity {
   @Column({ type: 'decimal', nullable: true, precision: 10, scale: 2 })
   estimated_hours!: number | null;
 
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  project_repos!: string[];
+
   @ManyToMany(() => LabelOrmEntity, (label) => label.issues, { cascade: true })
   @JoinTable({
     name: 'issue_labels',

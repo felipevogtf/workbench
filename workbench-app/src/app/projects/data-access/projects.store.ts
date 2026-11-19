@@ -61,6 +61,7 @@ export class ProjectsStore {
             content: input.content,
             dependsOn: input.dependsOn,
             name: input.name,
+            repoUrl: input.repoUrl,
             mainBranch: input.mainBranch,
             runnerEnvironment: input.runnerEnvironment,
             architectureRules: input.architectureRules,

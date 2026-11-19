@@ -24,6 +24,9 @@ export class ProjectOrmEntity {
   @Column({ type: 'jsonb', default: () => "'[]'" })
   depends_on!: string[];
 
+  @Column({ type: 'varchar', nullable: true })
+  repo_url!: string | null;
+
   @Column({ type: 'varchar', default: 'main' })
   main_branch!: string;
 

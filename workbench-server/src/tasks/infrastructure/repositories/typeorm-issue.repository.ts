@@ -147,6 +147,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       stateId: issueOrmEntity.state?.id || null,
       projectId: issueOrmEntity.project.id,
       labelIds: issueOrmEntity.labels?.map((label) => label.id) || [],
+      projectRepos: issueOrmEntity.project_repos ?? [],
       startDate: issueOrmEntity.start_date,
       dueDate: issueOrmEntity.due_date,
       closedAt: issueOrmEntity.closed_at,
@@ -177,6 +178,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
       due_date: issue.dueDate,
       project: { id: issue.projectId },
       state: issue.stateId ? { id: issue.stateId } : null,
+      project_repos: issue.projectRepos,
       labels: issue.labelIds.map((id) => ({ id })),
     };
   }

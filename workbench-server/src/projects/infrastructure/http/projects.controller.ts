@@ -65,6 +65,7 @@ export class ProjectsController {
       id: project.id,
       repo: project.repo,
       name: project.name,
+      repoUrl: project.repoUrl,
       content: project.content,
       dependsOn: [...project.dependsOn],
       mainBranch: project.mainBranch,

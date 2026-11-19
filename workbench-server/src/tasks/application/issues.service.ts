@@ -32,6 +32,7 @@ interface IssueData {
   dueDate?: string | null;
   estimatedHours?: number | null;
   labelIds?: string[];
+  projectRepos?: string[];
   isGroup?: boolean;
 }
 
@@ -191,6 +192,7 @@ export class IssuesService {
           stateId: null,
           projectId: project.id,
           labelIds: [],
+          projectRepos: [],
           startDate: raw.startDate,
           dueDate: raw.dueDate,
           syncedAt: new Date(),
@@ -238,6 +240,9 @@ export class IssuesService {
     if (data.stateId !== undefined) {
       await this.ensureState(data.stateId);
       issue.setState(data.stateId);
+    }
+    if (data.projectRepos !== undefined) {
+      issue.setProjectRepos(data.projectRepos);
     }
     if (data.labelIds !== undefined) {
       const ids = [...new Set(data.labelIds)];

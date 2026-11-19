@@ -92,6 +92,18 @@
         [(selected)]="labelIds"
       />
     </app-form-field>
+    <app-form-field
+      label="Proyectos"
+      for="issue-projects"
+      hint="Los repositorios donde se trabaja esta tarea. Si no eliges ninguno, se usan los de sus etiquetas."
+    >
+      <app-chip-picker
+        label="Proyectos"
+        emptyText="Todavía no hay proyectos. Créalos en Proyectos."
+        [options]="repoProjectOptions()"
+        [(selected)]="projectRepos"
+      />
+    </app-form-field>
   </form>
 
   <ng-container dialog-footer>

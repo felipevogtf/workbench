@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
 import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
+import { ProjectsModule } from '@projects/projects.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { PLANNER_CONCURRENCY, PlansService } from './application/plans.service';
 import {
@@ -30,6 +31,7 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
   imports: [
     TypeOrmModule.forFeature([PlanOrmEntity]),
     TasksModule,
+    ProjectsModule,
     AiAgentsModule,
     ChatAttachmentsModule,
   ],

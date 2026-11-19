@@ -2,6 +2,7 @@ import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 import { Label } from '@tasks/domain/entities/label.entity';
 import { TaskProject } from '@tasks/domain/entities/task-project.entity';
+import { ProjectsFacade } from '@projects/application/projects-facade.service';
 import { TasksGatewayAdapter } from './tasks-gateway.adapter';
 
 const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
@@ -18,6 +19,7 @@ const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
     stateId: null,
     projectId: 'p1',
     labelIds: ['l1'],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     estimatedHours: null,
@@ -52,15 +54,19 @@ function adapter(
   found: Issue | null,
   of: TaskProject | null,
   extra: Partial<Record<'groupContext' | 'groupOf', unknown>> = {},
+  links: { repo: string; name: string; repoUrl: string }[] = [],
 ) {
-  return new TasksGatewayAdapter({
-    findIssue: () => Promise.resolve(found),
-    findLabels: () => Promise.resolve([label]),
-    findProject: () => Promise.resolve(of),
-    groupContext: () => Promise.resolve(null),
-    groupOf: () => Promise.resolve(null),
-    ...extra,
-  } as unknown as TasksFacade);
+  return new TasksGatewayAdapter(
+    {
+      findIssue: () => Promise.resolve(found),
+      findLabels: () => Promise.resolve([label]),
+      findProject: () => Promise.resolve(of),
+      groupContext: () => Promise.resolve(null),
+      groupOf: () => Promise.resolve(null),
+      ...extra,
+    } as unknown as TasksFacade,
+    { linksFor: () => Promise.resolve(links) } as unknown as ProjectsFacade,
+  );
 }
 
 describe('TasksGatewayAdapter', () => {
@@ -141,6 +147,32 @@ describe('TasksGatewayAdapter', () => {
     }).getTask('i1');
 
     expect(task?.groupId).toBe('g1');
+  });
+
+  it('takes the repositories from the projects of the task before its labels', async () => {
+    const task = await adapter(
+      issue({ projectRepos: ['acme/api'] }),
+      project('MEL'),
+      {},
+      [
+        {
+          repo: 'acme/api',
+          name: 'api',
+          repoUrl: 'https://github.com/acme/api',
+        },
+      ],
+    ).getTask('i1');
+
+    expect(task?.repoUrls).toEqual(['https://github.com/acme/api']);
+  });
+
+  it('falls back to the labels when none of its projects has a link', async () => {
+    const task = await adapter(
+      issue({ projectRepos: ['acme/sinenlace'] }),
+      project('MEL'),
+    ).getTask('i1');
+
+    expect(task?.repoUrls).toEqual(['https://bitbucket.org/acme/web']);
   });
 
   it('is null when the task does not exist', async () => {

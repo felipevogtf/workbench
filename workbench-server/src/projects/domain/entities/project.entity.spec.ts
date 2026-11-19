@@ -194,3 +194,38 @@ describe('Project: name, branch, environment, rules and verification', () => {
     ).toThrow(DomainError);
   });
 });
+
+describe('Project: the link of the repository', () => {
+  it('keeps a github or bitbucket https link to the same repository, without .git', () => {
+    const project = Project.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: ' https://github.com/Acme/App.git ',
+    });
+
+    expect(project.repoUrl).toBe('https://github.com/Acme/App');
+  });
+
+  it('is null when there is none, and can be cleared', () => {
+    const project = Project.create({ repo: 'acme/app', content: '' });
+    expect(project.repoUrl).toBeNull();
+
+    project.update({ repoUrl: 'https://bitbucket.org/acme/app' });
+    expect(project.repoUrl).toBe('https://bitbucket.org/acme/app');
+    project.update({ repoUrl: '' });
+    expect(project.repoUrl).toBeNull();
+  });
+
+  it.each([
+    'http://github.com/acme/app',
+    'https://evil.com/acme/app',
+    'https://user:pass@github.com/acme/app',
+    'https://github.com:8443/acme/app',
+    'https://github.com/acme/other',
+    'not a url',
+  ])('rejects %s', (link) => {
+    expect(() =>
+      Project.create({ repo: 'acme/app', content: '', repoUrl: link }),
+    ).toThrow(DomainError);
+  });
+});

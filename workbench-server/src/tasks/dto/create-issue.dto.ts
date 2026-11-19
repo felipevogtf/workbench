@@ -1,10 +1,12 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
 
@@ -46,4 +48,15 @@ export class CreateIssueDto {
   @IsArray()
   @IsUUID('all', { each: true })
   labelIds?: string[];
+
+  /** Los repositorios de los proyectos de la tarea, `organización/repo`. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @Matches(/^[\w.-]+\/[\w.-]+$/, {
+    each: true,
+    message: 'each project must look like "organization/repository"',
+  })
+  projectRepos?: string[];
 }

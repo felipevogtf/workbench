@@ -26,6 +26,12 @@ export class UpdateProjectDto {
   @MaxLength(MAX_PROJECT_NAME)
   name?: string;
 
+  /** El enlace para clonar; vacío para quitarlo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  repoUrl?: string;
+
   /** La receta. */
   @IsOptional()
   @IsString()
@@ -84,6 +90,7 @@ export class ProjectResponseDto {
   id!: string;
   repo!: string;
   name!: string;
+  repoUrl!: string | null;
   /** La receta. */
   content!: string;
   dependsOn!: string[];

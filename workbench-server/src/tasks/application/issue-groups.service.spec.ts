@@ -22,6 +22,7 @@ const issue = (name: string, local = true) =>
     stateId: null,
     projectId: 'p1',
     labelIds: [],
+    projectRepos: [],
     startDate: null,
     dueDate: null,
     syncedAt: new Date(),

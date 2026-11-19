@@ -9,6 +9,7 @@ const existing: Project = {
   content: 'Levantar con `docker compose up`',
   dependsOn: ['acme/web'],
   name: 'app',
+  repoUrl: null,
   mainBranch: 'main',
   runnerEnvironment: null,
   architectureRules: '',
@@ -91,6 +92,7 @@ describe('ProjectDialog', () => {
         dependsOn: ['acme/web', 'acme/db'],
         content: 'Probar con npm test',
         name: '',
+        repoUrl: '',
         mainBranch: 'main',
         runnerEnvironment: '',
         architectureRules: '',
@@ -133,6 +135,7 @@ describe('ProjectDialog', () => {
         dependsOn: ['acme/web'],
         content: 'Otro texto',
         name: 'app',
+        repoUrl: '',
         mainBranch: 'main',
         runnerEnvironment: '',
         architectureRules: '',
@@ -212,4 +215,34 @@ describe('ProjectDialog', () => {
     await fixture.whenStable();
     expect(field<HTMLTextAreaElement>('project-content').value).toContain('docker compose up');
   });
+
+  describe('the link of the repository', () => {
+    it('saves a link to the same repository and trims it', async () => {
+      const { host, type, submit } = await render();
+
+      type('project-repo', 'acme/api');
+      type('project-url', ' https://github.com/acme/api ');
+      await submit();
+
+      expect(host.save).toHaveBeenCalledWith(
+        expect.objectContaining({ repo: 'acme/api', repoUrl: 'https://github.com/acme/api' }),
+        null,
+      );
+    });
+
+    it('does not save a link to another repository or another host', async () => {
+      const { host, type, submit, root } = await render();
+
+      type('project-repo', 'acme/api');
+      type('project-url', 'https://github.com/acme/other');
+      await submit();
+      expect(host.save).not.toHaveBeenCalled();
+      expect(root.textContent).toContain('enlace de GitHub o Bitbucket');
+
+      type('project-url', 'https://evil.com/acme/api');
+      await submit();
+      expect(host.save).not.toHaveBeenCalled();
+    });
+  });
 });
+

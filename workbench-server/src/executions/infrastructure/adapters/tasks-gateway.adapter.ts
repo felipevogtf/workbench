@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { htmlToText } from '@core/text/html-to-text';
 import { TasksFacade } from '@tasks/application/tasks-facade.service';
+import { ProjectsFacade } from '@projects/application/projects-facade.service';
 import {
   ExecutionTask,
   TasksGatewayPort,
@@ -11,7 +12,10 @@ const MAX_TEXT_CHARS = 20_000;
 /** Único punto de la ejecución que conoce al módulo tasks. */
 @Injectable()
 export class TasksGatewayAdapter implements TasksGatewayPort {
-  constructor(private readonly tasks: TasksFacade) {}
+  constructor(
+    private readonly tasks: TasksFacade,
+    private readonly projects: ProjectsFacade,
+  ) {}
 
   async getTask(issueId: string): Promise<ExecutionTask | null> {
     const issue = await this.tasks.findIssue(issueId);
@@ -23,9 +27,19 @@ export class TasksGatewayAdapter implements TasksGatewayPort {
       ...(await this.tasks.findLabels(issue.labelIds)),
       ...(group?.labels ?? []),
     ];
-    const repoUrls = [...labels]
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-      .flatMap((label) => (label.repoUrl ? [label.repoUrl] : []));
+    // Los proyectos de la tarea mandan; si no tiene (o ninguno tiene enlace), los repositorios salen de sus etiquetas.
+    const projectRepos = [
+      ...new Set([...issue.projectRepos, ...(group?.projectRepos ?? [])]),
+    ];
+    const fromProjects = (await this.projects.linksFor(projectRepos)).map(
+      (link) => link.repoUrl,
+    );
+    const repoUrls =
+      fromProjects.length > 0
+        ? fromProjects
+        : [...labels]
+            .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+            .flatMap((label) => (label.repoUrl ? [label.repoUrl] : []));
 
     // El código de Plane (MEL-12) solo existe si la tarea viene de allá: una tarea local no lo tiene.
     const project = issue.isLocal
