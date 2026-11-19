@@ -1,0 +1,207 @@
+<div class="page">
+  <app-page-header
+    [heading]="isEdit() ? (project()?.name ?? 'Proyecto') : 'Nuevo proyecto'"
+    [subtitle]="
+      isEdit() && project()
+        ? project()!.repo
+        : 'Un proyecto es un repositorio con su receta, sus reglas y de quién depende.'
+    "
+  >
+    <a back app-button variant="ghost" size="sm" [routerLink]="base">
+      <app-icon name="arrow-left" size="1em" />
+      Proyectos
+    </a>
+  </app-page-header>
+
+  @if (store.error() && !store.loaded()) {
+    <app-alert tone="danger" heading="No se pudo cargar el proyecto">{{ store.error() }}</app-alert>
+  } @else if (loading()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="48px" />
+      <app-skeleton height="48px" />
+      <app-skeleton height="240px" />
+    </div>
+  } @else if (missing()) {
+    <app-alert tone="warning" heading="Este proyecto no existe">
+      Puede que se haya borrado.
+      <a alert-action app-button variant="secondary" size="sm" [routerLink]="base">
+        Volver a Proyectos
+      </a>
+    </app-alert>
+  } @else {
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (error(); as message) {
+        <app-alert tone="danger" heading="No se pudo guardar">{{ message }}</app-alert>
+      }
+
+      <section class="section" aria-labelledby="project-section-repo">
+        <h5 id="project-section-repo">Repositorio</h5>
+
+        <app-form-field
+          label="Repositorio"
+          for="project-repo"
+          required
+          hint="Elige uno de los repositorios de tus etiquetas (haz clic en el campo) o escribe organización/repositorio."
+          [error]="repoInvalid() ? 'Escribe organización/repositorio, sin espacios' : null"
+        >
+          <app-text-input
+            inputId="project-repo"
+            formControlName="repo"
+            placeholder="garage-labs/miobra-ionicv6"
+            [suggestions]="repoSuggestions()"
+            [invalid]="repoInvalid()"
+          />
+        </app-form-field>
+
+        @if (unlinked()) {
+          <p class="note" role="status">
+            Ninguna etiqueta apunta a este repositorio: el proyecto solo se usará cuando lo elijas
+            en una tarea o en una sesión, o la etiqueta de una tarea tenga su enlace.
+          </p>
+        }
+
+        <app-form-field
+          label="Nombre"
+          for="project-name"
+          hint="Cómo se ve en la lista. Si lo dejas vacío, el nombre del repositorio."
+        >
+          <app-text-input inputId="project-name" formControlName="name" />
+        </app-form-field>
+
+        <app-form-field
+          label="Enlace del repositorio"
+          for="project-url"
+          hint="Para clonarlo: https://github.com/organización/repo o https://bitbucket.org/organización/repo. Sin él, el proyecto solo sirve como receta."
+          [error]="
+            urlInvalid()
+              ? 'Debe ser un enlace de GitHub o Bitbucket al mismo organización/repositorio'
+              : null
+          "
+        >
+          <app-text-input
+            inputId="project-url"
+            formControlName="repoUrl"
+            placeholder="https://github.com/garage-labs/miobra-ionicv6"
+            [invalid]="urlInvalid()"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Rama principal"
+          for="project-branch"
+          required
+          [error]="branchInvalid() ? 'Escribe un nombre de rama válido, sin espacios' : null"
+        >
+          <app-text-input
+            inputId="project-branch"
+            formControlName="mainBranch"
+            placeholder="main"
+            [invalid]="branchInvalid()"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Depende de"
+          for="project-depends"
+          hint="Otros repositorios que hay que tener a mano para probar este (por ejemplo la web de la que depende la app), separados por coma."
+          [error]="dependsInvalid() ? 'Cada uno debe ser organización/repositorio' : null"
+        >
+          <app-text-input
+            inputId="project-depends"
+            formControlName="dependsOn"
+            [suggestions]="dependencySuggestions()"
+            [invalid]="dependsInvalid()"
+          />
+        </app-form-field>
+      </section>
+
+      <section class="section" aria-labelledby="project-section-recipe">
+        <h5 id="project-section-recipe">Receta</h5>
+
+        <app-form-field
+          label="Receta"
+          for="project-content"
+          hint="Markdown. Cómo se levanta y se prueba el proyecto: lo leen la IA que crea los tickets, quien los desarrolla y quien los revisa."
+          [error]="contentInvalid() ? 'Es demasiado larga (máximo 20.000 caracteres)' : null"
+        >
+          <div class="content__head">
+            <button
+              app-button
+              variant="ghost"
+              size="sm"
+              type="button"
+              [attr.aria-pressed]="preview()"
+              (click)="preview.set(!preview())"
+            >
+              {{ preview() ? 'Seguir escribiendo' : 'Vista previa' }}
+            </button>
+          </div>
+          @if (preview()) {
+            <div class="preview" aria-label="Vista previa de la receta">
+              @if (form.controls.content.value.trim()) {
+                <app-markdown-viewer [content]="form.controls.content.value" />
+              } @else {
+                <p class="preview__empty">La receta está vacía.</p>
+              }
+            </div>
+          } @else {
+            <app-textarea
+              inputId="project-content"
+              formControlName="content"
+              mono
+              [rows]="18"
+              [invalid]="contentInvalid()"
+            />
+          }
+        </app-form-field>
+      </section>
+
+      <section class="section" aria-labelledby="project-section-rules">
+        <h5 id="project-section-rules">Reglas y verificación</h5>
+
+        <app-form-field
+          label="Reglas de arquitectura"
+          for="project-rules"
+          hint="Markdown. Capas, dónde va cada cosa y qué no se hace. Las leen quien desarrolla y quien revisa."
+          [error]="rulesInvalid() ? 'Es demasiado largo (máximo 10.000 caracteres)' : null"
+        >
+          <app-textarea
+            inputId="project-rules"
+            formControlName="architectureRules"
+            mono
+            [rows]="8"
+            [invalid]="rulesInvalid()"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Comando de verificación"
+          for="project-verify"
+          hint="Debe pasar antes de publicar (por ejemplo el chequeo de capas). Es solo el nombre: el runner decide qué ejecuta."
+          [error]="verifyInvalid() ? 'Una sola línea, de hasta 500 caracteres' : null"
+        >
+          <app-text-input
+            inputId="project-verify"
+            formControlName="verifyCommand"
+            [invalid]="verifyInvalid()"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Entorno del runner"
+          for="project-environment"
+          hint="Solo si el entorno del runner no se llama como el repositorio. Vacío para usar el del repositorio."
+        >
+          <app-text-input inputId="project-environment" formControlName="runnerEnvironment" />
+        </app-form-field>
+      </section>
+
+      <div class="form__actions">
+        <a app-button variant="secondary" [routerLink]="base">Cancelar</a>
+        <button app-button type="submit" [loading]="saving()">
+          {{ isEdit() ? 'Guardar cambios' : 'Crear proyecto' }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

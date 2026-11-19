@@ -1,0 +1,67 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 900px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+
+  h5 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+}
+
+.note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--tone-warning-fg);
+}
+
+.content__head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.preview {
+  min-height: 8rem;
+  max-height: 28rem;
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.preview__empty {
+  margin: 0;
+  color: var(--text-color);
+}
+
+// Móvil: acciones apiladas, con la principal arriba
+.form__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+
+  > * {
+    width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .form__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+
+    > * {
+      width: auto;
+    }
+  }
+}

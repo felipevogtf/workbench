@@ -6,7 +6,7 @@ import { Project, ProjectInput, RepositoryOption } from '../models/project';
 import { ProjectsApi } from './projects.api';
 
 /** Los proyectos, uno por repositorio, cada uno con su receta. */
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ProjectsStore {
   private readonly api = inject(ProjectsApi);
   private readonly toast = inject(Toast);

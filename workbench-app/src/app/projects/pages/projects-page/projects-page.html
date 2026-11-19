@@ -3,9 +3,9 @@
     heading="Proyectos"
     subtitle="Un proyecto es un repositorio: su receta (cómo se levanta y se prueba), de quién depende y sus reglas. La IA que crea los tickets, quien los desarrolla y quien los revisa lo leen, y también lo de los proyectos de los que depende."
   >
-    <button actions app-button type="button" (click)="openNew()">
+    <a actions app-button routerLink="new">
       <app-icon name="plus" size="1em" /> Nuevo proyecto
-    </button>
+    </a>
   </app-page-header>
 
   @if (store.error(); as error) {
@@ -24,82 +24,115 @@
     </app-alert>
   } @else if (store.loading() && !store.loaded()) {
     <div class="stack" aria-busy="true">
-      <app-skeleton height="88px" />
-      <app-skeleton height="88px" />
+      <app-skeleton height="48px" />
+      <app-skeleton height="48px" />
+      <app-skeleton height="48px" />
     </div>
   } @else if (store.projects().length === 0) {
     <app-empty-state icon="file-text" heading="Todavía no hay proyectos">
-      Crea el de un repositorio y escribe su receta: cómo se levanta (Docker, puertos), cómo se llena la base de datos,
-      cómo se corren las pruebas y qué no hay que tocar. Así los agentes lo saben en vez de
-      adivinarlo.
-      <button empty-action app-button type="button" (click)="openNew()">Nuevo proyecto</button>
+      Crea el de un repositorio y escribe su receta: cómo se levanta (Docker, puertos), cómo se
+      llena la base de datos, cómo se corren las pruebas y qué no hay que tocar. Así los agentes lo
+      saben en vez de adivinarlo.
+      <a empty-action app-button routerLink="new">Nuevo proyecto</a>
     </app-empty-state>
   } @else {
-    <ul class="projects" aria-label="Proyectos">
-      @for (project of store.projects(); track project.id) {
-        <li>
-          <app-card>
-            <div class="project">
-              <div class="recipe__main">
-                <span class="recipe__repo">{{ project.name }}</span>
-                <span class="muted">{{ project.repo }} · rama {{ project.mainBranch }}</span>
-                @if (excerpt(project)) {
-                  <p class="recipe__excerpt">{{ excerpt(project) }}</p>
-                } @else {
-                  <p class="recipe__excerpt recipe__excerpt--empty">Receta vacía</p>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden">
+          Proyectos
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Proyecto</th>
+            <th scope="col">Rama</th>
+            <th scope="col">Depende de</th>
+            <th scope="col">Receta</th>
+            <th scope="col">Etiquetas</th>
+            <th scope="col">Editado</th>
+            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (project of store.projects(); track project.id) {
+            <tr>
+              <td class="cell-main">
+                <a class="title" [routerLink]="[project.id, 'edit']">{{ project.name }}</a>
+                <span class="repo">{{ project.repo }}</span>
+                @if (!project.repoUrl) {
+                  <app-badge
+                    tone="warning"
+                    title="Sin enlace de repositorio: no se puede clonar, solo sirve como receta"
+                  >
+                    Sin enlace
+                  </app-badge>
                 }
-                <div class="recipe__meta">
+              </td>
+              <td class="nowrap"><span class="repo">{{ project.mainBranch }}</span></td>
+              <td>
+                <span class="chips">
+                  @for (dependency of project.dependsOn; track dependency) {
+                    <app-badge tone="neutral">{{ dependency }}</app-badge>
+                  } @empty {
+                    <span class="muted">—</span>
+                  }
+                </span>
+              </td>
+              <td class="cell-recipe">
+                @if (excerpt(project); as text) {
+                  <span class="excerpt">{{ text }}</span>
+                } @else {
+                  <span class="muted">Receta vacía</span>
+                }
+                @if (project.architectureRules) {
+                  <app-badge tone="info" title="Tiene reglas de arquitectura">Reglas</app-badge>
+                }
+                @if (project.verifyCommand) {
+                  <app-badge tone="info" [title]="'Verificación antes de publicar: ' + project.verifyCommand">
+                    Verifica
+                  </app-badge>
+                }
+              </td>
+              <td>
+                <span class="chips">
                   @if (store.labelsOf(project.repo).length > 0) {
-                    <span class="muted">Etiqueta</span>
                     @for (label of store.labelsOf(project.repo); track label) {
                       <app-badge tone="info">{{ label }}</app-badge>
                     }
                   } @else if (store.options().length > 0) {
                     <app-badge
                       tone="warning"
-                      title="Ninguna etiqueta apunta a este repositorio: el proyecto no se usará hasta que una tarea lo tenga"
+                      title="Ninguna etiqueta apunta a este repositorio: se usa al elegirlo en una tarea o sesión"
                     >
                       Sin etiqueta
                     </app-badge>
+                  } @else {
+                    <span class="muted">—</span>
                   }
-                  @if (project.dependsOn.length > 0) {
-                    <span class="muted">Depende de</span>
-                    @for (dependency of project.dependsOn; track dependency) {
-                      <app-badge tone="neutral">{{ dependency }}</app-badge>
-                    }
-                  }
-                  <span class="muted">Editada {{ project.updatedAt | timeAgo }}</span>
-                </div>
-              </div>
-              <button
-                app-icon-button
-                type="button"
-                [label]="'Editar el proyecto ' + project.repo"
-                (click)="openEdit(project)"
-              >
-                <app-icon name="edit" size="1.1rem" />
-              </button>
-              <button
-                app-icon-button
-                type="button"
-                tone="danger"
-                [label]="'Borrar el proyecto ' + project.repo"
-                (click)="remove(project)"
-              >
-                <app-icon name="trash" size="1.1rem" />
-              </button>
-            </div>
-          </app-card>
-        </li>
-      }
-    </ul>
+                </span>
+              </td>
+              <td class="muted nowrap">{{ project.updatedAt | timeAgo }}</td>
+              <td class="actions">
+                <a
+                  app-icon-button
+                  [label]="'Editar el proyecto ' + project.repo"
+                  [routerLink]="[project.id, 'edit']"
+                >
+                  <app-icon name="edit" size="1.1rem" />
+                </a>
+                <button
+                  app-icon-button
+                  type="button"
+                  tone="danger"
+                  [label]="'Borrar el proyecto ' + project.repo"
+                  (click)="remove(project)"
+                >
+                  <app-icon name="trash" size="1.1rem" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
-
-  <app-project-dialog
-    [(open)]="dialogOpen"
-    [project]="editing()"
-    [options]="store.options()"
-    [projectRepos]="store.repos()"
-    [save]="save"
-  />
 </div>

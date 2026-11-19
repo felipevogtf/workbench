@@ -1,49 +1,99 @@
-.projects {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
 }
 
-.project {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
 }
 
-.recipe__main {
-  display: grid;
-  flex: 1;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.recipe__repo {
-  font-weight: 600;
-  color: var(--primary);
-  overflow-wrap: anywhere;
-}
-
-.recipe__excerpt {
-  margin: 0;
+th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-weight: 500;
   font-size: 0.875rem;
   color: var(--text-color);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: calc(var(--space-3) + 4px) var(--space-4);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--tone-neutral-bg);
+}
+
+.cell-main {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  min-width: 220px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  text-decoration: none;
+  color: var(--primary);
   overflow-wrap: anywhere;
 
-  &--empty {
-    font-style: italic;
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
-.recipe__meta {
+.repo {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+
+.cell-recipe {
+  max-width: 340px;
+}
+
+.excerpt {
+  display: -webkit-box;
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  font-size: 0.875rem;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .muted {
   font-size: 0.8125rem;
   color: var(--text-color);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: right;
 }
