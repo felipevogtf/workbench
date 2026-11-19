@@ -23,7 +23,7 @@ const LEVEL_TONE: Record<TicketLevel, BadgeTone> = {
       <h2 class="assign__title">Asigna los tickets</h2>
       <p class="assign__hint">
         Lucy eligió un desarrollador según el nivel de cada ticket y repartió la revisión. Cámbialo
-        si quieres y pulsa «Empezar el desarrollo». Abre «Ver el detalle» de un ticket para leer qué
+        si quieres y pulsa «Ejecutar». Abre «Ver el detalle» de un ticket para leer qué
         hay que hacer antes de decidir.
       </p>
 
