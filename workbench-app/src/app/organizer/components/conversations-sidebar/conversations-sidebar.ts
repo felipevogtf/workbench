@@ -49,7 +49,7 @@ const MENU: MenuItem[] = [{ id: 'remove', label: 'Eliminar', icon: 'trash', tone
                 [attr.aria-current]="session.id === activeId() ? 'page' : null"
                 (click)="navigated.emit()"
               >
-                {{ session.title }}
+                <span>{{ session.title }}</span>
               </a>
               <app-menu
                 class="side__menu"
@@ -139,22 +139,38 @@ const MENU: MenuItem[] = [{ id: 'remove', label: 'Eliminar', icon: 'trash', tone
       }
     }
 
+    // Cada fila mide lo mismo (2.25rem) y el título queda centrado en vertical, con o sin el menú a su lado.
     .side__link {
       flex: 1;
+      display: flex;
+      align-items: center;
       min-width: 0;
-      padding: var(--space-2) var(--space-3);
-      overflow: hidden;
+      min-height: 2.25rem;
+      padding: 0 var(--space-3);
       color: var(--text-color);
       font-size: 0.9375rem;
+      line-height: 1.2;
       text-decoration: none;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+
+      > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
 
     // El menú de cada conversación solo se ve al pasar por ella (o con el foco).
     .side__menu {
       opacity: 0;
       flex: none;
+      margin-right: var(--space-1);
+    }
+
+    // El botón del menú es más chico que el de las tablas, para que no agrande la fila.
+    .side__menu ::ng-deep .menu__trigger {
+      min-width: 1.75rem;
+      min-height: 1.75rem;
+      padding: 2px;
     }
 
     .side__item:hover .side__menu,
