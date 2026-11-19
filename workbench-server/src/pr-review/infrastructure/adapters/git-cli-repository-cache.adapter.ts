@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { runGit } from '@core/git/run-git';
+import { RepoMirrorService } from '@core/git/repo-mirror';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import {
   CachedRepository,
   RepositoryCachePort,
 } from '@pr-review/domain/ports/repository-cache.port';
-import { assertSafeRemote, remoteUrls } from './git-remote';
+import { assertSafeRemote, mirrorRemote } from './git-remote';
 
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const SWEEP_EVERY_MS = 60 * 60 * 1000;
@@ -25,9 +25,9 @@ export function cacheKey(pullRequest: PullRequest): string {
 }
 
 /**
- * Mantiene un clon por PR en `CHAT_REPOS_DIR`. La primera vez clona; las siguientes solo traen las
- * ramas de la PR. Como en el checkout de las revisiones, el token solo se usa para hablar con el
- * proveedor y nunca queda en el `.git/config` que el agente puede leer.
+ * Deja a la vista el repo de una PR en `CHAT_REPOS_DIR/<PR>`: un worktree de su rama, sacado del mirror compartido del repo (el
+ * mismo que usa el planificador). El repo se clona una sola vez para todo el servidor; cada vez que se pide solo se traen los cambios
+ * y el worktree se lleva al último commit de la rama de la PR.
  */
 @Injectable()
 export class GitCliRepositoryCacheAdapter implements RepositoryCachePort {
@@ -35,7 +35,10 @@ export class GitCliRepositoryCacheAdapter implements RepositoryCachePort {
   private readonly running = new Map<string, Promise<CachedRepository>>();
   private lastSweep = 0;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly mirror: RepoMirrorService,
+  ) {}
 
   ensure(pullRequest: PullRequest): Promise<CachedRepository> {
     assertSafeRemote(pullRequest);
@@ -58,47 +61,24 @@ export class GitCliRepositoryCacheAdapter implements RepositoryCachePort {
   ): Promise<CachedRepository> {
     const root = this.root();
     const dest = join(root, key);
-    const { cloneUrl, cleanUrl, secret } = remoteUrls(this.config, pullRequest);
-    const git = (args: string[], cwd?: string) =>
-      runGit(args, { cwd, secrets: [secret] });
+    const source = pullRequest.sourceBranch;
 
     await mkdir(root, { recursive: true });
-
-    if (await this.isRepository(dest)) {
-      const { sourceBranch: source, destBranch: target } = pullRequest;
-      await git(
-        [
-          'fetch',
-          '--quiet',
-          cloneUrl,
-          `+refs/heads/${source}:refs/remotes/origin/${source}`,
-          `+refs/heads/${target}:refs/remotes/origin/${target}`,
-        ],
-        dest,
-      );
-    } else {
-      // Un clon a medias de un intento anterior se descarta.
-      await rm(dest, { recursive: true, force: true });
-      try {
-        await git(['clone', '--quiet', '--no-checkout', cloneUrl, dest]);
-        await git(['remote', 'set-url', 'origin', cleanUrl], dest);
-      } catch (error) {
-        await rm(dest, { recursive: true, force: true }).catch(() => undefined);
-        throw error;
-      }
+    // Si no se puede traer lo último se sigue con lo que hay, siempre que la rama de la PR esté.
+    const mirror = await this.mirror.sync(
+      mirrorRemote(this.config, pullRequest),
+    );
+    if (!(await this.mirror.hasBranch(mirror.path, source))) {
+      throw new Error(`The branch ${source} is not in the repository`);
     }
 
-    await git(
-      [
-        'checkout',
-        '--quiet',
-        '--detach',
-        '--force',
-        `origin/${pullRequest.sourceBranch}`,
-      ],
-      dest,
-    );
-    const commit = (await git(['rev-parse', 'HEAD'], dest)).trim();
+    // Una carpeta que no es un worktree (un clon de antes) se reemplaza.
+    if (await this.mirror.isWorktree(dest)) {
+      await this.mirror.checkoutBranch(dest, source);
+    } else {
+      await this.mirror.addWorktree(mirror.path, dest, source);
+    }
+    const commit = await this.mirror.head(dest);
 
     // La fecha de la carpeta dice cuándo se usó por última vez; la limpieza se guía por ella.
     const now = new Date();
@@ -115,15 +95,7 @@ export class GitCliRepositoryCacheAdapter implements RepositoryCachePort {
     );
   }
 
-  private async isRepository(path: string): Promise<boolean> {
-    try {
-      return (await stat(join(path, '.git'))).isDirectory();
-    } catch {
-      return false;
-    }
-  }
-
-  /** Borra los clones que llevan días sin usarse. Como mucho una vez por hora; nunca falla. */
+  /** Borra las copias que llevan días sin usarse. Como mucho una vez por hora; nunca falla. */
   private async sweep(root: string): Promise<void> {
     const now = Date.now();
     if (now - this.lastSweep < SWEEP_EVERY_MS) return;

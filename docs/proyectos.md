@@ -147,6 +147,20 @@ Todo está hecho y probado con tests (servidor 923, app 683, runner 152). Lo que
 - **Etapa 6.** El proyecto de tareas (también los de Plane) puede declarar proyectos por defecto (`default_project_repos`); sirven a las tareas que no tienen los suyos. Orden:
   los de la tarea (o su grupo) → los del proyecto de tareas → las etiquetas.
 
+## Repos compartidos del servidor (2026-11-19)
+
+El servidor ya no clona el mismo repositorio una vez por tarea, por PR y en cada revisión. `RepoMirrorService` (`core/git/repo-mirror.ts`) mantiene **un clon completo y
+sin carpeta de trabajo por repositorio** (`/data/repos/mirrors/<host>/<org>/<repo>.git`, sin importar mayúsculas): se clona la primera vez y después solo se traen los cambios
+(`fetch --prune` de todas las ramas, de a una operación por repo). Quien necesita ver una rama lo hace en su **propio worktree desprendido** (no se pisan entre sí y no copian objetos):
+
+- Planificador y chat de tareas: `tasks/<tarea>/<repo>` en `main` (o `master`); las ramas de otros tickets que la tarea menciona, en `<repo>@<clave>`.
+- Chat de PRs: `prs/<PR>`, llevado al último commit de la rama de la PR.
+- Revisión automática de PRs: un worktree desechable que se borra al terminar. Exige lo último del proveedor (si no puede traerlo, falla en vez de revisar código viejo).
+
+El token solo se usa para el `fetch` y nunca queda en la configuración del mirror. Si no se puede actualizar, el planificador y el chat siguen con la copia anterior y lo dicen. Un mirror que nadie
+pide en 30 días se borra solo; los worktrees de tareas y PRs, a los 7. Un solo volumen `repos` reemplaza a `chat_repos` y `task_repos`. El runner de tu PC no cambia: tiene su propio clon y
+worktrees por ejecución.
+
 ## Pendiente
 
 - Probar la sesión libre y la verificación con una ejecución real (los tests usan repos locales de juguete).

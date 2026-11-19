@@ -3,59 +3,53 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RepoMirrorService } from '@core/git/repo-mirror';
 import { runGit } from '@core/git/run-git';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 import {
   RepositoryCheckout,
   RepositoryCheckoutPort,
 } from '@pr-review/domain/ports/repository-checkout.port';
-import { assertSafeRemote, remoteUrls } from './git-remote';
+import { assertSafeRemote, mirrorRemote } from './git-remote';
 
 const RULES_FILE = 'REVIEW_RULES.md';
 
 /**
- * Clona el repo de la PR en un directorio temporal y deja la rama de la PR en
- * checkout. El token solo se usa para el clone: el remoto queda sin credenciales
- * para que el agente no pueda leerlo desde .git/config.
+ * Deja la rama de la PR en un worktree desechable, sacado del mirror compartido del repo: no clona el repositorio cada vez, solo trae
+ * lo nuevo. A diferencia del chat, la revisión exige lo último del proveedor (no se revisa código viejo). El worktree no tiene
+ * credenciales: el token solo se usa para traer los cambios al mirror.
  */
 @Injectable()
 export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly mirror: RepoMirrorService,
+  ) {}
 
   async checkout(pullRequest: PullRequest): Promise<RepositoryCheckout> {
     assertSafeRemote(pullRequest);
 
     const workdir = await mkdtemp(join(tmpdir(), 'prrev-'));
     const dest = join(workdir, 'repo');
-    const dispose = () => rm(workdir, { recursive: true, force: true });
+    let mirrorPath: string | undefined;
+    const dispose = async () => {
+      if (mirrorPath) await this.mirror.removeWorktree(mirrorPath, dest);
+      await rm(workdir, { recursive: true, force: true });
+    };
 
     try {
-      const { cloneUrl, cleanUrl, secret } = remoteUrls(
-        this.config,
-        pullRequest,
+      const mirror = await this.mirror.sync(
+        mirrorRemote(this.config, pullRequest),
+        { requireFresh: true },
       );
-
-      await this.git(['clone', '--quiet', '--no-checkout', cloneUrl, dest], {
-        secret,
-      });
-      await this.git(['remote', 'set-url', 'origin', cleanUrl], {
-        cwd: dest,
-        secret,
-      });
-      await this.git(
-        [
-          'checkout',
-          '--quiet',
-          '--detach',
-          `origin/${pullRequest.sourceBranch}`,
-        ],
-        { cwd: dest, secret },
+      mirrorPath = mirror.path;
+      await this.mirror.addWorktree(
+        mirror.path,
+        dest,
+        pullRequest.sourceBranch,
       );
-      const commit = (
-        await this.git(['rev-parse', 'HEAD'], { cwd: dest, secret })
-      ).trim();
-
-      const rules = await this.loadRules(pullRequest, dest, secret);
+      const commit = await this.mirror.head(dest);
+      const rules = await this.loadRules(pullRequest, dest);
 
       return { path: dest, commit, rules, dispose };
     } catch (error) {
@@ -71,26 +65,15 @@ export class GitCliCheckoutAdapter implements RepositoryCheckoutPort {
   private async loadRules(
     pullRequest: PullRequest,
     cwd: string,
-    secret: string,
   ): Promise<string | null> {
     for (const ref of [`origin/${pullRequest.destBranch}`, 'HEAD']) {
       try {
-        const text = await this.git(['show', `${ref}:${RULES_FILE}`], {
-          cwd,
-          secret,
-        });
+        const text = await runGit(['show', `${ref}:${RULES_FILE}`], { cwd });
         if (text.trim()) return text.trim();
       } catch {
         // sin archivo en esa rama: se prueba la siguiente
       }
     }
     return null;
-  }
-
-  private git(
-    args: string[],
-    options: { cwd?: string; secret: string },
-  ): Promise<string> {
-    return runGit(args, { cwd: options.cwd, secrets: [options.secret] });
   }
 }

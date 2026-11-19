@@ -5,6 +5,7 @@ import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
 import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
 import { ProjectsModule } from '@projects/projects.module';
+import { RepoMirrorModule } from '@core/git/repo-mirror.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { PLANNER_CONCURRENCY, PlansService } from './application/plans.service';
 import {
@@ -34,6 +35,7 @@ import { PlannerRecovery } from './infrastructure/scheduling/planner-recovery';
     ProjectsModule,
     AiAgentsModule,
     ChatAttachmentsModule,
+    RepoMirrorModule,
   ],
   controllers: [PlansController],
   providers: [

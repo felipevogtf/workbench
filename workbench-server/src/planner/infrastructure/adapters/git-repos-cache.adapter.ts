@@ -4,14 +4,14 @@ import { dirname, join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ATTACHMENTS_DIR } from '@core/attachments/attachments';
-import { runGit } from '@core/git/run-git';
+import { type Mirror, RepoMirrorService } from '@core/git/repo-mirror';
 import { PlanRepoInfo } from '@planner/domain/entities/plan.props';
 import {
   CachedRepos,
   ReposCachePort,
   type ReposOptions,
 } from '@planner/domain/ports/repos-cache.port';
-import { cloneRelatedBranches } from './clone-related-branches';
+import { addRelatedBranches } from './add-related-branches';
 import {
   ParsedRepo,
   REPO_BRANCHES,
@@ -25,10 +25,9 @@ const SWEEP_EVERY_MS = 60 * 60 * 1000;
 const ISSUE_ID = /^[\w-]+$/;
 
 /**
- * Mantiene los repos de cada tarea en `TASK_REPOS_DIR/<tarea>/<repo>`, superficiales y de solo lectura
- * (rama `main` o, si no existe, `master`). La primera vez clona; las siguientes solo trae lo nuevo de la
- * rama. Como en los demás clones, el token solo se usa para hablar con el proveedor y nunca queda en el
- * `.git/config` que el agente puede leer.
+ * Deja a la vista de la tarea los repos que usa, en `TASK_REPOS_DIR/<tarea>/<repo>`: un worktree de solo lectura (rama `main` o, si
+ * no existe, `master`) del mirror compartido del repo. El repo se clona una sola vez para todo el servidor; cada vez que se piden
+ * solo se traen los cambios al mirror y el worktree se lleva a lo último de la rama.
  */
 @Injectable()
 export class GitReposCacheAdapter implements ReposCachePort {
@@ -36,7 +35,10 @@ export class GitReposCacheAdapter implements ReposCachePort {
   private readonly running = new Map<string, Promise<CachedRepos>>();
   private lastSweep = 0;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly mirror: RepoMirrorService,
+  ) {}
 
   ensure(
     issueId: string,
@@ -114,7 +116,7 @@ export class GitReposCacheAdapter implements ReposCachePort {
     return { path: base, repos };
   }
 
-  /** Actualiza el repo y, si la tarea menciona otros tickets, trae de nuevo sus ramas aparte. */
+  /** Actualiza el repo y, si la tarea menciona otros tickets, deja a la vista sus ramas aparte. */
   private async syncOne(
     url: string,
     parsed: ParsedRepo,
@@ -122,12 +124,12 @@ export class GitReposCacheAdapter implements ReposCachePort {
     name: string,
     keys: readonly string[],
   ): Promise<PlanRepoInfo> {
-    const repo = await this.syncMain(url, parsed, dest, name);
-    const credentials = repo.used ? repoCredentials(this.config, parsed) : null;
-    if (!credentials) return repo;
+    const { repo, mirrorPath } = await this.syncMain(url, parsed, dest, name);
+    if (!repo.used || !mirrorPath) return repo;
 
-    const branches = await cloneRelatedBranches({
-      credentials,
+    const branches = await addRelatedBranches({
+      mirror: this.mirror,
+      mirrorPath,
       parent: dirname(dest),
       repoName: name,
       keys,
@@ -141,81 +143,89 @@ export class GitReposCacheAdapter implements ReposCachePort {
     parsed: ParsedRepo,
     dest: string,
     name: string,
-  ): Promise<PlanRepoInfo> {
+  ): Promise<{ repo: PlanRepoInfo; mirrorPath?: string }> {
     const credentials = repoCredentials(this.config, parsed);
     if (!credentials) {
       return {
-        url,
-        name,
-        used: false,
-        note: `no hay token configurado para ${parsed.host}`,
+        repo: {
+          url,
+          name,
+          used: false,
+          note: `no hay token configurado para ${parsed.host}`,
+        },
       };
     }
-    const git = (args: string[], cwd?: string) =>
-      runGit(args, { cwd, secrets: [credentials.secret] });
 
-    if (await this.isRepository(dest)) {
-      for (const branch of REPO_BRANCHES) {
-        if (!(await this.hasBranch(dest, branch))) continue;
-        try {
-          await git(
-            [
-              'fetch',
-              '--quiet',
-              '--depth',
-              '1',
-              credentials.cloneUrl,
-              `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
-            ],
-            dest,
-          );
-          await git(
-            ['checkout', '--quiet', '--detach', '--force', `origin/${branch}`],
-            dest,
-          );
-          return { url, name, used: true, note: null };
-        } catch (error) {
-          // Sin red o sin acceso por un momento: se sigue con la copia anterior en vez de dejar al agente sin código.
-          this.logger.warn(
-            `Could not update ${parsed.organization}/${parsed.name}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-          return {
-            url,
-            name,
-            used: true,
-            note: 'no se pudo actualizar: se usa la copia anterior',
-          };
-        }
-      }
-      // La copia no tiene ninguna de las ramas esperadas: se descarta y se clona de nuevo.
-      await rm(dest, { recursive: true, force: true });
+    let mirror: Mirror;
+    try {
+      mirror = await this.mirror.sync({
+        key: `${parsed.host}/${parsed.organization}/${parsed.name}`,
+        ...credentials,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not get ${parsed.organization}/${parsed.name}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {
+        repo: {
+          url,
+          name,
+          used: false,
+          note: 'no se pudo clonar: no existe la rama main ni master, o no hay acceso',
+        },
+      };
     }
 
-    for (const branch of REPO_BRANCHES) {
-      try {
-        await git([
-          'clone',
-          '--quiet',
-          '--depth',
-          '1',
-          '--branch',
-          branch,
-          credentials.cloneUrl,
-          dest,
-        ]);
-        await git(['remote', 'set-url', 'origin', credentials.cleanUrl], dest);
-        return { url, name, used: true, note: null };
-      } catch {
-        // Esa rama no existe (o no hay acceso): se prueba la siguiente.
-        await rm(dest, { recursive: true, force: true }).catch(() => undefined);
+    let branch: string | undefined;
+    for (const candidate of REPO_BRANCHES) {
+      if (await this.mirror.hasBranch(mirror.path, candidate)) {
+        branch = candidate;
+        break;
       }
+    }
+    if (!branch) {
+      return {
+        repo: {
+          url,
+          name,
+          used: false,
+          note: 'no se pudo clonar: no existe la rama main ni master, o no hay acceso',
+        },
+      };
+    }
+
+    try {
+      // Una carpeta que no es un worktree (un clon de antes) se reemplaza.
+      if (await this.mirror.isWorktree(dest)) {
+        await this.mirror.checkoutBranch(dest, branch);
+      } else {
+        await this.mirror.addWorktree(mirror.path, dest, branch);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Could not prepare ${parsed.organization}/${parsed.name}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {
+        repo: {
+          url,
+          name,
+          used: false,
+          note: 'no se pudo preparar la copia del repositorio',
+        },
+      };
     }
 
     return {
-      url,
-      name,
-      used: false,
-      note: 'no se pudo clonar: no existe la rama main ni master, o no hay acceso',
+      repo: {
+        url,
+        name,
+        used: true,
+        // Sin red o sin acceso por un momento: se sigue con la copia anterior en vez de dejar al agente sin código.
+        note: mirror.fresh
+          ? null
+          : 'no se pudo actualizar: se usa la copia anterior',
+      },
+      mirrorPath: mirror.path,
     };
   }
 
@@ -224,26 +234,6 @@ export class GitReposCacheAdapter implements ReposCachePort {
       this.config.get<string>('TASK_REPOS_DIR') ||
       join(tmpdir(), 'workbench-task-repos')
     );
-  }
-
-  private async isRepository(path: string): Promise<boolean> {
-    try {
-      return (await stat(join(path, '.git'))).isDirectory();
-    } catch {
-      return false;
-    }
-  }
-
-  private async hasBranch(repoPath: string, branch: string): Promise<boolean> {
-    try {
-      await runGit(
-        ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`],
-        { cwd: repoPath },
-      );
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   /** Borra las tareas que llevan días sin usarse. Como mucho una vez por hora; nunca falla. */

@@ -6,6 +6,7 @@ import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { ChatAttachmentsModule } from '@core/attachments/chat-attachments.module';
 import { ChatAttachmentsService } from '@core/attachments/chat-attachments.service';
 import { SlackApiClient } from '@core/slack/slack-api.client';
+import { RepoMirrorModule } from '@core/git/repo-mirror.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { PullRequestOrmEntity } from './infrastructure/persistence/pull-request.orm-entity';
 import { ReviewOrmEntity } from './infrastructure/persistence/review.orm-entity';
@@ -71,6 +72,7 @@ function enabledProviders(
     HttpModule,
     AiAgentsModule,
     ChatAttachmentsModule,
+    RepoMirrorModule,
     TasksModule,
     TypeOrmModule.forFeature([PullRequestOrmEntity, ReviewOrmEntity]),
   ],

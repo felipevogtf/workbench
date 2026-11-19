@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import type { MirrorRemote } from '@core/git/repo-mirror';
 import { PullRequest } from '@pr-review/domain/entities/pull-request.entity';
 
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
@@ -29,6 +30,19 @@ export function remoteUrls(
     cloneUrl: `https://x-access-token:${encodeURIComponent(token)}@github.com/${pullRequest.repo}.git`,
     cleanUrl: `https://github.com/${pullRequest.repo}.git`,
     secret: token,
+  };
+}
+
+/** De dónde se trae el repo de la PR al mirror compartido: `host/organización/repo` identifica el mirror. */
+export function mirrorRemote(
+  config: ConfigService,
+  pullRequest: PullRequest,
+): MirrorRemote {
+  const host =
+    pullRequest.provider === 'bitbucket' ? 'bitbucket.org' : 'github.com';
+  return {
+    key: `${host}/${pullRequest.repo}`,
+    ...remoteUrls(config, pullRequest),
   };
 }
 

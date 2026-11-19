@@ -1,9 +1,4 @@
-import {
-  branchHasKey,
-  headsOf,
-  pickBranches,
-  relatedKeysOf,
-} from './related-branches';
+import { branchHasKey, pickBranches, relatedKeysOf } from './related-branches';
 
 describe('relatedKeysOf', () => {
   it('finds the ticket keys in the texts, once each and in order', () => {
@@ -67,13 +62,5 @@ describe('pickBranches', () => {
 
   it('gives nothing when no branch matches', () => {
     expect(pickBranches(heads, ['MEL-999'])).toEqual([]);
-  });
-});
-
-describe('headsOf', () => {
-  it('reads the branch names out of git ls-remote', () => {
-    const out =
-      'abc123\trefs/heads/main\ndef456\trefs/heads/feature/MEL-466/x\n789\trefs/tags/v1\n';
-    expect(headsOf(out)).toEqual(['main', 'feature/MEL-466/x']);
   });
 });

@@ -15,10 +15,8 @@ services:
       - ./server.env
     volumes:
       - reviews:/data/reviews
-      # Copias de los repos de las PRs para el chat: se reutilizan entre preguntas y entre despliegues.
-      - chat_repos:/data/chat-repos
-      # Copias de los repos de las tareas para su chat: también sobreviven a los despliegues.
-      - task_repos:/data/task-repos
+      # Los repos: un clon por repositorio y los worktrees de las tareas y las PRs. Sobreviven a los despliegues.
+      - repos:/data/repos
       # Archivos adjuntos del chat: una conversación puede seguir días después de subirlos.
       - chat_attachments:/data/chat-attachments
       # Sesión de los CLIs que se inician con login (agy, copilot): sobrevive a los reinicios.
@@ -49,8 +47,7 @@ networks:
 
 volumes:
   reviews:
-  chat_repos:
-  task_repos:
+  repos:
   chat_attachments:
   cli_home:
   copilot_home:

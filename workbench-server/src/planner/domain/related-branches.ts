@@ -3,7 +3,7 @@ import { mentionedTicketKeys } from '@core/text/ticket-mentions';
 /** Las ramas principales que el planificador ya lee por sí solo (las mismas que `REPO_BRANCHES` al clonar). */
 const PRINCIPAL_BRANCHES = ['main', 'master'];
 
-/** Una rama de otro ticket que la tarea menciona, clonada aparte para que el agente pueda leerla. */
+/** Una rama de otro ticket que la tarea menciona, a la vista aparte para que el agente pueda leerla. */
 export interface RelatedBranch {
   /** La clave del ticket que la nombra (p. ej. `MEL-466`). */
   key: string;
@@ -12,7 +12,7 @@ export interface RelatedBranch {
   folder: string;
 }
 
-/** Cuántas ramas se clonan por repositorio (acota tiempo y disco). */
+/** Cuántas ramas se dejan a la vista por repositorio (acota tiempo y disco). */
 export const MAX_RELATED_BRANCHES_PER_REPO = 3;
 
 const SAFE_BRANCH = /^[\w][\w./-]*$/;
@@ -53,12 +53,4 @@ export function pickBranches(
     }
   }
   return picked.slice(0, MAX_RELATED_BRANCHES_PER_REPO);
-}
-
-/** Los nombres de rama de la salida de `git ls-remote --heads`. */
-export function headsOf(lsRemote: string): string[] {
-  return lsRemote
-    .split(/\r?\n/)
-    .map((line) => /\trefs\/heads\/(.+)$/.exec(line)?.[1])
-    .filter((branch): branch is string => Boolean(branch));
 }

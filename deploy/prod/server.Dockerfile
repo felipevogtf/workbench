@@ -35,12 +35,13 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json tsconfig.json ./
 
 # Carpeta de las revisiones (.md); se monta como volumen.
-RUN mkdir -p /data/reviews /data/chat-repos /data/task-repos /data/chat-attachments /home/node/.gemini /home/node/.copilot \
-  && chown -R node:node /data/reviews /data/chat-repos /data/task-repos /data/chat-attachments /home/node
-# Copias de los repos de las PRs para el chat (volumen): sin esto irían a /tmp y se perderían al desplegar.
-ENV CHAT_REPOS_DIR=/data/chat-repos
-# Copias de los repos de las tareas para su chat (volumen), por la misma razón.
-ENV TASK_REPOS_DIR=/data/task-repos
+RUN mkdir -p /data/reviews /data/repos/mirrors /data/repos/tasks /data/repos/prs /data/chat-attachments /home/node/.gemini /home/node/.copilot \
+  && chown -R node:node /data/reviews /data/repos /data/chat-attachments /home/node
+# Los repos (un solo volumen: sin esto irían a /tmp y se perderían al desplegar). Cada repositorio se clona una vez, en `mirrors`
+# (completo, sin carpeta de trabajo); las tareas (`tasks`) y las PRs (`prs`) lo ven en worktrees que salen de ese clon.
+ENV MIRRORS_DIR=/data/repos/mirrors
+ENV TASK_REPOS_DIR=/data/repos/tasks
+ENV CHAT_REPOS_DIR=/data/repos/prs
 # Los archivos que se adjuntan al chat (volumen): hasta 7 días sin usarse.
 ENV CHAT_ATTACHMENTS_DIR=/data/chat-attachments
 
