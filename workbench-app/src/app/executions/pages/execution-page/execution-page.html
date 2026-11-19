@@ -225,14 +225,6 @@
               No se llegaron a crear tickets.
             }
           </p>
-        } @else if (execution.status === 'draft') {
-          <app-ticket-assignment
-            [cards]="cards()"
-            [developers]="developers()"
-            [reviewers]="reviewers()"
-            [busy]="store.acting()"
-            (assign)="assign($event)"
-          />
         } @else {
           <app-ticket-board
             [cards]="visibleCards()"
@@ -290,6 +282,10 @@
         [workerName]="workerName"
         [busy]="store.acting()"
         [reopenable]="execution.status === 'completed'"
+        [developers]="developers()"
+        [reviewers]="reviewers()"
+        [assignable]="execution.status === 'draft' && panelCard()?.ticket?.status === 'pending'"
+        (assigned)="assignOpen($event)"
         (noteAdded)="leaveNote($event)"
         (reopened)="reopen($event)"
         (dismissed)="closePanel()"

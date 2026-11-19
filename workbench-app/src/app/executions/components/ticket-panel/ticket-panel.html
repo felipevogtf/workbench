@@ -47,6 +47,53 @@
     @switch (tab()) {
       @case ('detail') {
         @if (card(); as current) {
+          @if (assignable()) {
+            <section class="block">
+              <h5>Quién lo hace</h5>
+              <p class="muted">
+                Lucy lo asignó según el nivel del ticket. Cámbialo si quieres antes de ejecutar.
+              </p>
+              <div class="assign">
+                <label class="assign__field">
+                  <span>Desarrolla</span>
+                  <select
+                    class="app-control"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'Desarrollador del ticket ' + current.number"
+                    (change)="pickWorker('developerId', $event)"
+                  >
+                    @for (agent of developers(); track agent.id) {
+                      <option
+                        [value]="agent.id"
+                        [selected]="agent.id === current.ticket.developerId"
+                      >
+                        {{ describe(agent) }}
+                      </option>
+                    }
+                  </select>
+                </label>
+                <label class="assign__field">
+                  <span>Revisa</span>
+                  <select
+                    class="app-control"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'Revisor del ticket ' + current.number"
+                    (change)="pickWorker('reviewerId', $event)"
+                  >
+                    @for (agent of reviewers(); track agent.id) {
+                      <option
+                        [value]="agent.id"
+                        [selected]="agent.id === current.ticket.reviewerId"
+                      >
+                        {{ describe(agent) }}
+                      </option>
+                    }
+                  </select>
+                </label>
+              </div>
+            </section>
+          }
+
           <section class="block">
             <h5>Descripción</h5>
             <app-markdown-viewer [content]="current.ticket.description" />

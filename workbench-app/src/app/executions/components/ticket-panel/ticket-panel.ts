@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { Agent, agentLabel, levelLabel } from '@ai-agents/index';
 import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Alert } from '@shared/ui/alert/alert';
 import { Avatar } from '@shared/ui/avatar/avatar';
@@ -49,8 +50,14 @@ export class TicketPanel {
   readonly busy = input(false);
   /** La ejecución terminó: un ticket hecho se puede reabrir con una nota. */
   readonly reopenable = input(false);
+  /** Quiénes pueden desarrollar y revisar, y si se puede cambiar quién lo hace (solo un ticket pendiente de un borrador). */
+  readonly developers = input<readonly Agent[]>([]);
+  readonly reviewers = input<readonly Agent[]>([]);
+  readonly assignable = input(false);
 
   readonly dismissed = output();
+  /** El usuario cambió quién desarrolla o revisa este ticket. */
+  readonly assigned = output<{ developerId?: string; reviewerId?: string }>();
   readonly selectJob = output<string>();
   /** El usuario deja una nota para el agente de este ticket. */
   readonly noteAdded = output<string>();
@@ -75,6 +82,17 @@ export class TicketPanel {
   protected readonly selectedJob = computed(
     () => this.jobs().find((job) => job.id === this.selectedJobId()) ?? null,
   );
+
+  /** «Rebecca · Simple», para que se sepa para qué sirve cada uno. */
+  protected describe(agent: Agent): string {
+    const level = levelLabel(agent.level);
+    return level ? `${agentLabel(agent)} · ${level}` : agentLabel(agent);
+  }
+
+  protected pickWorker(field: 'developerId' | 'reviewerId', event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value && value !== this.card()?.ticket[field]) this.assigned.emit({ [field]: value });
+  }
 
   protected readonly statusLabel = TICKET_STATUS_LABEL;
   protected readonly statusTone = TICKET_STATUS_TONE;

@@ -22,7 +22,6 @@ import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { ExecutionChat } from '../../components/execution-chat/execution-chat';
-import { TicketAssignment } from '../../components/ticket-assignment/ticket-assignment';
 import { TicketQuestions } from '../../components/ticket-questions/ticket-questions';
 import { TicketBoard } from '../../components/ticket-board/ticket-board';
 import { FinalReviewPanel } from '../../components/final-review-panel/final-review-panel';
@@ -72,7 +71,6 @@ const GENERAL = 'general';
     Skeleton,
     Spinner,
     ExecutionChat,
-    TicketAssignment,
     TicketQuestions,
     TicketBoard,
     FinalReviewPanel,
@@ -288,7 +286,7 @@ export class ExecutionPage {
       case 'draft':
         return this.ticketsRunning(execution)
           ? 'Lucy está creando los tickets a partir del plan…'
-          : 'Los tickets están listos. Ajústalos con Lucy, revisa quién hace cada uno y pulsa Ejecutar.';
+          : 'Los tickets están pendientes y ya asignados. Ajústalos con Lucy, abre uno para cambiar quién lo hace y pulsa Ejecutar.';
       case 'completed':
         return 'Todos los tickets están hechos y la pull request está abierta.';
       case 'failed':
@@ -390,8 +388,10 @@ export class ExecutionPage {
     void this.store.begin();
   }
 
-  protected assign(change: { ticketId: string; developerId?: string; reviewerId?: string }): void {
-    void this.store.assign(change.ticketId, change);
+  /** Cambia quién desarrolla o revisa el ticket abierto en el modal. */
+  protected assignOpen(change: { developerId?: string; reviewerId?: string }): void {
+    const ticketId = this.panelCard()?.ticket.id;
+    if (ticketId) void this.store.assign(ticketId, change);
   }
 
   protected retry(): void {

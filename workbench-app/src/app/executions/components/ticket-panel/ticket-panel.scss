@@ -245,3 +245,17 @@
   margin: 0 0 var(--space-2);
   overflow-wrap: anywhere;
 }
+
+.assign {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+}
+
+.assign__field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-color);
+}

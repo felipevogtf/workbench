@@ -31,6 +31,7 @@ const AGENTS = [
   agent('ag-tk', 'task-tickets', 'Lucy'),
   agent('ag-dev', 'task-developer', 'David'),
   agent('ag-rev', 'task-reviewer', 'Maine'),
+  agent('ag-rev2', 'task-reviewer', 'Pilar', false),
 ];
 
 describe('ExecutionPage', () => {
@@ -497,12 +498,16 @@ describe('ExecutionPage', () => {
         button.textContent?.includes('Ejecutar'),
       ) as HTMLButtonElement;
 
-    it('shows the assignment of the tickets instead of the board, with the play button', async () => {
+    it('shows the board with the new tickets as pending and already assigned, and the play button', async () => {
       const fixture = await render(drafted());
       const element: HTMLElement = fixture.nativeElement;
 
-      expect(element.querySelector('app-ticket-assignment')).not.toBeNull();
-      expect(element.querySelector('app-ticket-board')).toBeNull();
+      expect(element.querySelector('app-ticket-board')).not.toBeNull();
+      expect(element.querySelector('app-ticket-assignment')).toBeNull();
+      expect(element.querySelectorAll('.card')).toHaveLength(2);
+      // Los dos están en la columna de pendientes, con quién los hará.
+      expect(element.querySelector('.column')?.textContent).toContain('Pendiente');
+      expect(element.querySelector('.column')?.textContent).toContain('Irá con');
       expect(element.textContent).toContain('Borrador');
       expect(headerButtons(element)).toContain('Ejecutar');
       expect(headerButtons(element)).toContain('Cancelar');
@@ -548,10 +553,35 @@ describe('ExecutionPage', () => {
       },
     );
 
+    const openTicket = async (fixture: Awaited<ReturnType<typeof render>>, title: string) => {
+      const card = [
+        ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.card'),
+      ].find((c) => c.textContent?.includes(title)) as HTMLButtonElement;
+      card.click();
+      await vi.advanceTimersByTimeAsync(0);
+      await fixture.whenStable();
+    };
+
+    it('lets the user change who does a ticket from the ticket itself', async () => {
+      const fixture = await render(drafted());
+      await openTicket(fixture, 'Dos');
+      const select = fixture.nativeElement.querySelector(
+        'app-ticket-panel select[aria-label="Revisor del ticket 2"]',
+      ) as HTMLSelectElement;
+      expect(select).not.toBeNull();
+
+      select.value = 'ag-rev2';
+      select.dispatchEvent(new Event('change'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(api.assign).toHaveBeenCalledWith('e1', 'b', { reviewerId: 'ag-rev2' });
+    });
+
     it('sends nothing when the picked worker is the one the ticket already has', async () => {
       const fixture = await render(drafted());
+      await openTicket(fixture, 'Dos');
       const select = fixture.nativeElement.querySelector(
-        'select[aria-label="Revisor del ticket 2"]',
+        'app-ticket-panel select[aria-label="Revisor del ticket 2"]',
       ) as HTMLSelectElement;
       select.value = 'ag-rev';
       select.dispatchEvent(new Event('change'));
@@ -559,6 +589,18 @@ describe('ExecutionPage', () => {
 
       // El revisor ya era ese: no se manda nada.
       expect(api.assign).not.toHaveBeenCalled();
+    });
+
+    it('does not offer to change the worker once the development started', async () => {
+      const fixture = await render(
+        detail('e1', 'running', {
+          stages: [...stages('done')],
+          tickets: [ticket('a', { title: 'Uno', developerId: 'ag-dev', reviewerId: 'ag-rev' })],
+        }),
+      );
+      await openTicket(fixture, 'Uno');
+
+      expect(fixture.nativeElement.querySelector('app-ticket-panel select')).toBeNull();
     });
   });
 
