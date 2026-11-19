@@ -35,9 +35,14 @@ import { Spinner } from '@shared/ui/spinner/spinner';
 import { Toast } from '@shared/ui/toast/toast';
 import { readableTicket } from '@shared/util/ticket-markdown';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
+import { ConversationsSidebar } from '../../components/conversations-sidebar/conversations-sidebar';
 import { MembersPanel } from '../../components/members-panel/members-panel';
 import { OrganizerStore } from '../../data-access/organizer.store';
-import { MAX_SESSION_PROJECTS } from '../../models/organizer';
+import {
+  MAX_SESSION_PROJECTS,
+  OrganizerSession,
+  OrganizerSessionSummary,
+} from '../../models/organizer';
 import { NEW_SESSION_TITLE, titleFromMessage } from '../../models/session-title';
 
 const SHARE_KEY = 'workbench.organizer.chat-share';
@@ -55,8 +60,10 @@ function readShare(): number {
 }
 
 /**
- * Una conversación del organizador (`/organizer/:id`): un chat a pantalla completa con la IA, al que se le suman proyectos
- * (repositorios) y tickets cuando hacen falta, ninguno obligatorio, y de ahí el plan y la ejecución. El grupo es una tarea más (`groupIssueId`): el chat, el plan y
+ * El organizador (`/organizer` y `/organizer/:id`), como un chat: a la izquierda la lista de conversaciones y en el centro el chat
+ * con la IA, al que se le suman proyectos (repositorios) y tickets cuando hacen falta, ninguno obligatorio, y de ahí el plan y la
+ * ejecución. Sin `id` es un chat nuevo: no existe hasta el primer mensaje (o hasta que se le suma un proyecto o un ticket), así que
+ * abrir el organizador no crea nada. El grupo es una tarea más (`groupIssueId`): el chat, el plan y
  * la ejecución son los de siempre, pedidos con su id.
  */
 @Component({
@@ -68,6 +75,7 @@ function readShare(): number {
     RunPlanButton,
     MarkdownViewer,
     MembersPanel,
+    ConversationsSidebar,
     Dialog,
     Alert,
     Button,
@@ -83,8 +91,8 @@ function readShare(): number {
   styleUrl: './organizer-page.scss',
 })
 export class OrganizerPage {
-  /** Viene de la ruta (`withComponentInputBinding`). */
-  readonly id = input.required<string>();
+  /** Viene de la ruta (`withComponentInputBinding`); sin él es un chat nuevo. */
+  readonly id = input<string>();
 
   protected readonly store = inject(OrganizerStore);
   protected readonly chat = inject(TaskChatStore);
@@ -103,6 +111,30 @@ export class OrganizerPage {
   private readonly topbarActions = viewChild<TemplateRef<unknown>>('topbarActions');
 
   protected readonly session = this.store.current;
+  /** Los proyectos elegidos en un chat nuevo, que todavía no existe: se guardan al crearlo. */
+  private readonly draftProjects = signal<string[]>([]);
+  /** Es un chat nuevo: sin sesión creada y sin una que se esté abriendo. */
+  protected readonly isDraft = computed(() => !this.id() && !this.session());
+  /** Lo que muestra la pantalla: la sesión abierta o, en un chat nuevo, una vacía; `null` mientras se abre una. */
+  protected readonly view = computed<OrganizerSession | null>(
+    () =>
+      this.session() ??
+      (this.id()
+        ? null
+        : {
+            id: '',
+            title: NEW_SESSION_TITLE,
+            kind: 'group',
+            groupIssueId: '',
+            notes: null,
+            projectRepos: this.draftProjects(),
+            members: [],
+            createdAt: '',
+          }),
+  );
+  /** La lista lateral está abierta (en pantallas chicas es un panel; en las grandes siempre se ve). */
+  protected readonly sidebarOpen = signal(false);
+  private creating: Promise<OrganizerSession | null> | null = null;
   /** Es la sesión de una sola tarea: sin grupo, sin tareas que sumar ni notas del grupo. */
   protected readonly isTask = computed(() => this.session()?.kind === 'task');
   /** La tarea del grupo tal como la guarda la lista de tareas (la usa el panel del plan). */
@@ -122,7 +154,9 @@ export class OrganizerPage {
     const description = this.sheetTask()?.description;
     return description ? readableTicket(description) : null;
   });
-  protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
+  protected readonly plan = computed(() =>
+    this.isDraft() ? null : (this.plans.viewed() ?? this.plans.plans()[0] ?? null),
+  );
 
   /** Lo que se muestra a la derecha del chat: el plan o los tickets de la sesión; `null` = solo el chat, a todo el ancho. */
   protected readonly side = signal<'plan' | 'members' | 'projects' | null>(null);
@@ -136,7 +170,7 @@ export class OrganizerPage {
       label: project.name,
     }));
     // Un proyecto de la conversación que ya no existe se sigue mostrando, para poder quitarlo.
-    const missing = (this.session()?.projectRepos ?? [])
+    const missing = (this.view()?.projectRepos ?? [])
       .filter((repo) => !known.some((option) => option.value === repo))
       .map((repo) => ({ value: repo, label: repo }));
     return [...known, ...missing];
@@ -144,12 +178,13 @@ export class OrganizerPage {
   /** Los nombres de los proyectos de la conversación, para mostrarlos en la barra. */
   protected readonly projectNames = computed(() => {
     const byRepo = new Map(this.repoProjects().map((project) => [project.repo, project.name]));
-    return (this.session()?.projectRepos ?? []).map((repo) => byRepo.get(repo) ?? repo);
+    return (this.view()?.projectRepos ?? []).map((repo) => byRepo.get(repo) ?? repo);
   });
   /** Cuántas versiones listas del plan hay (la ficha dice en cuál va). */
   protected readonly planVersion = computed(
     () => this.plans.plans().filter((plan) => plan.status === 'ready').length,
   );
+  protected readonly sessions = this.store.sessions;
 
   /** Cuántos mensajes de la conversación ya entraron en un plan: al replanificar solo viajan los siguientes. */
   private readonly plannedCount = signal(0);
@@ -160,13 +195,16 @@ export class OrganizerPage {
   private readonly pendingReplan = signal<'update' | 'rebuild' | null>(null);
 
   /** Hay un plan listo: es lo que se puede ejecutar. */
-  protected readonly hasReadyPlan = computed(() =>
-    this.plans.plans().some((plan) => plan.status === 'ready'),
+  protected readonly hasReadyPlan = computed(
+    () => !this.isDraft() && this.plans.plans().some((plan) => plan.status === 'ready'),
   );
-  protected readonly planning = computed(() => this.plans.requesting() || !!this.plans.active());
+  protected readonly planning = computed(
+    () => !this.isDraft() && (this.plans.requesting() || !!this.plans.active()),
+  );
   protected readonly canPlan = computed(
     () =>
       // Con tickets, o con algo hablado: una conversación sin tickets también se puede planificar.
+      !this.isDraft() &&
       (this.isTask() ||
         (this.session()?.members.length ?? 0) > 0 ||
         this.chat.messages().some((message) => message.role === 'user')) &&
@@ -175,7 +213,7 @@ export class OrganizerPage {
   );
 
   /** Sin tickets no hay nada que ordenar: las sugerencias son para empezar. */
-  protected readonly hasTickets = computed(() => (this.session()?.members.length ?? 0) > 0);
+  protected readonly hasTickets = computed(() => (this.view()?.members.length ?? 0) > 0);
   protected readonly suggestions = computed(() =>
     this.isTask() || this.hasTickets()
       ? [
@@ -194,19 +232,22 @@ export class OrganizerPage {
     void this.agents.load();
     void this.issues.load();
     void this.loadProjects();
+    void this.store.load();
+    // Un chat nuevo crea su conversación con el primer mensaje.
+    this.chat.provision = async () => (await this.ensureSession())?.groupIssueId ?? null;
     effect(() => {
       const id = this.id();
-      untracked(() => void this.open(id));
+      untracked(() => void this.show(id));
     });
     // El título y los botones de la sesión van en la barra superior de la app.
     effect(() => {
-      const subtitle = this.session()?.title ?? null;
+      const subtitle = this.view()?.title ?? null;
       const actions = this.topbarActions() ?? null;
       untracked(() => this.topbar.set({ subtitle, actions }));
     });
     this.destroyRef.onDestroy(() => {
       this.topbar.clear();
-      this.discardIfUnused();
+      this.chat.provision = null;
     });
     // El primer mensaje le pone nombre a la conversación (hasta entonces es «Nueva conversación»).
     effect(() => {
@@ -273,21 +314,62 @@ export class OrganizerPage {
     }
   }
 
-  /** Suma o quita proyectos de la conversación: no hace falta tener ninguno. */
+  /** Suma o quita proyectos de la conversación: no hace falta tener ninguno. En un chat nuevo se guardan al crearlo. */
   protected async changeProjects(repos: string[]): Promise<void> {
     if (repos.length > MAX_SESSION_PROJECTS) {
       this.toast.error(`Una conversación admite hasta ${MAX_SESSION_PROJECTS} proyectos`);
       return;
     }
-    await this.store.setProjects(this.id(), repos);
+    const session = this.session();
+    if (!session) {
+      this.draftProjects.set(repos);
+      return;
+    }
+    await this.store.setProjects(session.id, repos);
   }
 
   protected async changeMembers(ids: string[]): Promise<void> {
-    await this.store.setMembers(this.id(), ids);
+    const session = await this.ensureSession();
+    if (session) await this.store.setMembers(session.id, ids);
   }
 
   protected async createTicket(name: string): Promise<void> {
-    await this.store.addTicket(this.id(), name);
+    const session = await this.ensureSession();
+    if (session) await this.store.addTicket(session.id, name);
+  }
+
+  /** Borra una conversación de la lista lateral; si era la abierta, pasa a un chat nuevo. */
+  protected async removeFromList(summary: OrganizerSessionSummary): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Eliminar conversación',
+      message: `¿Eliminar «${summary.title}»? Sus tareas quedan libres; se pierde el plan de esta conversación.`,
+      confirmLabel: 'Eliminar',
+      tone: 'danger',
+    });
+    if (!confirmed || !(await this.store.remove(summary.id))) return;
+    if (this.session()?.id === summary.id) await this.router.navigateByUrl('/organizer');
+  }
+
+  /**
+   * La conversación abierta; si es un chat nuevo, la crea ahora (con los proyectos elegidos) y deja la ruta en su dirección, sin
+   * apilar otra entrada en el historial. Dos pedidos a la vez comparten una sola creación.
+   */
+  private ensureSession(): Promise<OrganizerSession | null> {
+    const existing = this.session();
+    if (existing) return Promise.resolve(existing);
+    this.creating ??= (async () => {
+      const created = await this.store.create({
+        ...(this.draftProjects().length > 0 ? { projectRepos: this.draftProjects() } : {}),
+      });
+      if (!created) return null;
+      this.draftProjects.set([]);
+      this.store.adopt(created);
+      void this.router.navigate(['/organizer', created.id], { replaceUrl: true });
+      return created;
+    })().finally(() => {
+      this.creating = null;
+    });
+    return this.creating;
   }
 
   /**
@@ -351,22 +433,6 @@ export class OrganizerPage {
     }
   }
 
-  /** Una conversación que nunca se usó (sin mensajes, proyectos ni tickets) no deja rastro en la lista. */
-  private discardIfUnused(): void {
-    const session = this.store.current();
-    if (
-      !session ||
-      session.kind !== 'group' ||
-      session.title !== NEW_SESSION_TITLE ||
-      session.members.length > 0 ||
-      session.projectRepos.length > 0 ||
-      this.chat.messages().length > 0
-    ) {
-      return;
-    }
-    void this.store.discard(session.id);
-  }
-
   private plannedKey(): string {
     return `workbench.organizer.planned.${this.store.current()?.groupIssueId ?? ''}`;
   }
@@ -391,8 +457,21 @@ export class OrganizerPage {
     this.plannedCount.set(Math.min(Math.max(count, 0), this.chat.messages().length));
   }
 
-  private async open(id: string): Promise<void> {
-    if (!(await this.store.open(id))) return;
+  /** Muestra lo que pide la ruta: un chat nuevo (sin `id`) o una conversación. */
+  private async show(id: string | undefined): Promise<void> {
+    this.sidebarOpen.set(false);
+    if (!id) {
+      // Si no estamos en una sesión recién creada, se parte de un chat vacío.
+      if (this.store.current()) {
+        this.store.clearCurrent();
+        this.chat.unbind();
+        this.side.set(null);
+      }
+      this.draftProjects.set([]);
+      return;
+    }
+    // La que acaba de crearse ya está abierta: no se vuelve a pedir (se perdería lo que se está escribiendo).
+    if (this.store.current()?.id !== id && !(await this.store.open(id))) return;
     const groupIssueId = this.store.current()?.groupIssueId;
     if (!groupIssueId) return;
     this.chat.bind(groupIssueId);

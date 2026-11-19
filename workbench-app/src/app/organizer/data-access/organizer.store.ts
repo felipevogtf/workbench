@@ -9,6 +9,11 @@ import {
 } from '../models/organizer';
 import { OrganizerApi } from './organizer.api';
 
+/** Las más recientes primero, como en la lista lateral. */
+function newestFirst(sessions: OrganizerSessionSummary[]): OrganizerSessionSummary[] {
+  return [...sessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 /** Las sesiones del organizador y la que está abierta. */
 @Injectable({ providedIn: 'root' })
 export class OrganizerStore {
@@ -32,12 +37,24 @@ export class OrganizerStore {
     this.loadingState.set(true);
     this.errorState.set(null);
     try {
-      this.sessionsState.set(await firstValueFrom(this.api.list()));
+      this.sessionsState.set(newestFirst(await firstValueFrom(this.api.list())));
     } catch (error) {
       this.errorState.set(errorMessage(error));
     } finally {
       this.loadingState.set(false);
     }
+  }
+
+  /** Deja como sesión abierta una que acaba de crearse, sin volver a pedirla. */
+  adopt(session: OrganizerSession): void {
+    this.errorState.set(null);
+    this.currentState.set(session);
+  }
+
+  /** Cierra la sesión abierta (se pasa a un chat nuevo, que todavía no existe). */
+  clearCurrent(): void {
+    this.errorState.set(null);
+    this.currentState.set(null);
   }
 
   /** Abre una sesión; devuelve si se pudo (si no, deja el motivo en `error`). */
@@ -109,16 +126,6 @@ export class OrganizerStore {
   /** Deja como proyectos (repositorios) de la sesión exactamente estos: así se suman y se quitan. */
   async setProjects(id: string, projectRepos: string[]): Promise<boolean> {
     return this.change(id, () => this.api.update(id, { projectRepos }));
-  }
-
-  /** Borra una conversación que no llegó a usarse, sin avisar: no hay nada que perder. */
-  async discard(id: string): Promise<void> {
-    try {
-      await firstValueFrom(this.api.remove(id));
-      this.sessionsState.update((list) => list.filter((session) => session.id !== id));
-    } catch {
-      // queda en la lista y se puede borrar a mano
-    }
   }
 
   async remove(id: string): Promise<boolean> {

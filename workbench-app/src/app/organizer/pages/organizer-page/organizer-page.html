@@ -1,253 +1,286 @@
-<div class="organizer">
-  @if (store.error(); as error) {
-    <app-alert tone="danger" heading="No se pudo abrir la sesión">
-      {{ error }}
-      <a alert-action app-button variant="secondary" size="sm" routerLink="/organizer">
-        Volver al organizador
-      </a>
-    </app-alert>
-  } @else if (session(); as session) {
-    <ng-template #topbarActions>
-      @if (!hasReadyPlan()) {
-        <button
-          app-icon-button
-          type="button"
-          label="Crear el plan"
-          [disabled]="!canPlan()"
-          (click)="createPlan()"
-        >
-          @if (planning()) {
-            <app-spinner size="1.1rem" />
-          } @else {
-            <app-icon name="sparkles" size="1.1rem" />
-          }
-        </button>
-      }
-      <button
-        app-icon-button
-        type="button"
-        label="Borrar el plan y empezar de cero"
-        [disabled]="!canReset()"
-        (click)="reset()"
-      >
-        <app-icon name="refresh" size="1.1rem" />
-      </button>
-      <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
-      @if (!isTask()) {
-        <button
-          app-icon-button
-          type="button"
-          tone="danger"
-          label="Eliminar la sesión"
-          (click)="remove()"
-        >
-          <app-icon name="trash" size="1.1rem" />
-        </button>
-      }
-      <a
-        app-icon-button
-        label="Cerrar y volver"
-        [routerLink]="isTask() ? ['/tasks/issues', session.groupIssueId] : ['/organizer']"
-      >
-        <app-icon name="x" size="1.2rem" />
-      </a>
-    </ng-template>
+<div class="organizer-shell">
+  <aside class="organizer-sidebar" [class.organizer-sidebar--open]="sidebarOpen()">
+    <app-conversations-sidebar
+      [sessions]="sessions()"
+      [activeId]="session()?.id ?? null"
+      [loading]="store.loading()"
+      (navigated)="sidebarOpen.set(false)"
+      (removed)="removeFromList($event)"
+    />
+  </aside>
+  @if (sidebarOpen()) {
+    <button
+      type="button"
+      class="organizer-backdrop"
+      aria-label="Cerrar la lista de conversaciones"
+      (click)="sidebarOpen.set(false)"
+    ></button>
+  }
 
-    <div class="organizer__context" role="toolbar" aria-label="Lo que reúne la sesión">
-      @if (!isTask()) {
+  <div class="organizer">
+    @if (store.error(); as error) {
+      <app-alert tone="danger" heading="No se pudo abrir la sesión">
+        {{ error }}
+        <a alert-action app-button variant="secondary" size="sm" routerLink="/organizer">
+          Volver al organizador
+        </a>
+      </app-alert>
+    } @else if (view(); as session) {
+      <ng-template #topbarActions>
+        @if (!isDraft() && !hasReadyPlan()) {
+          <button
+            app-icon-button
+            type="button"
+            label="Crear el plan"
+            [disabled]="!canPlan()"
+            (click)="createPlan()"
+          >
+            @if (planning()) {
+              <app-spinner size="1.1rem" />
+            } @else {
+              <app-icon name="sparkles" size="1.1rem" />
+            }
+          </button>
+        }
+        @if (!isDraft()) {
+          <button
+            app-icon-button
+            type="button"
+            label="Borrar el plan y empezar de cero"
+            [disabled]="!canReset()"
+            (click)="reset()"
+          >
+            <app-icon name="refresh" size="1.1rem" />
+          </button>
+          <app-run-plan-button [canRun]="hasReadyPlan() && !planning()" />
+        }
+        @if (!isTask() && !isDraft()) {
+          <button
+            app-icon-button
+            type="button"
+            tone="danger"
+            label="Eliminar la sesión"
+            (click)="remove()"
+          >
+            <app-icon name="trash" size="1.1rem" />
+          </button>
+        }
+        @if (isTask()) {
+          <a
+            app-icon-button
+            label="Volver a la tarea"
+            [routerLink]="['/tasks/issues', session.groupIssueId]"
+          >
+            <app-icon name="x" size="1.2rem" />
+          </a>
+        }
+      </ng-template>
+
+      <div class="organizer__context" role="toolbar" aria-label="Lo que reúne la sesión">
+        <button
+          type="button"
+          class="context__chip organizer__toggle"
+          aria-label="Conversaciones"
+          [attr.aria-pressed]="sidebarOpen()"
+          (click)="sidebarOpen.set(!sidebarOpen())"
+        >
+          <app-icon name="menu" size="1em" /> Conversaciones
+        </button>
+        @if (!isTask()) {
+          <button
+            type="button"
+            class="context__chip"
+            title="Los repositorios donde se trabaja: opcionales, se suman y se quitan cuando quieras"
+            [attr.aria-pressed]="side() === 'projects'"
+            (click)="toggleSide('projects')"
+          >
+            <app-icon name="folder" size="1em" />
+            Proyectos
+            <small>
+              @if (session.projectRepos.length > 0) {
+                {{ projectNames().join(', ') }}
+              } @else {
+                ninguno
+              }
+            </small>
+          </button>
+        } @else if (session.projectRepos.length > 0) {
+          <span class="context__projects" title="Los proyectos donde se trabaja">
+            <app-icon name="folder" size="1em" /> {{ session.projectRepos.join(', ') }}
+          </span>
+        }
+        @if (!isTask()) {
+          <button
+            type="button"
+            class="context__chip"
+            [attr.aria-pressed]="side() === 'members'"
+            (click)="toggleSide('members')"
+          >
+            <app-icon name="list-checks" size="1em" />
+            Tickets <small>{{ session.members.length }}</small>
+          </button>
+        }
         <button
           type="button"
           class="context__chip"
-          title="Los repositorios donde se trabaja: opcionales, se suman y se quitan cuando quieras"
-          [attr.aria-pressed]="side() === 'projects'"
-          (click)="toggleSide('projects')"
+          [class.context__chip--ready]="hasReadyPlan() && !planning()"
+          [attr.aria-pressed]="side() === 'plan'"
+          (click)="toggleSide('plan')"
         >
-          <app-icon name="folder" size="1em" />
-          Proyectos
+          @if (planning()) {
+            <app-spinner size="1em" />
+          } @else {
+            <app-icon name="file-text" size="1em" />
+          }
+          Plan
           <small>
-            @if (session.projectRepos.length > 0) {
-              {{ projectNames().join(', ') }}
+            @if (planning()) {
+              actualizándose…
+            } @else if (hasReadyPlan()) {
+              v{{ planVersion() }}
             } @else {
-              ninguno
+              sin plan
             }
           </small>
         </button>
-      } @else if (session.projectRepos.length > 0) {
-        <span class="context__projects" title="Los proyectos donde se trabaja">
-          <app-icon name="folder" size="1em" /> {{ session.projectRepos.join(', ') }}
-        </span>
-      }
-      @if (!isTask()) {
-        <button
-          type="button"
-          class="context__chip"
-          [attr.aria-pressed]="side() === 'members'"
-          (click)="toggleSide('members')"
-        >
-          <app-icon name="list-checks" size="1em" />
-          Tickets <small>{{ session.members.length }}</small>
-        </button>
-      }
-      <button
-        type="button"
-        class="context__chip"
-        [class.context__chip--ready]="hasReadyPlan() && !planning()"
-        [attr.aria-pressed]="side() === 'plan'"
-        (click)="toggleSide('plan')"
+      </div>
+
+      <div
+        class="organizer__body"
+        [class.organizer__body--split]="side() !== null"
+        [style.--chat-share]="chatShare()"
       >
-        @if (planning()) {
-          <app-spinner size="1em" />
-        } @else {
-          <app-icon name="file-text" size="1em" />
-        }
-        Plan
-        <small>
-          @if (planning()) {
-            actualizándose…
-          } @else if (hasReadyPlan()) {
-            v{{ planVersion() }}
-          } @else {
-            sin plan
-          }
-        </small>
-      </button>
-    </div>
+        <section class="organizer__chat" aria-label="Chat con la IA">
+          <app-chat-panel
+            [inline]="true"
+            [store]="chat"
+            [heading]="
+              (isTask() ? 'Planifica la tarea con ' : 'Conversa con ') +
+              (assistant()?.name ?? 'la IA')
+            "
+            [assistant]="assistant()"
+            [context]="session.title"
+            [emptyTitle]="
+              isTask()
+                ? '¿Qué quieres aclarar de esta tarea?'
+                : hasTickets()
+                  ? '¿Cómo organizamos estas tareas?'
+                  : '¿En qué trabajamos hoy?'
+            "
+            [placeholder]="
+              isTask()
+                ? 'Aclara la tarea, pregunta por el código o pide el plan…'
+                : hasTickets()
+                  ? 'Pregunta, aclara dependencias o pide el plan del grupo…'
+                  : 'Escribe lo que necesites. Puedes sumar proyectos y tickets cuando quieras…'
+            "
+            [suggestions]="suggestions()"
+            [busy]="planning() ? 'Actualizando el plan…' : null"
+          >
+            <p chat-empty>
+              @if (isTask()) {
+                La IA conoce la tarea, su ticket, el plan y el código de sus repos.
+              } @else if (hasTickets()) {
+                La IA conoce las tareas del grupo, sus tickets, el plan y el código de sus repos.
+              } @else {
+                Sin proyectos ni tickets la IA conversa en general. Suma un proyecto para que lea su
+                código, o un ticket para planificarlo.
+              }
+            </p>
+          </app-chat-panel>
+        </section>
 
-    <div
-      class="organizer__body"
-      [class.organizer__body--split]="side() !== null"
-      [style.--chat-share]="chatShare()"
-    >
-      <section class="organizer__chat" aria-label="Chat con la IA">
-        <app-chat-panel
-          [inline]="true"
-          [store]="chat"
-          [heading]="
-            (isTask() ? 'Planifica la tarea con ' : 'Conversa con ') +
-            (assistant()?.name ?? 'la IA')
-          "
-          [assistant]="assistant()"
-          [context]="session.title"
-          [emptyTitle]="
-            isTask()
-              ? '¿Qué quieres aclarar de esta tarea?'
-              : hasTickets()
-                ? '¿Cómo organizamos estas tareas?'
-                : '¿En qué trabajamos hoy?'
-          "
-          [placeholder]="
-            isTask()
-              ? 'Aclara la tarea, pregunta por el código o pide el plan…'
-              : hasTickets()
-                ? 'Pregunta, aclara dependencias o pide el plan del grupo…'
-                : 'Escribe lo que necesites. Puedes sumar proyectos y tickets cuando quieras…'
-          "
-          [suggestions]="suggestions()"
-          [busy]="planning() ? 'Actualizando el plan…' : null"
-        >
-          <p chat-empty>
-            @if (isTask()) {
-              La IA conoce la tarea, su ticket, el plan y el código de sus repos.
-            } @else if (hasTickets()) {
-              La IA conoce las tareas del grupo, sus tickets, el plan y el código de sus repos.
-            } @else {
-              Sin proyectos ni tickets la IA conversa en general. Suma un proyecto para que lea su
-              código, o un ticket para planificarlo.
-            }
-          </p>
-        </app-chat-panel>
-      </section>
+        @if (side() !== null) {
+          <div
+            class="organizer__divider"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Ajustar el ancho del chat y del plan"
+            tabindex="0"
+            [attr.aria-valuenow]="chatShare()"
+            aria-valuemin="25"
+            aria-valuemax="75"
+            (pointerdown)="dragDivider($event)"
+            (keydown)="nudgeDivider($event)"
+          ></div>
 
-      @if (side() !== null) {
-        <div
-          class="organizer__divider"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Ajustar el ancho del chat y del plan"
-          tabindex="0"
-          [attr.aria-valuenow]="chatShare()"
-          aria-valuemin="25"
-          aria-valuemax="75"
-          (pointerdown)="dragDivider($event)"
-          (keydown)="nudgeDivider($event)"
-        ></div>
-
-        <aside
-          class="organizer__side"
-          [attr.aria-label]="
-            side() === 'members'
-              ? 'Tickets de la conversación'
-              : side() === 'projects'
-                ? 'Proyectos'
-                : 'Plan'
-          "
-        >
-          @if (side() === 'projects' && !isTask()) {
-            <div class="organizer__projects">
-              <h2 class="organizer__projects-title">Proyectos</h2>
-              <p class="muted">
-                Los repositorios que la IA puede leer y donde se ejecuta el plan. Son opcionales:
-                súmalos o quítalos cuando quieras (hasta {{ maxProjects }}).
-              </p>
-              <app-chip-picker
-                label="Proyectos de la conversación"
-                emptyText="Todavía no hay proyectos. Créalos en Automatización → Proyectos."
-                [options]="projectOptions()"
-                [selected]="session.projectRepos"
-                (selectedChange)="changeProjects($event)"
-              />
-            </div>
-          }
-
-          @if (side() === 'members' && !isTask()) {
-            <app-members-panel
-              class="members"
-              [members]="session.members"
-              [groupIssueId]="session.groupIssueId"
-              [projectRepos]="session.projectRepos"
-              [saving]="store.saving()"
-              (changed)="changeMembers($event)"
-              (ticketCreated)="createTicket($event)"
-              (opened)="sheet.set({ id: $event })"
-            />
-          }
-
-          @if (side() === 'plan' && groupIssue(); as issue) {
-            @if (plan() || planning()) {
-              <app-plan-panel [issue]="issue" [bare]="true" />
-            } @else {
-              <div class="organizer__empty">
-                <app-icon name="sparkles" size="1.4rem" />
-                <strong>Todavía no hay plan</strong>
-                <p>
-                  Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan:
-                  aquí lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
+          <aside
+            class="organizer__side"
+            [attr.aria-label]="
+              side() === 'members'
+                ? 'Tickets de la conversación'
+                : side() === 'projects'
+                  ? 'Proyectos'
+                  : 'Plan'
+            "
+          >
+            @if (side() === 'projects' && !isTask()) {
+              <div class="organizer__projects">
+                <h2 class="organizer__projects-title">Proyectos</h2>
+                <p class="muted">
+                  Los repositorios que la IA puede leer y donde se ejecuta el plan. Son opcionales:
+                  súmalos o quítalos cuando quieras (hasta {{ maxProjects }}).
                 </p>
+                <app-chip-picker
+                  label="Proyectos de la conversación"
+                  emptyText="Todavía no hay proyectos. Créalos en Automatización → Proyectos."
+                  [options]="projectOptions()"
+                  [selected]="session.projectRepos"
+                  (selectedChange)="changeProjects($event)"
+                />
               </div>
             }
-          }
-        </aside>
-      }
-    </div>
 
-    <app-dialog
-      [wide]="true"
-      [heading]="sheetTask()?.name ?? 'Tarea'"
-      [open]="sheet() !== null"
-      (openChange)="$event || sheet.set(null)"
-    >
-      @if (sheetTask(); as task) {
-        @if (sheetDescription(); as description) {
-          <app-markdown-viewer [content]="description" [breaks]="true" />
-        } @else {
-          <p class="muted">Esta tarea no tiene descripción.</p>
+            @if (side() === 'members' && !isTask()) {
+              <app-members-panel
+                class="members"
+                [members]="session.members"
+                [groupIssueId]="session.groupIssueId"
+                [projectRepos]="session.projectRepos"
+                [saving]="store.saving()"
+                (changed)="changeMembers($event)"
+                (ticketCreated)="createTicket($event)"
+                (opened)="sheet.set({ id: $event })"
+              />
+            }
+
+            @if (side() === 'plan' && groupIssue(); as issue) {
+              @if (plan() || planning()) {
+                <app-plan-panel [issue]="issue" [bare]="true" />
+              } @else {
+                <div class="organizer__empty">
+                  <app-icon name="sparkles" size="1.4rem" />
+                  <strong>Todavía no hay plan</strong>
+                  <p>
+                    Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan:
+                    aquí lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
+                  </p>
+                </div>
+              }
+            }
+          </aside>
         }
-      }
-    </app-dialog>
-  } @else {
-    <div class="stack" aria-busy="true">
-      <app-skeleton height="48px" />
-      <app-skeleton height="320px" />
-    </div>
-  }
+      </div>
+
+      <app-dialog
+        [wide]="true"
+        [heading]="sheetTask()?.name ?? 'Tarea'"
+        [open]="sheet() !== null"
+        (openChange)="$event || sheet.set(null)"
+      >
+        @if (sheetTask(); as task) {
+          @if (sheetDescription(); as description) {
+            <app-markdown-viewer [content]="description" [breaks]="true" />
+          } @else {
+            <p class="muted">Esta tarea no tiene descripción.</p>
+          }
+        }
+      </app-dialog>
+    } @else {
+      <div class="stack" aria-busy="true">
+        <app-skeleton height="48px" />
+        <app-skeleton height="320px" />
+      </div>
+    }
+  </div>
 </div>

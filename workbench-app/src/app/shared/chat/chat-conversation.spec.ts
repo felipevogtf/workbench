@@ -307,3 +307,74 @@ describe('ChatConversation attachments', () => {
     });
   });
 });
+
+describe('ChatConversation without a key yet (a new chat)', () => {
+  let chat: FakeConversation;
+
+  beforeEach(() => {
+    localStorage.clear();
+    chat = new FakeConversation();
+  });
+
+  it('creates its conversation with the first message and then asks the assistant', async () => {
+    chat.provision = vi.fn(() => Promise.resolve('nueva'));
+
+    await chat.send('Hola');
+
+    expect(chat.provision).toHaveBeenCalledTimes(1);
+    expect(chat.requests).toHaveLength(1);
+    expect(chat.messages().map((message) => message.content)).toEqual(['Hola', 'Respuesta']);
+    expect(localStorage.getItem('test.attachments.nueva')).not.toBeNull();
+  });
+
+  it('does not ask for a new one again on the next message', async () => {
+    chat.provision = vi.fn(() => Promise.resolve('nueva'));
+
+    await chat.send('Uno');
+    await chat.send('Dos');
+
+    expect(chat.provision).toHaveBeenCalledTimes(1);
+    expect(chat.requests).toHaveLength(2);
+  });
+
+  it('sends nothing and keeps no messages when it could not be created', async () => {
+    chat.provision = vi.fn(() => Promise.resolve(null));
+
+    await chat.send('Hola');
+
+    expect(chat.requests).toHaveLength(0);
+    expect(chat.messages()).toEqual([]);
+  });
+
+  it('keeps the files that were already uploaded for that first message', async () => {
+    chat.provision = vi.fn(() => Promise.resolve('nueva'));
+    chat.uploads.mockResolvedValue(uploaded('plano.pdf'));
+    await chat.attach([file('plano.pdf')]);
+
+    await chat.send('Mira esto');
+
+    expect(chat.messages()[0].attachments?.map((attachment) => attachment.name)).toEqual([
+      'plano.pdf',
+    ]);
+  });
+
+  it('does nothing special when there is no way to create it (no provision)', async () => {
+    await chat.send('Hola');
+
+    expect(chat.requests).toHaveLength(0);
+    expect(chat.messages()).toEqual([]);
+  });
+
+  it('lets go of the current conversation: empty and without a key, ready for a new chat', async () => {
+    chat.bind('k');
+    await chat.send('Hola');
+    expect(chat.messages().length).toBeGreaterThan(0);
+
+    chat.unbind();
+
+    expect(chat.messages()).toEqual([]);
+    chat.provision = vi.fn(() => Promise.resolve('otra'));
+    await chat.send('Nuevo');
+    expect(chat.provision).toHaveBeenCalledTimes(1);
+  });
+});

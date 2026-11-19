@@ -53,6 +53,12 @@ export abstract class ChatConversation {
     this.draftState().some((draft) => draft.status === 'uploading'),
   );
 
+  /**
+   * Para una conversación que todavía no existe (un «chat nuevo»): se llama al enviar el primer mensaje y devuelve su clave, o
+   * `null` si no se pudo crear. Hasta entonces no hay clave y no se guarda nada.
+   */
+  provision: (() => Promise<string | null>) | null = null;
+
   /** Prefijo de la clave con que se guarda la conversación en el navegador. */
   protected abstract readonly storagePrefix: string;
 
@@ -67,6 +73,17 @@ export abstract class ChatConversation {
     if (this.key === key) return;
     this.key = key;
     this.messagesState.set(this.load(key));
+    this.errorState.set(null);
+    this.draftState.set([]);
+    this.attachErrorState.set(null);
+    this.unreadState.set(0);
+  }
+
+  /** Suelta la conversación actual: queda vacía y sin clave, lista para un chat nuevo. */
+  unbind(): void {
+    if (this.key === null) return;
+    this.key = null;
+    this.messagesState.set([]);
     this.errorState.set(null);
     this.draftState.set([]);
     this.attachErrorState.set(null);
@@ -142,6 +159,17 @@ export abstract class ChatConversation {
 
   async send(text: string): Promise<void> {
     if (!this.canSend(text)) return;
+    // Sin conversación y sin cómo crearla no hay a dónde mandar el mensaje: no se pierde en el aire.
+    if (this.key === null && !this.provision) return;
+
+    // Un chat nuevo se crea con el primer mensaje; los archivos ya subidos pasan a la conversación creada.
+    if (this.key === null && this.provision) {
+      const drafts = this.draftState();
+      const key = await this.provision();
+      if (!key) return;
+      this.bind(key);
+      this.draftState.set(drafts);
+    }
 
     const attachments = this.readyAttachments();
     const content = text.trim() || ATTACHMENTS_ONLY_TEXT;

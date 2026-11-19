@@ -95,12 +95,13 @@ Esfuerzo orientativo: A y el cambio en Lucy, una sesión cada uno; B, dos (con l
 - Lo que un agente no puede producir (archivos binarios como audios o imágenes) lo pone una persona.
 - Fuera de alcance: PRs apiladas por ticket, entorno para el chat del organizador, leer relaciones de Plane, escribir estados en Plane.
 
-## Conversaciones sin ticket ni proyecto (2026-11-19)
+## Conversaciones como en un chat (2026-11-19)
 
-El organizador se usa como un chat: no hay que crear una sesión ni elegir nada para empezar.
+El organizador se usa como ChatGPT: no hay que crear una sesión ni elegir nada para empezar.
 
-- **Una conversación nueva no pide nada.** «Nueva conversación» (`/organizer/new`) crea la sesión vacía y abre su pantalla, sin diálogo. Se llama «Nueva conversación» hasta que el primer mensaje le pone nombre (su primera línea).
-- **Proyectos y tickets son opcionales y se van sumando.** Una conversación puede tener varios proyectos (hasta 3, desde el chip «Proyectos») y varios tickets, o ninguno de los dos. Sin proyectos la IA conversa en general; con un proyecto lee su código.
+- **«Organizador» abre directo un chat nuevo**, con una lista lateral de conversaciones (las más recientes primero; «Nueva conversación» arriba y un menú por conversación para eliminarla). `/organizer` es el chat nuevo y `/organizer/:id` una conversación: son la misma pantalla, así pasar de una a otra no la recrea. En pantallas chicas la lista es un panel que se abre desde «Conversaciones».
+- **Abrir el organizador no crea nada.** La conversación se crea con el primer mensaje (o al sumarle un ticket, que sí necesita existir). Los proyectos elegidos antes de escribir se guardan al crearla. Así no quedan conversaciones vacías ni hay que limpiarlas.
+- **Se llama «Nueva conversación» hasta el primer mensaje**, que le pone nombre (su primera línea, recortada a 60 caracteres).
+- **Proyectos y tickets son opcionales y se van sumando.** Una conversación puede tener varios proyectos (hasta 3, desde el chip «Proyectos») y varios tickets, o ninguno de los dos. Sin proyectos la IA conversa en general; con uno lee su código.
 - **Se puede planificar sin tickets**, en cuanto hay algo hablado. Ejecutar sí necesita un plan listo y al menos un proyecto (el aviso lo dice).
-- **Una conversación que nunca se usó no deja rastro:** si se cierra sin mensajes, proyectos ni tickets, se borra sola. La conversación del chat vive en el navegador, por eso el servidor no puede saber cuáles están vacías y lo decide la pantalla.
-- Servidor: `CreateSessionDto.title` es opcional y `UpdateSessionDto` acepta `projectRepos` (exactamente esos: así se suman y se quitan).
+- Servidor: `CreateSessionDto.title` es opcional y `UpdateSessionDto` acepta `projectRepos` (exactamente esos: así se suman y se quitan). El chat (`ChatConversation`) tiene `provision`, que crea la conversación al enviar el primer mensaje, y `unbind`, que la suelta.

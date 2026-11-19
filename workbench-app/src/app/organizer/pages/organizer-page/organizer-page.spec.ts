@@ -21,42 +21,61 @@ describe('OrganizerPage planning', () => {
     messages: ReturnType<typeof signal<ReturnType<typeof say>[]>>;
     snapshot: ReturnType<typeof vi.fn>;
     bind: ReturnType<typeof vi.fn>;
+    unbind: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
     sending: ReturnType<typeof signal<boolean>>;
     onUpdatesPlan: ((rebuild: boolean) => void) | null;
+    provision: (() => Promise<string | null>) | null;
   };
   let generate: ReturnType<typeof vi.fn>;
   let removeAll: ReturnType<typeof vi.fn>;
   let ask: ReturnType<typeof vi.fn>;
   let lastFixture: ComponentFixture<OrganizerPage>;
   let store: {
-    current: ReturnType<typeof signal<Record<string, unknown>>>;
+    current: ReturnType<typeof signal<Record<string, unknown> | null>>;
+    sessions: ReturnType<typeof signal<unknown[]>>;
+    load: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    adopt: ReturnType<typeof vi.fn>;
+    clearCurrent: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     setProjects: ReturnType<typeof vi.fn>;
-    discard: ReturnType<typeof vi.fn>;
+    setMembers: ReturnType<typeof vi.fn>;
+    addTicket: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
   };
+  let router: { navigate: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
   let toastError: ReturnType<typeof vi.fn>;
 
-  function create(overrides: Record<string, unknown> = {}): {
+  interface Page {
     canPlan(): boolean;
     changeProjects(repos: string[]): Promise<void>;
+    changeMembers(ids: string[]): Promise<void>;
+    createTicket(name: string): Promise<void>;
     createPlan(): Promise<void>;
+    isDraft(): boolean;
+    view(): { title: string; projectRepos: string[] } | null;
     plannedKey(): string;
     reset(): Promise<void>;
-    side(): 'plan' | 'members' | null;
-    toggleSide(which: 'plan' | 'members'): void;
-  } {
-    const session = {
-      id: 's1',
-      title: 'Tarea',
-      kind: 'task',
-      groupIssueId: 'g1',
-      notes: null,
-      projectRepos: [],
-      members: [],
-      createdAt: '',
-      ...overrides,
-    };
+    side(): 'plan' | 'members' | 'projects' | null;
+    toggleSide(which: 'plan' | 'members' | 'projects'): void;
+  }
+
+  /** `draft`: un chat nuevo (sin `id` en la ruta y sin sesión). */
+  function create(overrides: Record<string, unknown> = {}, draft = false): Page {
+    const session = draft
+      ? null
+      : {
+          id: 's1',
+          title: 'Tarea',
+          kind: 'task',
+          groupIssueId: 'g1',
+          notes: null,
+          projectRepos: [],
+          members: [],
+          createdAt: '',
+          ...overrides,
+        };
     generate = vi.fn(() => Promise.resolve(true));
     removeAll = vi.fn(() => Promise.resolve(true));
     ask = vi.fn(() => Promise.resolve(true));
@@ -64,16 +83,41 @@ describe('OrganizerPage planning', () => {
       messages: signal(messages),
       snapshot: vi.fn(() => chat.messages()),
       bind: vi.fn(),
+      unbind: vi.fn(),
       clear: vi.fn(),
       sending: signal(false),
       onUpdatesPlan: null,
+      provision: null,
     };
     toastError = vi.fn();
+    router = {
+      navigate: vi.fn(() => Promise.resolve(true)),
+      navigateByUrl: vi.fn(() => Promise.resolve(true)),
+    };
+    const current = signal<Record<string, unknown> | null>(session);
     store = {
-      current: signal(session),
+      current,
+      sessions: signal([]),
+      load: vi.fn(),
+      create: vi.fn(() =>
+        Promise.resolve({
+          id: 'new1',
+          title: 'Nueva conversación',
+          kind: 'group',
+          groupIssueId: 'gnew1',
+          notes: null,
+          projectRepos: [],
+          members: [],
+          createdAt: '',
+        }),
+      ),
+      adopt: vi.fn((created: Record<string, unknown>) => current.set(created)),
+      clearCurrent: vi.fn(() => current.set(null)),
       update: vi.fn(() => Promise.resolve(true)),
       setProjects: vi.fn(() => Promise.resolve(true)),
-      discard: vi.fn(() => Promise.resolve()),
+      setMembers: vi.fn(() => Promise.resolve(true)),
+      addTicket: vi.fn(() => Promise.resolve(true)),
+      remove: vi.fn(() => Promise.resolve(true)),
     };
     const fakes = [
       {
@@ -82,6 +126,7 @@ describe('OrganizerPage planning', () => {
           ...store,
           error: signal(null),
           saving: signal(false),
+          loading: signal(false),
           open: () => Promise.resolve(true),
         },
       },
@@ -90,7 +135,7 @@ describe('OrganizerPage planning', () => {
       { provide: IssuesStore, useValue: { load: vi.fn(), issueById: signal(new Map()) } },
       { provide: ConfirmDialog, useValue: { ask } },
       { provide: Toast, useValue: { success: vi.fn(), error: toastError } },
-      { provide: Router, useValue: {} },
+      { provide: Router, useValue: router },
     ];
     TestBed.configureTestingModule({ providers: fakes });
     TestBed.overrideComponent(OrganizerPage, {
@@ -118,8 +163,8 @@ describe('OrganizerPage planning', () => {
     });
     const fixture = TestBed.createComponent(OrganizerPage);
     lastFixture = fixture;
-    fixture.componentRef.setInput('id', 's1');
-    return fixture.componentInstance as unknown as ReturnType<typeof create>;
+    if (!draft) fixture.componentRef.setInput('id', 's1');
+    return fixture.componentInstance as unknown as Page;
   }
 
   beforeEach(() => {
@@ -329,26 +374,90 @@ describe('OrganizerPage planning', () => {
       expect(store.setProjects).not.toHaveBeenCalled();
       expect(toastError).toHaveBeenCalled();
     });
+  });
 
-    it('leaves no trace when it is closed without being used', () => {
-      create(fresh);
-
-      lastFixture.destroy();
-
-      expect(store.discard).toHaveBeenCalledWith('s1');
+  describe('a new chat (no id in the route)', () => {
+    beforeEach(() => {
+      messages = [];
     });
 
-    it.each([
-      ['a message', { members: [], projectRepos: [] }, [say('user', 'Hola')]],
-      ['a project', { members: [], projectRepos: ['acme/web'] }, []],
-      ['a ticket', { members: [{ id: 't1', key: null, name: 'Algo' }], projectRepos: [] }, []],
-    ])('is kept when it was used (%s)', (_name, extra, chatMessages) => {
-      messages = chatMessages;
-      create({ ...fresh, ...extra });
+    it('creates nothing just by opening it', () => {
+      const page = create({}, true);
+      TestBed.tick();
 
-      lastFixture.destroy();
+      expect(page.isDraft()).toBe(true);
+      expect(page.view()?.title).toBe('Nueva conversación');
+      expect(store.create).not.toHaveBeenCalled();
+      expect(page.canPlan()).toBe(false);
+    });
 
-      expect(store.discard).not.toHaveBeenCalled();
+    it('keeps the projects chosen in the new chat until it is created', async () => {
+      const page = create({}, true);
+
+      await page.changeProjects(['acme/web']);
+
+      expect(page.view()?.projectRepos).toEqual(['acme/web']);
+      expect(store.setProjects).not.toHaveBeenCalled();
+      expect(store.create).not.toHaveBeenCalled();
+    });
+
+    it('is created with the first message, with those projects, and moves the route to it without stacking history', async () => {
+      const page = create({}, true);
+      await page.changeProjects(['acme/web']);
+
+      const key = await chat.provision?.();
+
+      expect(key).toBe('gnew1');
+      expect(store.create).toHaveBeenCalledWith({ projectRepos: ['acme/web'] });
+      expect(store.adopt).toHaveBeenCalledTimes(1);
+      expect(router.navigate).toHaveBeenCalledWith(['/organizer', 'new1'], { replaceUrl: true });
+      expect(page.isDraft()).toBe(false);
+    });
+
+    it('is created with nothing when no project was chosen', async () => {
+      create({}, true);
+
+      await chat.provision?.();
+
+      expect(store.create).toHaveBeenCalledWith({});
+    });
+
+    it('creates one conversation even if two things ask for it at once', async () => {
+      create({}, true);
+
+      await Promise.all([chat.provision?.(), chat.provision?.()]);
+
+      expect(store.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays new when it could not be created', async () => {
+      const page = create({}, true);
+      store.create.mockResolvedValueOnce(null);
+
+      expect(await chat.provision?.()).toBeNull();
+
+      expect(page.isDraft()).toBe(true);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('creates the conversation when a ticket is added to it', async () => {
+      const page = create({}, true);
+
+      await page.createTicket('Primero');
+
+      expect(store.create).toHaveBeenCalledTimes(1);
+      expect(store.addTicket).toHaveBeenCalledWith('new1', 'Primero');
+    });
+
+    it('goes back to an empty chat when the route loses its id', () => {
+      create({ kind: 'group', title: 'Algo' });
+      TestBed.tick();
+
+      lastFixture.componentRef.setInput('id', undefined);
+      TestBed.tick();
+
+      expect(store.clearCurrent).toHaveBeenCalled();
+      expect(chat.unbind).toHaveBeenCalled();
     });
   });
 });
