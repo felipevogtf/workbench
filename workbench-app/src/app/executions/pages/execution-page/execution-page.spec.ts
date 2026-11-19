@@ -265,19 +265,117 @@ describe('ExecutionPage', () => {
   });
 
   describe('the chat with Lucy', () => {
-    it('is the avatar of Lucy on a button, and it answers about this execution', async () => {
+    const toggle = (element: HTMLElement) =>
+      [...element.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+        button.textContent?.includes('Lucy'),
+      ) as HTMLButtonElement;
+
+    it('is a drawer beside the page, closed until the button with her name is pressed', async () => {
       const fixture = await render(detail('e1', 'running', { tickets: [ticket('a')] }));
       const element: HTMLElement = fixture.nativeElement;
 
-      expect(element.querySelector('app-execution-chat .fab app-avatar')).not.toBeNull();
-      expect(element.querySelector('app-execution-chat .fab')?.getAttribute('aria-label')).toBe(
-        'Abrir el chat con Lucy',
-      );
+      expect(element.querySelector('.exec__chat--open')).toBeNull();
+      expect(element.querySelector('.exec--chat')).toBeNull();
 
-      (element.querySelector('app-execution-chat .fab') as HTMLButtonElement).click();
+      toggle(element).click();
       await vi.advanceTimersByTimeAsync(0);
       fixture.detectChanges();
-      expect(element.textContent).toContain('Habla con Lucy');
+
+      expect(element.querySelector('.exec__chat--open')).not.toBeNull();
+      expect(element.querySelector('.exec--chat')).not.toBeNull();
+      expect(element.querySelector('.exec__chat--open')?.textContent).toContain('Habla con Lucy');
+    });
+
+    it('closes from its own button', async () => {
+      const fixture = await render(detail('e1', 'running', { tickets: [ticket('a')] }));
+      const element: HTMLElement = fixture.nativeElement;
+      toggle(element).click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      (element.querySelector('.exec__chat-head button') as HTMLButtonElement).click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      expect(element.querySelector('.exec__chat--open')).toBeNull();
+    });
+  });
+
+  describe('the projects of the execution', () => {
+    const target = (fullName: string, extra: Record<string, unknown> = {}) => ({
+      repo: { url: 'u', host: 'github.com', fullName, sshUrl: 's' },
+      branch: 'feature/x',
+      baseBranch: 'main',
+      pullRequestUrl: null,
+      primary: false,
+      ...extra,
+    });
+    const two = () =>
+      detail('e1', 'running', {
+        repos: [target('acme/web', { primary: true }), target('acme/api')],
+        tickets: [
+          { ...ticket('a'), repo: 'acme/web' },
+          { ...ticket('b'), repo: 'acme/api' },
+          { ...ticket('c'), repo: 'acme/api' },
+        ],
+      });
+
+    it('shows a chip per project with its branch and how many tickets it has', async () => {
+      const element: HTMLElement = (await render(two())).nativeElement;
+
+      const chips = [...element.querySelectorAll('.repo')].map((chip) => chip.textContent);
+      expect(chips).toHaveLength(2);
+      expect(chips[0]).toContain('web');
+      expect(chips[0]).toContain('feature/x');
+      expect(chips[0]).toContain('1 tickets');
+      expect(chips[1]).toContain('2 tickets');
+    });
+
+    it('filters the board by a project, and shows them all again when it is pressed once more', async () => {
+      const fixture = await render(two());
+      const element: HTMLElement = fixture.nativeElement;
+      const cards = () => element.querySelectorAll('.card').length;
+      const api = () => element.querySelectorAll<HTMLButtonElement>('.repo__main')[1];
+      expect(cards()).toBe(3);
+
+      api().click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(cards()).toBe(2);
+
+      api().click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(cards()).toBe(3);
+    });
+
+    it('links to the PR of a project when it has one', async () => {
+      const element: HTMLElement = (
+        await render(
+          detail('e1', 'running', {
+            repos: [
+              target('acme/web', {
+                primary: true,
+                pullRequestUrl: 'https://github.com/acme/web/pull/1',
+              }),
+            ],
+            tickets: [ticket('a')],
+          }),
+        )
+      ).nativeElement;
+
+      expect(element.querySelector('.repo__pr')?.getAttribute('href')).toBe(
+        'https://github.com/acme/web/pull/1',
+      );
+    });
+
+    it('with a single project the chip only informs: there is nothing to filter', async () => {
+      const element: HTMLElement = (
+        await render(detail('e1', 'running', { tickets: [ticket('a')] }))
+      ).nativeElement;
+
+      expect(element.querySelectorAll('.repo')).toHaveLength(1);
+      expect(element.querySelector<HTMLButtonElement>('.repo__main')?.disabled).toBe(true);
     });
   });
 
@@ -541,8 +639,12 @@ describe('ExecutionPage', () => {
       await open(fixture, 'Tres');
       const element: HTMLElement = fixture.nativeElement;
 
-      expect(element.querySelector('.panel__title')?.textContent).toContain('Tres');
-      expect(element.querySelector('.panel__worker')?.textContent).toContain('David');
+      expect(element.querySelector('app-ticket-panel .panel__title')?.textContent).toContain(
+        'Tres',
+      );
+      expect(element.querySelector('app-ticket-panel .panel__worker')?.textContent).toContain(
+        'David',
+      );
       expect(api.logs).toHaveBeenCalledWith('jc');
     });
 
@@ -571,7 +673,9 @@ describe('ExecutionPage', () => {
       await fixture.whenStable();
       const element: HTMLElement = fixture.nativeElement;
 
-      expect(element.querySelector('.panel__title')?.textContent).toContain('Registro general');
+      expect(element.querySelector('app-ticket-panel .panel__title')?.textContent).toContain(
+        'Registro general',
+      );
       expect([...element.querySelectorAll('[role="tab"]')]).toHaveLength(1);
       expect(element.querySelectorAll('.job')).toHaveLength(1);
       expect(api.logs).toHaveBeenCalledWith('jt');

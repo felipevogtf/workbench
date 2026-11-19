@@ -13,17 +13,21 @@
   cursor: default;
 }
 
+// Un modal centrado: el ticket se lee y se trabaja con aire, sin tapar la mitad del tablero como un panel pegado al borde.
 .panel {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 50%;
+  left: 50%;
   display: flex;
   flex-direction: column;
-  width: min(580px, 100vw);
-  border-left: 1px solid var(--border);
+  width: min(900px, calc(100vw - 2rem));
+  max-height: min(88dvh, 900px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   background: var(--background);
-  box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.22);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
 }
 
 .panel__head {

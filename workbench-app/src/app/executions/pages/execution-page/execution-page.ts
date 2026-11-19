@@ -16,6 +16,7 @@ import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
+import { IconButton } from '@shared/ui/icon-button/icon-button';
 import { IconName } from '@shared/ui/icon/icons';
 import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
@@ -66,6 +67,7 @@ const GENERAL = 'general';
     Badge,
     Button,
     Icon,
+    IconButton,
     PageHeader,
     Skeleton,
     Spinner,
@@ -86,6 +88,8 @@ export class ExecutionPage {
   readonly id = input.required<string>();
 
   protected readonly store = inject(ExecutionStore);
+  /** El chat de Lucy: su estado (abierto, sin leer) vive aquí, en el store que provee la página. */
+  protected readonly chat = inject(ExecutionChatStore);
   private readonly agents = inject(AgentsStore);
   private readonly confirm = inject(ConfirmDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -104,6 +108,17 @@ export class ExecutionPage {
   /** Cómo se muestra un agente; sin conocerlo, un nombre genérico. */
   protected readonly workerName = (job: JobSummary): string =>
     this.workerOf(job)?.name ?? 'Un trabajador';
+
+  /** El proyecto (`org/repo`) por el que se filtra el tablero; `null` = todos. */
+  protected readonly repoFilter = signal<string | null>(null);
+
+  /** Las tarjetas que muestra el tablero: todas, o las del proyecto elegido en los chips. */
+  protected readonly visibleCards = computed(() => {
+    const filter = this.repoFilter();
+    const detail = this.store.detail();
+    if (!filter || !detail) return this.cards();
+    return this.cards().filter((card) => (card.ticket.repo ?? detail.repo.fullName) === filter);
+  });
 
   /** Las tarjetas del tablero: cada ticket con quién lo tiene ahora. */
   protected readonly cards = computed<BoardCard[]>(() => {
@@ -243,6 +258,18 @@ export class ExecutionPage {
    * Los repositorios con PR. Un primario sin cambios hereda el enlace del repo que sí publicó (queda el
    * mismo en ambos), así que de los enlaces repetidos se muestra solo el último.
    */
+  /** Pulsar el chip de un proyecto filtra el tablero por él; pulsarlo otra vez lo quita. */
+  protected toggleRepo(fullName: string): void {
+    this.repoFilter.update((current) => (current === fullName ? null : fullName));
+  }
+
+  /** Cuántos tickets tiene un proyecto (los que no dicen repo son del principal). */
+  protected ticketsOf(execution: ExecutionDetail, fullName: string): number {
+    return execution.tickets.filter(
+      (ticket) => (ticket.repo ?? execution.repo.fullName) === fullName,
+    ).length;
+  }
+
   protected pullRequests(execution: ExecutionDetail) {
     return execution.repos.filter(
       (target, index) =>

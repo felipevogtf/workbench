@@ -21,8 +21,8 @@ import {
 export type PanelTab = 'detail' | 'activity' | 'logs';
 
 /**
- * El panel lateral de un ticket (o del «registro general»): su detalle, su historia y el registro de
- * lo que hizo cada trabajador. Sin ticket solo muestra el registro.
+ * El modal de un ticket (o del «registro general»): su detalle, su historia y el registro de lo que hizo cada
+ * trabajador. Sin ticket solo muestra el registro.
  */
 @Component({
   selector: 'app-ticket-panel',

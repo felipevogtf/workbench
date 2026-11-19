@@ -1,198 +1,275 @@
-<div class="page">
-  @if (store.error(); as error) {
-    <a app-button variant="ghost" size="sm" routerLink="/tasks/issues">
-      <app-icon name="arrow-left" size="1em" /> Tareas
-    </a>
-    <app-alert tone="danger" heading="No se pudo cargar la ejecución">{{ error }}</app-alert>
-  } @else if (store.detail(); as execution) {
-    <app-page-header
-      heading="Ejecución con IA"
-      [subtitle]="
-        execution.repos.length > 1
-          ? execution.repos.length + ' repositorios · ' + execution.branch
-          : execution.repo.fullName + ' · ' + execution.branch
-      "
-    >
-      <a
-        back
-        app-button
-        variant="ghost"
-        size="sm"
-        [routerLink]="fromList ? ['/executions'] : ['/tasks/issues', execution.issueId]"
-      >
-        <app-icon name="arrow-left" size="1em" />
-        {{ fromList ? 'Volver a las ejecuciones' : 'Volver a la tarea' }}
+<div class="exec" [class.exec--chat]="chat.open()">
+  <div class="exec__main">
+    @if (store.error(); as error) {
+      <a app-button variant="ghost" size="sm" routerLink="/tasks/issues">
+        <app-icon name="arrow-left" size="1em" /> Tareas
       </a>
+      <app-alert tone="danger" heading="No se pudo cargar la ejecución">{{ error }}</app-alert>
+    } @else if (store.detail(); as execution) {
+      <app-page-header
+        heading="Ejecución con IA"
+        [subtitle]="
+          execution.repos.length > 1
+            ? execution.repos.length + ' repositorios · ' + execution.branch
+            : execution.repo.fullName + ' · ' + execution.branch
+        "
+      >
+        <a
+          back
+          app-button
+          variant="ghost"
+          size="sm"
+          [routerLink]="fromList ? ['/executions'] : ['/tasks/issues', execution.issueId]"
+        >
+          <app-icon name="arrow-left" size="1em" />
+          {{ fromList ? 'Volver a las ejecuciones' : 'Volver a la tarea' }}
+        </a>
 
-      <ng-container actions>
-        @for (target of pullRequests(execution); track target.repo.fullName) {
-          @if (target.pullRequestUrl; as url) {
-            <a
-              app-button
-              variant="secondary"
-              [href]="url"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <app-icon name="git-pull-request" size="1em" />
-              {{
-                execution.repos.length > 1
-                  ? 'PR de ' + (target.repo.fullName.split('/').pop() ?? '')
-                  : 'Abrir la PR'
-              }}
-            </a>
-          }
-        }
-        @if (execution.status === 'awaiting') {
-          <button app-button type="button" [loading]="store.acting()" (click)="begin()">
-            <app-icon name="play" size="1em" /> Empezar el desarrollo
-          </button>
-        }
-        @if (execution.status === 'running' || execution.status === 'awaiting') {
+        <ng-container actions>
           <button
             app-button
-            variant="danger"
+            variant="secondary"
             type="button"
-            [disabled]="store.acting()"
-            (click)="cancel()"
+            [attr.aria-pressed]="chat.open()"
+            (click)="chat.toggle()"
           >
-            <app-icon name="x" size="1em" /> Cancelar
-          </button>
-        }
-        @if (execution.status === 'failed') {
-          <button app-button type="button" [loading]="store.acting()" (click)="retry()">
-            <app-icon name="refresh" size="1em" /> Reintentar
-          </button>
-        }
-      </ng-container>
-    </app-page-header>
-
-    <div class="stack">
-      @if (execution.waitingForRunner) {
-        <app-alert tone="warning" heading="Esperando un runner">
-          No hay ningún runner conectado, así que el trabajo espera. Abre el runner en tu PC y
-          seguirá solo.
-          <a alert-action app-button variant="secondary" size="sm" routerLink="/executions/runners">
-            Ver runners
-          </a>
-        </app-alert>
-      }
-      @if (execution.status === 'failed' && execution.error) {
-        <app-alert tone="danger" heading="La ejecución falló">
-          <div>{{ execution.error }}</div>
-        </app-alert>
-      }
-
-      <section class="summary" aria-label="Resumen de la ejecución">
-        <div class="summary__top">
-          <app-badge [tone]="statusTone[execution.status]" dot>
-            {{ statusLabel[execution.status] }}
-          </app-badge>
-          <span class="summary__activity">
-            @if (execution.status === 'running') {
-              <app-spinner size="0.9em" />
+            <app-icon name="sparkles" size="1em" />
+            {{ lucy()?.name ?? 'Chat' }}
+            @if (chat.unread() > 0 && !chat.open()) {
+              <span class="chat-unread" aria-label="mensajes sin leer">{{ chat.unread() }}</span>
             }
-            {{ activity(execution) }}
-          </span>
-          <button type="button" class="summary__link" (click)="openGeneral()">
-            Registro general
           </button>
-        </div>
-
-        <div
-          class="progress"
-          role="progressbar"
-          aria-label="Tickets hechos"
-          aria-valuemin="0"
-          [attr.aria-valuemax]="progress().total"
-          [attr.aria-valuenow]="progress().done"
-        >
-          <div class="progress__bar" [style.width.%]="progress().percent"></div>
-        </div>
-        <p class="summary__count">{{ progress().done }} de {{ progress().total }} tickets hechos</p>
-
-        @if (consumption(); as usage) {
-          <p class="summary__usage" [title]="usage.detail">
-            <app-icon name="chart-bar" size="1em" />
-            <span>
-              <strong>{{ usage.tokens }}</strong>
-              @if (usage.estimate) {
-                · {{ usage.estimate }}
-              }
-            </span>
-          </p>
-          @if (usage.measured) {
-            <p class="summary__usage summary__usage--measured">{{ usage.measured }}</p>
+          @for (target of pullRequests(execution); track target.repo.fullName) {
+            @if (target.pullRequestUrl; as url) {
+              <a
+                app-button
+                variant="secondary"
+                [href]="url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <app-icon name="git-pull-request" size="1em" />
+                {{
+                  execution.repos.length > 1
+                    ? 'PR de ' + (target.repo.fullName.split('/').pop() ?? '')
+                    : 'Abrir la PR'
+                }}
+              </a>
+            }
           }
+          @if (execution.status === 'awaiting') {
+            <button app-button type="button" [loading]="store.acting()" (click)="begin()">
+              <app-icon name="play" size="1em" /> Empezar el desarrollo
+            </button>
+          }
+          @if (execution.status === 'running' || execution.status === 'awaiting') {
+            <button
+              app-button
+              variant="danger"
+              type="button"
+              [disabled]="store.acting()"
+              (click)="cancel()"
+            >
+              <app-icon name="x" size="1em" /> Cancelar
+            </button>
+          }
+          @if (execution.status === 'failed') {
+            <button app-button type="button" [loading]="store.acting()" (click)="retry()">
+              <app-icon name="refresh" size="1em" /> Reintentar
+            </button>
+          }
+        </ng-container>
+      </app-page-header>
+
+      <div class="repos" role="group" aria-label="Proyectos de la ejecución">
+        @for (target of execution.repos; track target.repo.fullName) {
+          <span class="repo" [class.repo--active]="repoFilter() === target.repo.fullName">
+            <button
+              type="button"
+              class="repo__main"
+              [disabled]="execution.repos.length < 2"
+              [attr.aria-pressed]="repoFilter() === target.repo.fullName"
+              [title]="
+                execution.repos.length < 2
+                  ? target.repo.fullName
+                  : 'Ver solo los tickets de ' + target.repo.fullName
+              "
+              (click)="toggleRepo(target.repo.fullName)"
+            >
+              <app-icon name="folder" size="1em" />
+              {{ target.repo.fullName.split('/').pop() }}
+              <small
+                >{{ target.branch }} ·
+                {{ ticketsOf(execution, target.repo.fullName) }} tickets</small
+              >
+            </button>
+            @if (target.pullRequestUrl; as url) {
+              <a
+                class="repo__pr"
+                [href]="url"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Abrir la PR"
+              >
+                <app-icon name="git-pull-request" size="1em" />
+              </a>
+            }
+          </span>
+        }
+      </div>
+
+      <div class="stack">
+        @if (execution.waitingForRunner) {
+          <app-alert tone="warning" heading="Esperando un runner">
+            No hay ningún runner conectado, así que el trabajo espera. Abre el runner en tu PC y
+            seguirá solo.
+            <a
+              alert-action
+              app-button
+              variant="secondary"
+              size="sm"
+              routerLink="/executions/runners"
+            >
+              Ver runners
+            </a>
+          </app-alert>
+        }
+        @if (execution.status === 'failed' && execution.error) {
+          <app-alert tone="danger" heading="La ejecución falló">
+            <div>{{ execution.error }}</div>
+          </app-alert>
         }
 
-        <ol class="steps">
-          @for (stage of execution.stages; track stage.key) {
-            <li [attr.data-status]="stage.status">
-              <span class="steps__icon" aria-hidden="true">
-                @if (stage.status === 'running') {
-                  <app-spinner size="0.9rem" />
-                } @else if (stageIcon[stage.status]; as icon) {
-                  <app-icon [name]="icon" size="0.9rem" />
+        <section class="summary" aria-label="Resumen de la ejecución">
+          <div class="summary__top">
+            <app-badge [tone]="statusTone[execution.status]" dot>
+              {{ statusLabel[execution.status] }}
+            </app-badge>
+            <span class="summary__activity">
+              @if (execution.status === 'running') {
+                <app-spinner size="0.9em" />
+              }
+              {{ activity(execution) }}
+            </span>
+            <button type="button" class="summary__link" (click)="openGeneral()">
+              Registro general
+            </button>
+          </div>
+
+          <div
+            class="progress"
+            role="progressbar"
+            aria-label="Tickets hechos"
+            aria-valuemin="0"
+            [attr.aria-valuemax]="progress().total"
+            [attr.aria-valuenow]="progress().done"
+          >
+            <div class="progress__bar" [style.width.%]="progress().percent"></div>
+          </div>
+          <p class="summary__count">
+            {{ progress().done }} de {{ progress().total }} tickets hechos
+          </p>
+
+          @if (consumption(); as usage) {
+            <p class="summary__usage" [title]="usage.detail">
+              <app-icon name="chart-bar" size="1em" />
+              <span>
+                <strong>{{ usage.tokens }}</strong>
+                @if (usage.estimate) {
+                  · {{ usage.estimate }}
                 }
               </span>
-              {{ stageLabel[stage.key] }}
-            </li>
+            </p>
+            @if (usage.measured) {
+              <p class="summary__usage summary__usage--measured">{{ usage.measured }}</p>
+            }
           }
-        </ol>
-      </section>
 
-      @if (questions().length > 0) {
-        <app-ticket-questions
-          [cards]="questions()"
-          [lucy]="lucy()"
-          [busy]="store.acting()"
-          (answer)="answer($event)"
-        />
-      }
+          <ol class="steps">
+            @for (stage of execution.stages; track stage.key) {
+              <li [attr.data-status]="stage.status">
+                <span class="steps__icon" aria-hidden="true">
+                  @if (stage.status === 'running') {
+                    <app-spinner size="0.9rem" />
+                  } @else if (stageIcon[stage.status]; as icon) {
+                    <app-icon [name]="icon" size="0.9rem" />
+                  }
+                </span>
+                {{ stageLabel[stage.key] }}
+              </li>
+            }
+          </ol>
+        </section>
 
-      @if (cards().length === 0) {
-        <p class="muted">
-          @if (execution.status === 'running') {
-            El agente está leyendo el plan y el código para crear los tickets…
-          } @else {
-            No se llegaron a crear tickets.
-          }
-        </p>
-      } @else if (execution.status === 'awaiting') {
-        <app-ticket-assignment
-          [cards]="cards()"
-          [developers]="developers()"
-          [reviewers]="reviewers()"
-          [busy]="store.acting()"
-          (assign)="assign($event)"
-        />
-      } @else {
-        <app-ticket-board
-          [cards]="cards()"
-          [selectedId]="openId()"
-          [running]="execution.status === 'running'"
-          (open)="open($event)"
-        />
-      }
+        @if (questions().length > 0) {
+          <app-ticket-questions
+            [cards]="questions()"
+            [lucy]="lucy()"
+            [busy]="store.acting()"
+            (answer)="answer($event)"
+          />
+        }
 
-      @if (execution.status === 'completed' || execution.finalReview) {
-        <app-final-review-panel
-          [review]="execution.finalReview ?? null"
-          [completed]="execution.status === 'completed'"
-          [busy]="store.acting()"
-          (requested)="requestFinalReview()"
-          (fix)="fixFinding($event)"
-        />
-      }
-    </div>
+        @if (cards().length === 0) {
+          <p class="muted">
+            @if (execution.status === 'running') {
+              El agente está leyendo el plan y el código para crear los tickets…
+            } @else {
+              No se llegaron a crear tickets.
+            }
+          </p>
+        } @else if (execution.status === 'awaiting') {
+          <app-ticket-assignment
+            [cards]="cards()"
+            [developers]="developers()"
+            [reviewers]="reviewers()"
+            [busy]="store.acting()"
+            (assign)="assign($event)"
+          />
+        } @else {
+          <app-ticket-board
+            [cards]="visibleCards()"
+            [selectedId]="openId()"
+            [running]="execution.status === 'running'"
+            (open)="open($event)"
+          />
+        }
 
-    <app-execution-chat
-      [executionId]="execution.id"
-      [questions]="chatQuestions()"
-      [doubts]="chatDoubts()"
-      [context]="execution.repo.fullName + ' · ' + execution.branch"
-    />
+        @if (execution.status === 'completed' || execution.finalReview) {
+          <app-final-review-panel
+            [review]="execution.finalReview ?? null"
+            [completed]="execution.status === 'completed'"
+            [busy]="store.acting()"
+            (requested)="requestFinalReview()"
+            (fix)="fixFinding($event)"
+          />
+        }
+      </div>
+    } @else {
+      <div class="stack" aria-busy="true">
+        <app-skeleton width="50%" height="2rem" />
+        <app-skeleton height="110px" />
+        <app-skeleton height="260px" />
+      </div>
+    }
+  </div>
+
+  @if (store.detail(); as execution) {
+    <aside class="exec__chat" [class.exec__chat--open]="chat.open()" aria-label="Chat con Lucy">
+      <header class="exec__chat-head">
+        <strong>Habla con {{ lucy()?.name ?? 'la IA' }}</strong>
+        <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">
+          <app-icon name="x" size="1.1rem" />
+        </button>
+      </header>
+      <app-execution-chat
+        class="exec__chat-body"
+        [executionId]="execution.id"
+        [questions]="chatQuestions()"
+        [doubts]="chatDoubts()"
+        [context]="execution.repo.fullName + ' · ' + execution.branch"
+      />
+    </aside>
 
     @if (openId()) {
       <app-ticket-panel
@@ -212,11 +289,5 @@
         (selectJob)="pickJob($event)"
       />
     }
-  } @else {
-    <div class="stack" aria-busy="true">
-      <app-skeleton width="50%" height="2rem" />
-      <app-skeleton height="110px" />
-      <app-skeleton height="260px" />
-    </div>
   }
 </div>

@@ -21,6 +21,8 @@ export const EXECUTIONS_ROUTES: Routes = [
   {
     path: ':id',
     title: 'Ejecución · Workbench',
+    // Ancho completo, como el tablero y el organizador: el chat de Lucy es un cajón al costado.
+    data: { immersive: true },
     loadComponent: () =>
       import('./pages/execution-page/execution-page').then((m) => m.ExecutionPage),
   },

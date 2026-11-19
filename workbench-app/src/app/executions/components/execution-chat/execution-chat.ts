@@ -19,9 +19,9 @@ import { ChatProposal, NoteProposal } from '../../models/execution';
 const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as const;
 
 /**
- * Chat flotante con Lucy sobre una ejecución: ella conoce el estado completo (tickets, quién los tiene,
- * errores, plan) y contesta; no cambia nada. Su avatar es el botón del chat. Necesita que la página
- * provea el `ExecutionChatStore`.
+ * Chat con Lucy sobre una ejecución: ella conoce el estado completo (tickets, quién los tiene, errores, plan) y
+ * contesta; no cambia nada. Llena el cajón lateral de la página, que lo abre y lo cierra desde un botón (el estado
+ * abierto está en el `ExecutionChatStore`). Necesita que la página provea ese store.
  */
 @Component({
   selector: 'app-execution-chat',
@@ -30,6 +30,7 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
   template: `
     <app-chat-panel
       [store]="chat"
+      [inline]="true"
       [heading]="'Habla con ' + (lucy()?.name ?? 'la IA')"
       [context]="context()"
       [assistant]="lucy()"
