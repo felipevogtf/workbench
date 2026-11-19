@@ -4,11 +4,29 @@ import { normalizeRepoName, type Project } from './entities/project.entity';
 export const MAX_DEPENDENCY_DEPTH = 2;
 /** Tope de cada receta dentro del contexto: lo que pase se recorta. */
 export const MAX_RECIPE_CONTEXT_CHARS = 6_000;
+/** Tope de las reglas de arquitectura de cada proyecto dentro del contexto. */
+export const MAX_RULES_CONTEXT_CHARS = 4_000;
 
-function clip(value: string): string {
-  return value.length > MAX_RECIPE_CONTEXT_CHARS
-    ? `${value.slice(0, MAX_RECIPE_CONTEXT_CHARS)}\n[... recortado]`
-    : value;
+function clip(value: string, max = MAX_RECIPE_CONTEXT_CHARS): string {
+  return value.length > max ? `${value.slice(0, max)}\n[... recortado]` : value;
+}
+
+/** Las reglas de arquitectura y la verificación del proyecto, si las tiene: lo que no se puede romper al desarrollar y al revisar. */
+function rulesOf(project: Project): string[] {
+  const lines: string[] = [];
+  if (project.architectureRules) {
+    lines.push(
+      `### Reglas de arquitectura de ${project.repo} (obligatorias: quien desarrolla las respeta y quien revisa las comprueba)`,
+      clip(project.architectureRules, MAX_RULES_CONTEXT_CHARS),
+    );
+  }
+  if (project.verifyCommand) {
+    lines.push(
+      `### Verificación de ${project.repo}`,
+      `Antes de publicar la rama se corre la verificación «${project.verifyCommand}»; si falla, la rama no se publica. Corre lo equivalente tú también antes de terminar, si puedes.`,
+    );
+  }
+  return lines;
 }
 
 /**
@@ -43,6 +61,7 @@ export function buildRecipeContext(
           ? `## Receta de ${repo} (repositorio del que depende ${neededBy})`
           : `## Receta de ${repo}`,
         recipe.content ? clip(recipe.content) : '(la receta está vacía)',
+        ...rulesOf(recipe),
       ].join('\n'),
     );
     if (depth >= MAX_DEPENDENCY_DEPTH) return;

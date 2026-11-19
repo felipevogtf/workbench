@@ -163,5 +163,8 @@
       "waitFor": [{ "url": "http://localhost:{{port.app}}/", "timeoutSeconds": 120 }]
     }
   },
-  "copyFiles": {}
+  "copyFiles": {},
+  "verifications": {
+    "arch": ["docker", "compose", "exec", "-T", "app", "vendor/bin/deptrac"]
+  }
 }

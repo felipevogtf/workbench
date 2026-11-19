@@ -33,6 +33,11 @@ export interface RunnerConfig {
   copyFiles: Record<string, { from: string; to: string }[]>;
   /** Entornos de prueba (contenedores) que el runner levanta por ejecución. Vacío = no levanta nada. */
   environment: Omit<EnvironmentsConfig, 'workDir'>;
+  /**
+   * Las verificaciones que se corren antes de publicar una rama: nombre → programa y argumentos (sin shell), en la carpeta de
+   * trabajo del proyecto. El servidor solo manda el nombre; los comandos son solo de esta configuración.
+   */
+  verifications: Record<string, string[]>;
   /** El grafo del código que consultan los agentes; ausente = no se usa. */
   codegraph?: CodegraphConfig;
 }
@@ -208,8 +213,29 @@ export function loadConfig(
     remoteOverrides: (raw.remoteOverrides ?? {}) as Record<string, string>,
     copyFiles: (raw.copyFiles ?? {}) as RunnerConfig['copyFiles'],
     environment: environmentFrom(raw),
+    verifications: verificationsFrom(raw),
     ...codegraphFrom(raw),
   };
+}
+
+/** `verifications`: nombre → [programa, ...argumentos]. Se validan al leer, como el resto de la configuración. */
+function verificationsFrom(
+  raw: Record<string, unknown>,
+): RunnerConfig['verifications'] {
+  const section = (raw.verifications ?? {}) as Record<string, unknown>;
+  if (typeof section !== 'object' || Array.isArray(section))
+    fail('verifications debe ser un objeto: nombre → [programa, argumentos…]');
+  const verifications: RunnerConfig['verifications'] = {};
+  for (const [name, argv] of Object.entries(section)) {
+    if (
+      !Array.isArray(argv) ||
+      argv.length === 0 ||
+      !argv.every((part) => typeof part === 'string' && part.length > 0)
+    )
+      fail(`verifications["${name}"] debe ser una lista [programa, argumentos…]`);
+    verifications[name] = argv as string[];
+  }
+  return verifications;
 }
 
 function codegraphFrom(

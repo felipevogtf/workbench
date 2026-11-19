@@ -122,4 +122,50 @@ describe('buildRecipeContext', () => {
       buildRecipeContext(['acme/app'], [recipe('acme/app', '')]),
     ).toContain('(la receta está vacía)');
   });
+
+  describe('architecture rules and verification', () => {
+    const withRules = () =>
+      Project.create({
+        repo: 'acme/app',
+        content: 'docker compose up',
+        architectureRules: 'Los controllers no tocan repositorios',
+        verifyCommand: 'arch',
+      });
+
+    it('puts the rules and the verification right after the recipe of the project', () => {
+      const context = buildRecipeContext(['acme/app'], [withRules()]);
+
+      expect(context).toContain('docker compose up');
+      expect(context).toContain(
+        '### Reglas de arquitectura de acme/app (obligatorias',
+      );
+      expect(context).toContain('Los controllers no tocan repositorios');
+      expect(context).toContain('verificación «arch»');
+      expect(context!.indexOf('docker compose up')).toBeLessThan(
+        context!.indexOf('### Reglas de arquitectura'),
+      );
+    });
+
+    it('adds nothing when the project has neither', () => {
+      const context = buildRecipeContext(
+        ['acme/app'],
+        [recipe('acme/app', 'x')],
+      );
+
+      expect(context).not.toContain('Reglas de arquitectura');
+      expect(context).not.toContain('Verificación');
+    });
+
+    it('also gives the rules of the projects it depends on', () => {
+      const context = buildRecipeContext(
+        ['acme/web'],
+        [recipe('acme/web', 'la web', ['acme/app']), withRules()],
+      );
+
+      expect(context).toContain(
+        '## Receta de acme/app (repositorio del que depende acme/web)',
+      );
+      expect(context).toContain('Los controllers no tocan repositorios');
+    });
+  });
 });

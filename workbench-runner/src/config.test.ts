@@ -137,4 +137,33 @@ describe('loadConfig', () => {
       ),
     );
   });
+
+  describe('verifications', () => {
+    it('is empty by default and reads name → program and arguments', () => {
+      assert.deepEqual(loadConfig(configFile(valid), {}).verifications, {});
+
+      const config = loadConfig(
+        configFile({
+          ...valid,
+          verifications: { arch: ['npm', 'run', 'lint:arch'] },
+        }),
+        {},
+      );
+
+      assert.deepEqual(config.verifications, { arch: ['npm', 'run', 'lint:arch'] });
+    });
+
+    it('rejects a verification that is not a list of non-empty words', () => {
+      for (const bad of ['npm run lint', [], [''], [1, 2], { x: 1 }]) {
+        assert.throws(
+          () =>
+            loadConfig(
+              configFile({ ...valid, verifications: { arch: bad } }),
+              {},
+            ),
+          /verifications/,
+        );
+      }
+    });
+  });
 });

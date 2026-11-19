@@ -113,6 +113,11 @@ export interface RecipesGatewayPort {
    * ponerlas en el prompt de un agente; `null` si ninguno tiene receta.
    */
   contextFor(repos: readonly string[]): Promise<string | null>;
+  /**
+   * El nombre de la verificación que debe pasar antes de publicar la rama de este repositorio, o `null` si el proyecto
+   * no tiene. El comando lo conoce y lo corre solo el runner.
+   */
+  verifyOf(repo: string): Promise<string | null>;
 }
 export const RECIPES_GATEWAY_PORT = Symbol('EXECUTIONS_RECIPES_GATEWAY_PORT');
 

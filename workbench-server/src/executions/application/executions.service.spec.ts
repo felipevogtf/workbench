@@ -50,6 +50,9 @@ describe('ExecutionsService', () => {
   let recipeText: string | null;
   let recipeError: Error | null;
   let recipeRequests: string[][];
+  /** La verificación que la fake de recetas dice que tiene el proyecto. */
+  let verifyName: string | null;
+  let verifyError: Error | null;
   let service: ExecutionsService;
   let runnerJobs: RunnerJobsService;
   let runner: Runner;
@@ -59,6 +62,8 @@ describe('ExecutionsService', () => {
     recipeText = null;
     recipeError = null;
     recipeRequests = [];
+    verifyName = null;
+    verifyError = null;
     executions = new InMemoryExecutions();
     jobs = new InMemoryJobs();
     tasks = new FakeTasks();
@@ -80,6 +85,10 @@ describe('ExecutionsService', () => {
           if (recipeError) return Promise.reject(recipeError);
           return Promise.resolve(recipeText);
         },
+        verifyOf: () =>
+          verifyError
+            ? Promise.reject(verifyError)
+            : Promise.resolve(verifyName),
       },
     );
     runnerJobs = new RunnerJobsService(
@@ -874,6 +883,42 @@ describe('ExecutionsService', () => {
       const review = jobs.items.at(-1)!;
       expect(review.kind).toBe('review');
       expect(review.payload.prompt).toContain('Para probar: docker compose up');
+    });
+
+    describe('the verification before publishing', () => {
+      const toPublish = async () => {
+        const execution = await service.start('issue-1');
+        await answer({ output: ONE });
+        await service.begin(execution.id);
+        await answer(developed('aaa', 'bbb'));
+        await answer({ output: APPROVED });
+        return jobs.items.at(-1)!;
+      };
+
+      it('names the verification of the project in the publish job', async () => {
+        verifyName = 'arch';
+
+        const publish = await toPublish();
+
+        expect(publish.kind).toBe('publish');
+        expect(publish.payload.verify).toBe('arch');
+      });
+
+      it('sends none when the project has no verification', async () => {
+        const publish = await toPublish();
+
+        expect(publish.kind).toBe('publish');
+        expect(publish.payload.verify).toBeUndefined();
+      });
+
+      it('publishes without it when it cannot be read', async () => {
+        verifyError = new Error('db caída');
+
+        const publish = await toPublish();
+
+        expect(publish.kind).toBe('publish');
+        expect(publish.payload.verify).toBeUndefined();
+      });
     });
 
     it('adds nothing when there is no recipe', async () => {

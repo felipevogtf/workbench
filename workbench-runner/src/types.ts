@@ -24,6 +24,8 @@ export interface JobPayload {
   context?: { sshUrl: string; fullName: string; branch: string }[];
   commitMessage?: string;
   reviewFrom?: string;
+  /** Solo en `publish`: el nombre de la verificación del proyecto, que debe pasar antes de subir la rama. */
+  verify?: string;
 }
 
 export interface JobAgent {

@@ -10,4 +10,8 @@ export class RecipesGatewayAdapter implements RecipesGatewayPort {
   contextFor(repos: readonly string[]): Promise<string | null> {
     return this.projects.contextFor(repos);
   }
+
+  async verifyOf(repo: string): Promise<string | null> {
+    return (await this.projects.findByRepo(repo))?.verifyCommand ?? null;
+  }
 }

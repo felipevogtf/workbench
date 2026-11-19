@@ -686,6 +686,51 @@ describe('runJob', () => {
     );
   });
 
+  describe('publish: verification of the project', () => {
+    const verified = (name: string) => {
+      const published = job('publish');
+      published.payload.verify = name;
+      return published;
+    };
+
+    it('runs the configured verification in the worktree and then publishes', async () => {
+      const { context, bare, logs } = setup();
+      context.config.verifications = {
+        arch: [process.execPath, '-e', "require('node:fs').accessSync('.git')"],
+      };
+      await runJob(job('develop'), context);
+
+      await runJob(verified('arch'), context);
+
+      assert.ok(logs.some((line) => line.includes('Verificación «arch» correcta')));
+      assert.ok(remoteBranches(bare).includes(BRANCH));
+    });
+
+    it('does not publish when the verification fails, and says why', async () => {
+      const { context, bare } = setup();
+      context.config.verifications = {
+        arch: [process.execPath, '-e', "console.error('capa rota'); process.exit(3)"],
+      };
+      await runJob(job('develop'), context);
+
+      await assert.rejects(
+        runJob(verified('arch'), context),
+        /La verificación «arch» falló[\s\S]*capa rota/,
+      );
+      assert.equal(remoteBranches(bare).includes(BRANCH), false);
+    });
+
+    it('publishes without it, saying so, when this runner does not know the verification', async () => {
+      const { context, bare, logs } = setup();
+      await runJob(job('develop'), context);
+
+      await runJob(verified('desconocida'), context);
+
+      assert.ok(logs.some((line) => line.includes('no está configurada en este runner')));
+      assert.ok(remoteBranches(bare).includes(BRANCH));
+    });
+  });
+
   describe('with other repositories to read', () => {
     const OTHER = {
       sshUrl: 'git@bitbucket.org:acme/app.git',

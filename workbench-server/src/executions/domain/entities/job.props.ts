@@ -38,6 +38,8 @@ export interface JobPayload {
   commitMessage?: string;
   /** Solo en `review`: commit desde el que se revisa. */
   reviewFrom?: string;
+  /** Solo en `publish`: el nombre de la verificación del proyecto, que el runner debe pasar antes de subir la rama. */
+  verify?: string;
 }
 
 /** Lo que el runner devuelve al terminar. */

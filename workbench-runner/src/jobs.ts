@@ -20,6 +20,7 @@ import {
   prepareIndex,
 } from './codegraph';
 import { stopwatch } from './stopwatch';
+import { runVerification } from './verify';
 
 /**
  * Quién firma el commit: el agente que hizo el trabajo y «(IA)» al final, para que en la PR se vea que no lo escribió una
@@ -103,6 +104,43 @@ export async function runJob(
   }
 }
 
+/**
+ * Si el proyecto tiene una verificación y este runner la tiene configurada, debe pasar antes de subir la rama: si falla, el
+ * trabajo falla y la rama no se publica. Una verificación que este runner no conoce no detiene nada, pero queda dicho.
+ */
+async function verifyBeforePublish(
+  job: RunnerJob,
+  dir: string,
+  context: JobContext,
+): Promise<void> {
+  const name = job.payload.verify;
+  if (!name) return;
+  const argv = context.config.verifications[name];
+  if (!argv) {
+    context.onLog(
+      `La verificación «${name}» del proyecto no está configurada en este runner: se publica sin ella`,
+    );
+    return;
+  }
+  context.onLog(`Verificando antes de publicar: ${name}…`);
+  const outcome = await runVerification(argv, {
+    cwd: dir,
+    env: context.environments?.processEnvOf(
+      job.executionId,
+      job.payload.repo.fullName,
+    ),
+    signal: context.signal,
+    onLine: context.onLog,
+  });
+  if (!outcome.ok) {
+    throw new Error(
+      `La verificación «${name}» falló y la rama no se publicó:
+${outcome.output}`,
+    );
+  }
+  context.onLog(`Verificación «${name}» correcta`);
+}
+
 async function runJobSteps(
   job: RunnerJob,
   context: JobContext,
@@ -121,6 +159,8 @@ async function runJobSteps(
   watch.lap('carpeta');
 
   if (job.kind === 'publish') {
+    await verifyBeforePublish(job, workspace.dir, context);
+    watch.lap('verificación');
     context.onLog('Subiendo la rama…');
     await context.workspaces.push(workspace.dir, payload.branch);
     watch.lap('subida');

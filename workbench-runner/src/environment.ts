@@ -384,6 +384,15 @@ export class Environments {
 
   private readonly deps: DependencyCache;
 
+  /** Las variables con que corre `docker compose` para el entorno ya levantado de este proyecto; `undefined` si no hay uno. */
+  processEnvOf(
+    executionId: string,
+    repoFullName: string,
+  ): Record<string, string> | undefined {
+    return this.executions.get(executionId)?.projects.get(repoFullName)
+      ?.processEnv;
+  }
+
   has(repoFullName: string): boolean {
     return (
       this.config.environments[repoFullName]?.enabled !== false &&

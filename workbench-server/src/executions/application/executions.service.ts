@@ -987,11 +987,18 @@ export class ExecutionsService {
     const otherRepos = others.map((other) => other.repo.fullName);
 
     if (kind === 'publish') {
-      // Subir la rama no necesita un agente: lo hace el runner solo.
+      // Subir la rama no necesita un agente: lo hace el runner solo. Si el proyecto tiene una verificación, el runner
+      // la corre antes de subir (el comando es de su configuración; aquí solo va el nombre).
+      const verify = await this.verifyOf(target.repo.fullName);
       return Job.create({
         executionId: execution.id,
         kind,
-        payload: { ...base, prompt: '', agent: null },
+        payload: {
+          ...base,
+          prompt: '',
+          agent: null,
+          ...(verify ? { verify } : {}),
+        },
         attempt,
       });
     }
@@ -1103,6 +1110,18 @@ export class ExecutionsService {
       },
     });
     return this.jobs.save(job);
+  }
+
+  /** La verificación del proyecto antes de publicar; si no se puede leer se publica sin ella (el aviso queda en el log). */
+  private async verifyOf(repo: string): Promise<string | null> {
+    try {
+      return (await this.recipes?.verifyOf(repo)) ?? null;
+    } catch (error) {
+      this.logger.warn(
+        `The verification of ${repo} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   /** Las recetas de los repositorios del trabajo; sin ellas se sigue: son una ayuda, no una condición. */
