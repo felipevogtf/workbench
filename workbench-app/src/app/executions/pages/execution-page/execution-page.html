@@ -1,4 +1,4 @@
-<div class="exec" [class.exec--chat]="chat.open()">
+<div class="exec" [class.exec--chat]="chat.open()" [style.--chat-width.px]="chatWidth()">
   <div class="exec__main">
     @if (store.error(); as error) {
       <a app-button variant="ghost" size="sm" routerLink="/tasks/issues">
@@ -255,6 +255,17 @@
 
   @if (store.detail(); as execution) {
     <aside class="exec__chat" [class.exec__chat--open]="chat.open()" aria-label="Chat con Lucy">
+      <div
+        class="exec__chat-resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ajustar el ancho del chat"
+        tabindex="0"
+        aria-valuemin="320"
+        [attr.aria-valuenow]="chatWidth()"
+        (pointerdown)="dragChat($event)"
+        (keydown)="nudgeChat($event)"
+      ></div>
       <header class="exec__chat-head">
         <strong>Habla con {{ lucy()?.name ?? 'la IA' }}</strong>
         <button app-icon-button type="button" label="Cerrar el chat" (click)="chat.close()">

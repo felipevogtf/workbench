@@ -50,6 +50,22 @@ const STAGE_ICON: Record<StageStatus, IconName | null> = {
   failed: 'x',
 };
 
+const CHAT_WIDTH_KEY = 'workbench.execution.chat-width';
+const MIN_CHAT_WIDTH = 320;
+const DEFAULT_CHAT_WIDTH = 420;
+/** Lo más que ocupa el chat: el resto de la pantalla es de la ejecución. */
+const MAX_CHAT_SHARE = 0.7;
+
+function readChatWidth(): number {
+  try {
+    const saved = Number(localStorage.getItem(CHAT_WIDTH_KEY));
+    if (saved >= MIN_CHAT_WIDTH) return saved;
+  } catch {
+    // sin almacenamiento
+  }
+  return DEFAULT_CHAT_WIDTH;
+}
+
 /** Lo que se abre en el panel cuando no es un ticket: el registro de crear los tickets y de subir la rama. */
 const GENERAL = 'general';
 
@@ -99,6 +115,9 @@ export class ExecutionPage {
   protected readonly statusTone = EXECUTION_STATUS_TONE;
   protected readonly stageLabel = STAGE_LABEL;
   protected readonly stageIcon = STAGE_ICON;
+
+  /** Ancho del cajón del chat, en píxeles; se cambia arrastrando su borde izquierdo y se recuerda. */
+  protected readonly chatWidth = signal(readChatWidth());
 
   /** El ticket abierto en el panel (su id), o `general`; `null` = panel cerrado. */
   protected readonly openId = signal<string | null>(null);
@@ -388,6 +407,40 @@ export class ExecutionPage {
       return 'No hay tickets por ejecutar';
     }
     return null;
+  }
+
+  /** Arrastrar el borde del chat para ensancharlo o achicarlo: el cajón está pegado a la derecha, así que su ancho es lo que falta hasta el cursor. */
+  protected dragChat(event: PointerEvent): void {
+    event.preventDefault();
+    const move = (moved: PointerEvent) =>
+      this.setChatWidth(window.innerWidth - moved.clientX, false);
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      this.setChatWidth(this.chatWidth(), true);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  }
+
+  /** Con el teclado: la flecha izquierda lo ensancha y la derecha lo achica. */
+  protected nudgeChat(event: KeyboardEvent): void {
+    const step = event.key === 'ArrowLeft' ? 24 : event.key === 'ArrowRight' ? -24 : 0;
+    if (!step) return;
+    event.preventDefault();
+    this.setChatWidth(this.chatWidth() + step, true);
+  }
+
+  private setChatWidth(pixels: number, save: boolean): void {
+    const max = Math.max(MIN_CHAT_WIDTH, Math.floor(window.innerWidth * MAX_CHAT_SHARE));
+    const width = Math.min(max, Math.max(MIN_CHAT_WIDTH, Math.round(pixels)));
+    this.chatWidth.set(width);
+    if (!save) return;
+    try {
+      localStorage.setItem(CHAT_WIDTH_KEY, String(width));
+    } catch {
+      // sin almacenamiento: el ancho vale mientras la página siga abierta
+    }
   }
 
   protected begin(): void {

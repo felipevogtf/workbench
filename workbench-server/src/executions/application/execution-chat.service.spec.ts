@@ -570,7 +570,7 @@ describe('ExecutionChatService', () => {
       const answer = await ask('Quita el de pantalla');
 
       expect(applied).toEqual([[{ kind: 'remove', ticketId: 'b', ticket: 2 }]]);
-      expect(answer.reply).toBe('Quité el de pantalla.\n\n\n¿Algo más?');
+      expect(answer.reply).toBe('Quité el de pantalla.\n\n¿Algo más?');
       expect(answer.changes).toEqual(outcome.applied);
       expect(answer.proposals).toEqual([]);
     });

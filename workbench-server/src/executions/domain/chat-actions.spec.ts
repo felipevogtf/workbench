@@ -24,7 +24,7 @@ describe('extractActions', () => {
     );
 
     expect(reply).toBe(
-      'Quité el ticket de pantalla y sumé uno de tests.\n\n\n¿Algo más?',
+      'Quité el ticket de pantalla y sumé uno de tests.\n\n¿Algo más?',
     );
     expect(actions).toEqual([
       { kind: 'remove', ticketId: 'b', ticket: 2 },

@@ -349,6 +349,106 @@ describe('ExecutionPage', () => {
     });
   });
 
+  describe('resizing the chat drawer', () => {
+    const WIDTH_KEY = 'workbench.execution.chat-width';
+    const open = async () => {
+      const fixture = await render(detail('e1', 'running', { tickets: [ticket('a')] }));
+      const element: HTMLElement = fixture.nativeElement;
+      (
+        [...element.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+          button.textContent?.includes('Lucy'),
+        ) as HTMLButtonElement
+      ).click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      return { fixture, element };
+    };
+    const widthOf = (element: HTMLElement) =>
+      (element.querySelector('.exec') as HTMLElement).style.getPropertyValue('--chat-width');
+    const handle = (element: HTMLElement) =>
+      element.querySelector('.exec__chat-resize') as HTMLElement;
+    /** Arrastra el borde hasta que el cursor quede en `x` y suelta. */
+    const dragTo = async (fixture: { detectChanges(): void }, element: HTMLElement, x: number) => {
+      handle(element).dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, cancelable: true }),
+      );
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: x }));
+      window.dispatchEvent(new MouseEvent('pointerup'));
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+    };
+
+    beforeEach(() => localStorage.removeItem(WIDTH_KEY));
+
+    it('starts at the usual width and has a handle on its left edge', async () => {
+      const { element } = await open();
+
+      expect(widthOf(element)).toBe('420px');
+      expect(handle(element).getAttribute('role')).toBe('separator');
+    });
+
+    it('is widened by dragging the edge to the left: its width is what is left up to the cursor', async () => {
+      const { fixture, element } = await open();
+
+      await dragTo(fixture, element, window.innerWidth - 560);
+
+      expect(widthOf(element)).toBe('560px');
+    });
+
+    it('never gets narrower than 320px, nor wider than seventy percent of the screen', async () => {
+      const { fixture, element } = await open();
+
+      await dragTo(fixture, element, window.innerWidth - 100);
+      expect(widthOf(element)).toBe('320px');
+
+      await dragTo(fixture, element, 0);
+      expect(widthOf(element)).toBe(`${Math.floor(window.innerWidth * 0.7)}px`);
+    });
+
+    it('remembers the width for the next time', async () => {
+      const { fixture, element } = await open();
+      await dragTo(fixture, element, window.innerWidth - 500);
+
+      expect(localStorage.getItem(WIDTH_KEY)).toBe('500');
+    });
+
+    it('opens at the width it was left at', async () => {
+      localStorage.setItem(WIDTH_KEY, '480');
+
+      const { element } = await open();
+
+      expect(widthOf(element)).toBe('480px');
+    });
+
+    it('also changes with the arrow keys: left widens, right narrows', async () => {
+      const { fixture, element } = await open();
+
+      handle(element).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true }),
+      );
+      fixture.detectChanges();
+      expect(widthOf(element)).toBe('444px');
+
+      handle(element).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }),
+      );
+      handle(element).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }),
+      );
+      fixture.detectChanges();
+      expect(widthOf(element)).toBe('396px');
+    });
+
+    it('ignores the other keys', async () => {
+      const { fixture, element } = await open();
+
+      handle(element).dispatchEvent(new KeyboardEvent('keydown', { key: 'a', cancelable: true }));
+      fixture.detectChanges();
+
+      expect(widthOf(element)).toBe('420px');
+    });
+  });
+
   describe('the projects of the execution', () => {
     const target = (fullName: string, extra: Record<string, unknown> = {}) => ({
       repo: { url: 'u', host: 'github.com', fullName, sshUrl: 's' },

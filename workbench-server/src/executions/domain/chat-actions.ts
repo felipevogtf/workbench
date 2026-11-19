@@ -105,7 +105,9 @@ export function extractActions(
     if (action) actions.push(action);
     else kept.push(line);
   }
-  return { reply: withoutEmptyFences(kept.join('\n')).trim(), actions };
+  // Donde estaban las líneas de acción quedan huecos: no más de una línea en blanco seguida.
+  const text = withoutEmptyFences(kept.join('\n')).replace(/\n{3,}/g, '\n\n');
+  return { reply: text.trim(), actions };
 }
 
 /** Si Lucy puso sus líneas dentro de un bloque de código, al sacarlas queda el bloque vacío: se quita. */
