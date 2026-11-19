@@ -91,8 +91,8 @@
             type="button"
             class="context__chip"
             title="Los repositorios donde se trabaja: opcionales, se suman y se quitan cuando quieras"
-            [attr.aria-pressed]="side() === 'projects'"
-            (click)="toggleSide('projects')"
+            aria-haspopup="dialog"
+            (click)="projectsOpen.set(true)"
           >
             <app-icon name="folder" size="1em" />
             Proyectos
@@ -113,41 +113,43 @@
           <button
             type="button"
             class="context__chip"
-            [attr.aria-pressed]="side() === 'members'"
-            (click)="toggleSide('members')"
+            aria-haspopup="dialog"
+            (click)="ticketsOpen.set(true)"
           >
             <app-icon name="list-checks" size="1em" />
             Tickets <small>{{ session.members.length }}</small>
           </button>
         }
-        <button
-          type="button"
-          class="context__chip"
-          [class.context__chip--ready]="hasReadyPlan() && !planning()"
-          [attr.aria-pressed]="side() === 'plan'"
-          (click)="toggleSide('plan')"
-        >
-          @if (planning()) {
-            <app-spinner size="1em" />
-          } @else {
-            <app-icon name="file-text" size="1em" />
-          }
-          Plan
-          <small>
+        @if (hasPlan()) {
+          <button
+            type="button"
+            class="context__chip"
+            [class.context__chip--ready]="hasReadyPlan() && !planning()"
+            [attr.aria-pressed]="planOpen()"
+            (click)="toggleSide('plan')"
+          >
             @if (planning()) {
-              actualizándose…
-            } @else if (hasReadyPlan()) {
-              v{{ planVersion() }}
+              <app-spinner size="1em" />
             } @else {
-              sin plan
+              <app-icon name="file-text" size="1em" />
             }
-          </small>
-        </button>
+            Plan
+            <small>
+              @if (planning()) {
+                actualizándose…
+              } @else if (hasReadyPlan()) {
+                v{{ planVersion() }}
+              } @else {
+                sin plan
+              }
+            </small>
+          </button>
+        }
       </div>
 
       <div
         class="organizer__body"
-        [class.organizer__body--split]="side() !== null"
+        [class.organizer__body--split]="planOpen()"
         [style.--chat-share]="chatShare()"
       >
         <section class="organizer__chat" aria-label="Chat con la IA">
@@ -190,7 +192,7 @@
           </app-chat-panel>
         </section>
 
-        @if (side() !== null) {
+        @if (planOpen()) {
           <div
             class="organizer__divider"
             role="separator"
@@ -204,47 +206,8 @@
             (keydown)="nudgeDivider($event)"
           ></div>
 
-          <aside
-            class="organizer__side"
-            [attr.aria-label]="
-              side() === 'members'
-                ? 'Tickets de la conversación'
-                : side() === 'projects'
-                  ? 'Proyectos'
-                  : 'Plan'
-            "
-          >
-            @if (side() === 'projects' && !isTask()) {
-              <div class="organizer__projects">
-                <h2 class="organizer__projects-title">Proyectos</h2>
-                <p class="muted">
-                  Los repositorios que la IA puede leer y donde se ejecuta el plan. Son opcionales:
-                  súmalos o quítalos cuando quieras (hasta {{ maxProjects }}).
-                </p>
-                <app-chip-picker
-                  label="Proyectos de la conversación"
-                  emptyText="Todavía no hay proyectos. Créalos en Automatización → Proyectos."
-                  [options]="projectOptions()"
-                  [selected]="session.projectRepos"
-                  (selectedChange)="changeProjects($event)"
-                />
-              </div>
-            }
-
-            @if (side() === 'members' && !isTask()) {
-              <app-members-panel
-                class="members"
-                [members]="session.members"
-                [groupIssueId]="session.groupIssueId"
-                [projectRepos]="session.projectRepos"
-                [saving]="store.saving()"
-                (changed)="changeMembers($event)"
-                (ticketCreated)="createTicket($event)"
-                (opened)="sheet.set({ id: $event })"
-              />
-            }
-
-            @if (side() === 'plan' && groupIssue(); as issue) {
+          <aside class="organizer__side" aria-label="Plan">
+            @if (groupIssue(); as issue) {
               @if (plan() || planning()) {
                 <app-plan-panel [issue]="issue" [bare]="true" />
               } @else {
@@ -261,6 +224,35 @@
           </aside>
         }
       </div>
+
+      @if (!isTask()) {
+        <app-dialog heading="Proyectos de la conversación" [(open)]="projectsOpen">
+          <p class="muted">
+            Los repositorios que la IA puede leer y donde se ejecuta el plan. Son opcionales:
+            súmalos o quítalos cuando quieras (hasta {{ maxProjects }}).
+          </p>
+          <app-chip-picker
+            label="Proyectos de la conversación"
+            emptyText="Todavía no hay proyectos. Créalos en Automatización → Proyectos."
+            [options]="projectOptions()"
+            [selected]="session.projectRepos"
+            (selectedChange)="changeProjects($event)"
+          />
+        </app-dialog>
+
+        <app-dialog [wide]="true" heading="Tickets de la conversación" [(open)]="ticketsOpen">
+          <app-members-panel
+            class="members"
+            [members]="session.members"
+            [groupIssueId]="session.groupIssueId"
+            [projectRepos]="session.projectRepos"
+            [saving]="store.saving()"
+            (changed)="changeMembers($event)"
+            (ticketCreated)="createTicket($event)"
+            (opened)="sheet.set({ id: $event })"
+          />
+        </app-dialog>
+      }
 
       <app-dialog
         [wide]="true"

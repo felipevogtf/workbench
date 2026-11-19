@@ -159,7 +159,10 @@ export class OrganizerPage {
   );
 
   /** Lo que se muestra a la derecha del chat: el plan o los tickets de la sesión; `null` = solo el chat, a todo el ancho. */
-  protected readonly side = signal<'plan' | 'members' | 'projects' | null>(null);
+  protected readonly side = signal<'plan' | null>(null);
+  /** Los proyectos y los tickets se configuran en un diálogo: no son algo que se lea junto al chat. */
+  protected readonly projectsOpen = signal(false);
+  protected readonly ticketsOpen = signal(false);
 
   /** Los proyectos que se pueden sumar a la conversación, y cuántos admite. */
   private readonly repoProjects = signal<Project[]>([]);
@@ -201,6 +204,12 @@ export class OrganizerPage {
   protected readonly planning = computed(
     () => !this.isDraft() && (this.plans.requesting() || !!this.plans.active()),
   );
+  /** Hay un plan (o se está haciendo): solo entonces existe la ficha del plan y su panel. */
+  protected readonly hasPlan = computed(
+    () => !this.isDraft() && (this.plan() !== null || this.planning()),
+  );
+  /** El plan está abierto junto al chat. */
+  protected readonly planOpen = computed(() => this.side() === 'plan' && this.hasPlan());
   protected readonly canPlan = computed(
     () =>
       // Con tickets, o con algo hablado: una conversación sin tickets también se puede planificar.
@@ -275,7 +284,7 @@ export class OrganizerPage {
   }
 
   /** Abre (o cierra, si ya estaba abierto) el plan o los tickets a la derecha del chat. */
-  protected toggleSide(which: 'plan' | 'members' | 'projects'): void {
+  protected toggleSide(which: 'plan'): void {
     this.side.update((current) => (current === which ? null : which));
   }
 

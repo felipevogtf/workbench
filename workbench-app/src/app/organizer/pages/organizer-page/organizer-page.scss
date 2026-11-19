@@ -230,15 +230,3 @@ app-plan-panel {
     scrollbar-color: color-mix(in srgb, var(--text-color) 40%, transparent) transparent;
   }
 }
-
-.organizer__projects {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.organizer__projects-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}

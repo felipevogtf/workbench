@@ -54,11 +54,13 @@ describe('OrganizerPage planning', () => {
     createTicket(name: string): Promise<void>;
     createPlan(): Promise<void>;
     isDraft(): boolean;
+    hasPlan(): boolean;
+    planOpen(): boolean;
     view(): { title: string; projectRepos: string[] } | null;
     plannedKey(): string;
     reset(): Promise<void>;
-    side(): 'plan' | 'members' | 'projects' | null;
-    toggleSide(which: 'plan' | 'members' | 'projects'): void;
+    side(): 'plan' | null;
+    toggleSide(which: 'plan'): void;
   }
 
   /** `draft`: un chat nuevo (sin `id` en la ruta y sin sesión). */
@@ -299,14 +301,21 @@ describe('OrganizerPage planning', () => {
   });
 
   describe('what opens beside the chat', () => {
-    it('starts with only the chat, and a chip opens the plan or the tickets in its place', () => {
+    it('starts with only the chat, and the plan chip opens the plan beside it', () => {
       const page = create();
 
       expect(page.side()).toBeNull();
       page.toggleSide('plan');
       expect(page.side()).toBe('plan');
-      page.toggleSide('members');
-      expect(page.side()).toBe('members');
+    });
+
+    it('has no plan chip and no plan panel while there is no plan', () => {
+      const page = create({ kind: 'group', title: 'Algo' });
+
+      expect(page.hasPlan()).toBe(false);
+      // Aunque se pida abrirlo, sin plan no hay nada que mostrar al lado del chat.
+      page.toggleSide('plan');
+      expect(page.planOpen()).toBe(false);
     });
 
     it('closes what is open when its chip is pressed again', () => {
