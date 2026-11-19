@@ -5,6 +5,13 @@ import { Toast } from '@shared/ui/toast/toast';
 import { Project, ProjectInput, RepositoryOption } from '../models/project';
 import { ProjectsApi } from './projects.api';
 
+/** Por nombre (el que ve el usuario); el repositorio desempata. */
+function sortProjects(projects: Project[]): Project[] {
+  return [...projects].sort(
+    (a, b) => a.name.localeCompare(b.name, 'es') || a.repo.localeCompare(b.repo),
+  );
+}
+
 /** Los proyectos, uno por repositorio, cada uno con su receta. */
 @Injectable({ providedIn: 'root' })
 export class ProjectsStore {
@@ -35,7 +42,7 @@ export class ProjectsStore {
         // Sin las etiquetas se puede seguir: solo se pierde la ayuda para elegir el repositorio.
         firstValueFrom(this.api.repositories()).catch(() => [] as RepositoryOption[]),
       ]);
-      this.items.set(projects);
+      this.items.set(sortProjects(projects));
       this.optionItems.set(options);
       this.loadedState.set(true);
     } catch (error) {
@@ -70,9 +77,11 @@ export class ProjectsStore {
         )
       : await firstValueFrom(this.api.create(input));
     this.items.update((list) =>
-      existing
-        ? list.map((project) => (project.id === saved.id ? saved : project))
-        : [...list, saved].sort((a, b) => a.repo.localeCompare(b.repo)),
+      sortProjects(
+        existing
+          ? list.map((project) => (project.id === saved.id ? saved : project))
+          : [...list, saved],
+      ),
     );
     return saved;
   }

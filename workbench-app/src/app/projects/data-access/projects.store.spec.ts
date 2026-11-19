@@ -69,11 +69,11 @@ describe('ProjectsStore', () => {
     toast = TestBed.inject(Toast);
   });
 
-  it('loads the projects and knows which repositories have one', async () => {
+  it('loads the projects sorted by name and knows which repositories have one', async () => {
     await store.load();
 
-    expect(store.projects().map((item) => item.repo)).toEqual(['acme/web', 'acme/app']);
-    expect(store.repos()).toEqual(['acme/web', 'acme/app']);
+    expect(store.projects().map((item) => item.repo)).toEqual(['acme/app', 'acme/web']);
+    expect(store.repos()).toEqual(['acme/app', 'acme/web']);
     expect(store.loaded()).toBe(true);
     expect(store.error()).toBeNull();
   });

@@ -92,6 +92,18 @@ describe('ProjectsService', () => {
     ).rejects.toMatchObject({ kind: 'conflict' });
   });
 
+  it('lists the projects by name, not by repository', async () => {
+    await service.create({ repo: 'acme/a-repo', name: 'Zeta', content: '' });
+    await service.create({ repo: 'zeta/z-repo', name: 'Alfa', content: '' });
+    await service.create({ repo: 'acme/m-repo', name: 'Mimixer', content: '' });
+
+    expect((await service.list()).map((project) => project.name)).toEqual([
+      'Alfa',
+      'Mimixer',
+      'Zeta',
+    ]);
+  });
+
   it('prepares the new copy of the repository and drops the old one when the link changes', async () => {
     const { id } = await service.create({
       repo: 'acme/app',

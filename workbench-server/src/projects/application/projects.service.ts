@@ -33,7 +33,11 @@ export class ProjectsService {
 
   async list(): Promise<Project[]> {
     const all = await this.projects.findAll();
-    return all.sort((a, b) => a.repo.localeCompare(b.repo));
+    // Por nombre (el que ve el usuario); el repositorio desempata.
+    return all.sort(
+      (a, b) =>
+        a.name.localeCompare(b.name, 'es') || a.repo.localeCompare(b.repo),
+    );
   }
 
   /** Los repositorios a los que apuntan las etiquetas: de ahí se elige de qué repositorio es el proyecto. */
