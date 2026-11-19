@@ -160,7 +160,10 @@ const MENU: MenuItem[] = [{ id: 'remove', label: 'Eliminar', icon: 'trash', tone
     }
 
     // El menú de cada conversación solo se ve al pasar por ella (o con el foco).
+    // Como bloque flexible: un elemento en línea deja un hueco de línea que agranda la fila y descentra el título.
     .side__menu {
+      display: flex;
+      align-items: center;
       opacity: 0;
       flex: none;
       margin-right: var(--space-1);
