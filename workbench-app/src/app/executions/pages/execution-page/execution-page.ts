@@ -285,8 +285,10 @@ export class ExecutionPage {
     switch (execution.status) {
       case 'running':
         return executionProgress(execution) ?? '';
-      case 'awaiting':
-        return 'Los tickets están listos. Revisa quién hace cada uno y pulsa Empezar.';
+      case 'draft':
+        return this.ticketsRunning(execution)
+          ? 'Lucy está creando los tickets a partir del plan…'
+          : 'Los tickets están listos. Ajústalos con Lucy, revisa quién hace cada uno y pulsa Ejecutar.';
       case 'completed':
         return 'Todos los tickets están hechos y la pull request está abierta.';
       case 'failed':
@@ -363,6 +365,25 @@ export class ExecutionPage {
 
   protected answer(reply: { ticketId: string; text: string }): void {
     void this.store.answer(reply.ticketId, reply.text);
+  }
+
+  /** Lucy todavía está creando los tickets a partir del plan. */
+  protected ticketsRunning(execution: ExecutionDetail): boolean {
+    return execution.stages.some((stage) => stage.key === 'tickets' && stage.status === 'running');
+  }
+
+  /** Algo se está haciendo ahora: el desarrollo, o Lucy creando los tickets del borrador. */
+  protected working(execution: ExecutionDetail): boolean {
+    return execution.status === 'running' || this.ticketsRunning(execution);
+  }
+
+  /** Por qué el play no se puede pulsar todavía; `null` si se puede. */
+  protected playBlocker(execution: ExecutionDetail): string | null {
+    if (this.ticketsRunning(execution)) return 'Lucy todavía está creando los tickets';
+    if (!this.cards().some((card) => card.ticket.status === 'pending')) {
+      return 'No hay tickets por ejecutar';
+    }
+    return null;
   }
 
   protected begin(): void {

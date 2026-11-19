@@ -36,7 +36,7 @@ export class TypeOrmExecutionRepository implements ExecutionRepositoryPort {
 
   async findActiveByIssueId(issueId: string): Promise<Execution | null> {
     const orm = await this.repository.findOne({
-      where: { issue_id: issueId, status: In(['running', 'awaiting']) },
+      where: { issue_id: issueId, status: In(['running', 'draft']) },
     });
     return orm ? this.toDomain(orm) : null;
   }

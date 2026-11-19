@@ -1,6 +1,9 @@
-/** `awaiting`: los tickets están creados y asignados, y se espera a que el usuario dé el visto bueno. */
+/**
+ * `draft`: el borrador. Nace así, mientras Lucy crea los tickets, y sigue así con los tickets listos hasta que el usuario pulsa
+ * play: en ese tiempo se ajustan tickets y quién los hace, y no hay nada corriendo en el código. `running` empieza con el play.
+ */
 export type ExecutionStatus =
-  'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
+  'draft' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 /** Tamaño de un ticket: decide qué desarrollador lo toma. */
 export const TICKET_LEVELS = ['simple', 'medium', 'complex'] as const;

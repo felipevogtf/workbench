@@ -1,8 +1,11 @@
 import type { BadgeTone } from '@shared/ui/badge/badge';
 import type { ExecutionUsage } from './usage';
 
-/** `awaiting`: los tickets están listos y asignados; se espera el visto bueno del usuario. */
-export type ExecutionStatus = 'running' | 'awaiting' | 'completed' | 'failed' | 'cancelled';
+/**
+ * `draft`: el borrador. Nace así mientras Lucy crea los tickets y sigue así, con los tickets listos, hasta que el usuario pulsa
+ * play; mientras tanto se ajustan tickets y quién los hace. `running` empieza con el play.
+ */
+export type ExecutionStatus = 'draft' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TicketLevel = 'simple' | 'medium' | 'complex';
 export type StageKey = 'tickets' | 'develop' | 'review' | 'publish';
 /** Los trabajos son las etapas y, aparte, la revisión final que el usuario pide cuando la ejecución terminó. */
@@ -252,9 +255,9 @@ export interface CreatedRunner extends Runner {
   token: string;
 }
 
-/** En curso (trabajando o esperando el visto bueno): no se puede lanzar otra de la misma tarea. */
+/** En curso (borrador o trabajando): no se puede lanzar otra de la misma tarea. */
 export function isExecutionActive(execution: Pick<Execution, 'status'>): boolean {
-  return execution.status === 'running' || execution.status === 'awaiting';
+  return execution.status === 'running' || execution.status === 'draft';
 }
 
 export const TICKET_LEVEL_LABEL: Record<TicketLevel, string> = {
@@ -283,16 +286,16 @@ export const STAGE_HINT: Record<StageKey, string> = {
 };
 
 export const EXECUTION_STATUS_LABEL: Record<ExecutionStatus, string> = {
+  draft: 'Borrador',
   running: 'En curso',
-  awaiting: 'Esperando tu visto bueno',
   completed: 'Completada',
   failed: 'Falló',
   cancelled: 'Cancelada',
 };
 
 export const EXECUTION_STATUS_TONE: Record<ExecutionStatus, BadgeTone> = {
+  draft: 'warning',
   running: 'info',
-  awaiting: 'warning',
   completed: 'success',
   failed: 'danger',
   cancelled: 'neutral',

@@ -722,9 +722,8 @@ export class ExecutionsService {
         );
         execution.setTickets(drafts.map((draft) => this.ticketFrom(draft)));
         await this.assignTickets(execution);
+        // Sigue siendo un borrador: el usuario ajusta los tickets y quién los hace, y empieza con el play.
         execution.setStage('tickets', 'done');
-        // Se espera el visto bueno: el usuario puede cambiar quién hace cada ticket antes de empezar.
-        execution.awaitStart();
         return;
       }
 
@@ -1181,7 +1180,7 @@ export class ExecutionsService {
     });
   }
 
-  /** Cambia quién desarrolla o revisa un ticket. Solo mientras se espera el visto bueno. */
+  /** Cambia quién desarrolla o revisa un ticket. Solo en el borrador, antes del play. */
   async assign(
     id: string,
     ticketId: string,
@@ -1191,9 +1190,9 @@ export class ExecutionsService {
     if (!execution) {
       throw DomainError.notFound(`Execution with id ${id} not found`);
     }
-    if (execution.status !== 'awaiting') {
+    if (!execution.isDraft) {
       throw DomainError.conflict(
-        'Tickets can only be reassigned while the execution waits to start',
+        'Tickets can only be reassigned while the execution is a draft',
       );
     }
 
@@ -1209,7 +1208,7 @@ export class ExecutionsService {
     return this.executions.save(execution);
   }
 
-  /** El visto bueno: empieza a desarrollar los tickets, uno a uno. */
+  /** El play: el borrador empieza a desarrollar los tickets, uno a uno. */
   async begin(id: string): Promise<Execution> {
     const execution = await this.executions.findById(id);
     if (!execution) {

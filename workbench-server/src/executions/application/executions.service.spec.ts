@@ -183,7 +183,7 @@ describe('ExecutionsService', () => {
     it('queues the tickets job with the plan, the repo and a branch of its own', async () => {
       const execution = await service.start('issue-1');
 
-      expect(execution.status).toBe('running');
+      expect(execution.status).toBe('draft');
       expect(execution.branch).toBe('feature/vista-de-ordenes-de-carga');
       expect(execution.repo).toMatchObject({
         fullName: 'acme/web',
@@ -1492,8 +1492,8 @@ describe('ExecutionsService', () => {
     });
     const NOTE = 'No toques los submódulos: todo cambio ahí se descarta.';
 
-    /** Los tickets ya están creados y se espera el visto bueno. */
-    async function awaiting() {
+    /** Los tickets ya están creados y la ejecución sigue en borrador, esperando el play. */
+    async function drafted() {
       const execution = await service.start('issue-1');
       await answer({ output: ONE });
       return execution.id;
@@ -1502,7 +1502,7 @@ describe('ExecutionsService', () => {
       (await service.get(id)).execution.tickets[0];
 
     it('keeps the note on the ticket', async () => {
-      const id = await awaiting();
+      const id = await drafted();
       const ticket = await ticketOf(id);
 
       await service.addNote(id, ticket.id, `  ${NOTE}  `);
@@ -1513,7 +1513,7 @@ describe('ExecutionsService', () => {
     });
 
     it('gives the developer the note when the ticket is worked on', async () => {
-      const id = await awaiting();
+      const id = await drafted();
       const ticket = await ticketOf(id);
       await service.addNote(id, ticket.id, NOTE);
 
@@ -1526,7 +1526,7 @@ describe('ExecutionsService', () => {
     });
 
     it('gives the note to the reviewer too', async () => {
-      const id = await awaiting();
+      const id = await drafted();
       const ticket = await ticketOf(id);
       await service.addNote(id, ticket.id, NOTE);
       await service.begin(id);
@@ -1539,7 +1539,7 @@ describe('ExecutionsService', () => {
     });
 
     it('does not take an empty note, one for a ticket that is done, or one for an unknown ticket', async () => {
-      const id = await awaiting();
+      const id = await drafted();
       const ticket = await ticketOf(id);
 
       await expect(service.addNote(id, ticket.id, '   ')).rejects.toThrow(
@@ -1596,12 +1596,12 @@ describe('ExecutionsService', () => {
       ];
     });
 
-    it('waits for the go-ahead once the tickets exist, without developing anything yet', async () => {
+    it('stays a draft once the tickets exist, without developing anything until play', async () => {
       const execution = await service.start('issue-1');
       await answer({ output: LEVELED });
 
       const { execution: current } = await service.get(execution.id);
-      expect(current.status).toBe('awaiting');
+      expect(current.status).toBe('draft');
       expect(current.isActive).toBe(true);
       expect(current.stages.map((s) => [s.key, s.status])).toEqual([
         ['tickets', 'done'],
@@ -1612,6 +1612,78 @@ describe('ExecutionsService', () => {
       expect(jobs.items.filter((job) => job.isOpen)).toHaveLength(0);
       await expect(service.start('issue-1')).rejects.toMatchObject({
         kind: 'conflict',
+      });
+    });
+
+    describe('the draft and the play', () => {
+      it('is born a draft, while Lucy creates the tickets, and play is refused until they exist', async () => {
+        const execution = await service.start('issue-1');
+
+        const { execution: current } = await service.get(execution.id);
+        expect(current.status).toBe('draft');
+        expect(current.isActive).toBe(true);
+        await expect(service.begin(execution.id)).rejects.toMatchObject({
+          kind: 'conflict',
+        });
+        expect(jobs.items.at(-1)!.kind).toBe('tickets');
+      });
+
+      it('play starts the development: it is no longer a draft, and cannot be played twice', async () => {
+        const execution = await service.start('issue-1');
+        await answer({ output: LEVELED });
+
+        await service.begin(execution.id);
+
+        const { execution: current } = await service.get(execution.id);
+        expect(current.status).toBe('running');
+        expect(jobs.items.at(-1)!.kind).toBe('develop');
+        await expect(service.begin(execution.id)).rejects.toMatchObject({
+          kind: 'conflict',
+        });
+      });
+
+      it('lets the user change who does each ticket only while it is a draft', async () => {
+        const execution = await service.start('issue-1');
+        await answer({ output: LEVELED });
+        const ticket = (await service.get(execution.id)).execution.tickets[0];
+
+        await service.assign(execution.id, ticket.id, {
+          developerId: 'agent-task-developer-simple',
+        });
+        await service.begin(execution.id);
+
+        await expect(
+          service.assign(execution.id, ticket.id, {
+            developerId: 'agent-task-developer',
+          }),
+        ).rejects.toMatchObject({ kind: 'conflict' });
+      });
+
+      it('a retry after failing to create the tickets is still a draft', async () => {
+        const execution = await service.start('issue-1');
+        await answer({ output: '' }, false, 'se cayó');
+        expect((await service.get(execution.id)).execution.status).toBe(
+          'failed',
+        );
+
+        await service.retry(execution.id);
+
+        expect((await service.get(execution.id)).execution.status).toBe(
+          'draft',
+        );
+      });
+
+      it('a retry after the development began goes back to running', async () => {
+        const execution = await service.start('issue-1');
+        await answer({ output: LEVELED });
+        await service.begin(execution.id);
+        await answer({ output: '' }, false, 'se cayó');
+
+        await service.retry(execution.id);
+
+        expect((await service.get(execution.id)).execution.status).toBe(
+          'running',
+        );
       });
     });
 

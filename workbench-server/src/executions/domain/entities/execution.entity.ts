@@ -39,7 +39,7 @@ export class Execution {
         baseBranch: null,
         pullRequestUrl: null,
       })),
-      status: 'running',
+      status: 'draft',
       stages: STAGE_KEYS.map((key) => ({
         key,
         status: 'pending',
@@ -125,7 +125,7 @@ export class Execution {
   }
 
   get isActive(): boolean {
-    return this.props.status === 'running' || this.props.status === 'awaiting';
+    return this.props.status === 'running' || this.props.status === 'draft';
   }
 
   toProps(): ExecutionProps {
@@ -209,16 +209,26 @@ export class Execution {
     this.touch();
   }
 
-  /** Los tickets están listos: se espera el visto bueno del usuario antes de desarrollarlos. */
-  awaitStart(): void {
-    this.props.status = 'awaiting';
-    this.touch();
+  /** Es un borrador: nada corre todavía y se pueden ajustar los tickets. */
+  get isDraft(): boolean {
+    return this.props.status === 'draft';
   }
 
-  /** El usuario dio el visto bueno: empieza el desarrollo. */
+  /**
+   * El play: el borrador empieza a desarrollarse. Pide que Lucy haya terminado de crear los tickets y que haya alguno por hacer.
+   */
   begin(): void {
-    if (this.props.status !== 'awaiting') {
-      throw DomainError.conflict('The execution is not waiting to start');
+    if (this.props.status !== 'draft') {
+      throw DomainError.conflict('Only a draft can be played');
+    }
+    const ticketsStage = this.props.stages.find(
+      (stage) => stage.key === 'tickets',
+    );
+    if (ticketsStage?.status !== 'done') {
+      throw DomainError.conflict('The tickets are not ready yet');
+    }
+    if (!this.nextPendingTicket()) {
+      throw DomainError.conflict('There are no tickets to run');
     }
     this.props.status = 'running';
     this.touch();
@@ -343,7 +353,11 @@ export class Execution {
     if (this.props.status !== 'failed') {
       throw DomainError.conflict('Only a failed execution can be retried');
     }
-    this.props.status = 'running';
+    // Si falló al crear los tickets sigue siendo un borrador; si falló después, el desarrollo ya había empezado.
+    const ticketsStage = this.props.stages.find(
+      (stage) => stage.key === 'tickets',
+    );
+    this.props.status = ticketsStage?.status === 'done' ? 'running' : 'draft';
     this.props.error = null;
     this.props.finishedAt = null;
     this.touch();

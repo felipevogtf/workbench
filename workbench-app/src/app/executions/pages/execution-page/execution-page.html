@@ -57,12 +57,19 @@
               </a>
             }
           }
-          @if (execution.status === 'awaiting') {
-            <button app-button type="button" [loading]="store.acting()" (click)="begin()">
-              <app-icon name="play" size="1em" /> Empezar el desarrollo
+          @if (execution.status === 'draft') {
+            <button
+              app-button
+              type="button"
+              [loading]="store.acting()"
+              [disabled]="playBlocker(execution) !== null"
+              [title]="playBlocker(execution) ?? 'Empezar a desarrollar los tickets'"
+              (click)="begin()"
+            >
+              <app-icon name="play" size="1em" /> Ejecutar
             </button>
           }
-          @if (execution.status === 'running' || execution.status === 'awaiting') {
+          @if (execution.status === 'running' || execution.status === 'draft') {
             <button
               app-button
               variant="danger"
@@ -146,7 +153,7 @@
               {{ statusLabel[execution.status] }}
             </app-badge>
             <span class="summary__activity">
-              @if (execution.status === 'running') {
+              @if (working(execution)) {
                 <app-spinner size="0.9em" />
               }
               {{ activity(execution) }}
@@ -212,13 +219,13 @@
 
         @if (cards().length === 0) {
           <p class="muted">
-            @if (execution.status === 'running') {
-              El agente está leyendo el plan y el código para crear los tickets…
+            @if (ticketsRunning(execution)) {
+              Lucy está leyendo el plan y el código para crear los tickets…
             } @else {
               No se llegaron a crear tickets.
             }
           </p>
-        } @else if (execution.status === 'awaiting') {
+        } @else if (execution.status === 'draft') {
           <app-ticket-assignment
             [cards]="cards()"
             [developers]="developers()"

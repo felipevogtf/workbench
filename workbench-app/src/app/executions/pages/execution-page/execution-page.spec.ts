@@ -59,7 +59,7 @@ describe('ExecutionPage', () => {
       cancel: vi.fn(() => of(execution('e1', 'cancelled'))),
       retry: vi.fn(() => of(execution('e1', 'running'))),
       begin: vi.fn(() => of(execution('e1', 'running'))),
-      assign: vi.fn(() => of(execution('e1', 'awaiting'))),
+      assign: vi.fn(() => of(execution('e1', 'draft'))),
       chat: vi.fn(() => of({ reply: 'Va bien' })),
       answer: vi.fn(() => of(execution('e1', 'running'))),
       reopenTicket: vi.fn(() => of(execution('e1', 'running'))),
@@ -475,41 +475,81 @@ describe('ExecutionPage', () => {
     });
   });
 
-  describe('while it waits for the go-ahead', () => {
-    const awaiting = () =>
-      detail('e1', 'awaiting', {
+  describe('the draft, until play is pressed', () => {
+    const stages = (tickets: 'running' | 'done') =>
+      [
+        { key: 'tickets', status: tickets, startedAt: null, finishedAt: null },
+        { key: 'develop', status: 'pending', startedAt: null, finishedAt: null },
+        { key: 'review', status: 'pending', startedAt: null, finishedAt: null },
+        { key: 'publish', status: 'pending', startedAt: null, finishedAt: null },
+      ] as const;
+    const drafted = () =>
+      detail('e1', 'draft', {
+        stages: [...stages('done')],
         tickets: [
           ticket('a', { title: 'Uno', developerId: 'ag-dev', reviewerId: 'ag-rev' }),
           ticket('b', { title: 'Dos', developerId: 'ag-dev', reviewerId: 'ag-rev' }),
         ],
         jobs: [job('jt', { kind: 'tickets', agentId: 'ag-tk' })],
       });
+    const play = (element: HTMLElement) =>
+      [...element.querySelectorAll<HTMLButtonElement>('app-page-header button')].find((button) =>
+        button.textContent?.includes('Ejecutar'),
+      ) as HTMLButtonElement;
 
-    it('shows the assignment of the tickets instead of the board, with a button to start', async () => {
-      const fixture = await render(awaiting());
+    it('shows the assignment of the tickets instead of the board, with the play button', async () => {
+      const fixture = await render(drafted());
       const element: HTMLElement = fixture.nativeElement;
 
       expect(element.querySelector('app-ticket-assignment')).not.toBeNull();
       expect(element.querySelector('app-ticket-board')).toBeNull();
-      expect(element.textContent).toContain('Esperando tu visto bueno');
-      expect(headerButtons(element)).toContain('Empezar el desarrollo');
+      expect(element.textContent).toContain('Borrador');
+      expect(headerButtons(element)).toContain('Ejecutar');
       expect(headerButtons(element)).toContain('Cancelar');
+      expect(headerButtons(element)).not.toContain('Empezar el desarrollo');
+      expect(play(element).disabled).toBe(false);
     });
 
-    it('starts the development when the user gives the go-ahead', async () => {
-      const fixture = await render(awaiting());
-      const start = [...fixture.nativeElement.querySelectorAll('app-page-header button')].find(
-        (button) => (button as HTMLElement).textContent?.includes('Empezar'),
-      ) as HTMLButtonElement;
+    it('starts the development when play is pressed', async () => {
+      const fixture = await render(drafted());
 
-      start.click();
+      play(fixture.nativeElement).click();
       await vi.advanceTimersByTimeAsync(0);
 
       expect(api.begin).toHaveBeenCalledWith('e1');
     });
 
+    it('shows play from the start but disabled while Lucy is still creating the tickets, and says why', async () => {
+      const fixture = await render(detail('e1', 'draft', { stages: [...stages('running')] }));
+      const element: HTMLElement = fixture.nativeElement;
+
+      expect(play(element).disabled).toBe(true);
+      expect(play(element).title).toContain('Lucy todavía está creando los tickets');
+      expect(element.textContent).toContain('Lucy está creando los tickets');
+    });
+
+    it('keeps play disabled when there is nothing left to run', async () => {
+      const fixture = await render(
+        detail('e1', 'draft', {
+          stages: [...stages('done')],
+          tickets: [ticket('a', { status: 'done' })],
+        }),
+      );
+
+      expect(play(fixture.nativeElement).disabled).toBe(true);
+    });
+
+    it.each(['running', 'completed', 'failed', 'cancelled'] as const)(
+      'has no play button when it is %s',
+      async (status) => {
+        const fixture = await render(detail('e1', status, { stages: [...stages('done')] }));
+
+        expect(play(fixture.nativeElement)).toBeUndefined();
+      },
+    );
+
     it('sends nothing when the picked worker is the one the ticket already has', async () => {
-      const fixture = await render(awaiting());
+      const fixture = await render(drafted());
       const select = fixture.nativeElement.querySelector(
         'select[aria-label="Revisor del ticket 2"]',
       ) as HTMLSelectElement;

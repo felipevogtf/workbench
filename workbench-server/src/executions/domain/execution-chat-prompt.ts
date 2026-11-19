@@ -19,8 +19,9 @@ const MAX_NOTE = 500;
 const MAX_LOG_TAIL = 3_000;
 
 const STATUS_LABEL: Record<ExecutionStatus, string> = {
+  draft:
+    'en borrador: Lucy crea los tickets y después el usuario los ajusta y pulsa play para empezar el desarrollo',
   running: 'en curso',
-  awaiting: 'esperando el visto bueno del usuario para empezar el desarrollo',
   completed: 'completada',
   failed: 'falló',
   cancelled: 'cancelada',
