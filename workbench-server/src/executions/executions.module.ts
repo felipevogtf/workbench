@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiAgentsModule } from '@ai-agents/ai-agents.module';
 import { PlannerModule } from '@planner/planner.module';
 import { PrReviewModule } from '@pr-review/pr-review.module';
-import { RecipesModule } from '@recipes/recipes.module';
+import { ProjectsModule } from '@projects/projects.module';
 import { TasksModule } from '@tasks/tasks.module';
 import { ExecutionChatService } from './application/execution-chat.service';
 import { ExecutionsService } from './application/executions.service';
@@ -57,7 +57,7 @@ import { ExecutionsRecovery } from './infrastructure/scheduling/executions-recov
     PlannerModule,
     AiAgentsModule,
     PrReviewModule,
-    RecipesModule,
+    ProjectsModule,
   ],
   controllers: [
     ExecutionsController,

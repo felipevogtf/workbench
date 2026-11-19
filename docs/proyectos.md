@@ -22,7 +22,7 @@ uno o varios proyectos, sin ticket de Plane, con un plan que solo se crea cuando
 | **Proyecto** | Un repositorio (`org/repo`) con su receta, rama principal, dependencias, reglas y referencia a su entorno. | `recipes` (la receta es su embrión) |
 | **Task-project** | El proyecto *de tareas*: el de Plane (o local) donde viven los tickets. Es lo que hoy se llama `Project` en el módulo `tasks`. | `tasks/domain/entities/project.entity.ts`, `ProjectsStore` |
 
-- En la **interfaz**, «Proyectos» es el repositorio. Lo de Plane se muestra como **«Proyecto de tareas»**. No se usa «Tablero»: ya es el kanban de las ejecuciones (módulo `kanban`).
+- En la **interfaz**, «Proyectos» es el repositorio. Lo de Plane se muestra como **«Proyectos»** dentro del menú de gestión (el contexto lo distingue). No se usa «Tablero»: ya es el kanban de las ejecuciones (módulo `kanban`).
 - En el **código**, el módulo nuevo se llama `projects` y lo existente de tareas pasa a llamarse **`task-project`** (entidad, puerto, servicio, DTOs, store, rutas).
   Mientras no se haga el renombre, el código nuevo nunca usa `Project` a secas: siempre `RepoProject` en tipos o `projects` como módulo, y se documenta la
   diferencia en el módulo (ver etapa 0).

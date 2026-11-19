@@ -1,0 +1,105 @@
+<div class="page">
+  <app-page-header
+    heading="Proyectos"
+    subtitle="Un proyecto es un repositorio: su receta (cómo se levanta y se prueba), de quién depende y sus reglas. La IA que crea los tickets, quien los desarrolla y quien los revisa lo leen, y también lo de los proyectos de los que depende."
+  >
+    <button actions app-button type="button" (click)="openNew()">
+      <app-icon name="plus" size="1em" /> Nuevo proyecto
+    </button>
+  </app-page-header>
+
+  @if (store.error(); as error) {
+    <app-alert tone="danger" heading="No se pudieron cargar los proyectos">
+      {{ error }}
+      <button
+        alert-action
+        app-button
+        variant="secondary"
+        size="sm"
+        type="button"
+        (click)="reload()"
+      >
+        Reintentar
+      </button>
+    </app-alert>
+  } @else if (store.loading() && !store.loaded()) {
+    <div class="stack" aria-busy="true">
+      <app-skeleton height="88px" />
+      <app-skeleton height="88px" />
+    </div>
+  } @else if (store.projects().length === 0) {
+    <app-empty-state icon="file-text" heading="Todavía no hay proyectos">
+      Crea el de un repositorio y escribe su receta: cómo se levanta (Docker, puertos), cómo se llena la base de datos,
+      cómo se corren las pruebas y qué no hay que tocar. Así los agentes lo saben en vez de
+      adivinarlo.
+      <button empty-action app-button type="button" (click)="openNew()">Nuevo proyecto</button>
+    </app-empty-state>
+  } @else {
+    <ul class="projects" aria-label="Proyectos">
+      @for (project of store.projects(); track project.id) {
+        <li>
+          <app-card>
+            <div class="project">
+              <div class="recipe__main">
+                <span class="recipe__repo">{{ project.name }}</span>
+                <span class="muted">{{ project.repo }} · rama {{ project.mainBranch }}</span>
+                @if (excerpt(project)) {
+                  <p class="recipe__excerpt">{{ excerpt(project) }}</p>
+                } @else {
+                  <p class="recipe__excerpt recipe__excerpt--empty">Receta vacía</p>
+                }
+                <div class="recipe__meta">
+                  @if (store.labelsOf(project.repo).length > 0) {
+                    <span class="muted">Etiqueta</span>
+                    @for (label of store.labelsOf(project.repo); track label) {
+                      <app-badge tone="info">{{ label }}</app-badge>
+                    }
+                  } @else if (store.options().length > 0) {
+                    <app-badge
+                      tone="warning"
+                      title="Ninguna etiqueta apunta a este repositorio: el proyecto no se usará hasta que una tarea lo tenga"
+                    >
+                      Sin etiqueta
+                    </app-badge>
+                  }
+                  @if (project.dependsOn.length > 0) {
+                    <span class="muted">Depende de</span>
+                    @for (dependency of project.dependsOn; track dependency) {
+                      <app-badge tone="neutral">{{ dependency }}</app-badge>
+                    }
+                  }
+                  <span class="muted">Editada {{ project.updatedAt | timeAgo }}</span>
+                </div>
+              </div>
+              <button
+                app-icon-button
+                type="button"
+                [label]="'Editar el proyecto ' + project.repo"
+                (click)="openEdit(project)"
+              >
+                <app-icon name="edit" size="1.1rem" />
+              </button>
+              <button
+                app-icon-button
+                type="button"
+                tone="danger"
+                [label]="'Borrar el proyecto ' + project.repo"
+                (click)="remove(project)"
+              >
+                <app-icon name="trash" size="1.1rem" />
+              </button>
+            </div>
+          </app-card>
+        </li>
+      }
+    </ul>
+  }
+
+  <app-project-dialog
+    [(open)]="dialogOpen"
+    [project]="editing()"
+    [options]="store.options()"
+    [projectRepos]="store.repos()"
+    [save]="save"
+  />
+</div>

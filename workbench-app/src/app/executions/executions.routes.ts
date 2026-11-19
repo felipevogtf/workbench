@@ -14,11 +14,6 @@ export const EXECUTIONS_ROUTES: Routes = [
     loadComponent: () => import('./pages/runners-page/runners-page').then((m) => m.RunnersPage),
   },
   {
-    path: 'recipes',
-    title: 'Recetas · Workbench',
-    loadComponent: () => import('./pages/recipes-page/recipes-page').then((m) => m.RecipesPage),
-  },
-  {
     path: 'usage',
     title: 'Consumo · Workbench',
     loadComponent: () => import('./pages/usage-page/usage-page').then((m) => m.UsagePage),

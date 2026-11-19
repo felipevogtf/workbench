@@ -15,6 +15,12 @@ export const routes: Routes = [
     loadChildren: () => import('@organizer/organizer.routes').then((m) => m.ORGANIZER_ROUTES),
   },
   {
+    path: 'projects',
+    loadChildren: () => import('@projects/projects.routes').then((m) => m.PROJECTS_ROUTES),
+  },
+  // El enlace de antes, cuando eran las recetas dentro de Automatización.
+  { path: 'executions/recipes', redirectTo: 'projects', pathMatch: 'full' },
+  {
     path: 'kanban',
     loadChildren: () => import('@kanban/kanban.routes').then((m) => m.KANBAN_ROUTES),
   },

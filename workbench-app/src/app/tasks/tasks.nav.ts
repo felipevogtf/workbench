@@ -7,7 +7,7 @@ export const TASKS_NAV: NavItem = {
   order: 5,
   children: [
     { label: 'Tareas', icon: 'list-checks', path: '/tasks/issues' },
-    { label: 'Proyectos de tareas', icon: 'folder', path: '/tasks/projects' },
+    { label: 'Proyectos', icon: 'folder', path: '/tasks/projects' },
     { label: 'Estados', icon: 'circle-dot', path: '/tasks/states' },
     { label: 'Etiquetas', icon: 'tag', path: '/tasks/labels' },
   ],

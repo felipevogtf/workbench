@@ -1,0 +1,83 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { DomainError } from '@core/domain/domain.error';
+import {
+  normalizeRepoName,
+  Project,
+  type ProjectInput,
+} from '@projects/domain/entities/project.entity';
+import {
+  PROJECT_REPOSITORY_PORT,
+  type ProjectRepositoryPort,
+} from '@projects/domain/ports/project-repository.port';
+import {
+  REPOSITORY_OPTIONS_PORT,
+  type RepositoryOption,
+  type RepositoryOptionsPort,
+} from '@projects/domain/ports/repository-options.port';
+import { buildRecipeContext } from '@projects/domain/recipe-context';
+
+@Injectable()
+export class ProjectsService {
+  constructor(
+    @Inject(PROJECT_REPOSITORY_PORT)
+    private readonly projects: ProjectRepositoryPort,
+    @Inject(REPOSITORY_OPTIONS_PORT)
+    private readonly options: RepositoryOptionsPort,
+  ) {}
+
+  async list(): Promise<Project[]> {
+    const all = await this.projects.findAll();
+    return all.sort((a, b) => a.repo.localeCompare(b.repo));
+  }
+
+  /** Los repositorios a los que apuntan las etiquetas: de ahí se elige de qué repositorio es el proyecto. */
+  repositories(): Promise<RepositoryOption[]> {
+    return this.options.list();
+  }
+
+  /** El proyecto de un repositorio (`organización/repo`), o `null`. */
+  findByRepo(repo: string): Promise<Project | null> {
+    return this.projects.findByRepo(normalizeRepoName(repo));
+  }
+
+  async get(id: string): Promise<Project> {
+    const project = await this.projects.findById(id);
+    if (!project) {
+      throw DomainError.notFound(`Project with id ${id} not found`);
+    }
+    return project;
+  }
+
+  async create(input: ProjectInput): Promise<Project> {
+    const project = Project.create(input);
+    if (await this.projects.findByRepo(project.repo)) {
+      throw DomainError.conflict(
+        `There is already a project for ${project.repo}`,
+      );
+    }
+    return this.projects.save(project);
+  }
+
+  async update(
+    id: string,
+    changes: Partial<Omit<ProjectInput, 'repo'>>,
+  ): Promise<Project> {
+    const project = await this.get(id);
+    project.update(changes);
+    return this.projects.save(project);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.get(id);
+    await this.projects.delete(id);
+  }
+
+  /**
+   * Lo que se le muestra a un agente de las recetas de estos repositorios (y de los que dependen), o `null`
+   * si ninguno tiene proyecto.
+   */
+  async contextFor(repos: readonly string[]): Promise<string | null> {
+    if (repos.length === 0) return null;
+    return buildRecipeContext(repos, await this.projects.findAll());
+  }
+}

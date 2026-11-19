@@ -11,7 +11,7 @@ import { PrReviewModule } from '@pr-review/pr-review.module';
 import { PlannerModule } from '@planner/planner.module';
 import { ExecutionsModule } from '@executions/executions.module';
 import { CredentialsModule } from '@credentials/credentials.module';
-import { RecipesModule } from '@recipes/recipes.module';
+import { ProjectsModule } from '@projects/projects.module';
 import { IssueTransferModule } from '@issue-transfer/issue-transfer.module';
 import { OrganizerModule } from '@organizer/organizer.module';
 import { AutoReplyModule } from '@auto-reply/auto-reply.module';
@@ -31,7 +31,7 @@ import { AutoReplyModule } from '@auto-reply/auto-reply.module';
     AutoReplyModule,
     IssueTransferModule,
     CredentialsModule,
-    RecipesModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
