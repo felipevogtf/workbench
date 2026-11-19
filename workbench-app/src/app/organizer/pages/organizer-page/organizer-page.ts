@@ -117,6 +117,13 @@ export class OrganizerPage {
   });
   protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
 
+  /** Lo que se muestra a la derecha del chat: el plan o los tickets de la sesión; `null` = solo el chat, a todo el ancho. */
+  protected readonly side = signal<'plan' | 'members' | null>(null);
+  /** Cuántas versiones listas del plan hay (la ficha dice en cuál va). */
+  protected readonly planVersion = computed(
+    () => this.plans.plans().filter((plan) => plan.status === 'ready').length,
+  );
+
   /** Cuántos mensajes de la conversación ya entraron en un plan: al replanificar solo viajan los siguientes. */
   private readonly plannedCount = signal(0);
 
@@ -170,6 +177,11 @@ export class OrganizerPage {
         void this.createPlan(pending === 'rebuild');
       });
     });
+  }
+
+  /** Abre (o cierra, si ya estaba abierto) el plan o los tickets a la derecha del chat. */
+  protected toggleSide(which: 'plan' | 'members'): void {
+    this.side.update((current) => (current === which ? null : which));
   }
 
   /** Arrastrar el divisor entre el chat y el plan. */

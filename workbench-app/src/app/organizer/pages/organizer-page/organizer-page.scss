@@ -72,13 +72,64 @@ app-plan-panel {
   color: var(--text-color);
 }
 
+// Lo que reúne la sesión, como fichas: los proyectos, los tickets y el plan. Al pulsar una se abre a la derecha del chat.
+.organizer__context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.context__projects {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-color);
+}
+
+.context__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  small {
+    opacity: 0.8;
+  }
+
+  &:hover {
+    border-color: var(--text-color);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--background);
+  }
+
+  // Hay un plan listo: la ficha lo destaca aunque esté cerrada.
+  &--ready:not([aria-pressed='true']) {
+    border-color: var(--primary);
+  }
+}
+
 // El divisor solo existe con dos columnas: se arrastra (o con las flechas) para repartir el ancho.
 .organizer__divider {
   display: none;
 }
 
 @media (min-width: 1024px) {
-  .organizer__body {
+  .organizer__body--split {
     grid-template-columns: minmax(0, calc(var(--chat-share, 50) * 1%)) 12px minmax(0, 1fr);
     gap: 0;
   }

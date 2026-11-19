@@ -53,7 +53,53 @@
       </a>
     </ng-template>
 
-    <div class="organizer__body" [style.--chat-share]="chatShare()">
+    <div class="organizer__context" role="toolbar" aria-label="Lo que reúne la sesión">
+      @if (session.projectRepos.length > 0) {
+        <span class="context__projects" title="Los proyectos donde se trabaja">
+          <app-icon name="folder" size="1em" /> {{ session.projectRepos.join(', ') }}
+        </span>
+      }
+      @if (!isTask()) {
+        <button
+          type="button"
+          class="context__chip"
+          [attr.aria-pressed]="side() === 'members'"
+          (click)="toggleSide('members')"
+        >
+          <app-icon name="list-checks" size="1em" />
+          Tickets <small>{{ session.members.length }}</small>
+        </button>
+      }
+      <button
+        type="button"
+        class="context__chip"
+        [class.context__chip--ready]="hasReadyPlan() && !planning()"
+        [attr.aria-pressed]="side() === 'plan'"
+        (click)="toggleSide('plan')"
+      >
+        @if (planning()) {
+          <app-spinner size="1em" />
+        } @else {
+          <app-icon name="file-text" size="1em" />
+        }
+        Plan
+        <small>
+          @if (planning()) {
+            actualizándose…
+          } @else if (hasReadyPlan()) {
+            v{{ planVersion() }}
+          } @else {
+            sin plan
+          }
+        </small>
+      </button>
+    </div>
+
+    <div
+      class="organizer__body"
+      [class.organizer__body--split]="side() !== null"
+      [style.--chat-share]="chatShare()"
+    >
       <section class="organizer__chat" aria-label="Chat con la IA">
         <app-chat-panel
           [inline]="true"
@@ -85,6 +131,7 @@
         </app-chat-panel>
       </section>
 
+      @if (side() !== null) {
       <div
         class="organizer__divider"
         role="separator"
@@ -98,8 +145,11 @@
         (keydown)="nudgeDivider($event)"
       ></div>
 
-      <aside class="organizer__side" aria-label="Plan">
-        @if (!isTask()) {
+      <aside
+        class="organizer__side"
+        [attr.aria-label]="side() === 'members' ? 'Tickets de la sesión' : 'Plan'"
+      >
+        @if (side() === 'members' && !isTask()) {
           <app-members-panel
             class="members"
             [members]="session.members"
@@ -112,7 +162,7 @@
           />
         }
 
-        @if (groupIssue(); as issue) {
+        @if (side() === 'plan' && groupIssue(); as issue) {
           @if (plan() || planning()) {
             <app-plan-panel [issue]="issue" [bare]="true" />
           } @else {
@@ -127,6 +177,7 @@
           }
         }
       </aside>
+      }
     </div>
 
     <app-dialog

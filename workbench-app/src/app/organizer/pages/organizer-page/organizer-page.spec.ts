@@ -31,6 +31,8 @@ describe('OrganizerPage planning', () => {
     createPlan(): Promise<void>;
     plannedKey(): string;
     reset(): Promise<void>;
+    side(): 'plan' | 'members' | null;
+    toggleSide(which: 'plan' | 'members'): void;
   } {
     const session = {
       id: 's1',
@@ -38,6 +40,7 @@ describe('OrganizerPage planning', () => {
       kind: 'task',
       groupIssueId: 'g1',
       notes: null,
+      projectRepos: [],
       members: [],
       createdAt: '',
     };
@@ -225,6 +228,27 @@ describe('OrganizerPage planning', () => {
     expect(generate).toHaveBeenLastCalledWith({
       messages: chat.messages(),
       fromScratch: true,
+    });
+  });
+
+  describe('what opens beside the chat', () => {
+    it('starts with only the chat, and a chip opens the plan or the tickets in its place', () => {
+      const page = create();
+
+      expect(page.side()).toBeNull();
+      page.toggleSide('plan');
+      expect(page.side()).toBe('plan');
+      page.toggleSide('members');
+      expect(page.side()).toBe('members');
+    });
+
+    it('closes what is open when its chip is pressed again', () => {
+      const page = create();
+
+      page.toggleSide('plan');
+      page.toggleSide('plan');
+
+      expect(page.side()).toBeNull();
     });
   });
 });
