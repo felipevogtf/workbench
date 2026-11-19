@@ -27,11 +27,14 @@ export class OrganizerApi {
     return this.http.post<OrganizerSession>(`${this.base}/for-task/${issueId}`, {});
   }
 
-  create(input: NewOrganizerSession): Observable<OrganizerSession> {
+  create(input: NewOrganizerSession = {}): Observable<OrganizerSession> {
     return this.http.post<OrganizerSession>(this.base, input);
   }
 
-  update(id: string, patch: { title?: string; notes?: string }): Observable<OrganizerSession> {
+  update(
+    id: string,
+    patch: { title?: string; notes?: string; projectRepos?: string[] },
+  ): Observable<OrganizerSession> {
     return this.http.patch<OrganizerSession>(`${this.base}/${id}`, patch);
   }
 
@@ -41,7 +44,10 @@ export class OrganizerApi {
   }
 
   /** Un ticket local nuevo dentro de la sesión (no va a Plane). */
-  addTicket(id: string, ticket: { name: string; description?: string }): Observable<OrganizerSession> {
+  addTicket(
+    id: string,
+    ticket: { name: string; description?: string },
+  ): Observable<OrganizerSession> {
     return this.http.post<OrganizerSession>(`${this.base}/${id}/tickets`, ticket);
   }
 

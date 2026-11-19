@@ -21,6 +21,9 @@ export interface SessionDetail {
   group: GroupInfo;
 }
 
+/** El título con que arranca una conversación sin título: el primer mensaje lo reemplaza. */
+export const NEW_SESSION_TITLE = 'Nueva conversación';
+
 const NO_GROUP: GroupInfo = { notes: null, projectRepos: [], members: [] };
 
 /**
@@ -53,22 +56,19 @@ export class OrganizerService {
   }
 
   /**
-   * Crea una sesión. Con `projectId` es un grupo de tareas de ese proyecto de tareas; sin él es una sesión libre (sin ticket
-   * de Plane), que necesita al menos un proyecto (repositorio) donde trabajar.
+   * Crea una sesión. No hace falta nada: sin título es una conversación nueva, y los proyectos (repositorios) y los tickets se
+   * van sumando después. Con `projectId` el grupo vive en ese proyecto de tareas; sin él, en el de las sesiones libres.
    */
-  async create(data: {
-    title: string;
-    projectId?: string;
-    projectRepos?: string[];
-    notes?: string | null;
-  }): Promise<SessionDetail> {
+  async create(
+    data: {
+      title?: string;
+      projectId?: string;
+      projectRepos?: string[];
+      notes?: string | null;
+    } = {},
+  ): Promise<SessionDetail> {
     // El título se valida antes de crear la tarea del grupo, para no dejar una tarea huérfana.
-    const title = OrganizerSession.cleanTitle(data.title);
-    if (!data.projectId && !data.projectRepos?.length) {
-      throw new DomainError(
-        'A session without a task project needs at least one project (repository)',
-      );
-    }
+    const title = OrganizerSession.cleanTitle(data.title ?? NEW_SESSION_TITLE);
     const groupIssueId = await this.groups.createGroup({
       title,
       projectId: data.projectId,
@@ -107,7 +107,7 @@ export class OrganizerService {
 
   async update(
     id: string,
-    data: { title?: string; notes?: string | null },
+    data: { title?: string; notes?: string | null; projectRepos?: string[] },
   ): Promise<SessionDetail> {
     const session = await this.find(id);
     this.requireGroup(session);
@@ -115,6 +115,9 @@ export class OrganizerService {
     await this.groups.update(session.groupIssueId, {
       ...(data.title !== undefined ? { title: session.title } : {}),
       ...(data.notes !== undefined ? { notes: data.notes } : {}),
+      ...(data.projectRepos !== undefined
+        ? { projectRepos: data.projectRepos }
+        : {}),
     });
     await this.sessions.save(session);
     return { session, group: await this.groups.getGroup(session.groupIssueId) };

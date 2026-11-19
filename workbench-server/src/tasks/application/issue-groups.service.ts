@@ -86,11 +86,18 @@ export class IssueGroupsService {
   /** Cambia el título del grupo y sus notas (qué depende de qué); lo que no se manda no cambia. */
   async updateGroup(
     groupId: string,
-    data: { title?: string; notes?: string | null },
+    data: {
+      title?: string;
+      notes?: string | null;
+      projectRepos?: string[];
+    },
   ): Promise<Issue> {
     return this.issuesService.updateIssue(groupId, {
       ...(data.title !== undefined ? { name: data.title } : {}),
       ...(data.notes !== undefined ? { description: data.notes } : {}),
+      ...(data.projectRepos !== undefined
+        ? { projectRepos: data.projectRepos }
+        : {}),
     });
   }
 

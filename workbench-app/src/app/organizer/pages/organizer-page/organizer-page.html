@@ -54,7 +54,25 @@
     </ng-template>
 
     <div class="organizer__context" role="toolbar" aria-label="Lo que reúne la sesión">
-      @if (session.projectRepos.length > 0) {
+      @if (!isTask()) {
+        <button
+          type="button"
+          class="context__chip"
+          title="Los repositorios donde se trabaja: opcionales, se suman y se quitan cuando quieras"
+          [attr.aria-pressed]="side() === 'projects'"
+          (click)="toggleSide('projects')"
+        >
+          <app-icon name="folder" size="1em" />
+          Proyectos
+          <small>
+            @if (session.projectRepos.length > 0) {
+              {{ projectNames().join(', ') }}
+            } @else {
+              ninguno
+            }
+          </small>
+        </button>
+      } @else if (session.projectRepos.length > 0) {
         <span class="context__projects" title="Los proyectos donde se trabaja">
           <app-icon name="folder" size="1em" /> {{ session.projectRepos.join(', ') }}
         </span>
@@ -105,78 +123,110 @@
           [inline]="true"
           [store]="chat"
           [heading]="
-            (isTask() ? 'Planifica la tarea con ' : 'Planifica el grupo con ') +
+            (isTask() ? 'Planifica la tarea con ' : 'Conversa con ') +
             (assistant()?.name ?? 'la IA')
           "
           [assistant]="assistant()"
           [context]="session.title"
           [emptyTitle]="
-            isTask() ? '¿Qué quieres aclarar de esta tarea?' : '¿Cómo organizamos estas tareas?'
+            isTask()
+              ? '¿Qué quieres aclarar de esta tarea?'
+              : hasTickets()
+                ? '¿Cómo organizamos estas tareas?'
+                : '¿En qué trabajamos hoy?'
           "
           [placeholder]="
             isTask()
               ? 'Aclara la tarea, pregunta por el código o pide el plan…'
-              : 'Pregunta, aclara dependencias o pide el plan del grupo…'
+              : hasTickets()
+                ? 'Pregunta, aclara dependencias o pide el plan del grupo…'
+                : 'Escribe lo que necesites. Puedes sumar proyectos y tickets cuando quieras…'
           "
-          [suggestions]="suggestions"
+          [suggestions]="suggestions()"
           [busy]="planning() ? 'Actualizando el plan…' : null"
         >
           <p chat-empty>
             @if (isTask()) {
               La IA conoce la tarea, su ticket, el plan y el código de sus repos.
-            } @else {
+            } @else if (hasTickets()) {
               La IA conoce las tareas del grupo, sus tickets, el plan y el código de sus repos.
+            } @else {
+              Sin proyectos ni tickets la IA conversa en general. Suma un proyecto para que lea su
+              código, o un ticket para planificarlo.
             }
           </p>
         </app-chat-panel>
       </section>
 
       @if (side() !== null) {
-      <div
-        class="organizer__divider"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Ajustar el ancho del chat y del plan"
-        tabindex="0"
-        [attr.aria-valuenow]="chatShare()"
-        aria-valuemin="25"
-        aria-valuemax="75"
-        (pointerdown)="dragDivider($event)"
-        (keydown)="nudgeDivider($event)"
-      ></div>
+        <div
+          class="organizer__divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ajustar el ancho del chat y del plan"
+          tabindex="0"
+          [attr.aria-valuenow]="chatShare()"
+          aria-valuemin="25"
+          aria-valuemax="75"
+          (pointerdown)="dragDivider($event)"
+          (keydown)="nudgeDivider($event)"
+        ></div>
 
-      <aside
-        class="organizer__side"
-        [attr.aria-label]="side() === 'members' ? 'Tickets de la sesión' : 'Plan'"
-      >
-        @if (side() === 'members' && !isTask()) {
-          <app-members-panel
-            class="members"
-            [members]="session.members"
-            [groupIssueId]="session.groupIssueId"
-            [projectRepos]="session.projectRepos"
-            [saving]="store.saving()"
-            (changed)="changeMembers($event)"
-            (ticketCreated)="createTicket($event)"
-            (opened)="sheet.set({ id: $event })"
-          />
-        }
-
-        @if (side() === 'plan' && groupIssue(); as issue) {
-          @if (plan() || planning()) {
-            <app-plan-panel [issue]="issue" [bare]="true" />
-          } @else {
-            <div class="organizer__empty">
-              <app-icon name="sparkles" size="1.4rem" />
-              <strong>Todavía no hay plan</strong>
-              <p>
-                Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan: aquí
-                lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
+        <aside
+          class="organizer__side"
+          [attr.aria-label]="
+            side() === 'members'
+              ? 'Tickets de la conversación'
+              : side() === 'projects'
+                ? 'Proyectos'
+                : 'Plan'
+          "
+        >
+          @if (side() === 'projects' && !isTask()) {
+            <div class="organizer__projects">
+              <h2 class="organizer__projects-title">Proyectos</h2>
+              <p class="muted">
+                Los repositorios que la IA puede leer y donde se ejecuta el plan. Son opcionales:
+                súmalos o quítalos cuando quieras (hasta {{ maxProjects }}).
               </p>
+              <app-chip-picker
+                label="Proyectos de la conversación"
+                emptyText="Todavía no hay proyectos. Créalos en Automatización → Proyectos."
+                [options]="projectOptions()"
+                [selected]="session.projectRepos"
+                (selectedChange)="changeProjects($event)"
+              />
             </div>
           }
-        }
-      </aside>
+
+          @if (side() === 'members' && !isTask()) {
+            <app-members-panel
+              class="members"
+              [members]="session.members"
+              [groupIssueId]="session.groupIssueId"
+              [projectRepos]="session.projectRepos"
+              [saving]="store.saving()"
+              (changed)="changeMembers($event)"
+              (ticketCreated)="createTicket($event)"
+              (opened)="sheet.set({ id: $event })"
+            />
+          }
+
+          @if (side() === 'plan' && groupIssue(); as issue) {
+            @if (plan() || planning()) {
+              <app-plan-panel [issue]="issue" [bare]="true" />
+            } @else {
+              <div class="organizer__empty">
+                <app-icon name="sparkles" size="1.4rem" />
+                <strong>Todavía no hay plan</strong>
+                <p>
+                  Conversa para aclarar {{ isTask() ? 'la tarea' : 'el grupo' }} y pide el plan:
+                  aquí lo verás, y cada cambio que pidas en el chat se aplica solo sobre él.
+                </p>
+              </div>
+            }
+          }
+        </aside>
       }
     </div>
 

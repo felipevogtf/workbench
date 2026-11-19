@@ -56,7 +56,9 @@ describe('MembersPanel: free session', () => {
     const { fixture, host, root, openAdd } = await render();
     await openAdd();
 
-    const input = root.querySelector<HTMLInputElement>('input[aria-label="Nombre de un ticket nuevo"]')!;
+    const input = root.querySelector<HTMLInputElement>(
+      'input[aria-label="Nombre de un ticket nuevo"]',
+    )!;
     input.value = '  Validar el formulario  ';
     input.dispatchEvent(new Event('input'));
     await fixture.whenStable();

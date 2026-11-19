@@ -13,8 +13,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { AgentsStore } from '@ai-agents/index';
 import { IssueExecutionsStore, RunPlanButton } from '@executions/index';
+import { ProjectsApi, type Project } from '@projects/index';
 import { IssuesStore } from '@tasks/index';
 import { PlanPanel } from '@tasks/components/plan-panel/plan-panel';
 import { PlansStore } from '@tasks/data-access/plans.store';
@@ -23,6 +25,7 @@ import { Topbar } from '../../../core/layout/topbar/topbar';
 import { ChatPanel } from '@shared/chat/chat-panel/chat-panel';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
+import { ChipOption, ChipPicker } from '@shared/ui/chip-picker/chip-picker';
 import { Dialog } from '@shared/ui/dialog/dialog';
 import { ConfirmDialog } from '@shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '@shared/ui/icon/icon';
@@ -34,6 +37,8 @@ import { readableTicket } from '@shared/util/ticket-markdown';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { MembersPanel } from '../../components/members-panel/members-panel';
 import { OrganizerStore } from '../../data-access/organizer.store';
+import { MAX_SESSION_PROJECTS } from '../../models/organizer';
+import { NEW_SESSION_TITLE, titleFromMessage } from '../../models/session-title';
 
 const SHARE_KEY = 'workbench.organizer.chat-share';
 const MIN_SHARE = 25;
@@ -50,8 +55,8 @@ function readShare(): number {
 }
 
 /**
- * Una sesión del organizador (`/organizer/:id`): las tareas que se hacen juntas, un chat a pantalla completa con la IA para
- * planificarlas, el plan de todas y, cuando está bien, la ejecución. El grupo es una tarea más (`groupIssueId`): el chat, el plan y
+ * Una conversación del organizador (`/organizer/:id`): un chat a pantalla completa con la IA, al que se le suman proyectos
+ * (repositorios) y tickets cuando hacen falta, ninguno obligatorio, y de ahí el plan y la ejecución. El grupo es una tarea más (`groupIssueId`): el chat, el plan y
  * la ejecución son los de siempre, pedidos con su id.
  */
 @Component({
@@ -66,6 +71,7 @@ function readShare(): number {
     Dialog,
     Alert,
     Button,
+    ChipPicker,
     Icon,
     IconButton,
     Skeleton,
@@ -86,6 +92,7 @@ export class OrganizerPage {
   protected readonly executions = inject(IssueExecutionsStore);
   private readonly issues = inject(IssuesStore);
   private readonly agents = inject(AgentsStore);
+  private readonly projectsApi = inject(ProjectsApi);
   private readonly confirm = inject(ConfirmDialog);
   private readonly toast = inject(Toast);
   private readonly router = inject(Router);
@@ -118,7 +125,27 @@ export class OrganizerPage {
   protected readonly plan = computed(() => this.plans.viewed() ?? this.plans.plans()[0] ?? null);
 
   /** Lo que se muestra a la derecha del chat: el plan o los tickets de la sesión; `null` = solo el chat, a todo el ancho. */
-  protected readonly side = signal<'plan' | 'members' | null>(null);
+  protected readonly side = signal<'plan' | 'members' | 'projects' | null>(null);
+
+  /** Los proyectos que se pueden sumar a la conversación, y cuántos admite. */
+  private readonly repoProjects = signal<Project[]>([]);
+  protected readonly maxProjects = MAX_SESSION_PROJECTS;
+  protected readonly projectOptions = computed<ChipOption[]>(() => {
+    const known = this.repoProjects().map((project) => ({
+      value: project.repo,
+      label: project.name,
+    }));
+    // Un proyecto de la conversación que ya no existe se sigue mostrando, para poder quitarlo.
+    const missing = (this.session()?.projectRepos ?? [])
+      .filter((repo) => !known.some((option) => option.value === repo))
+      .map((repo) => ({ value: repo, label: repo }));
+    return [...known, ...missing];
+  });
+  /** Los nombres de los proyectos de la conversación, para mostrarlos en la barra. */
+  protected readonly projectNames = computed(() => {
+    const byRepo = new Map(this.repoProjects().map((project) => [project.repo, project.name]));
+    return (this.session()?.projectRepos ?? []).map((repo) => byRepo.get(repo) ?? repo);
+  });
   /** Cuántas versiones listas del plan hay (la ficha dice en cuál va). */
   protected readonly planVersion = computed(
     () => this.plans.plans().filter((plan) => plan.status === 'ready').length,
@@ -139,20 +166,34 @@ export class OrganizerPage {
   protected readonly planning = computed(() => this.plans.requesting() || !!this.plans.active());
   protected readonly canPlan = computed(
     () =>
-      (this.isTask() || (this.session()?.members.length ?? 0) > 0) &&
+      // Con tickets, o con algo hablado: una conversación sin tickets también se puede planificar.
+      (this.isTask() ||
+        (this.session()?.members.length ?? 0) > 0 ||
+        this.chat.messages().some((message) => message.role === 'user')) &&
       !this.planning() &&
       !this.chat.sending(),
   );
 
-  protected readonly suggestions = [
-    '¿Qué depende de qué entre estas tareas? ¿En qué orden conviene hacerlas?',
-    '¿Dónde chocan estas tareas (mismos archivos o textos)?',
-    '¿Qué riesgos o dudas ves antes de planificarlas?',
-  ];
+  /** Sin tickets no hay nada que ordenar: las sugerencias son para empezar. */
+  protected readonly hasTickets = computed(() => (this.session()?.members.length ?? 0) > 0);
+  protected readonly suggestions = computed(() =>
+    this.isTask() || this.hasTickets()
+      ? [
+          '¿Qué depende de qué entre estas tareas? ¿En qué orden conviene hacerlas?',
+          '¿Dónde chocan estas tareas (mismos archivos o textos)?',
+          '¿Qué riesgos o dudas ves antes de planificarlas?',
+        ]
+      : [
+          'Explícame cómo funciona esta parte del proyecto.',
+          'Quiero agregar una funcionalidad. ¿Por dónde empezamos?',
+          'Ayúdame a entender por qué falla esto.',
+        ],
+  );
 
   constructor() {
     void this.agents.load();
     void this.issues.load();
+    void this.loadProjects();
     effect(() => {
       const id = this.id();
       untracked(() => void this.open(id));
@@ -163,7 +204,20 @@ export class OrganizerPage {
       const actions = this.topbarActions() ?? null;
       untracked(() => this.topbar.set({ subtitle, actions }));
     });
-    this.destroyRef.onDestroy(() => this.topbar.clear());
+    this.destroyRef.onDestroy(() => {
+      this.topbar.clear();
+      this.discardIfUnused();
+    });
+    // El primer mensaje le pone nombre a la conversación (hasta entonces es «Nueva conversación»).
+    effect(() => {
+      const session = this.session();
+      const first = this.chat.messages().find((message) => message.role === 'user');
+      if (!session || session.kind !== 'group' || session.title !== NEW_SESSION_TITLE || !first) {
+        return;
+      }
+      const title = titleFromMessage(first.content);
+      if (title) untracked(() => void this.store.update(session.id, { title }));
+    });
     // Cuando la IA entiende que se pidió un cambio al plan, se aplica solo: no hace falta pulsar nada.
     this.chat.onUpdatesPlan = (rebuild) =>
       this.pendingReplan.update((current) =>
@@ -180,7 +234,7 @@ export class OrganizerPage {
   }
 
   /** Abre (o cierra, si ya estaba abierto) el plan o los tickets a la derecha del chat. */
-  protected toggleSide(which: 'plan' | 'members'): void {
+  protected toggleSide(which: 'plan' | 'members' | 'projects'): void {
     this.side.update((current) => (current === which ? null : which));
   }
 
@@ -217,6 +271,15 @@ export class OrganizerPage {
     } catch {
       // sin almacenamiento: el ancho vale mientras la página siga abierta
     }
+  }
+
+  /** Suma o quita proyectos de la conversación: no hace falta tener ninguno. */
+  protected async changeProjects(repos: string[]): Promise<void> {
+    if (repos.length > MAX_SESSION_PROJECTS) {
+      this.toast.error(`Una conversación admite hasta ${MAX_SESSION_PROJECTS} proyectos`);
+      return;
+    }
+    await this.store.setProjects(this.id(), repos);
   }
 
   protected async changeMembers(ids: string[]): Promise<void> {
@@ -278,6 +341,30 @@ export class OrganizerPage {
     if (confirmed && (await this.store.remove(session.id))) {
       await this.router.navigateByUrl('/organizer');
     }
+  }
+
+  private async loadProjects(): Promise<void> {
+    try {
+      this.repoProjects.set(await firstValueFrom(this.projectsApi.list()));
+    } catch {
+      // Sin la lista se siguen viendo los proyectos de la conversación, con su repositorio como nombre.
+    }
+  }
+
+  /** Una conversación que nunca se usó (sin mensajes, proyectos ni tickets) no deja rastro en la lista. */
+  private discardIfUnused(): void {
+    const session = this.store.current();
+    if (
+      !session ||
+      session.kind !== 'group' ||
+      session.title !== NEW_SESSION_TITLE ||
+      session.members.length > 0 ||
+      session.projectRepos.length > 0 ||
+      this.chat.messages().length > 0
+    ) {
+      return;
+    }
+    void this.store.discard(session.id);
   }
 
   private plannedKey(): string {

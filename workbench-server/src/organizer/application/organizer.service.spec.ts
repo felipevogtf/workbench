@@ -4,7 +4,7 @@ import {
   GroupsGatewayPort,
 } from '@organizer/domain/ports/groups-gateway.port';
 import { OrganizerSessionRepositoryPort } from '@organizer/domain/ports/organizer-session-repository.port';
-import { OrganizerService } from './organizer.service';
+import { NEW_SESSION_TITLE, OrganizerService } from './organizer.service';
 
 describe('OrganizerService', () => {
   let stored: OrganizerSession[];
@@ -71,6 +71,8 @@ describe('OrganizerService', () => {
         const group = groups.get(id) as GroupInfo & { title: string };
         if (data.title !== undefined) group.title = data.title;
         if (data.notes !== undefined) group.notes = data.notes;
+        if (data.projectRepos !== undefined)
+          group.projectRepos = data.projectRepos;
         return Promise.resolve();
       },
       delete: (id) => {
@@ -209,14 +211,44 @@ describe('OrganizerService', () => {
       expect(group.projectRepos).toEqual(['acme/web']);
     });
 
-    it('needs a task project or at least one project, and leaves nothing behind otherwise', async () => {
-      await expect(service.create({ title: 'Nada' })).rejects.toThrow(
-        'at least one project',
+    it('is created with nothing at all: a new conversation with no projects and no tickets', async () => {
+      const { session, group } = await service.create();
+
+      expect(session.title).toBe(NEW_SESSION_TITLE);
+      expect(session.kind).toBe('group');
+      expect(group.projectRepos).toEqual([]);
+      expect(group.members).toEqual([]);
+    });
+
+    it('still rejects a title that is only spaces, and leaves nothing behind', async () => {
+      await expect(service.create({ title: '   ' })).rejects.toThrow(
+        'needs a title',
       );
-      await expect(
-        service.create({ title: 'Nada', projectRepos: [] }),
-      ).rejects.toThrow('at least one project');
       expect(groups.size).toBe(0);
+    });
+
+    it('adds projects later, replaces them and removes them all', async () => {
+      const { session } = await service.create();
+
+      let detail = await service.update(session.id, {
+        projectRepos: ['acme/web', 'acme/api'],
+      });
+      expect(detail.group.projectRepos).toEqual(['acme/web', 'acme/api']);
+
+      detail = await service.update(session.id, { projectRepos: ['acme/api'] });
+      expect(detail.group.projectRepos).toEqual(['acme/api']);
+
+      detail = await service.update(session.id, { projectRepos: [] });
+      expect(detail.group.projectRepos).toEqual([]);
+    });
+
+    it('renames the conversation without touching its projects', async () => {
+      const { session } = await service.create({ projectRepos: ['acme/web'] });
+
+      const detail = await service.update(session.id, { title: 'Login roto' });
+
+      expect(detail.session.title).toBe('Login roto');
+      expect(detail.group.projectRepos).toEqual(['acme/web']);
     });
 
     it('adds a local ticket to the session, at the end', async () => {

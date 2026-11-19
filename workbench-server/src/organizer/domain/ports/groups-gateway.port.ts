@@ -47,7 +47,12 @@ export interface GroupsGatewayPort {
   setMembers(groupId: string, memberIds: string[]): Promise<void>;
   update(
     groupId: string,
-    data: { title?: string; notes?: string | null },
+    data: {
+      title?: string;
+      notes?: string | null;
+      /** Los proyectos (repositorios) de la sesión, exactamente estos. */
+      projectRepos?: string[];
+    },
   ): Promise<void>;
   /** Borra la tarea del grupo (sus tareas quedan libres). */
   delete(groupId: string): Promise<void>;

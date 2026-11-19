@@ -66,7 +66,7 @@ export class OrganizerStore {
     }
   }
 
-  async create(input: NewOrganizerSession): Promise<OrganizerSession | null> {
+  async create(input: NewOrganizerSession = {}): Promise<OrganizerSession | null> {
     this.savingState.set(true);
     try {
       const created = await firstValueFrom(this.api.create(input));
@@ -99,8 +99,26 @@ export class OrganizerStore {
     return this.change(id, () => this.api.addTicket(id, { name }));
   }
 
-  async update(id: string, patch: { title?: string; notes?: string }): Promise<boolean> {
+  async update(
+    id: string,
+    patch: { title?: string; notes?: string; projectRepos?: string[] },
+  ): Promise<boolean> {
     return this.change(id, () => this.api.update(id, patch));
+  }
+
+  /** Deja como proyectos (repositorios) de la sesión exactamente estos: así se suman y se quitan. */
+  async setProjects(id: string, projectRepos: string[]): Promise<boolean> {
+    return this.change(id, () => this.api.update(id, { projectRepos }));
+  }
+
+  /** Borra una conversación que no llegó a usarse, sin avisar: no hay nada que perder. */
+  async discard(id: string): Promise<void> {
+    try {
+      await firstValueFrom(this.api.remove(id));
+      this.sessionsState.update((list) => list.filter((session) => session.id !== id));
+    } catch {
+      // queda en la lista y se puede borrar a mano
+    }
   }
 
   async remove(id: string): Promise<boolean> {

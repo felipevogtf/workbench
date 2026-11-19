@@ -35,11 +35,11 @@ export interface OrganizerSession {
 }
 
 /**
- * Una sesión nueva. Con `projectId` (proyecto de tareas) reúne tickets de Plane; sin él es libre y necesita `projectRepos`: los
- * proyectos (repositorios) donde se trabaja.
+ * Una sesión nueva. No hace falta nada: sin título es una conversación nueva (el primer mensaje la renombra) y los proyectos
+ * (repositorios) y los tickets se suman después. Con `projectId` (proyecto de tareas) el grupo vive ahí, para reunir tickets de Plane.
  */
 export interface NewOrganizerSession {
-  title: string;
+  title?: string;
   projectId?: string;
   projectRepos?: string[];
   notes?: string;

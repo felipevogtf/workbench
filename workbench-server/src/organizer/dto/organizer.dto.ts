@@ -12,17 +12,19 @@ import {
 const REPO = /^[\w.-]+\/[\w.-]+$/;
 
 export class CreateSessionDto {
+  /** Sin título la sesión arranca como una conversación nueva; se renombra con el primer mensaje. */
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
-  title!: string;
+  title?: string;
 
   /** El proyecto de tareas donde vive la tarea del grupo. Sin él, la sesión es libre (sin ticket de Plane). */
   @IsOptional()
   @IsUUID()
   projectId?: string;
 
-  /** Los proyectos (repositorios, `organización/repo`) donde se trabaja. Obligatorio en una sesión libre. */
+  /** Los proyectos (repositorios, `organización/repo`) donde se trabaja. Opcional: se pueden sumar después. */
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(3)
@@ -45,6 +47,17 @@ export class UpdateSessionDto {
   @IsNotEmpty()
   @MaxLength(200)
   title?: string;
+
+  /** Los proyectos (repositorios) de la sesión, exactamente estos: así se suman y se quitan. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @Matches(REPO, {
+    each: true,
+    message: 'each project must look like "organization/repository"',
+  })
+  projectRepos?: string[];
 
   @IsOptional()
   @IsString()

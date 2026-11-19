@@ -1,15 +1,15 @@
 <div class="page">
   <app-page-header
     heading="Organizador"
-    subtitle="Planifica y ejecuta juntas varias tareas que dependen entre sí: un solo plan, una rama y una PR por repositorio."
+    subtitle="Conversa con la IA para planificar y ejecutar. Una conversación puede tener varios proyectos y tickets, o ninguno, y se van sumando sobre la marcha."
   >
-    <button actions app-button type="button" (click)="formOpen.set(true)">
-      <app-icon name="plus" size="1em" /> Nueva sesión
-    </button>
+    <a actions app-button routerLink="new">
+      <app-icon name="plus" size="1em" /> Nueva conversación
+    </a>
   </app-page-header>
 
   @if (store.error(); as error) {
-    <app-alert tone="danger" heading="No se pudieron cargar las sesiones">
+    <app-alert tone="danger" heading="No se pudieron cargar las conversaciones">
       {{ error }}
       <button
         alert-action
@@ -29,22 +29,20 @@
       }
     </div>
   } @else if (store.sessions().length === 0) {
-    <app-empty-state icon="list-checks" heading="Todavía no hay sesiones">
-      Crea una sesión, suma las tareas que dependen entre sí y conversa con la IA para planificarlas
-      juntas.
-      <button empty-action app-button type="button" (click)="formOpen.set(true)">
-        Nueva sesión
-      </button>
+    <app-empty-state icon="list-checks" heading="Todavía no hay conversaciones">
+      Empieza una: no necesitas un ticket ni un proyecto. Pregunta lo que quieras y suma proyectos o
+      tickets cuando los necesites.
+      <a empty-action app-button routerLink="new">Nueva conversación</a>
     </app-empty-state>
   } @else {
     <div class="table-wrap">
       <table>
         <caption class="visually-hidden">
-          Sesiones del organizador
+          Conversaciones del organizador
         </caption>
         <thead>
           <tr>
-            <th scope="col">Sesión</th>
+            <th scope="col">Conversación</th>
             <th scope="col">Tareas</th>
             <th scope="col">Creada</th>
             <th scope="col"><span class="visually-hidden">Acciones</span></th>
@@ -74,6 +72,4 @@
       </table>
     </div>
   }
-
-  <app-session-form-dialog [(open)]="formOpen" (created)="onCreated($event)" />
 </div>

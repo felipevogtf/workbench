@@ -64,7 +64,11 @@ export class GroupsGatewayAdapter implements GroupsGatewayPort {
 
   async update(
     groupId: string,
-    data: { title?: string; notes?: string | null },
+    data: {
+      title?: string;
+      notes?: string | null;
+      projectRepos?: string[];
+    },
   ): Promise<void> {
     await this.groups.updateGroup(groupId, data);
   }

@@ -137,7 +137,7 @@ export class ExecutionsService {
 
     if (task.repoUrls.length === 0) {
       throw new DomainError(
-        'The task has no repository: add a label with a repository link',
+        'The task has no repository: add a project to the task or to its session',
       );
     }
     // Un mismo repositorio en dos etiquetas cuenta una vez.
