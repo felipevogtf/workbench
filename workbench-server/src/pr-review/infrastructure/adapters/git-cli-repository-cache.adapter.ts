@@ -72,8 +72,8 @@ export class GitCliRepositoryCacheAdapter implements RepositoryCachePort {
       throw new Error(`The branch ${source} is not in the repository`);
     }
 
-    // Una carpeta que no es un worktree (un clon de antes) se reemplaza.
-    if (await this.mirror.isWorktree(dest)) {
+    // Una carpeta que no es un worktree de este mirror (un clon de antes, o el de otro host) se reemplaza.
+    if (await this.mirror.isWorktreeOf(dest, mirror.path)) {
       await this.mirror.checkoutBranch(dest, source);
     } else {
       await this.mirror.addWorktree(mirror.path, dest, source);

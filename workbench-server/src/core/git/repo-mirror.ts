@@ -1,4 +1,12 @@
-import { mkdir, readdir, rm, rmdir, stat, utimes } from 'node:fs/promises';
+import {
+  mkdir,
+  readdir,
+  realpath,
+  rm,
+  rmdir,
+  stat,
+  utimes,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
@@ -69,6 +77,8 @@ export class RepoMirrorService {
       let fresh = true;
       if (await this.exists(path)) {
         try {
+          // Si el enlace del proyecto cambió, el `origin` del mirror lo sigue (solo informa: el fetch usa la URL que se le pasa).
+          await git(['config', 'remote.origin.url', remote.cleanUrl], path);
           await fetch();
           // Los worktrees cuya carpeta ya se borró dejan de ocupar un lugar en el mirror.
           await git(['worktree', 'prune'], path);
@@ -157,6 +167,27 @@ export class RepoMirrorService {
   async isWorktree(path: string): Promise<boolean> {
     try {
       return (await stat(join(path, '.git'))).isFile();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Es un worktree de ESTE mirror. Si el enlace de un proyecto cambió de host, el repo pasa a otro mirror y un worktree que
+   * quedó del anterior mostraría código que nadie actualiza.
+   */
+  async isWorktreeOf(path: string, mirrorPath: string): Promise<boolean> {
+    if (!(await this.isWorktree(path))) return false;
+    try {
+      const common = (
+        await runGit(
+          ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+          {
+            cwd: path,
+          },
+        )
+      ).trim();
+      return (await realpath(common)) === (await realpath(mirrorPath));
     } catch {
       return false;
     }

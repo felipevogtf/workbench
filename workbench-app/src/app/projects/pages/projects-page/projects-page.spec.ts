@@ -62,19 +62,21 @@ describe('ProjectsPage', () => {
     expect(element.querySelector('table')).toBeNull();
   });
 
-  it('lists the projects in a table with a readable excerpt, the branch and what each one depends on', async () => {
+  it('lists the projects in a table with their name, repository and branch, and nothing about the recipe', async () => {
     api.list.mockReturnValue(
-      of([project('acme/app', { dependsOn: ['acme/web'] }), project('acme/web', { content: '' })]),
+      of([project('acme/app', { dependsOn: ['acme/web'] }), project('acme/web', { mainBranch: 'develop' })]),
     );
     const element = (await render()).nativeElement as HTMLElement;
 
+    const headers = Array.from(element.querySelectorAll('th')).map((th) => th.textContent?.trim());
+    expect(headers).toEqual(['Proyecto', 'Rama', 'Etiquetas', 'Acciones']);
     const rows = rowsOf(element);
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('acme/app');
     expect(rows[0].textContent).toContain('main');
-    expect(rows[0].textContent).toContain('Probar npm test con docker-compose');
-    expect(rows[0].textContent).toContain('acme/web');
-    expect(rows[1].textContent).toContain('Receta vacía');
+    expect(rows[1].textContent).toContain('develop');
+    expect(rows[0].textContent).not.toContain('npm test');
+    expect(rows[0].textContent).not.toContain('Depende de');
   });
 
   it('links each project to its own edit page, and new projects to /new', async () => {

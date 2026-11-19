@@ -6,7 +6,7 @@
 
 table {
   width: 100%;
-  min-width: 860px;
+  min-width: 640px;
   border-collapse: collapse;
 }
 
@@ -59,22 +59,6 @@ tbody tr:hover {
   font-size: 0.8125rem;
   color: var(--text-color);
   overflow-wrap: anywhere;
-}
-
-.cell-recipe {
-  max-width: 340px;
-}
-
-.excerpt {
-  display: -webkit-box;
-  margin-bottom: var(--space-1);
-  overflow: hidden;
-  font-size: 0.875rem;
-  color: var(--text-color);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .chips {

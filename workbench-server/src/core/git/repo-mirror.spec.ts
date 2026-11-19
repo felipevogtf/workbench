@@ -77,6 +77,19 @@ describe('RepoMirrorService (with real repositories)', () => {
     ]);
   });
 
+  it('follows the link of the project: origin is updated when it changes, still with no credentials', async () => {
+    await service.sync(remote);
+
+    const mirror = await service.sync({
+      ...remote,
+      cleanUrl: 'https://github.com/Acme/Web2.git',
+    });
+
+    const config = readFileSync(join(mirror.path, 'config'), 'utf8');
+    expect(config).toContain('https://github.com/Acme/Web2.git');
+    expect(config).not.toContain('https://github.com/Acme/Web.git');
+  });
+
   it('never keeps the credentials: origin is the clean URL', async () => {
     const mirror = await service.sync({
       ...remote,
@@ -148,6 +161,24 @@ describe('RepoMirrorService (with real repositories)', () => {
 
       expect(await service.isWorktree(dest)).toBe(true);
       expect(existsSync(join(dest, 'basura.txt'))).toBe(false);
+    });
+
+    it('tells a worktree of this mirror from one of another mirror of the same repository', async () => {
+      const { path } = await service.sync(remote);
+      const other = await service.sync({
+        ...remote,
+        key: 'bitbucket.org/acme/web',
+      });
+      const mine = join(root, 'wt-mine');
+      const theirs = join(root, 'wt-theirs');
+      await service.addWorktree(path, mine, 'main');
+      await service.addWorktree(other.path, theirs, 'main');
+
+      expect(await service.isWorktreeOf(mine, path)).toBe(true);
+      expect(await service.isWorktreeOf(theirs, path)).toBe(false);
+      expect(await service.isWorktreeOf(join(root, 'no-existe'), path)).toBe(
+        false,
+      );
     });
 
     it('removes a worktree and its registration, and tolerates one that is already gone', async () => {

@@ -45,10 +45,7 @@
           <tr>
             <th scope="col">Proyecto</th>
             <th scope="col">Rama</th>
-            <th scope="col">Depende de</th>
-            <th scope="col">Receta</th>
             <th scope="col">Etiquetas</th>
-            <th scope="col">Editado</th>
             <th scope="col"><span class="visually-hidden">Acciones</span></th>
           </tr>
         </thead>
@@ -58,40 +55,29 @@
               <td class="cell-main">
                 <a class="title" [routerLink]="[project.id, 'edit']">{{ project.name }}</a>
                 <span class="repo">{{ project.repo }}</span>
-                @if (!project.repoUrl) {
-                  <app-badge
-                    tone="warning"
-                    title="Sin enlace de repositorio: no se puede clonar, solo sirve como receta"
-                  >
-                    Sin enlace
-                  </app-badge>
-                }
-              </td>
-              <td class="nowrap"><span class="repo">{{ project.mainBranch }}</span></td>
-              <td>
                 <span class="chips">
-                  @for (dependency of project.dependsOn; track dependency) {
-                    <app-badge tone="neutral">{{ dependency }}</app-badge>
-                  } @empty {
-                    <span class="muted">—</span>
+                  @if (!project.repoUrl) {
+                    <app-badge
+                      tone="warning"
+                      title="Sin enlace de repositorio: no se puede clonar, solo sirve como receta"
+                    >
+                      Sin enlace
+                    </app-badge>
+                  }
+                  @if (project.architectureRules) {
+                    <app-badge tone="info" title="Tiene reglas de arquitectura">Reglas</app-badge>
+                  }
+                  @if (project.verifyCommand) {
+                    <app-badge
+                      tone="info"
+                      [title]="'Verificación antes de publicar: ' + project.verifyCommand"
+                    >
+                      Verifica
+                    </app-badge>
                   }
                 </span>
               </td>
-              <td class="cell-recipe">
-                @if (excerpt(project); as text) {
-                  <span class="excerpt">{{ text }}</span>
-                } @else {
-                  <span class="muted">Receta vacía</span>
-                }
-                @if (project.architectureRules) {
-                  <app-badge tone="info" title="Tiene reglas de arquitectura">Reglas</app-badge>
-                }
-                @if (project.verifyCommand) {
-                  <app-badge tone="info" [title]="'Verificación antes de publicar: ' + project.verifyCommand">
-                    Verifica
-                  </app-badge>
-                }
-              </td>
+              <td class="nowrap"><span class="repo">{{ project.mainBranch }}</span></td>
               <td>
                 <span class="chips">
                   @if (store.labelsOf(project.repo).length > 0) {
@@ -110,7 +96,6 @@
                   }
                 </span>
               </td>
-              <td class="muted nowrap">{{ project.updatedAt | timeAgo }}</td>
               <td class="actions">
                 <a
                   app-icon-button

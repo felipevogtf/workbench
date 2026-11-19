@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TimeAgoPipe } from '@shared/pipes/time-ago';
 import { Alert } from '@shared/ui/alert/alert';
 import { Badge } from '@shared/ui/badge/badge';
 import { Button } from '@shared/ui/button/button';
@@ -13,18 +12,14 @@ import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { ProjectsStore } from '../../data-access/projects.store';
 import { Project } from '../../models/project';
 
-/** Cuántos caracteres de la receta se muestran en la lista. */
-const EXCERPT_CHARS = 140;
-
 /**
- * Los proyectos en una tabla: cada repositorio con su receta, de qué otros depende y sus reglas. Crear y editar son páginas aparte
+ * Los proyectos en una tabla: cada repositorio, su rama, las etiquetas que apuntan a él y si tiene reglas o verificación. La receta y de qué depende se editan en la página de cada proyecto. Crear y editar son páginas aparte
  * (`/projects/new`, `/projects/:id/edit`). Los agentes de las ejecuciones reciben lo que escribes aquí en su prompt.
  */
 @Component({
   selector: 'app-projects-page',
   imports: [
     RouterLink,
-    TimeAgoPipe,
     Alert,
     Badge,
     Button,
@@ -48,16 +43,6 @@ export class ProjectsPage {
 
   protected reload(): void {
     void this.store.load();
-  }
-
-  /** El comienzo de la receta, en una línea, para reconocerla en la lista; vacío si no hay receta. */
-  protected excerpt(project: Project): string {
-    const text = project.content
-      .replace(/^[\s#>*-]+/gm, '')
-      .replace(/[*`]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    return text.length > EXCERPT_CHARS ? `${text.slice(0, EXCERPT_CHARS).trimEnd()}…` : text;
   }
 
   protected async remove(project: Project): Promise<void> {

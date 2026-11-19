@@ -153,6 +153,26 @@ describe('GitReposCacheAdapter (with real repositories)', () => {
     expect(existsSync(join(old, 'viejo.txt'))).toBe(false);
   });
 
+  it('replaces the worktree that belongs to the mirror of another host when the link of the project moves', async () => {
+    makeOrigin('web');
+    // Antes el repositorio estaba en Bitbucket: su carpeta es un worktree de ese mirror.
+    const old = join(root, 'tasks', 'issue-1', 'web');
+    origins.set('bitbucket.org/acme/web', origins.get('github.com/acme/web')!);
+    const viejo = await mirror.sync({
+      key: 'bitbucket.org/acme/web',
+      cloneUrl: 'x',
+      cleanUrl: 'https://bitbucket.org/acme/web.git',
+      secret: '',
+    });
+    await mirror.addWorktree(viejo.path, old, 'main');
+
+    await adapter.ensure('issue-1', [WEB]);
+
+    expect(
+      await mirror.isWorktreeOf(old, mirror.pathOf('github.com/acme/web')),
+    ).toBe(true);
+  });
+
   it('opens the branch of a ticket the task mentions next to the repository', async () => {
     const origin = makeOrigin('web');
     git(origin, 'checkout', '-q', '-b', 'feature/MEL-466/mejora');
