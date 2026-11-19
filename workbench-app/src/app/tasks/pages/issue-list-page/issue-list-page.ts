@@ -18,7 +18,7 @@ import { IssueTable } from '../../components/issue-table/issue-table';
 import { HourTotalsStore } from '../../data-access/hour-totals.store';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { Issue, IssueFilters } from '../../models/issue';
 
@@ -55,7 +55,7 @@ const ORIGIN_OPTIONS: SelectOption[] = [
 })
 export class IssueListPage {
   protected readonly store = inject(IssuesStore);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
   private readonly statesStore = inject(StatesStore);
   private readonly labelsStore = inject(LabelsStore);
   private readonly confirm = inject(ConfirmDialog);

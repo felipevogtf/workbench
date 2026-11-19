@@ -1,6 +1,6 @@
 export type ExternalSource = 'plane' | 'jira';
 
-export interface ProjectProps {
+export interface TaskProjectProps {
   id: string;
   name: string;
   externalId: string | null;

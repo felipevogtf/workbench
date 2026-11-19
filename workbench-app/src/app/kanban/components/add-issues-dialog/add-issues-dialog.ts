@@ -19,7 +19,7 @@ import { Dialog } from '@shared/ui/dialog/dialog';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { TextInput } from '@shared/ui/text-input/text-input';
-import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
+import { IssuesStore, TaskProjectsStore, issueCode } from '@tasks/index';
 import { BoardsApi } from '../../data-access/boards.api';
 
 /** Elige tareas que todavía no están en ningún tablero (una tarea solo puede estar en uno). */
@@ -38,7 +38,7 @@ export class AddIssuesDialog {
 
   private readonly api = inject(BoardsApi);
   private readonly issuesStore = inject(IssuesStore);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
 
   protected readonly search = signal('');
 

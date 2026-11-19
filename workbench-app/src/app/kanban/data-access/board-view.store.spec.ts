@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Toast } from '@shared/ui/toast/toast';
-import { Issue, IssuesStore, LabelsStore, ProjectsStore, State, StatesStore } from '@tasks/index';
+import { Issue, IssuesStore, LabelsStore, TaskProjectsStore, State, StatesStore } from '@tasks/index';
 import { BoardCard } from '../models/board';
 import { BoardViewStore } from './board-view.store';
 import { BoardsApi } from './boards.api';
@@ -79,7 +79,7 @@ describe('BoardViewStore', () => {
           },
         },
         { provide: StatesStore, useValue: { load: () => Promise.resolve(), states: () => states } },
-        { provide: ProjectsStore, useValue: { load: () => Promise.resolve() } },
+        { provide: TaskProjectsStore, useValue: { load: () => Promise.resolve() } },
         { provide: LabelsStore, useValue: { load: () => Promise.resolve() } },
       ],
     });

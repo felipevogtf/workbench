@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ProjectsStore } from '@tasks/index';
+import { TaskProjectsStore } from '@tasks/index';
 import { Button } from '@shared/ui/button/button';
 import { Dialog } from '@shared/ui/dialog/dialog';
 import { FormField } from '@shared/ui/form-field/form-field';
@@ -33,7 +33,7 @@ export class SessionFormDialog {
   readonly created = output<OrganizerSession>();
 
   protected readonly store = inject(OrganizerStore);
-  private readonly projects = inject(ProjectsStore);
+  private readonly projects = inject(TaskProjectsStore);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     title: ['', [Validators.required, Validators.maxLength(200)]],

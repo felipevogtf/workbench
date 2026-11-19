@@ -5,7 +5,7 @@ import { Toast } from '@shared/ui/toast/toast';
 import { State } from '../models/catalogs';
 import { Issue } from '../models/issue';
 import { IssuesStore } from './issues.store';
-import { ProjectsStore } from './projects.store';
+import { TaskProjectsStore } from './task-projects.store';
 import { StatesStore } from './states.store';
 import { TasksApi } from './tasks.api';
 
@@ -65,7 +65,7 @@ describe('IssuesStore', () => {
       providers: [
         { provide: TasksApi, useValue: api },
         {
-          provide: ProjectsStore,
+          provide: TaskProjectsStore,
           useValue: {
             hiddenIds: hidden,
             projectById: () => new Map(),

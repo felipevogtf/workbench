@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
-import { IssuesStore, ProjectsStore, issueCode } from '@tasks/index';
+import { IssuesStore, TaskProjectsStore, issueCode } from '@tasks/index';
 import { Icon } from '@shared/ui/icon/icon';
 import { MAX_GROUP_MEMBERS, OrganizerMember } from '../../models/organizer';
 
@@ -43,7 +43,7 @@ export class MembersPanel {
   protected readonly adding = signal(false);
 
   private readonly issues = inject(IssuesStore);
-  private readonly projects = inject(ProjectsStore);
+  private readonly projects = inject(TaskProjectsStore);
 
   /** Tareas abiertas que coinciden con lo buscado y todavía no son del grupo (por código, nombre o proyecto). */
   protected readonly suggestions = computed(() => {

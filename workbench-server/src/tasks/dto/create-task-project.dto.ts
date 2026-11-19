@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
-export class CreateProjectDto {
+export class CreateTaskProjectDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)

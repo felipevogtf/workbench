@@ -8,7 +8,7 @@ import { Plan, PlanRequest, TaskChatReply } from '../models/plan';
 import {
   Label,
   LabelInput,
-  Project,
+  TaskProject,
   State,
   StateInput,
   SyncResult,
@@ -78,23 +78,23 @@ export class TasksApi {
   }
 
   // Proyectos
-  listProjects(): Observable<Project[]> {
-    return this.http.get<Project[]>(`${this.base}/projects`);
+  listProjects(): Observable<TaskProject[]> {
+    return this.http.get<TaskProject[]>(`${this.base}/task-projects`);
   }
 
-  createProject(input: { name: string }): Observable<Project> {
-    return this.http.post<Project>(`${this.base}/projects`, input);
+  createProject(input: { name: string }): Observable<TaskProject> {
+    return this.http.post<TaskProject>(`${this.base}/task-projects`, input);
   }
 
   updateProject(
     id: string,
     input: { name?: string; syncEnabled?: boolean; visible?: boolean },
-  ): Observable<Project> {
-    return this.http.patch<Project>(`${this.base}/projects/${id}`, input);
+  ): Observable<TaskProject> {
+    return this.http.patch<TaskProject>(`${this.base}/task-projects/${id}`, input);
   }
 
   deleteProject(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/projects/${id}`);
+    return this.http.delete<void>(`${this.base}/task-projects/${id}`);
   }
 
   // Estados

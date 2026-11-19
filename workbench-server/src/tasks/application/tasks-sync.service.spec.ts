@@ -1,10 +1,10 @@
 import { IssuesService } from './issues.service';
-import { ProjectsService } from './projects.service';
+import { TaskProjectsService } from './task-projects.service';
 import { TasksSyncService } from './tasks-sync.service';
-import { Project } from '@tasks/domain/entities/project.entity';
+import { TaskProject } from '@tasks/domain/entities/task-project.entity';
 
 const planeProject = (name: string) =>
-  Project.createFromExternal({
+  TaskProject.createFromExternal({
     name,
     externalId: `ext-${name}`,
     source: 'plane',
@@ -13,7 +13,7 @@ const planeProject = (name: string) =>
 
 describe('TasksSyncService', () => {
   const build = (syncByProject: jest.Mock) => {
-    const local = Project.createLocal({ name: 'Local' });
+    const local = TaskProject.createLocal({ name: 'Local' });
     const projects = {
       syncProjects: jest.fn().mockResolvedValue({ created: 1, updated: 0 }),
       getAllProjects: jest
@@ -21,7 +21,7 @@ describe('TasksSyncService', () => {
         .mockResolvedValue([planeProject('A'), local, planeProject('B')]),
     };
     const service = new TasksSyncService(
-      projects as unknown as ProjectsService,
+      projects as unknown as TaskProjectsService,
       { syncByProject } as unknown as IssuesService,
     );
     return { service, projects };
@@ -76,7 +76,7 @@ describe('TasksSyncService', () => {
       getAllProjects: jest.fn().mockResolvedValue([planeProject('On'), off]),
     };
     const service = new TasksSyncService(
-      projects as unknown as ProjectsService,
+      projects as unknown as TaskProjectsService,
       { syncByProject } as unknown as IssuesService,
     );
 

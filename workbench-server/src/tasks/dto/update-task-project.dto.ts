@@ -6,7 +6,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-export class UpdateProjectDto {
+export class UpdateTaskProjectDto {
   /** Solo en los proyectos locales. */
   @IsOptional()
   @IsString()

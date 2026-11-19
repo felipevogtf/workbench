@@ -14,8 +14,8 @@ import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { Checkbox } from '@shared/ui/checkbox/checkbox';
 import { Dialog } from '@shared/ui/dialog/dialog';
-import { ProjectsStore } from '../../data-access/projects.store';
-import { Project } from '../../models/catalogs';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
+import { TaskProject } from '../../models/catalogs';
 
 /**
  * Opciones de un proyecto: si se sincroniza con Plane (solo los de Plane) y si es visible. Un
@@ -68,9 +68,9 @@ import { Project } from '../../models/catalogs';
 })
 export class ProjectSettingsDialog {
   readonly open = model(false);
-  readonly project = input.required<Project | null>();
+  readonly project = input.required<TaskProject | null>();
 
-  private readonly store = inject(ProjectsStore);
+  private readonly store = inject(TaskProjectsStore);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     syncEnabled: true,

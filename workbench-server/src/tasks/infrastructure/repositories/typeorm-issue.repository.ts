@@ -112,7 +112,7 @@ export class TypeOrmIssueRepository implements IssueRepositoryPort {
     return this.dataSource.transaction(async (manager) => {
       // Advisory lock por proyecto: serializa dos inserts concurrentes en el
       // mismo proyecto sin bloquear inserts de otros proyectos (no toca la
-      // fila de `projects`, así que no interfiere con updates a Project).
+      // fila de `projects`, así que no interfiere con updates a TaskProject).
       await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
         projectId,
       ]);

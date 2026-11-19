@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { Issue, IssuesStore, ProjectsStore } from '@tasks/index';
+import { Issue, IssuesStore, TaskProjectsStore } from '@tasks/index';
 import { TimeReport } from '../models/time-report';
 import { DashboardApi } from './dashboard.api';
 import { DashboardStore } from './dashboard.store';
@@ -39,7 +39,7 @@ describe('DashboardStore', () => {
           useValue: { load: () => Promise.resolve(), issueById: signal(new Map([['i1', issue]])) },
         },
         {
-          provide: ProjectsStore,
+          provide: TaskProjectsStore,
           useValue: {
             load: () => Promise.resolve(),
             projectById: signal(new Map([['p1', { id: 'p1', name: 'Melón', identifier: 'MEL' }]])),

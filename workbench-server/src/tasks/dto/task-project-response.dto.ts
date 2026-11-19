@@ -1,6 +1,6 @@
-import { ExternalSource } from '@tasks/domain/entities/project.props';
+import { ExternalSource } from '@tasks/domain/entities/task-project.props';
 
-export class ProjectResponseDto {
+export class TaskProjectResponseDto {
   id!: string;
   name!: string;
   externalId!: string | null;

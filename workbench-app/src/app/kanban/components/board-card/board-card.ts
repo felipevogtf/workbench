@@ -9,7 +9,7 @@ import {
   Issue,
   LabelsStore,
   PriorityBadge,
-  ProjectsStore,
+  TaskProjectsStore,
   issueCode,
 } from '@tasks/index';
 import { Column } from '../../domain/board-columns';
@@ -35,7 +35,7 @@ export class BoardCardItem {
 
   /** Ruta del tablero abierto: el detalle de la tarea la usa para su botón «volver». */
   protected readonly backTo = inject(Router).url.split(/[?#]/)[0];
-  private readonly projects = inject(ProjectsStore).projectById;
+  private readonly projects = inject(TaskProjectsStore).projectById;
   private readonly labelsById = inject(LabelsStore).labelById;
 
   protected readonly formatDay = formatDay;

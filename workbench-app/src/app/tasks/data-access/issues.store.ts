@@ -12,7 +12,7 @@ import {
   issueNumber,
   stateKey,
 } from '../models/issue';
-import { ProjectsStore } from './projects.store';
+import { TaskProjectsStore } from './task-projects.store';
 import { StatesStore } from './states.store';
 import { ResourceStore } from '@shared/util/resource-store';
 import { TasksApi } from './tasks.api';
@@ -61,7 +61,7 @@ export function matchesFilters(
 export class IssuesStore extends ResourceStore<Issue> {
   private readonly api = inject(TasksApi);
   private readonly toast = inject(Toast);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
   private readonly statesStore = inject(StatesStore);
 
   private readonly filtersState = signal<IssueFilters>(DEFAULT_ISSUE_FILTERS);

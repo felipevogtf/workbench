@@ -2,12 +2,12 @@ import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
-import { Project } from '../models/catalogs';
+import { TaskProject } from '../models/catalogs';
 import { ResourceStore } from '@shared/util/resource-store';
 import { TasksApi } from './tasks.api';
 
 @Injectable({ providedIn: 'root' })
-export class ProjectsStore extends ResourceStore<Project> {
+export class TaskProjectsStore extends ResourceStore<TaskProject> {
   private readonly api = inject(TasksApi);
   private readonly toast = inject(Toast);
 
@@ -34,13 +34,13 @@ export class ProjectsStore extends ResourceStore<Project> {
     return this.api.listProjects();
   }
 
-  async create(name: string): Promise<Project> {
+  async create(name: string): Promise<TaskProject> {
     const created = await firstValueFrom(this.api.createProject({ name }));
     this.add(created);
     return created;
   }
 
-  async rename(id: string, name: string): Promise<Project> {
+  async rename(id: string, name: string): Promise<TaskProject> {
     const updated = await firstValueFrom(this.api.updateProject(id, { name }));
     this.replace(updated);
     return updated;
@@ -50,7 +50,7 @@ export class ProjectsStore extends ResourceStore<Project> {
   async configure(
     id: string,
     options: { syncEnabled?: boolean; visible?: boolean },
-  ): Promise<Project> {
+  ): Promise<TaskProject> {
     const updated = await firstValueFrom(this.api.updateProject(id, options));
     this.replace(updated);
     return updated;

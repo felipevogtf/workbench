@@ -1,14 +1,14 @@
 import { DomainError } from '@core/domain/domain.error';
-import { ProjectProps } from './project.props';
+import { TaskProjectProps } from './task-project.props';
 
-export class Project {
-  private constructor(private props: ProjectProps) {
+export class TaskProject {
+  private constructor(private props: TaskProjectProps) {
     this.validateName();
     this.validateIdentity();
   }
 
-  static createLocal(data: Pick<ProjectProps, 'name'>): Project {
-    return new Project({
+  static createLocal(data: Pick<TaskProjectProps, 'name'>): TaskProject {
+    return new TaskProject({
       ...data,
       id: crypto.randomUUID(),
       externalId: null,
@@ -23,9 +23,12 @@ export class Project {
   }
 
   static createFromExternal(
-    data: Pick<ProjectProps, 'name' | 'externalId' | 'source' | 'identifier'>,
-  ): Project {
-    return new Project({
+    data: Pick<
+      TaskProjectProps,
+      'name' | 'externalId' | 'source' | 'identifier'
+    >,
+  ): TaskProject {
+    return new TaskProject({
       ...data,
       syncEnabled: true,
       visible: true,
@@ -35,8 +38,8 @@ export class Project {
     });
   }
 
-  static reconstruct(props: ProjectProps): Project {
-    return new Project(props);
+  static reconstruct(props: TaskProjectProps): TaskProject {
+    return new TaskProject(props);
   }
 
   private validateName() {

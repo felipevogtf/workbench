@@ -16,7 +16,7 @@ import { FormField } from '@shared/ui/form-field/form-field';
 import { Spinner } from '@shared/ui/spinner/spinner';
 import { TextInput } from '@shared/ui/text-input/text-input';
 import { IssuesStore } from '../../data-access/issues.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { Issue, issueCode } from '../../models/issue';
 
 /** Elige la tarea de Plane (una sola) que reemplaza a una tarea local: recibe sus horas y su estado. */
@@ -35,7 +35,7 @@ export class TransferIssueDialog {
   readonly confirmed = output<string>();
 
   private readonly issuesStore = inject(IssuesStore);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
 
   protected readonly search = signal('');
   protected readonly selectedId = signal<string | null>(null);

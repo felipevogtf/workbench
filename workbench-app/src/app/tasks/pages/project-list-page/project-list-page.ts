@@ -11,9 +11,9 @@ import { PageHeader } from '@shared/ui/page-header/page-header';
 import { Skeleton } from '@shared/ui/skeleton/skeleton';
 import { ProjectNameDialog } from '../../components/project-name-dialog/project-name-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { ProjectSettingsDialog } from '../../components/project-settings-dialog/project-settings-dialog';
-import { Project } from '../../models/catalogs';
+import { TaskProject } from '../../models/catalogs';
 
 // Los proyectos de Plane solo se actualizan con el sync: no se editan ni se borran aquí.
 // Los proyectos de Plane solo se configuran (sincronizar y visible); los locales también se
@@ -45,16 +45,16 @@ const LOCAL_MENU: MenuItem[] = [
   styleUrl: '../catalog-page.scss',
 })
 export class ProjectListPage {
-  protected readonly store = inject(ProjectsStore);
+  protected readonly store = inject(TaskProjectsStore);
   protected readonly issues = inject(IssuesStore);
   private readonly confirm = inject(ConfirmDialog);
 
   protected readonly localMenu = LOCAL_MENU;
   protected readonly planeMenu = PLANE_MENU;
   protected readonly settingsOpen = signal(false);
-  protected readonly configuring = signal<Project | null>(null);
+  protected readonly configuring = signal<TaskProject | null>(null);
   protected readonly dialogOpen = signal(false);
-  protected readonly editing = signal<Project | null>(null);
+  protected readonly editing = signal<TaskProject | null>(null);
 
   protected readonly save = async (name: string): Promise<void> => {
     const editing = this.editing();
@@ -80,11 +80,11 @@ export class ProjectListPage {
     this.dialogOpen.set(true);
   }
 
-  protected issueCount(project: Project): number {
+  protected issueCount(project: TaskProject): number {
     return this.issues.allIssues().filter((issue) => issue.projectId === project.id).length;
   }
 
-  protected async onMenu(project: Project, action: string): Promise<void> {
+  protected async onMenu(project: TaskProject, action: string): Promise<void> {
     if (action === 'settings') {
       this.configuring.set(project);
       this.settingsOpen.set(true);

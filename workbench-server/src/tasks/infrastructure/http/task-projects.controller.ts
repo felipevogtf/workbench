@@ -8,23 +8,23 @@ import {
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ProjectsService } from '@tasks/application/projects.service';
-import { Project } from '@tasks/domain/entities/project.entity';
-import { CreateProjectDto } from '@tasks/dto/create-project.dto';
-import { UpdateProjectDto } from '@tasks/dto/update-project.dto';
-import { ProjectResponseDto } from '@tasks/dto/project-response.dto';
+import { TaskProjectsService } from '@tasks/application/task-projects.service';
+import { TaskProject } from '@tasks/domain/entities/task-project.entity';
+import { CreateTaskProjectDto } from '@tasks/dto/create-task-project.dto';
+import { UpdateTaskProjectDto } from '@tasks/dto/update-task-project.dto';
+import { TaskProjectResponseDto } from '@tasks/dto/task-project-response.dto';
 
-@Controller('projects')
-export class ProjectsController {
+@Controller('task-projects')
+export class TaskProjectsController {
   constructor(
-    private readonly projectService: ProjectsService,
+    private readonly projectService: TaskProjectsService,
     private readonly config: ConfigService,
   ) {}
 
   @Post()
   async create(
-    @Body() createProjectDto: CreateProjectDto,
-  ): Promise<ProjectResponseDto> {
+    @Body() createProjectDto: CreateTaskProjectDto,
+  ): Promise<TaskProjectResponseDto> {
     const project = await this.projectService.createProject(createProjectDto);
     return this.toResponseDto(project);
   }
@@ -35,16 +35,16 @@ export class ProjectsController {
   }
 
   @Get()
-  async findAll(): Promise<ProjectResponseDto[]> {
-    const projects: Project[] = await this.projectService.getAllProjects();
+  async findAll(): Promise<TaskProjectResponseDto[]> {
+    const projects: TaskProject[] = await this.projectService.getAllProjects();
     return projects.map((project) => this.toResponseDto(project));
   }
 
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Body() updateProjectDto: UpdateProjectDto,
-  ): Promise<ProjectResponseDto> {
+    @Body() updateProjectDto: UpdateTaskProjectDto,
+  ): Promise<TaskProjectResponseDto> {
     const project = await this.projectService.updateProject(
       id,
       updateProjectDto,
@@ -67,7 +67,7 @@ export class ProjectsController {
     return base && workspace ? `${base}/${workspace}/browse/` : null;
   }
 
-  private toResponseDto(project: Project): ProjectResponseDto {
+  private toResponseDto(project: TaskProject): TaskProjectResponseDto {
     return {
       id: project.id,
       name: project.name,

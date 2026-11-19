@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
-import { IssuesStore, ProjectsStore } from '@tasks/index';
+import { IssuesStore, TaskProjectsStore } from '@tasks/index';
 import { todayIso } from '@shared/util/date';
 import { EstimateComparison, compareToEstimate } from '../domain/estimate-comparison';
 import { WorkedDay, groupByDay } from '../domain/group-by-day';
@@ -26,7 +26,7 @@ import { DashboardApi } from './dashboard.api';
 export class DashboardStore {
   private readonly api = inject(DashboardApi);
   private readonly issues = inject(IssuesStore);
-  private readonly projects = inject(ProjectsStore);
+  private readonly projects = inject(TaskProjectsStore);
 
   readonly mode = signal<PeriodMode>('week');
   /** Si cuentan las horas de las tareas locales; activo por defecto. */

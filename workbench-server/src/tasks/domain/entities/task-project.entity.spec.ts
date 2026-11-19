@@ -1,8 +1,8 @@
 import { DomainError } from '@core/domain/domain.error';
-import { Project } from './project.entity';
+import { TaskProject } from './task-project.entity';
 
 const plane = () =>
-  Project.createFromExternal({
+  TaskProject.createFromExternal({
     name: 'Melón',
     externalId: 'ext-1',
     source: 'plane',
@@ -31,7 +31,7 @@ describe('Project configuration', () => {
   });
 
   it('a local project is visible, can be hidden, but has no sync to turn on', () => {
-    const local = Project.createLocal({ name: 'Local' });
+    const local = TaskProject.createLocal({ name: 'Local' });
     expect(local.visible).toBe(true);
     local.configure({ visible: false });
     expect(local.visible).toBe(false);

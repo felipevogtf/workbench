@@ -22,7 +22,7 @@ import { TextInput } from '@shared/ui/text-input/text-input';
 import { Textarea } from '@shared/ui/textarea/textarea';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { Issue, IssueInput, PRIORITY_OPTIONS } from '../../models/issue';
 
@@ -58,7 +58,7 @@ export class IssueFormDialog {
   readonly saved = output<Issue>();
 
   private readonly issues = inject(IssuesStore);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
   private readonly statesStore = inject(StatesStore);
   private readonly labelsStore = inject(LabelsStore);
 

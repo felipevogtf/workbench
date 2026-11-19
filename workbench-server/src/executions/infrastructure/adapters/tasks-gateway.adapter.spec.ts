@@ -1,7 +1,7 @@
 import { TasksFacade } from '@tasks/application/tasks-facade.service';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 import { Label } from '@tasks/domain/entities/label.entity';
-import { Project } from '@tasks/domain/entities/project.entity';
+import { TaskProject } from '@tasks/domain/entities/task-project.entity';
 import { TasksGatewayAdapter } from './tasks-gateway.adapter';
 
 const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
@@ -29,7 +29,7 @@ const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
   });
 
 const project = (identifier: string | null) =>
-  Project.reconstruct({
+  TaskProject.reconstruct({
     id: 'p1',
     name: 'Melón',
     externalId: 'plane-p1',
@@ -50,7 +50,7 @@ const label = Label.reconstruct({
 
 function adapter(
   found: Issue | null,
-  of: Project | null,
+  of: TaskProject | null,
   extra: Partial<Record<'groupContext' | 'groupOf', unknown>> = {},
 ) {
   return new TasksGatewayAdapter({

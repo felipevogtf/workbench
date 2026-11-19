@@ -1,9 +1,9 @@
 import { DomainError } from '@core/domain/domain.error';
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  PROJECT_REPOSITORY_PORT,
-  type ProjectRepositoryPort,
-} from '@tasks/domain/ports/project-repository.port';
+  TASK_PROJECT_REPOSITORY_PORT,
+  type TaskProjectRepositoryPort,
+} from '@tasks/domain/ports/task-project-repository.port';
 import {
   ISSUE_SOURCE_PORT,
   type IssueSourcePort,
@@ -42,8 +42,8 @@ export class IssuesService {
     private readonly issueSource: IssueSourcePort,
     @Inject(ISSUE_REPOSITORY_PORT)
     private readonly issueRepository: IssueRepositoryPort,
-    @Inject(PROJECT_REPOSITORY_PORT)
-    private readonly projectRepository: ProjectRepositoryPort,
+    @Inject(TASK_PROJECT_REPOSITORY_PORT)
+    private readonly projectRepository: TaskProjectRepositoryPort,
     @Inject(STATE_REPOSITORY_PORT)
     private readonly stateRepository: StateRepositoryPort,
     @Inject(LABEL_REPOSITORY_PORT)

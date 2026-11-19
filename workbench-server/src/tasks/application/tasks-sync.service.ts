@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IssuesService } from '@tasks/application/issues.service';
-import { ProjectsService } from '@tasks/application/projects.service';
+import { TaskProjectsService } from '@tasks/application/task-projects.service';
 
 export interface SyncCounts {
   created: number;
@@ -20,7 +20,7 @@ export class TasksSyncService {
   private running: Promise<TasksSyncResult> | null = null;
 
   constructor(
-    private readonly projectsService: ProjectsService,
+    private readonly projectsService: TaskProjectsService,
     private readonly issuesService: IssuesService,
   ) {}
 

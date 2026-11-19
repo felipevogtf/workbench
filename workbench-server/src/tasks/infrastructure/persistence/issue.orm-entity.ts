@@ -11,7 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { LabelOrmEntity } from './label.orm-entity';
-import { ProjectOrmEntity } from './project.orm-entity';
+import { TaskProjectOrmEntity } from './task-project.orm-entity';
 import { StateOrmEntity } from './state.orm-entity';
 
 @Entity('issues')
@@ -28,11 +28,11 @@ export class IssueOrmEntity {
   @Column({ default: false })
   is_group!: boolean;
 
-  @ManyToOne(() => ProjectOrmEntity, (project) => project.issues, {
+  @ManyToOne(() => TaskProjectOrmEntity, (project) => project.issues, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'project_id' })
-  project!: ProjectOrmEntity;
+  project!: TaskProjectOrmEntity;
 
   @Column()
   name!: string;

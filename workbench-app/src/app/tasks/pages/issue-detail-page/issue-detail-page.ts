@@ -36,7 +36,7 @@ import { IssueFormDialog } from '../../components/issue-form-dialog/issue-form-d
 import { TransferIssueDialog } from '../../components/transfer-issue-dialog/transfer-issue-dialog';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { TimeEntriesStore } from '../../data-access/time-entries.store';
 import { Issue, issueCode, issuePlaneUrl } from '../../models/issue';
@@ -86,7 +86,7 @@ export class IssueDetailPage {
   );
   protected readonly executionsStore = inject(IssueExecutionsStore);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly projectsStore = inject(ProjectsStore);
+  private readonly projectsStore = inject(TaskProjectsStore);
   private readonly statesStore = inject(StatesStore);
   private readonly labelsStore = inject(LabelsStore);
   private readonly confirm = inject(ConfirmDialog);

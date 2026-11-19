@@ -5,7 +5,7 @@ import { of } from 'rxjs';
 import { IssuesStore } from '../../data-access/issues.store';
 import { LabelsStore } from '../../data-access/labels.store';
 import { PlansStore } from '../../data-access/plans.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { TasksApi } from '../../data-access/tasks.api';
 import { Issue } from '../../models/issue';
@@ -57,7 +57,7 @@ describe('IssueDetailPage', () => {
           }),
         },
         {
-          provide: ProjectsStore,
+          provide: TaskProjectsStore,
           useValue: stub({ projectById: signal(new Map()), projects: signal([]) }),
         },
         {

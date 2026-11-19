@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Issue } from '@tasks/domain/entities/issue.entity';
 import { Label } from '@tasks/domain/entities/label.entity';
-import { Project } from '@tasks/domain/entities/project.entity';
+import { TaskProject } from '@tasks/domain/entities/task-project.entity';
 import { State } from '@tasks/domain/entities/state.entity';
 import {
   ISSUE_REPOSITORY_PORT,
@@ -12,9 +12,9 @@ import {
   type LabelRepositoryPort,
 } from '@tasks/domain/ports/label-repository.port';
 import {
-  PROJECT_REPOSITORY_PORT,
-  type ProjectRepositoryPort,
-} from '@tasks/domain/ports/project-repository.port';
+  TASK_PROJECT_REPOSITORY_PORT,
+  type TaskProjectRepositoryPort,
+} from '@tasks/domain/ports/task-project-repository.port';
 import {
   STATE_REPOSITORY_PORT,
   type StateRepositoryPort,
@@ -46,8 +46,8 @@ export class TasksFacade {
   constructor(
     @Inject(ISSUE_REPOSITORY_PORT)
     private readonly issues: IssueRepositoryPort,
-    @Inject(PROJECT_REPOSITORY_PORT)
-    private readonly projects: ProjectRepositoryPort,
+    @Inject(TASK_PROJECT_REPOSITORY_PORT)
+    private readonly projects: TaskProjectRepositoryPort,
     @Inject(STATE_REPOSITORY_PORT)
     private readonly states: StateRepositoryPort,
     @Inject(LABEL_REPOSITORY_PORT)
@@ -64,7 +64,7 @@ export class TasksFacade {
     return this.issues.findByIds(ids);
   }
 
-  findProject(id: string): Promise<Project | null> {
+  findProject(id: string): Promise<TaskProject | null> {
     return this.projects.findById(id);
   }
 

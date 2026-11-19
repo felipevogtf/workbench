@@ -7,7 +7,7 @@ import { Menu, MenuItem } from '@shared/ui/menu/menu';
 import { Tag } from '@shared/ui/tag/tag';
 import { HourTotalsStore } from '../../data-access/hour-totals.store';
 import { LabelsStore } from '../../data-access/labels.store';
-import { ProjectsStore } from '../../data-access/projects.store';
+import { TaskProjectsStore } from '../../data-access/task-projects.store';
 import { StatesStore } from '../../data-access/states.store';
 import { Issue, issueCode } from '../../models/issue';
 import { PriorityBadge } from '../priority-badge/priority-badge';
@@ -28,7 +28,7 @@ export class IssueTable {
   readonly toggleClosed = output<Issue>();
   readonly togglePaused = output<Issue>();
 
-  private readonly projects = inject(ProjectsStore).projectById;
+  private readonly projects = inject(TaskProjectsStore).projectById;
   private readonly states = inject(StatesStore).stateById;
   private readonly labels = inject(LabelsStore).labelById;
   private readonly hourTotals = inject(HourTotalsStore).totals;

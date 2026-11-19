@@ -6,10 +6,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { IssueOrmEntity } from './issue.orm-entity';
-import { ExternalSource } from '@tasks/domain/entities/project.props';
+import { ExternalSource } from '@tasks/domain/entities/task-project.props';
 
-@Entity('projects')
-export class ProjectOrmEntity {
+@Entity('task_projects')
+export class TaskProjectOrmEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -36,7 +36,7 @@ export class ProjectOrmEntity {
 
   // Nota: NO es @UpdateDateColumn() a propósito — ese decorador hace que
   // TypeORM lo pise en TODO .save(), no solo cuando se llama markAsSynced().
-  // Es una columna de dominio normal, controlada explícitamente por Project.
+  // Es una columna de dominio normal, controlada explícitamente por TaskProject.
   @Column({ type: 'timestamp', nullable: true })
   synced_at!: Date | null;
 

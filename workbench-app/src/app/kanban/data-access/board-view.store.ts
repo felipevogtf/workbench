@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
 import { Toast } from '@shared/ui/toast/toast';
-import { IssuesStore, LabelsStore, ProjectsStore, StatesStore } from '@tasks/index';
+import { IssuesStore, LabelsStore, TaskProjectsStore, StatesStore } from '@tasks/index';
 import { Column, applyMove, buildColumns, columnOf, positionAt } from '../domain/board-columns';
 import { BoardCard } from '../models/board';
 import { BoardsApi } from './boards.api';
@@ -16,7 +16,7 @@ export class BoardViewStore {
   private readonly api = inject(BoardsApi);
   private readonly issues = inject(IssuesStore);
   private readonly states = inject(StatesStore);
-  private readonly projects = inject(ProjectsStore);
+  private readonly projects = inject(TaskProjectsStore);
   private readonly labels = inject(LabelsStore);
   private readonly toast = inject(Toast);
 
