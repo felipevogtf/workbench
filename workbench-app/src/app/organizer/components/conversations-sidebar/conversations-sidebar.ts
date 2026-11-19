@@ -131,6 +131,9 @@ const MENU: MenuItem[] = [{ id: 'remove', label: 'Eliminar', icon: 'trash', tone
     .side__item {
       display: flex;
       align-items: center;
+      // Los `li` traen un relleno inferior global: aquí agrandaría la fila y descentraría el título.
+      padding: 0;
+      margin: 0;
       border-radius: var(--radius-sm);
 
       &:hover,
