@@ -151,6 +151,7 @@ describe('OrganizerPage planning', () => {
             provide: PlansStore,
             useValue: {
               plans: signal([]),
+              viewed: signal(null),
               requesting: signal(false),
               active: signal(null),
               load: vi.fn(),
