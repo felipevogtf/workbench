@@ -10,6 +10,10 @@ import {
   type IssueRepositoryPort,
 } from '@tasks/domain/ports/issue-repository.port';
 import { IssuesService } from './issues.service';
+import { TaskProjectsService } from './task-projects.service';
+
+/** El proyecto de tareas (local) donde viven las sesiones libres, las que no parten de un ticket. */
+export const FREE_SESSIONS_PROJECT = 'Sesiones libres';
 
 /** Cuántas tareas puede juntar un grupo: más no cabe en una ejecución. */
 export const MAX_GROUP_MEMBERS = 8;
@@ -26,20 +30,57 @@ export class IssueGroupsService {
     @Inject(ISSUE_REPOSITORY_PORT)
     private readonly issues: IssueRepositoryPort,
     private readonly issuesService: IssuesService,
+    private readonly taskProjects: TaskProjectsService,
   ) {}
 
-  /** Crea la tarea del grupo (sin miembros todavía) en el proyecto dado. */
-  createGroup(data: {
+  /**
+   * Crea la tarea del grupo (sin miembros todavía). Sin `projectId` vive en el proyecto de tareas local de las sesiones
+   * libres, que se crea la primera vez. `projectRepos` son los proyectos (repositorios) donde se trabaja.
+   */
+  async createGroup(data: {
     title: string;
-    projectId: string;
+    projectId?: string;
+    projectRepos?: string[];
     notes?: string | null;
   }): Promise<Issue> {
+    const projectId =
+      data.projectId ??
+      (await this.taskProjects.ensureLocal(FREE_SESSIONS_PROJECT)).id;
     return this.issuesService.createIssue({
       name: data.title,
       description: data.notes ?? null,
-      projectId: data.projectId,
+      projectId,
+      projectRepos: data.projectRepos,
       isGroup: true,
     });
+  }
+
+  /**
+   * Crea una tarea local nueva en el proyecto de tareas del grupo, con los mismos proyectos, y la suma al final del grupo. Es
+   * el ticket que sale de una sesión que no partió de uno de Plane.
+   */
+  async addNewMember(
+    groupId: string,
+    data: { name: string; description?: string | null },
+  ): Promise<Issue> {
+    const group = await this.issues.findById(groupId);
+    if (!group) {
+      throw DomainError.notFound(`Issue with id ${groupId} not found`);
+    }
+    const current = await this.groups.memberIds(groupId);
+    if (current.length >= MAX_GROUP_MEMBERS) {
+      throw new DomainError(
+        `A group can have up to ${MAX_GROUP_MEMBERS} tasks`,
+      );
+    }
+    const issue = await this.issuesService.createIssue({
+      name: data.name,
+      description: data.description ?? null,
+      projectId: group.projectId,
+      projectRepos: group.projectRepos,
+    });
+    await this.setMembers(groupId, [...current, issue.id]);
+    return issue;
   }
 
   /** Cambia el título del grupo y sus notas (qué depende de qué); lo que no se manda no cambia. */

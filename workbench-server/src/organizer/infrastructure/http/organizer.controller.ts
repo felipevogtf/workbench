@@ -16,6 +16,7 @@ import {
   SessionSummary,
 } from '@organizer/application/organizer.service';
 import {
+  AddTicketDto,
   CreateSessionDto,
   SessionDetailDto,
   SessionSummaryDto,
@@ -58,6 +59,15 @@ export class OrganizerController {
     return this.toDetail(await this.organizer.update(id, dto));
   }
 
+  /** Un ticket local nuevo dentro de la sesión (no va a Plane). */
+  @Post(':id/tickets')
+  async addTicket(
+    @Param('id') id: string,
+    @Body() dto: AddTicketDto,
+  ): Promise<SessionDetailDto> {
+    return this.toDetail(await this.organizer.addTicket(id, dto));
+  }
+
   /** Las tareas del grupo, exactamente estas y en este orden. */
   @Put(':id/members')
   async setMembers(
@@ -94,6 +104,7 @@ export class OrganizerController {
       kind: session.kind,
       groupIssueId: session.groupIssueId,
       notes: group.notes,
+      projectRepos: group.projectRepos,
       members: group.members,
       createdAt: session.createdAt.toISOString(),
     };

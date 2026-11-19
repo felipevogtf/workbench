@@ -21,7 +21,7 @@ export interface SessionDetail {
   group: GroupInfo;
 }
 
-const NO_GROUP: GroupInfo = { notes: null, members: [] };
+const NO_GROUP: GroupInfo = { notes: null, projectRepos: [], members: [] };
 
 /**
  * El organizador: una sesión es una tarea-grupo (de ahí cuelgan la conversación, el plan y la ejecución, que son los de siempre) con
@@ -52,16 +52,27 @@ export class OrganizerService {
     );
   }
 
+  /**
+   * Crea una sesión. Con `projectId` es un grupo de tareas de ese proyecto de tareas; sin él es una sesión libre (sin ticket
+   * de Plane), que necesita al menos un proyecto (repositorio) donde trabajar.
+   */
   async create(data: {
     title: string;
-    projectId: string;
+    projectId?: string;
+    projectRepos?: string[];
     notes?: string | null;
   }): Promise<SessionDetail> {
     // El título se valida antes de crear la tarea del grupo, para no dejar una tarea huérfana.
     const title = OrganizerSession.cleanTitle(data.title);
+    if (!data.projectId && !data.projectRepos?.length) {
+      throw new DomainError(
+        'A session without a task project needs at least one project (repository)',
+      );
+    }
     const groupIssueId = await this.groups.createGroup({
       title,
       projectId: data.projectId,
+      projectRepos: data.projectRepos,
       notes: data.notes,
     });
     const session = await this.sessions.save(
@@ -114,6 +125,17 @@ export class OrganizerService {
     const session = await this.find(id);
     this.requireGroup(session);
     await this.groups.setMembers(session.groupIssueId, issueIds);
+    return { session, group: await this.groups.getGroup(session.groupIssueId) };
+  }
+
+  /** Crea una tarea local en la sesión (al final del orden). Solo sirve en un grupo; la tarea nunca va a Plane. */
+  async addTicket(
+    id: string,
+    data: { name: string; description?: string | null },
+  ): Promise<SessionDetail> {
+    const session = await this.find(id);
+    this.requireGroup(session);
+    await this.groups.addNewMember(session.groupIssueId, data);
     return { session, group: await this.groups.getGroup(session.groupIssueId) };
   }
 

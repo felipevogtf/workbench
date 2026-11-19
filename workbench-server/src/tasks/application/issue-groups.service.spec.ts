@@ -4,8 +4,13 @@ import { IssueGroupRepositoryPort } from '@tasks/domain/ports/issue-group-reposi
 import { IssueRepositoryPort } from '@tasks/domain/ports/issue-repository.port';
 import { IssueGroupsService } from './issue-groups.service';
 import type { IssuesService } from './issues.service';
+import type { TaskProjectsService } from './task-projects.service';
 
-const issue = (name: string, local = true) =>
+const issue = (
+  name: string,
+  local = true,
+  extra: { projectId?: string; projectRepos?: string[] } = {},
+) =>
   Issue.reconstruct({
     id: crypto.randomUUID(),
     name,
@@ -20,9 +25,9 @@ const issue = (name: string, local = true) =>
     closedAt: null,
     pausedAt: null,
     stateId: null,
-    projectId: 'p1',
+    projectId: extra.projectId ?? 'p1',
     labelIds: [],
-    projectRepos: [],
+    projectRepos: extra.projectRepos ?? [],
     startDate: null,
     dueDate: null,
     syncedAt: new Date(),
@@ -55,15 +60,32 @@ describe('IssueGroupsService', () => {
       findByIds: (ids: string[]) =>
         Promise.resolve(all.filter((each) => ids.includes(each.id))),
     } as unknown as IssueRepositoryPort;
+    createdWith = [];
     const issuesService = {
-      createIssue: (data: { name: string; description?: string | null }) => {
-        const created = issue(data.name);
+      createIssue: (data: {
+        name: string;
+        description?: string | null;
+        projectId: string;
+        projectRepos?: string[];
+      }) => {
+        createdWith.push(data);
+        const created = issue(data.name, true, data);
         all.push(created);
         return Promise.resolve(created);
       },
     } as unknown as IssuesService;
-    service = new IssueGroupsService(groups, issues, issuesService);
+    const taskProjects = {
+      ensureLocal: () => Promise.resolve({ id: 'local-sessions' }),
+    } as unknown as TaskProjectsService;
+    service = new IssueGroupsService(
+      groups,
+      issues,
+      issuesService,
+      taskProjects,
+    );
   });
+
+  let createdWith: { projectId: string; projectRepos?: string[] }[] = [];
 
   const add = (name: string, local = false) => {
     const created = issue(name, local);
@@ -152,5 +174,45 @@ describe('IssueGroupsService', () => {
     await expect(service.setMembers(synced.id, [])).rejects.toThrow(
       /local task/,
     );
+  });
+
+  describe('free sessions', () => {
+    it('lives in the local project of free sessions when no task project is given', async () => {
+      await service.createGroup({
+        title: 'Sin ticket',
+        projectRepos: ['acme/web'],
+      });
+
+      expect(createdWith).toEqual([
+        expect.objectContaining({
+          projectId: 'local-sessions',
+          projectRepos: ['acme/web'],
+        }),
+      ]);
+    });
+
+    it('keeps the task project that is given', async () => {
+      await service.createGroup({ title: 'Con proyecto', projectId: 'p9' });
+
+      expect(createdWith[0].projectId).toBe('p9');
+    });
+
+    it('adds a new local task at the end of the group, in the same projects', async () => {
+      const group = await service.createGroup({
+        title: 'Sin ticket',
+        projectRepos: ['acme/web'],
+      });
+      const first = await service.addNewMember(group.id, { name: 'Uno' });
+      const second = await service.addNewMember(group.id, { name: 'Dos' });
+
+      expect((await service.members(group.id)).map((m) => m.id)).toEqual([
+        first.id,
+        second.id,
+      ]);
+      expect(createdWith.at(-1)).toMatchObject({
+        projectId: 'local-sessions',
+        projectRepos: ['acme/web'],
+      });
+    });
   });
 });

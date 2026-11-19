@@ -27,16 +27,26 @@ export interface OrganizerSession {
   groupIssueId: string;
   /** Las notas del grupo: qué depende de qué. */
   notes: string | null;
+  /** Los proyectos (repositorios `org/repo`) donde se trabaja; vacío = los de las etiquetas de sus tareas. */
+  projectRepos: string[];
   /** Las tareas, en el orden en que se hacen. */
   members: OrganizerMember[];
   createdAt: string;
 }
 
+/**
+ * Una sesión nueva. Con `projectId` (proyecto de tareas) reúne tickets de Plane; sin él es libre y necesita `projectRepos`: los
+ * proyectos (repositorios) donde se trabaja.
+ */
 export interface NewOrganizerSession {
   title: string;
-  projectId: string;
+  projectId?: string;
+  projectRepos?: string[];
   notes?: string;
 }
+
+/** Cuántos proyectos (repositorios) admite una sesión: lo mismo que una ejecución. */
+export const MAX_SESSION_PROJECTS = 3;
 
 /** Cuántas tareas caben en un grupo (lo mismo que acepta el servidor). */
 export const MAX_GROUP_MEMBERS = 8;

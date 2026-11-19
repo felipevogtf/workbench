@@ -9,6 +9,8 @@ export interface GroupMemberInfo {
 export interface GroupInfo {
   /** Las notas del grupo (qué depende de qué). */
   notes: string | null;
+  /** Los proyectos (repositorios `org/repo`) donde se trabaja la sesión; vacío = los de las etiquetas de sus tareas. */
+  projectRepos: string[];
   members: GroupMemberInfo[];
 }
 
@@ -24,12 +26,21 @@ export interface TaskInfo {
 export interface GroupsGatewayPort {
   /** Una tarea por su id; `null` si no existe. */
   findTask(id: string): Promise<TaskInfo | null>;
-  /** Crea la tarea del grupo y devuelve su id. */
+  /**
+   * Crea la tarea del grupo y devuelve su id. Sin `projectId` (una sesión libre) vive en el proyecto de tareas local de las
+   * sesiones libres.
+   */
   createGroup(data: {
     title: string;
-    projectId: string;
+    projectId?: string;
+    projectRepos?: string[];
     notes?: string | null;
   }): Promise<string>;
+  /** Crea una tarea local en el grupo, al final, con los mismos proyectos. Devuelve su id. */
+  addNewMember(
+    groupId: string,
+    data: { name: string; description?: string | null },
+  ): Promise<string>;
   /** Las notas y las tareas del grupo, en orden. */
   getGroup(groupId: string): Promise<GroupInfo>;
   /** Deja como miembros exactamente estas tareas, en este orden. */

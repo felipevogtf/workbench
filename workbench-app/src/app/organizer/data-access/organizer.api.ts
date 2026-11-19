@@ -40,6 +40,11 @@ export class OrganizerApi {
     return this.http.put<OrganizerSession>(`${this.base}/${id}/members`, { issueIds });
   }
 
+  /** Un ticket local nuevo dentro de la sesión (no va a Plane). */
+  addTicket(id: string, ticket: { name: string; description?: string }): Observable<OrganizerSession> {
+    return this.http.post<OrganizerSession>(`${this.base}/${id}/tickets`, ticket);
+  }
+
   remove(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }

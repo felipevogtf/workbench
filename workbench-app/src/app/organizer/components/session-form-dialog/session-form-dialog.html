@@ -13,23 +13,35 @@
         [invalid]="invalid('title')"
       />
     </app-form-field>
+
     <app-form-field
-      label="Proyecto"
+      label="Proyectos"
+      for="session-projects"
+      hint="Los repositorios donde vas a trabajar. No necesitas un ticket de Plane."
+      [error]="projectsError()"
+    >
+      <app-chip-picker
+        label="Proyectos"
+        emptyText="Todavía no hay proyectos. Créalos en Proyectos."
+        [options]="repoOptions()"
+        [(selected)]="selectedRepos"
+      />
+    </app-form-field>
+
+    <app-form-field
+      label="Proyecto de tareas"
       for="session-project"
-      required
-      [error]="invalid('projectId') ? 'Elige un proyecto' : null"
+      hint="Solo si vas a reunir tickets de Plane: el proyecto de tareas donde vive el grupo. Si eliges proyectos arriba, puedes dejarlo vacío."
     >
       <app-select
         inputId="session-project"
         formControlName="projectId"
-        placeholder="Elige un proyecto"
+        placeholder="Ninguno (sesión libre)"
         [options]="projectOptions()"
-        [invalid]="invalid('projectId')"
       />
     </app-form-field>
     <p class="hint">
-      El grupo es una tarea más del proyecto; en la sesión eliges las tareas que reúne y conversas
-      con la IA para planificarlas juntas.
+      En la sesión conversas con la IA, pides el plan cuando quieras y puedes sumar tickets de Plane o crear tickets locales.
     </p>
   </form>
 

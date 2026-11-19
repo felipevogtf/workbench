@@ -104,8 +104,10 @@
             class="members"
             [members]="session.members"
             [groupIssueId]="session.groupIssueId"
+            [projectRepos]="session.projectRepos"
             [saving]="store.saving()"
             (changed)="changeMembers($event)"
+            (ticketCreated)="createTicket($event)"
             (opened)="sheet.set({ id: $event })"
           />
         }

@@ -43,9 +43,19 @@ describe('OrganizerService', () => {
         groups.set(id, {
           title: data.title,
           notes: data.notes ?? null,
+          projectRepos: data.projectRepos ?? [],
           members: [],
         });
         return Promise.resolve(id);
+      },
+      addNewMember: (id, data) => {
+        const group = groups.get(id) as GroupInfo;
+        const memberId = `new-${group.members.length + 1}`;
+        group.members = [
+          ...group.members,
+          { id: memberId, key: null, name: data.name },
+        ];
+        return Promise.resolve(memberId);
       },
       getGroup: (id) => Promise.resolve(groups.get(id) as GroupInfo),
       setMembers: (id, ids) => {
@@ -185,6 +195,52 @@ describe('OrganizerService', () => {
 
       expect(stored).toEqual([]);
       expect(tasks.has('t1')).toBe(true);
+    });
+  });
+
+  describe('free session (no Plane ticket)', () => {
+    it('is created from the projects it works on, without a task project', async () => {
+      const { session, group } = await service.create({
+        title: 'Arreglar el login',
+        projectRepos: ['acme/web'],
+      });
+
+      expect(session.kind).toBe('group');
+      expect(group.projectRepos).toEqual(['acme/web']);
+    });
+
+    it('needs a task project or at least one project, and leaves nothing behind otherwise', async () => {
+      await expect(service.create({ title: 'Nada' })).rejects.toThrow(
+        'at least one project',
+      );
+      await expect(
+        service.create({ title: 'Nada', projectRepos: [] }),
+      ).rejects.toThrow('at least one project');
+      expect(groups.size).toBe(0);
+    });
+
+    it('adds a local ticket to the session, at the end', async () => {
+      const { session } = await service.create({
+        title: 'Sesión',
+        projectRepos: ['acme/web'],
+      });
+
+      await service.addTicket(session.id, { name: 'Primero' });
+      const detail = await service.addTicket(session.id, { name: 'Segundo' });
+
+      expect(detail.group.members.map((member) => member.name)).toEqual([
+        'Primero',
+        'Segundo',
+      ]);
+    });
+
+    it('does not add tickets to the session of a single task', async () => {
+      tasks.set('t1', { name: 'Suelta', isGroup: false });
+      const { session } = await service.openForTask('t1');
+
+      await expect(
+        service.addTicket(session.id, { name: 'Otro' }),
+      ).rejects.toThrow('no group');
     });
   });
 });

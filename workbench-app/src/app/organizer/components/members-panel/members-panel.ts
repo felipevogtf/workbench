@@ -36,9 +36,15 @@ export class MembersPanel {
   readonly changed = output<string[]>();
   /** Se pidió ver una tarea del grupo. */
   readonly opened = output<string>();
+  /** Se pidió crear un ticket local nuevo en el grupo (con este nombre). */
+  readonly ticketCreated = output<string>();
+  /** Los proyectos (repositorios) donde se trabaja la sesión; se muestran como contexto. */
+  readonly projectRepos = input<readonly string[]>([]);
 
   protected readonly maxMembers = MAX_GROUP_MEMBERS;
   protected readonly search = signal('');
+  /** El nombre del ticket nuevo que se está escribiendo. */
+  protected readonly newTicket = signal('');
   /** El buscador para sumar tareas está abierto. */
   protected readonly adding = signal(false);
 
@@ -79,6 +85,13 @@ export class MembersPanel {
     this.changed.emit([...this.members().map((member) => member.id), id]);
     this.search.set('');
     this.adding.set(false);
+  }
+
+  protected createTicket(): void {
+    const name = this.newTicket().trim();
+    if (!name || this.full()) return;
+    this.ticketCreated.emit(name);
+    this.newTicket.set('');
   }
 
   protected toggleAdd(): void {

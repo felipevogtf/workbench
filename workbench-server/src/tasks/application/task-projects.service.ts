@@ -25,6 +25,14 @@ export class TaskProjectsService {
     return project;
   }
 
+  /** El proyecto de tareas local con ese nombre; se crea la primera vez que se pide. */
+  async ensureLocal(name: string): Promise<TaskProject> {
+    const existing = (await this.projectRepository.findAll()).find(
+      (project) => project.isLocal && project.name === name,
+    );
+    return existing ?? this.createProject({ name });
+  }
+
   async updateProject(
     id: string,
     data: { name?: string; syncEnabled?: boolean; visible?: boolean },

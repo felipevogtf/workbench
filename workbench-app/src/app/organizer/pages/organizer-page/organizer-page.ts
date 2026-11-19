@@ -211,6 +211,10 @@ export class OrganizerPage {
     await this.store.setMembers(this.id(), ids);
   }
 
+  protected async createTicket(name: string): Promise<void> {
+    await this.store.addTicket(this.id(), name);
+  }
+
   /**
    * Pide el plan con lo conversado (si algo). La conversación se queda: se sigue viendo y se puede seguir hablando. Al replanificar
    * solo viaja lo que se dijo después del último plan, porque el plan anterior ya lo incorporó. Con `rebuild` se hace de cero, sin

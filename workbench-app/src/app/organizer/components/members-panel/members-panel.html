@@ -1,4 +1,9 @@
 <div class="panel">
+  @if (projectRepos().length > 0) {
+    <p class="muted projects">
+      Proyectos: <strong>{{ projectRepos().join(', ') }}</strong>
+    </p>
+  }
   <ol
     class="chips"
     aria-label="Tareas del grupo, en el orden en que se hacen; arrastra para reordenar"
@@ -48,7 +53,8 @@
 
   @if (members().length === 0 && !adding()) {
     <p class="muted">
-      Sin tareas todavía. Pulsa «Sumar» para elegir las que quieras planificar juntas.
+      Sin tareas todavía. Puedes conversar y planificar así, o pulsar «Sumar» para elegir (o crear) las tareas que quieras
+      planificar juntas.
     </p>
   }
 
@@ -84,6 +90,28 @@
       } @else if (search().trim().length >= 2) {
         <p class="muted">Ninguna tarea abierta coincide.</p>
       }
+      <div class="new-ticket">
+        <input
+          class="add__input"
+          type="text"
+          autocomplete="off"
+          maxlength="255"
+          aria-label="Nombre de un ticket nuevo"
+          placeholder="O crea un ticket nuevo (local, no va a Plane)"
+          [value]="newTicket()"
+          [disabled]="full() || saving()"
+          (input)="newTicket.set($any($event.target).value)"
+          (keydown.enter)="createTicket(); $event.preventDefault()"
+        />
+        <button
+          class="chip chip--add"
+          type="button"
+          [disabled]="!newTicket().trim() || full() || saving()"
+          (click)="createTicket()"
+        >
+          <app-icon name="plus" size="1em" /> Crear
+        </button>
+      </div>
     </div>
   }
 </div>

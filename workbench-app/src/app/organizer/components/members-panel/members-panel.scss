@@ -171,3 +171,14 @@ li:last-child > .suggestion {
   min-height: 0;
   line-height: 1.25;
 }
+
+.new-ticket {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .add__input {
+    flex: 1;
+    min-width: 0;
+  }
+}

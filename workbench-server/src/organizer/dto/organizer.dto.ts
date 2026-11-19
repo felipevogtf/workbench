@@ -5,8 +5,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
+
+const REPO = /^[\w.-]+\/[\w.-]+$/;
 
 export class CreateSessionDto {
   @IsString()
@@ -14,9 +17,21 @@ export class CreateSessionDto {
   @MaxLength(200)
   title!: string;
 
-  /** El proyecto donde vive la tarea del grupo. */
+  /** El proyecto de tareas donde vive la tarea del grupo. Sin él, la sesión es libre (sin ticket de Plane). */
+  @IsOptional()
   @IsUUID()
-  projectId!: string;
+  projectId?: string;
+
+  /** Los proyectos (repositorios, `organización/repo`) donde se trabaja. Obligatorio en una sesión libre. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @Matches(REPO, {
+    each: true,
+    message: 'each project must look like "organization/repository"',
+  })
+  projectRepos?: string[];
 
   @IsOptional()
   @IsString()
@@ -35,6 +50,18 @@ export class UpdateSessionDto {
   @IsString()
   @MaxLength(20_000)
   notes?: string;
+}
+
+export class AddTicketDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20_000)
+  description?: string;
 }
 
 export class SetMembersDto {
@@ -68,6 +95,8 @@ export class SessionDetailDto {
   /** La tarea del grupo: con este id se conversa, se planifica y se ejecuta, como con cualquier tarea. */
   groupIssueId!: string;
   notes!: string | null;
+  /** Los proyectos (repositorios) donde se trabaja la sesión; vacío = los de las etiquetas de sus tareas. */
+  projectRepos!: string[];
   members!: SessionMemberDto[];
   createdAt!: string;
 }

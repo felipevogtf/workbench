@@ -94,6 +94,11 @@ export class OrganizerStore {
     return this.change(id, () => this.api.setMembers(id, issueIds));
   }
 
+  /** Crea un ticket local en la sesión, al final del orden. */
+  async addTicket(id: string, name: string): Promise<boolean> {
+    return this.change(id, () => this.api.addTicket(id, { name }));
+  }
+
   async update(id: string, patch: { title?: string; notes?: string }): Promise<boolean> {
     return this.change(id, () => this.api.update(id, patch));
   }

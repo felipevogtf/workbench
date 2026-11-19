@@ -27,10 +27,18 @@ export class GroupsGatewayAdapter implements GroupsGatewayPort {
 
   async createGroup(data: {
     title: string;
-    projectId: string;
+    projectId?: string;
+    projectRepos?: string[];
     notes?: string | null;
   }): Promise<string> {
     return (await this.groups.createGroup(data)).id;
+  }
+
+  async addNewMember(
+    groupId: string,
+    data: { name: string; description?: string | null },
+  ): Promise<string> {
+    return (await this.groups.addNewMember(groupId, data)).id;
   }
 
   async getGroup(groupId: string): Promise<GroupInfo> {
@@ -40,6 +48,7 @@ export class GroupsGatewayAdapter implements GroupsGatewayPort {
     ]);
     return {
       notes: htmlToText(issue?.description, MAX_NOTES_CHARS) || null,
+      projectRepos: issue?.projectRepos ?? [],
       members:
         context?.members.map((member) => ({
           id: member.id,
