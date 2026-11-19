@@ -176,7 +176,10 @@
   }
 
   .exec__chat--open {
+    // Es una columna del grid: sin el desplazamiento de 56px que trae como panel flotante (corría el cajón hacia abajo).
     position: relative;
+    inset: auto;
+    min-height: 0;
     width: auto;
     box-shadow: none;
   }

@@ -34,7 +34,11 @@ const task: TaskContext = {
 };
 
 function build(
-  options: { task?: TaskContext | null; runFails?: boolean } = {},
+  options: {
+    task?: TaskContext | null;
+    runFails?: boolean;
+    markdown?: string;
+  } = {},
 ) {
   const store: Plan[] = [];
   const repo: PlanRepositoryPort = {
@@ -83,7 +87,7 @@ function build(
     options.runFails
       ? Promise.reject(new Error('cli exploded'))
       : Promise.resolve({
-          markdown: '## Objetivo\nok',
+          markdown: options.markdown ?? '## Objetivo\nok',
           agentId: 'a1',
           agentName: 'default-planner',
           model: 'm',
@@ -132,6 +136,20 @@ async function settle(store: Plan[]): Promise<void> {
 }
 
 describe('PlansService', () => {
+  it('saves the plan without what the model says before it', async () => {
+    const { service, store } = build({
+      markdown:
+        'Ya tengo suficiente contexto del código y voy a escribir el plan.\n\n# Plan: guías\n\n## Objetivo\nok',
+    });
+
+    const plan = await service.create('i1');
+    await settle(store);
+
+    expect((await service.get(plan.id)).content).toBe(
+      '# Plan: guías\n\n## Objetivo\nok',
+    );
+  });
+
   it('generates a plan in the background and keeps the history', async () => {
     const { service, store, runPlan } = build();
 

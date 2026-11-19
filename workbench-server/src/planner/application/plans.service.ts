@@ -48,6 +48,7 @@ import {
   type TicketsGatewayPort,
 } from '@planner/domain/ports/tickets-gateway.port';
 import { PlanRevision } from '@planner/domain/plan-prompt';
+import { cleanPlan } from '@planner/domain/plan-text';
 
 export const PLANNER_CONCURRENCY = Symbol('PLANNER_CONCURRENCY');
 
@@ -272,7 +273,8 @@ export class PlansService {
       content: string,
       result: Awaited<ReturnType<typeof run>>,
     ) => ({
-      content,
+      // Sin la charla del modelo antes del plan («Ya tengo suficiente contexto…»).
+      content: cleanPlan(content),
       agentId: result.agentId,
       agentName: result.agentName,
       model: result.model,
