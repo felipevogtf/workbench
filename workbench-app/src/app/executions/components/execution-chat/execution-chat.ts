@@ -58,10 +58,8 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
                   <small class="change__state">Deshecho</small>
                 } @else if (canUndo()) {
                   <button
-                    app-button
-                    variant="ghost"
-                    size="sm"
                     type="button"
+                    class="change__undo"
                     [disabled]="store.acting()"
                     (click)="undo(change)"
                   >
@@ -138,15 +136,23 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
       list-style: none;
     }
 
+    /* Una tarjeta por cambio: el texto a la izquierda y, a la derecha, su acción. Los li traen un relleno inferior global que se anula. */
     .change {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-      padding: var(--space-1) var(--space-2);
+      gap: var(--space-3);
+      margin: 0;
+      padding: var(--space-2) var(--space-3);
       border: 1px solid var(--border);
-      border-radius: var(--border-radius);
+      border-radius: var(--radius-sm);
+      background: var(--background);
       font-size: 0.8125rem;
+    }
+
+    .change__text {
+      line-height: 1.4;
+      overflow-wrap: anywhere;
     }
 
     .change--undone .change__text {
@@ -154,9 +160,27 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
       opacity: 0.6;
     }
 
+    .change__undo {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--primary);
+      font: inherit;
+      font-weight: 500;
+      white-space: nowrap;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
+
     .change__state {
-      flex: none;
       opacity: 0.7;
+      white-space: nowrap;
     }
     /* Una nota puede ser larga: el pie no pasa de un tramo del panel y se desplaza, para no tapar la conversación. */
     .proposals {
