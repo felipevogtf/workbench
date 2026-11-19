@@ -28,6 +28,9 @@ export class TaskProjectOrmEntity {
   @Column({ type: 'boolean', default: true })
   visible!: boolean;
 
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  default_project_repos!: string[];
+
   @Column()
   name!: string;
 

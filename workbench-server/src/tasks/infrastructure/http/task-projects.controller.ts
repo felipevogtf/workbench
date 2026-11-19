@@ -76,6 +76,7 @@ export class TaskProjectsController {
       identifier: project.identifier,
       syncEnabled: project.syncEnabled,
       visible: project.visible,
+      defaultProjectRepos: project.defaultProjectRepos,
       ticketBaseUrl: project.source === 'plane' ? this.planeBrowseUrl() : null,
       syncedAt: project.syncedAt ? project.syncedAt.toISOString() : null,
       createdAt: project.createdAt.toISOString(),

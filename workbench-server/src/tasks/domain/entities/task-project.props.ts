@@ -11,6 +11,8 @@ export interface TaskProjectProps {
   syncEnabled: boolean;
   /** Si el proyecto y sus tareas aparecen en la app (selectores y listados). */
   visible: boolean;
+  /** Los proyectos (repositorios `org/repo`) que se usan en las tareas de este proyecto de tareas que no tienen los suyos. */
+  defaultProjectRepos: string[];
   syncedAt: Date | null;
   createdAt: Date;
 }

@@ -37,4 +37,35 @@ describe('Project configuration', () => {
     expect(local.visible).toBe(false);
     expect(() => local.configure({ syncEnabled: true })).toThrow(DomainError);
   });
+
+  describe('default projects', () => {
+    it('are empty at first and can be set on a Plane project too', () => {
+      const project = TaskProject.createFromExternal({
+        name: 'Melón',
+        externalId: 'e1',
+        source: 'plane',
+        identifier: 'MEL',
+      });
+      expect(project.defaultProjectRepos).toEqual([]);
+
+      project.configure({
+        defaultProjectRepos: [' Acme/Web ', 'acme/api', 'acme/web'],
+      });
+
+      expect(project.defaultProjectRepos).toEqual(['acme/web', 'acme/api']);
+    });
+
+    it('reject a repository that is not organization/repository and more than three', () => {
+      const project = TaskProject.createLocal({ name: 'Local' });
+
+      expect(() =>
+        project.configure({ defaultProjectRepos: ['sin-org'] }),
+      ).toThrow(DomainError);
+      expect(() =>
+        project.configure({
+          defaultProjectRepos: ['a/1', 'a/2', 'a/3', 'a/4'],
+        }),
+      ).toThrow(DomainError);
+    });
+  });
 });

@@ -31,9 +31,12 @@ export class TasksGatewayAdapter implements TasksGatewayPort {
     // Un grupo se compone de sus tareas: su descripción y sus repositorios salen de ellas.
     const labels = [...ownLabels, ...(group?.labels ?? [])];
     // Los proyectos de la tarea mandan; si no tiene (o ninguno tiene enlace), valen sus etiquetas.
-    const projectRepos = [
+    const own = [
       ...new Set([...issue.projectRepos, ...(group?.projectRepos ?? [])]),
     ];
+    // Sin proyectos propios, valen los que su proyecto de tareas trae por defecto.
+    const projectRepos =
+      own.length > 0 ? own : (project?.defaultProjectRepos ?? []);
     const links = await this.projects.linksFor(projectRepos);
 
     return {

@@ -88,7 +88,12 @@ export class TasksApi {
 
   updateProject(
     id: string,
-    input: { name?: string; syncEnabled?: boolean; visible?: boolean },
+    input: {
+      name?: string;
+      syncEnabled?: boolean;
+      visible?: boolean;
+      defaultProjectRepos?: string[];
+    },
   ): Observable<TaskProject> {
     return this.http.patch<TaskProject>(`${this.base}/task-projects/${id}`, input);
   }

@@ -38,6 +38,7 @@ export class TypeOrmTaskProjectRepository implements TaskProjectRepositoryPort {
       identifier: project.identifier,
       sync_enabled: project.syncEnabled,
       visible: project.visible,
+      default_project_repos: project.defaultProjectRepos,
       synced_at: project.syncedAt,
     });
   }
@@ -55,6 +56,7 @@ export class TypeOrmTaskProjectRepository implements TaskProjectRepositoryPort {
       identifier: orm.identifier,
       syncEnabled: orm.sync_enabled,
       visible: orm.visible,
+      defaultProjectRepos: orm.default_project_repos ?? [],
       syncedAt: orm.synced_at,
       createdAt: orm.created_at,
     });

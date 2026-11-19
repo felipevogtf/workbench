@@ -30,7 +30,7 @@ const issue = (extra: Partial<Parameters<typeof Issue.reconstruct>[0]> = {}) =>
     ...extra,
   });
 
-const project = (identifier: string | null) =>
+const project = (identifier: string | null, defaults: string[] = []) =>
   TaskProject.reconstruct({
     id: 'p1',
     name: 'Melón',
@@ -39,6 +39,7 @@ const project = (identifier: string | null) =>
     identifier,
     syncEnabled: true,
     visible: true,
+    defaultProjectRepos: defaults,
     syncedAt: null,
     createdAt: new Date(),
   });
@@ -173,6 +174,37 @@ describe('TasksGatewayAdapter', () => {
     ).getTask('i1');
 
     expect(task?.repoUrls).toEqual(['https://bitbucket.org/acme/web']);
+  });
+
+  it('uses the default projects of its task project when it has none of its own', async () => {
+    const task = await adapter(issue(), project('MEL', ['acme/api']), {}, [
+      { repo: 'acme/api', name: 'api', repoUrl: 'https://github.com/acme/api' },
+    ]).getTask('i1');
+
+    expect(task?.repoUrls).toEqual(['https://github.com/acme/api']);
+  });
+
+  it('prefers its own projects over the defaults of its task project', async () => {
+    const asked: string[][] = [];
+    const gateway = new TasksGatewayAdapter(
+      {
+        findIssue: () => Promise.resolve(issue({ projectRepos: ['acme/web'] })),
+        findLabels: () => Promise.resolve([]),
+        findProject: () => Promise.resolve(project('MEL', ['acme/api'])),
+        groupContext: () => Promise.resolve(null),
+        groupOf: () => Promise.resolve(null),
+      } as unknown as TasksFacade,
+      {
+        linksFor: (repos: string[]) => {
+          asked.push(repos);
+          return Promise.resolve([]);
+        },
+      } as unknown as ProjectsFacade,
+    );
+
+    await gateway.getTask('i1');
+
+    expect(asked).toEqual([['acme/web']]);
   });
 
   it('is null when the task does not exist', async () => {

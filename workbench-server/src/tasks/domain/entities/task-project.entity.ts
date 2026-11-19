@@ -1,6 +1,28 @@
 import { DomainError } from '@core/domain/domain.error';
 import { TaskProjectProps } from './task-project.props';
 
+const MAX_DEFAULT_REPOS = 3;
+const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
+
+/** Los repositorios por defecto: `organización/repo` en minúsculas, sin repetir y no más de los que admite una tarea. */
+function normalizeRepos(repos: readonly string[]): string[] {
+  const normalized = [
+    ...new Set(repos.map((repo) => repo.trim().toLowerCase())),
+  ];
+  if (normalized.length > MAX_DEFAULT_REPOS) {
+    throw new DomainError(
+      `A task project can have at most ${MAX_DEFAULT_REPOS} default projects`,
+    );
+  }
+  const invalid = normalized.find((repo) => !REPO_PATTERN.test(repo));
+  if (invalid !== undefined) {
+    throw new DomainError(
+      `A project must look like "organization/repository", got "${invalid}"`,
+    );
+  }
+  return normalized;
+}
+
 export class TaskProject {
   private constructor(private props: TaskProjectProps) {
     this.validateName();
@@ -17,6 +39,7 @@ export class TaskProject {
       // El sync solo aplica a los proyectos de Plane.
       syncEnabled: false,
       visible: true,
+      defaultProjectRepos: [],
       syncedAt: null,
       createdAt: new Date(),
     });
@@ -32,6 +55,7 @@ export class TaskProject {
       ...data,
       syncEnabled: true,
       visible: true,
+      defaultProjectRepos: [],
       id: crypto.randomUUID(),
       syncedAt: new Date(),
       createdAt: new Date(),
@@ -83,6 +107,10 @@ export class TaskProject {
     return this.props.visible;
   }
 
+  get defaultProjectRepos() {
+    return [...this.props.defaultProjectRepos];
+  }
+
   get source() {
     return this.props.source;
   }
@@ -109,7 +137,16 @@ export class TaskProject {
    * Los proyectos de Plane no se editan, salvo estas dos opciones: si se sincronizan y si se ven.
    * Sincronizar solo tiene sentido en los de Plane.
    */
-  configure(options: { syncEnabled?: boolean; visible?: boolean }) {
+  configure(options: {
+    syncEnabled?: boolean;
+    visible?: boolean;
+    defaultProjectRepos?: readonly string[];
+  }) {
+    if (options.defaultProjectRepos !== undefined) {
+      this.props.defaultProjectRepos = normalizeRepos(
+        options.defaultProjectRepos,
+      );
+    }
     if (options.syncEnabled !== undefined) {
       if (this.isLocal) {
         throw new DomainError('Only Plane projects can be synchronized');

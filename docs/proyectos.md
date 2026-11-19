@@ -1,6 +1,6 @@
 # Proyectos: un repositorio con su receta, y sesiones sin ticket
 
-Plan acordado en conversación el 2026-11-19. **Solo planificación: no hay nada construido todavía.**
+Plan acordado en conversación el 2026-11-19. **Estado al 2026-11-19: las etapas 0 a 6 están construidas** (ver «Estado y desviaciones»).
 
 ## Por qué
 
@@ -121,6 +121,40 @@ Cada una se puede usar sola y termina con algo comprobable. No se pasa a la sigu
 ### Etapa 6 (opcional): proyecto de tareas con proyectos por defecto
 - Un proyecto de tareas (Plane) puede declarar proyectos por defecto, para que sus tickets nuevos ya vengan con repo sin etiquetar a mano.
 
+## Estado y desviaciones
+
+Todo está hecho y probado con tests (servidor 923, app 683, runner 152). Lo que cambió respecto de lo planeado:
+
+- **Etapa 0.** Se renombró `Project → TaskProject` en todo el módulo `tasks` (entidad, puerto, ORM, servicio, controller, DTOs), la ruta HTTP pasó a `/task-projects` y
+  la tabla a `task_projects`. En el front, `TaskProjectsStore` y el tipo `TaskProject`. Las pantallas y componentes de tareas conservan su nombre; **en el menú se sigue
+  llamando «Proyectos»** (decisión del usuario: el contexto distingue la gestión de tareas de los proyectos-repositorio, que están en Automatización).
+- **Etapa 1.** La tabla `project_recipes` pasó a llamarse `projects` (la de tareas quedó libre al renombrarse). El proyecto ganó `name`, `main_branch`,
+  `runner_environment`, `architecture_rules` y `verify_command`. La API sigue aceptando `/recipes` como alias de `/projects` por si hay una pantalla vieja abierta.
+- **Etapa 2.** En vez de una tabla `issue_projects` se usó una columna `project_repos` (jsonb) en `issues`: un ticket guarda hasta 3 `org/repo`. Hizo falta algo
+  que el plan no vio: el proyecto necesita el **enlace de su repositorio** (`repo_url`, github o bitbucket) para poder clonarlo, porque `org/repo` no dice el host. La
+  migración lo rellena desde las etiquetas que apuntan a ese repo. Los repos de una tarea salen de sus proyectos y, si no tiene (o ninguno tiene enlace), de sus etiquetas, como antes.
+  Lo resuelven los dos adaptadores de tareas con `ProjectsFacade.linksFor`.
+- **Etapa 3.** La sesión libre es una sesión de grupo sin miembros: su tarea-grupo vive en un proyecto de tareas local «Sesiones libres» (se crea sola la primera vez) y lleva
+  sus `project_repos`. Los tickets locales se crean desde el panel de la sesión (no desde el chat) y entran al final del grupo con los mismos proyectos. **No se usó el
+  código `LOC-n`**: los tickets locales ya existían y se ven como `#n`; la rama no lleva código, como siempre en tareas locales. Las horas siguen el proyecto de tareas local.
+- **Etapa 4.** «El plan solo se crea o cambia cuando se pide» ya era así (el chat marca `[[ACTUALIZAR_PLAN]]` solo si el usuario lo pide y el servidor aplica el cambio);
+  no se tocó. Lo nuevo es la pantalla: el chat ocupa todo el ancho y el plan y los tickets se abren desde fichas («Plan · v3», «Tickets · n») en un split a la derecha.
+  La ficha está sobre el chat, no dentro de la conversación: ponerla en el punto exacto donde se creó el plan exige cambiar el componente de chat compartido y queda pendiente.
+- **Etapa 5.** Las reglas de arquitectura entran en el contexto que ya reciben Lucy, el desarrollador y el revisor (también las de los proyectos de los que dependen). La verificación
+  la corre el runner **antes de subir la rama**: el servidor manda solo el *nombre* (`verify` en el trabajo `publish`) y el runner busca el comando en su configuración
+  (`verifications` en `runner.config.json`: nombre → programa y argumentos, sin shell, en el worktree y con las variables del entorno de la ejecución). Si falla, no se publica;
+  si el runner no conoce el nombre, publica y lo deja dicho en el registro. Nada que se edite en la app puede ejecutar comandos en el PC.
+- **Etapa 6.** El proyecto de tareas (también los de Plane) puede declarar proyectos por defecto (`default_project_repos`); sirven a las tareas que no tienen los suyos. Orden:
+  los de la tarea (o su grupo) → los del proyecto de tareas → las etiquetas.
+
+## Pendiente
+
+- Probar la sesión libre y la verificación con una ejecución real (los tests usan repos locales de juguete).
+- Poner la ficha del plan dentro de la conversación (en el mensaje donde se creó) en vez de sobre el chat.
+- Crear tickets locales desde lo que dice la IA en el chat (hoy se crean a mano en el panel de la sesión).
+- Imputación de horas de las sesiones libres en el dashboard (hoy cuentan en el proyecto de tareas local «Sesiones libres»).
+- Retirar las etiquetas con enlace cuando todo esté migrado; renombrar en el front los componentes `project-*` de tareas a `task-project-*`.
+
 ## Pruebas
 
 - **Servidor:** entidad (invariantes), servicio y facade; `projectsOf` con y sin `issue_projects` y con respaldo de etiquetas; migraciones (`up` y `down`) sobre datos de ejemplo.
@@ -141,8 +175,7 @@ Cada una se puede usar sola y termina con algo comprobable. No se pasa a la sigu
 ## Preguntas abiertas
 
 - ¿El renombre `Project → TaskProject` se hace al principio o al final?
-- Sesión libre: ¿qué task-project local la contiene (uno fijo «Sesiones libres» o uno por proyecto) y qué identificador usa el código del ticket (`LOC`)?
-- Horas: una sesión libre no tiene ticket de Plane; ¿a qué se imputa el tiempo en el dashboard? (sugerencia: al task-project local de la sesión).
+- Horas: una sesión libre no tiene ticket de Plane; hoy se imputa al proyecto de tareas local «Sesiones libres». ¿Alcanza o quieres otra categoría en el dashboard?
 - Dónde corre cada tipo de trabajo (servidor o runner) queda en otro plan.
 
 ## Lo que ya existe y se reutiliza

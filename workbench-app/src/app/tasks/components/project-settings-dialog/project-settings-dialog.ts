@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
@@ -9,7 +10,11 @@ import {
   untracked,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '@core/api/api-error';
+import { type Project, ProjectsApi } from '@projects/index';
+import { ChipOption, ChipPicker } from '@shared/ui/chip-picker/chip-picker';
+import { FormField } from '@shared/ui/form-field/form-field';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
 import { Checkbox } from '@shared/ui/checkbox/checkbox';
@@ -23,7 +28,7 @@ import { TaskProject } from '../../models/catalogs';
  */
 @Component({
   selector: 'app-project-settings-dialog',
-  imports: [ReactiveFormsModule, Dialog, Checkbox, Button, Alert],
+  imports: [ReactiveFormsModule, Dialog, Checkbox, Button, Alert, ChipPicker, FormField],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-dialog [heading]="'Configurar ' + (project()?.name ?? '')" [(open)]="open">
@@ -46,6 +51,18 @@ import { TaskProject } from '../../models/catalogs';
             listados.</span
           >
         </app-checkbox>
+        <app-form-field
+          label="Proyectos por defecto"
+          for="default-projects"
+          hint="Los repositorios que usan las tareas de este proyecto que no tienen los suyos (hasta 3). Así no hace falta etiquetar cada tarea."
+        >
+          <app-chip-picker
+            label="Proyectos por defecto"
+            emptyText="Todavía no hay proyectos. Créalos en Proyectos."
+            [options]="repoOptions()"
+            [(selected)]="defaultRepos"
+          />
+        </app-form-field>
       </form>
 
       <ng-container dialog-footer>
@@ -71,6 +88,21 @@ export class ProjectSettingsDialog {
   readonly project = input.required<TaskProject | null>();
 
   private readonly store = inject(TaskProjectsStore);
+  private readonly projectsApi = inject(ProjectsApi);
+
+  protected readonly defaultRepos = signal<string[]>([]);
+  private readonly repoProjects = signal<Project[]>([]);
+  protected readonly repoOptions = computed<ChipOption[]>(() => {
+    const known = this.repoProjects().map((project) => ({
+      value: project.repo,
+      label: project.name,
+    }));
+    // Un proyecto por defecto que ya no existe se sigue mostrando, para poder quitarlo.
+    const missing = this.defaultRepos()
+      .filter((repo) => !known.some((option) => option.value === repo))
+      .map((repo) => ({ value: repo, label: repo }));
+    return [...known, ...missing];
+  });
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     syncEnabled: true,
@@ -80,15 +112,25 @@ export class ProjectSettingsDialog {
   protected readonly error = signal<string | null>(null);
 
   constructor() {
+    void this.loadRepoProjects();
     // Cada vez que se abre, el formulario parte de los valores del proyecto.
     effect(() => {
       const project = this.project();
       if (!this.open() || !project) return;
       untracked(() => {
         this.form.reset({ syncEnabled: project.syncEnabled, visible: project.visible });
+        this.defaultRepos.set([...project.defaultProjectRepos]);
         this.error.set(null);
       });
     });
+  }
+
+  private async loadRepoProjects(): Promise<void> {
+    try {
+      this.repoProjects.set(await firstValueFrom(this.projectsApi.list()));
+    } catch {
+      // Sin la lista se pueden seguir cambiando las otras opciones.
+    }
   }
 
   protected async submit(): Promise<void> {
@@ -101,6 +143,7 @@ export class ProjectSettingsDialog {
     try {
       await this.store.configure(project.id, {
         visible,
+        defaultProjectRepos: this.defaultRepos(),
         ...(project.source ? { syncEnabled } : {}),
       });
       this.open.set(false);

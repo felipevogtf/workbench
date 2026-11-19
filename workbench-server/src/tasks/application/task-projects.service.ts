@@ -35,7 +35,12 @@ export class TaskProjectsService {
 
   async updateProject(
     id: string,
-    data: { name?: string; syncEnabled?: boolean; visible?: boolean },
+    data: {
+      name?: string;
+      syncEnabled?: boolean;
+      visible?: boolean;
+      defaultProjectRepos?: string[];
+    },
   ): Promise<TaskProject> {
     const project = await this.getProject(id);
     if (data.name !== undefined) {
@@ -44,6 +49,7 @@ export class TaskProjectsService {
     project.configure({
       syncEnabled: data.syncEnabled,
       visible: data.visible,
+      defaultProjectRepos: data.defaultProjectRepos,
     });
     await this.projectRepository.save(project);
     return project;

@@ -10,6 +10,8 @@ export class TaskProjectResponseDto {
   ticketBaseUrl!: string | null;
   syncEnabled!: boolean;
   visible!: boolean;
+  /** Los proyectos (repositorios) que usan las tareas de este proyecto de tareas que no tienen los suyos. */
+  defaultProjectRepos!: string[];
   syncedAt!: string | null;
   createdAt!: string;
 }

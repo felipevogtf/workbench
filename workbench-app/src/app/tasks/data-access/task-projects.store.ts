@@ -46,10 +46,10 @@ export class TaskProjectsStore extends ResourceStore<TaskProject> {
     return updated;
   }
 
-  /** Cambia las opciones de un proyecto (sincronizar y visible). */
+  /** Cambia las opciones de un proyecto (sincronizar, visible y los proyectos por defecto de sus tareas). */
   async configure(
     id: string,
-    options: { syncEnabled?: boolean; visible?: boolean },
+    options: { syncEnabled?: boolean; visible?: boolean; defaultProjectRepos?: string[] },
   ): Promise<TaskProject> {
     const updated = await firstValueFrom(this.api.updateProject(id, options));
     this.replace(updated);
