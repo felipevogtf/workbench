@@ -4,8 +4,7 @@ export const PROJECTS_ROUTES: Routes = [
   {
     path: '',
     title: 'Proyectos · Workbench',
-    loadComponent: () =>
-      import('./pages/projects-page/projects-page').then((m) => m.ProjectsPage),
+    loadComponent: () => import('./pages/projects-page/projects-page').then((m) => m.ProjectsPage),
   },
   {
     path: 'new',

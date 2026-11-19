@@ -180,54 +180,37 @@ describe('ProjectFormPage', () => {
     });
   });
 
-  describe('the repositories that the labels point to', () => {
+  describe('the repositories offered', () => {
     const suggested = (root: HTMLElement, id: string) =>
       [...root.querySelectorAll<HTMLOptionElement>(`#${id}-list option`)].map(
         (option) => option.value,
       );
 
-    it('suggests for a new project only the repositories that still have none', async () => {
+    it('suggests as dependencies the repositories of the other projects', async () => {
       const { root } = await render();
 
-      expect(suggested(root, 'project-repo')).toEqual(['acme/db']);
+      expect(suggested(root, 'project-depends').sort()).toEqual(['acme/app', 'acme/web']);
     });
 
-    it('suggests as dependencies any known repository, with project or without', async () => {
-      const { root } = await render();
-
-      expect(suggested(root, 'project-depends').sort()).toEqual(
-        ['acme/app', 'acme/db', 'acme/web'].sort(),
-      );
-    });
-
-    it('warns when the repository written is not pointed to by any label', async () => {
-      const { fixture, root, type } = await render();
-      const warning = () => root.querySelector('.note')?.textContent ?? '';
-
-      type('project-repo', 'acme/web');
-      fixture.detectChanges();
-      expect(warning()).toBe('');
-
-      type('project-repo', 'Acme/Otro');
-      fixture.detectChanges();
-      await fixture.whenStable();
-      expect(warning()).toContain('Ninguna etiqueta apunta a este repositorio');
-
-      type('project-repo', ' ACME/WEB ');
-      fixture.detectChanges();
-      await fixture.whenStable();
-      expect(warning()).toBe('');
-    });
-
-    it('does not warn while it is not a repository yet, nor when there are no labels with one', async () => {
-      api.repositories.mockReturnValue(of([]));
+    it('fills in the repository from the link while the repository has not been written by hand', async () => {
       const { fixture, root, type } = await render();
 
-      type('project-repo', 'acme/otro');
+      type('project-url', 'https://github.com/Acme/Nuevo.git');
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(root.querySelector('.note')).toBeNull();
+      expect((root.querySelector('#project-repo') as HTMLInputElement).value).toBe('acme/nuevo');
+    });
+
+    it('does not overwrite a repository that was written by hand', async () => {
+      const { fixture, root, type } = await render();
+
+      type('project-repo', 'acme/mio');
+      type('project-url', 'https://github.com/acme/otro');
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect((root.querySelector('#project-repo') as HTMLInputElement).value).toBe('acme/mio');
     });
   });
 
@@ -253,7 +236,7 @@ describe('ProjectFormPage', () => {
   });
 
   describe('the link of the repository', () => {
-    it('saves a link to the same repository and trims it', async () => {
+    it('saves a link and trims it', async () => {
       const { type, submit } = await render();
 
       type('project-repo', 'acme/api');
@@ -265,18 +248,27 @@ describe('ProjectFormPage', () => {
       );
     });
 
-    it('does not save a link to another repository or another host', async () => {
+    it('saves a link to another organization (a migration can rename the repository)', async () => {
+      const { type, submit } = await render();
+
+      type('project-repo', 'acme/api');
+      type('project-url', 'https://github.com/nueva-org/api-v2');
+      await submit();
+
+      expect(api.create).toHaveBeenCalledWith(
+        expect.objectContaining({ repoUrl: 'https://github.com/nueva-org/api-v2' }),
+      );
+    });
+
+    it('does not save a link to another host', async () => {
       const { type, submit, root } = await render();
 
       type('project-repo', 'acme/api');
-      type('project-url', 'https://github.com/acme/other');
-      await submit();
-      expect(api.create).not.toHaveBeenCalled();
-      expect(root.textContent).toContain('enlace de GitHub o Bitbucket');
-
       type('project-url', 'https://evil.com/acme/api');
       await submit();
+
       expect(api.create).not.toHaveBeenCalled();
+      expect(root.textContent).toContain('enlace de GitHub o Bitbucket');
     });
   });
 });

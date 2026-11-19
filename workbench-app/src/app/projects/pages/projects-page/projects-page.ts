@@ -18,17 +18,7 @@ import { Project } from '../../models/project';
  */
 @Component({
   selector: 'app-projects-page',
-  imports: [
-    RouterLink,
-    Alert,
-    Badge,
-    Button,
-    EmptyState,
-    Icon,
-    IconButton,
-    PageHeader,
-    Skeleton,
-  ],
+  imports: [RouterLink, Alert, Badge, Button, EmptyState, Icon, IconButton, PageHeader, Skeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './projects-page.html',
   styleUrl: './projects-page.scss',

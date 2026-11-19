@@ -43,9 +43,15 @@ export class TasksGatewayAdapter implements TasksGatewayPort {
     const repoUrls =
       fromProjects.length > 0
         ? fromProjects
-        : [...labels]
-            .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-            .flatMap((label) => (label.repoUrl ? [label.repoUrl] : []));
+        : (
+            await this.projects.linksFor(
+              [...labels]
+                .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+                .flatMap((label) =>
+                  label.projectRepo ? [label.projectRepo] : [],
+                ),
+            )
+          ).map((link) => link.repoUrl);
 
     // El código de Plane (MEL-12) solo existe si la tarea viene de allá: una tarea local no lo tiene.
     const project = issue.isLocal

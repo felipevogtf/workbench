@@ -12,5 +12,5 @@ export class CreateLabelDto {
 
   @IsOptional()
   @IsString()
-  repoUrl?: string | null;
+  projectRepo?: string | null;
 }

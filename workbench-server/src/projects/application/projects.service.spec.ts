@@ -25,13 +25,28 @@ describe('ProjectsService', () => {
   let repository: InMemoryRecipes;
   let options: RepositoryOption[];
   let service: ProjectsService;
+  let prepared: string[];
+  let discarded: string[];
 
   beforeEach(() => {
     repository = new InMemoryRecipes();
     options = [];
-    service = new ProjectsService(repository, {
-      list: () => Promise.resolve(options),
-    });
+    prepared = [];
+    discarded = [];
+    service = new ProjectsService(
+      repository,
+      { list: () => Promise.resolve(options) },
+      {
+        prepare: (url) => {
+          prepared.push(url);
+          return Promise.resolve();
+        },
+        discard: (url) => {
+          discarded.push(url);
+          return Promise.resolve();
+        },
+      },
+    );
   });
 
   it('offers the repositories that the labels point to', async () => {
@@ -75,6 +90,61 @@ describe('ProjectsService', () => {
     await expect(
       service.create({ repo: 'acme/app', content: 'dos' }),
     ).rejects.toMatchObject({ kind: 'conflict' });
+  });
+
+  it('prepares the new copy of the repository and drops the old one when the link changes', async () => {
+    const { id } = await service.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: 'https://bitbucket.org/acme/app',
+    });
+
+    await service.update(id, { repoUrl: 'https://github.com/acme/app' });
+
+    expect(prepared).toEqual(['https://github.com/acme/app']);
+    expect(discarded).toEqual(['https://bitbucket.org/acme/app']);
+  });
+
+  it('leaves the copies alone when the link does not change', async () => {
+    const { id } = await service.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: 'https://github.com/acme/app',
+    });
+
+    await service.update(id, { content: 'otra receta' });
+
+    expect(prepared).toEqual([]);
+    expect(discarded).toEqual([]);
+  });
+
+  it('keeps the old copy while another project still uses its link', async () => {
+    await service.create({
+      repo: 'acme/otro',
+      content: '',
+      repoUrl: 'https://bitbucket.org/acme/app',
+    });
+    const { id } = await service.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: 'https://bitbucket.org/acme/app',
+    });
+
+    await service.update(id, { repoUrl: 'https://github.com/acme/app' });
+
+    expect(discarded).toEqual([]);
+  });
+
+  it('drops the copy of the repository when its project is removed', async () => {
+    const { id } = await service.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: 'https://github.com/acme/app',
+    });
+
+    await service.remove(id);
+
+    expect(discarded).toEqual(['https://github.com/acme/app']);
   });
 
   it('updates, reads and removes a recipe', async () => {

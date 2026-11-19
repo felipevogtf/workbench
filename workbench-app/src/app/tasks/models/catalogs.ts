@@ -38,12 +38,12 @@ export interface Label {
   id: string;
   name: string;
   color: string | null;
-  /** Repositorio asociado: el planificador lo lee para las tareas con esta etiqueta. */
-  repoUrl: string | null;
+  /** El proyecto (`org/repo`) al que apunta: de él salen el enlace del repositorio y la receta de las tareas con esta etiqueta. */
+  projectRepo: string | null;
 }
 
 export interface LabelInput extends StateInput {
-  repoUrl?: string | null;
+  projectRepo?: string | null;
 }
 
 export interface Counts {

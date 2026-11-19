@@ -161,13 +161,20 @@ El token solo se usa para el `fetch` y nunca queda en la configuración del mirr
 pide en 30 días se borra solo; los worktrees de tareas y PRs, a los 7. Un solo volumen `repos` reemplaza a `chat_repos` y `task_repos`. El runner de tu PC no cambia: tiene su propio clon y
 worktrees por ejecución.
 
+## Etiquetas y enlaces (2026-11-19)
+
+- **Una etiqueta apunta a un proyecto** (`labels.project_repo`, `org/repo`), ya no guarda un enlace propio: el enlace se cambia solo en el proyecto. La migración `LabelsPointToProjects` convierte el enlace de cada etiqueta en su proyecto (crea el proyecto si el repo solo existía como enlace de etiqueta) y borra `labels.repo_url`.
+- **El enlace del proyecto ya no tiene que coincidir con su `org/repo`**: al migrar de Bitbucket a GitHub la organización o el nombre pueden cambiar; `org/repo` queda como identificador estable del proyecto.
+- **Cambiar el enlace mueve la copia del servidor**: se prepara el mirror del enlace nuevo (en segundo plano) y se borra el del anterior, salvo que otro proyecto aún lo use. Borrar un proyecto también borra su mirror. Los worktrees que salieron del mirror viejo se rehacen la próxima vez que se piden.
+- Al crear un proyecto, el repositorio se completa solo desde el enlace mientras no se haya escrito a mano.
+
 ## Pendiente
 
 - Probar la sesión libre y la verificación con una ejecución real (los tests usan repos locales de juguete).
 - Poner la ficha del plan dentro de la conversación (en el mensaje donde se creó) en vez de sobre el chat.
 - Crear tickets locales desde lo que dice la IA en el chat (hoy se crean a mano en el panel de la sesión).
 - Imputación de horas de las sesiones libres en el dashboard (hoy cuentan en el proyecto de tareas local «Sesiones libres»).
-- Retirar las etiquetas con enlace cuando todo esté migrado; renombrar en el front los componentes `project-*` de tareas a `task-project-*`.
+- Renombrar en el front los componentes `project-*` de tareas a `task-project-*`.
 
 ## Pruebas
 

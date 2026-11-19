@@ -216,12 +216,22 @@ describe('Project: the link of the repository', () => {
     expect(project.repoUrl).toBeNull();
   });
 
+  it('accepts a link to another organization or name: a migration can rename the repository', () => {
+    const project = Project.create({
+      repo: 'acme/app',
+      content: '',
+      repoUrl: 'https://github.com/nueva-org/app-v2',
+    });
+
+    expect(project.repoUrl).toBe('https://github.com/nueva-org/app-v2');
+  });
+
   it.each([
     'http://github.com/acme/app',
     'https://evil.com/acme/app',
     'https://user:pass@github.com/acme/app',
     'https://github.com:8443/acme/app',
-    'https://github.com/acme/other',
+    'https://github.com/solo-uno',
     'not a url',
   ])('rejects %s', (link) => {
     expect(() =>

@@ -87,13 +87,11 @@ function optionalRef(
 const REPO_HOSTS = ['github.com', 'bitbucket.org'];
 
 /**
- * El enlace de un repositorio: https, solo github.com o bitbucket.org, sin credenciales ni puerto, y que apunte
- * al mismo `org/repo` del proyecto. Lo que llega a un clone no puede traer opciones de git ni credenciales.
+ * El enlace de un repositorio: https, solo github.com o bitbucket.org, sin credenciales ni puerto, con la forma
+ * `https://host/org/repo`. No tiene que coincidir con el nombre del proyecto: al migrar de proveedor el repositorio puede
+ * cambiar de organización. Lo que llega a un clone no puede traer opciones de git ni credenciales.
  */
-function repoLink(
-  value: string | null | undefined,
-  repo: string,
-): string | null {
+function repoLink(value: string | null | undefined): string | null {
   const text = value?.trim();
   if (!text) return null;
   let url: URL;
@@ -109,10 +107,10 @@ function repoLink(
     url.username ||
     url.password ||
     url.port ||
-    path.toLowerCase() !== repo
+    !/^[\w.-]+\/[\w.-]+$/.test(path)
   ) {
     throw new DomainError(
-      `The repository link must be https://github.com/${repo} or https://bitbucket.org/${repo}`,
+      'The repository link must be https://github.com/<organization>/<repository> or https://bitbucket.org/<organization>/<repository>',
     );
   }
   return `https://${url.hostname}/${path}`;
@@ -165,7 +163,7 @@ function normalized(input: Required<ProjectInput>): Normalized {
     name,
     content,
     dependsOn,
-    repoUrl: repoLink(input.repoUrl, repo),
+    repoUrl: repoLink(input.repoUrl),
     mainBranch: ref(input.mainBranch, 'The main branch'),
     runnerEnvironment: optionalRef(
       input.runnerEnvironment,

@@ -64,7 +64,10 @@ describe('ProjectsPage', () => {
 
   it('lists the projects in a table with their name, repository and branch, and nothing about the recipe', async () => {
     api.list.mockReturnValue(
-      of([project('acme/app', { dependsOn: ['acme/web'] }), project('acme/web', { mainBranch: 'develop' })]),
+      of([
+        project('acme/app', { dependsOn: ['acme/web'] }),
+        project('acme/web', { mainBranch: 'develop' }),
+      ]),
     );
     const element = (await render()).nativeElement as HTMLElement;
 
@@ -83,7 +86,9 @@ describe('ProjectsPage', () => {
     api.list.mockReturnValue(of([project('acme/app')]));
     const element = (await render()).nativeElement as HTMLElement;
 
-    const edit = element.querySelector<HTMLAnchorElement>('[aria-label="Editar el proyecto acme/app"]');
+    const edit = element.querySelector<HTMLAnchorElement>(
+      '[aria-label="Editar el proyecto acme/app"]',
+    );
     expect(edit?.getAttribute('href')).toBe('/id-acme/app/edit');
     expect(element.querySelector('a.title')?.getAttribute('href')).toBe('/id-acme/app/edit');
     const create = [...element.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>

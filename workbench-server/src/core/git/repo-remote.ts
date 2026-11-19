@@ -47,6 +47,14 @@ export function parseRepoUrl(url: string): ParsedRepo | null {
     : null;
 }
 
+/** Con qué clave vive el mirror de este enlace (`host/org/repo`, en minúsculas), o `null` si no es un enlace válido. */
+export function mirrorKeyOf(url: string): string | null {
+  const repo = parseRepoUrl(url);
+  return repo
+    ? `${repo.host}/${repo.organization}/${repo.name}`.toLowerCase()
+    : null;
+}
+
 /** El nombre del repo; si ya hay otro igual (de otra organización), con la organización delante. */
 export function repoFolderName(repo: ParsedRepo, taken: Set<string>): string {
   return taken.has(repo.name) ? `${repo.organization}-${repo.name}` : repo.name;

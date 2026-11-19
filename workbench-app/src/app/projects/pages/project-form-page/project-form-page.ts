@@ -8,10 +8,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
-  FormGroup,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
@@ -39,20 +38,13 @@ import {
   parseRepos,
 } from '../../models/project';
 
-/** El enlace del repositorio, si se escribió, es de GitHub o Bitbucket y apunta al mismo organización/repositorio. */
-function linkMatchesRepo(group: AbstractControl): ValidationErrors | null {
-  const { repo, repoUrl } = (group as FormGroup).getRawValue() as {
-    repo: string;
-    repoUrl: string;
-  };
-  const url = repoUrl.trim();
-  if (!url) return null;
-  const match = /^https:\/\/(?:github\.com|bitbucket\.org)\/([^/]+\/[^/]+?)(?:\.git)?\/?$/i.exec(
-    url,
-  );
-  return match !== null && match[1].toLowerCase() === repo.trim().toLowerCase()
-    ? null
-    : { link: true };
+const LINK_PATTERN =
+  /^https:\/\/(?:github\.com|bitbucket\.org)\/([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/i;
+
+/** El enlace del repositorio, si se escribió, es de GitHub o Bitbucket con la forma https://host/organización/repo. */
+function validLink(control: AbstractControl): ValidationErrors | null {
+  const url = String(control.value ?? '').trim();
+  return !url || LINK_PATTERN.test(url) ? null : { link: true };
 }
 
 /**
@@ -93,20 +85,17 @@ export class ProjectFormPage {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  protected readonly form = inject(NonNullableFormBuilder).group(
-    {
-      repo: ['', [this.validRepo]],
-      dependsOn: ['', [this.validRepos]],
-      content: ['', [Validators.maxLength(20_000)]],
-      name: ['', [Validators.maxLength(100)]],
-      repoUrl: ['', [Validators.maxLength(300)]],
-      mainBranch: [DEFAULT_MAIN_BRANCH, [Validators.required, Validators.pattern(REF_PATTERN)]],
-      runnerEnvironment: ['', [Validators.maxLength(100)]],
-      architectureRules: ['', [Validators.maxLength(10_000)]],
-      verifyCommand: ['', [Validators.maxLength(500), Validators.pattern(/^[^\r\n]*$/)]],
-    },
-    { validators: [linkMatchesRepo] },
-  );
+  protected readonly form = inject(NonNullableFormBuilder).group({
+    repo: ['', [this.validRepo]],
+    dependsOn: ['', [this.validRepos]],
+    content: ['', [Validators.maxLength(20_000)]],
+    name: ['', [Validators.maxLength(100)]],
+    repoUrl: ['', [Validators.maxLength(300), validLink]],
+    mainBranch: [DEFAULT_MAIN_BRANCH, [Validators.required, Validators.pattern(REF_PATTERN)]],
+    runnerEnvironment: ['', [Validators.maxLength(100)]],
+    architectureRules: ['', [Validators.maxLength(10_000)]],
+    verifyCommand: ['', [Validators.maxLength(500), Validators.pattern(/^[^\r\n]*$/)]],
+  });
 
   protected readonly isEdit = computed(() => !!this.id());
   /** El proyecto que se edita; `null` al crear o mientras no se encuentra. */
@@ -119,33 +108,16 @@ export class ProjectFormPage {
     () => this.isEdit() && this.store.loaded() && this.project() === null,
   );
 
-  private readonly repoValue = toSignal(this.form.controls.repo.valueChanges, { initialValue: '' });
-
-  /** Para un proyecto nuevo: los repositorios de las etiquetas que todavía no tienen proyecto. */
-  protected readonly repoSuggestions = computed(() =>
-    this.store
-      .options()
-      .map((option) => option.repo)
-      .filter((repo) => !this.store.repos().includes(repo)),
-  );
-
-  /** Como dependencia sirve cualquier repositorio conocido: el de una etiqueta o el de otro proyecto. */
-  protected readonly dependencySuggestions = computed(() => [
-    ...new Set([...this.store.options().map((option) => option.repo), ...this.store.repos()]),
-  ]);
-
-  /** Escribió un repositorio válido al que no apunta ninguna etiqueta (y sí hay etiquetas con repositorio). */
-  protected readonly unlinked = computed(() => {
-    const repo = this.repoValue().trim().toLowerCase();
-    const options = this.store.options();
-    return (
-      options.length > 0 &&
-      REPO_PATTERN.test(repo) &&
-      !options.some((option) => option.repo === repo)
-    );
-  });
+  /** Como dependencia sirve el repositorio de cualquier otro proyecto. */
+  protected readonly dependencySuggestions = computed(() => this.store.repos());
 
   constructor() {
+    // Al crear, el repositorio sale del enlace mientras no se haya escrito a mano.
+    this.form.controls.repoUrl.valueChanges.pipe(takeUntilDestroyed()).subscribe((url) => {
+      const repo = this.form.controls.repo;
+      const match = LINK_PATTERN.exec(url.trim());
+      if (!this.isEdit() && repo.pristine && match) repo.setValue(match[1].toLowerCase());
+    });
     if (!this.store.loaded()) void this.store.load();
     // El formulario parte del proyecto (o vacío al crear) en cuanto hay datos; después no se pisa lo que se escribe.
     let filledFor: string | null | undefined;
@@ -222,9 +194,10 @@ export class ProjectFormPage {
     return control.touched && control.invalid;
   }
 
-  /** El enlace debe ser de GitHub o Bitbucket y apuntar al repositorio del proyecto (el servidor lo vuelve a comprobar). */
+  /** El enlace debe ser de GitHub o Bitbucket (el servidor lo vuelve a comprobar). */
   protected urlInvalid(): boolean {
-    return this.form.hasError('link') && this.form.controls.repoUrl.touched;
+    const control = this.form.controls.repoUrl;
+    return control.touched && control.hasError('link');
   }
 
   protected branchInvalid(): boolean {

@@ -1,20 +1,31 @@
-import { ChangeDetectionStrategy, Component, inject, input, model } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  model,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { type Project, ProjectsApi } from '@projects/index';
 import { ColorInput } from '@shared/ui/color-input/color-input';
 import { FormField } from '@shared/ui/form-field/form-field';
 import { SaveDialog } from '@shared/ui/save-dialog/save-dialog';
+import { Select, SelectOption } from '@shared/ui/select/select';
 import { TextInput } from '@shared/ui/text-input/text-input';
 
 export interface LabelFormValue {
   name: string;
   color: string | null;
-  repoUrl: string | null;
+  projectRepo: string | null;
 }
 
-/** Crea o edita una etiqueta: nombre, repositorio opcional (lo lee el planificador) y color. */
+/** Crea o edita una etiqueta: nombre, proyecto opcional (de él salen el repositorio y la receta) y color. */
 @Component({
   selector: 'app-label-form-dialog',
-  imports: [ReactiveFormsModule, SaveDialog, FormField, TextInput, ColorInput],
+  imports: [ReactiveFormsModule, SaveDialog, FormField, TextInput, ColorInput, Select],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-save-dialog
@@ -39,16 +50,15 @@ export interface LabelFormValue {
           />
         </app-form-field>
         <app-form-field
-          label="Repositorio (opcional)"
-          for="label-repo"
-          hint="https://github.com/organizacion/repo o https://bitbucket.org/workspace/repo. El planificador lo lee (rama main o master) para las tareas con esta etiqueta."
+          label="Proyecto (opcional)"
+          for="label-project"
+          hint="Las tareas con esta etiqueta usan el repositorio y la receta de ese proyecto (rama principal). El enlace se cambia solo en el proyecto."
         >
-          <app-text-input
-            inputId="label-repo"
-            type="url"
-            formControlName="repoUrl"
-            placeholder="https://github.com/organizacion/repo"
-            [describedBy]="'label-repo-msg'"
+          <app-select
+            inputId="label-project"
+            formControlName="projectRepo"
+            placeholder="Sin proyecto"
+            [options]="projectOptions()"
           />
         </app-form-field>
         <app-form-field
@@ -63,25 +73,41 @@ export interface LabelFormValue {
   `,
 })
 export class LabelFormDialog {
+  private readonly projectsApi = inject(ProjectsApi);
+
   readonly open = model(false);
   readonly heading = input.required<string>();
   /** Valores iniciales al editar; `null` al crear. */
   readonly initial = input<{
     name: string;
     color?: string | null;
-    repoUrl?: string | null;
+    projectRepo?: string | null;
   } | null>(null);
   readonly save = input.required<(value: LabelFormValue) => Promise<unknown>>();
+
+  private readonly projects = signal<Project[]>([]);
+
+  protected readonly projectOptions = computed<SelectOption[]>(() => {
+    const options = this.projects().map((project) => ({
+      value: project.repo,
+      label: project.name === project.repo ? project.repo : `${project.name} (${project.repo})`,
+    }));
+    // Si el proyecto de la etiqueta ya no existe se sigue mostrando, para que no se pierda sin querer.
+    const current = this.initial()?.projectRepo;
+    return current && !options.some((option) => option.value === current)
+      ? [...options, { value: current, label: `${current} (sin proyecto creado)` }]
+      : options;
+  });
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     color: [null as string | null],
-    repoUrl: [''],
+    projectRepo: [''],
   });
 
   protected readonly submit = (): Promise<unknown> => {
-    const { name, color, repoUrl } = this.form.getRawValue();
-    return this.save()({ name: name.trim(), color, repoUrl: repoUrl.trim() || null });
+    const { name, color, projectRepo } = this.form.getRawValue();
+    return this.save()({ name: name.trim(), color, projectRepo: projectRepo || null });
   };
 
   protected reset(): void {
@@ -89,8 +115,12 @@ export class LabelFormDialog {
     this.form.reset({
       name: initial?.name ?? '',
       color: initial?.color ?? null,
-      repoUrl: initial?.repoUrl ?? '',
+      projectRepo: initial?.projectRepo ?? '',
     });
+    // Sin la lista se puede seguir: solo no habrá proyectos que elegir.
+    void firstValueFrom(this.projectsApi.list())
+      .then((projects) => this.projects.set(projects))
+      .catch(() => undefined);
   }
 
   protected nameInvalid(): boolean {

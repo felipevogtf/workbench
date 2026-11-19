@@ -275,6 +275,17 @@ describe('RepoMirrorService (with real repositories)', () => {
     expect(await service.hasBranch(a.path, 'main')).toBe(true);
   });
 
+  it('discards the mirror of a repository nobody uses any more, and a later sync clones it again', async () => {
+    const { path } = await service.sync(remote);
+
+    await service.discard(remote.key);
+    expect(existsSync(path)).toBe(false);
+
+    await service.discard(remote.key); // sin mirror no pasa nada
+    const again = await service.sync(remote);
+    expect(await service.hasBranch(again.path, 'main')).toBe(true);
+  });
+
   it('refuses a key that is not host/organization/repository, or tries to leave the folder', () => {
     for (const key of [
       'github.com/acme',

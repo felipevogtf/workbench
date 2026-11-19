@@ -34,7 +34,7 @@ const input = (repo: string): ProjectInput => ({
   verifyCommand: '',
 });
 
-const changesOf = (value: ProjectInput): Omit<ProjectInput, "repo"> => {
+const changesOf = (value: ProjectInput): Omit<ProjectInput, 'repo'> => {
   const { repo, ...changes } = value;
   void repo;
   return changes;
@@ -143,9 +143,7 @@ describe('ProjectsStore', () => {
   it('lets the error of a failed save reach the dialog, so it stays open', async () => {
     api.create.mockReturnValue(throwError(() => new Error('There is already a project')));
 
-    await expect(
-      store.save(input('acme/web'), null),
-    ).rejects.toThrow('already');
+    await expect(store.save(input('acme/web'), null)).rejects.toThrow('already');
   });
 
   it('removes a project, and tells the user when it cannot', async () => {

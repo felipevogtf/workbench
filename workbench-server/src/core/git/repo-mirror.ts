@@ -211,6 +211,18 @@ export class RepoMirrorService {
     });
   }
 
+  /**
+   * Borra el mirror de un repositorio que ya no se usa (por ejemplo, porque el proyecto pasó a otro enlace). Los worktrees que
+   * salieron de él quedan huérfanos y se rehacen la próxima vez que alguien los pida.
+   */
+  discard(key: string): Promise<void> {
+    const path = this.pathOf(key);
+    return this.exclusive(path, async () => {
+      await rm(path, { recursive: true, force: true });
+      this.logger.log(`Removed the mirror of ${key}`);
+    });
+  }
+
   /** Dónde vive el mirror de este repositorio. */
   pathOf(key: string): string {
     const segments = key.toLowerCase().split('/');

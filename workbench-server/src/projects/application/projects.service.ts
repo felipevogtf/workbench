@@ -14,6 +14,10 @@ import {
   type RepositoryOption,
   type RepositoryOptionsPort,
 } from '@projects/domain/ports/repository-options.port';
+import {
+  REPOSITORY_MIRROR_PORT,
+  type RepositoryMirrorPort,
+} from '@projects/domain/ports/repository-mirror.port';
 import { buildRecipeContext } from '@projects/domain/recipe-context';
 
 @Injectable()
@@ -23,6 +27,8 @@ export class ProjectsService {
     private readonly projects: ProjectRepositoryPort,
     @Inject(REPOSITORY_OPTIONS_PORT)
     private readonly options: RepositoryOptionsPort,
+    @Inject(REPOSITORY_MIRROR_PORT)
+    private readonly mirrors: RepositoryMirrorPort,
   ) {}
 
   async list(): Promise<Project[]> {
@@ -63,13 +69,29 @@ export class ProjectsService {
     changes: Partial<Omit<ProjectInput, 'repo'>>,
   ): Promise<Project> {
     const project = await this.get(id);
+    const before = project.repoUrl;
     project.update(changes);
-    return this.projects.save(project);
+    const saved = await this.projects.save(project);
+    if (saved.repoUrl !== before) {
+      // El proyecto pasó a otro enlace (por ejemplo, de Bitbucket a GitHub): se prepara la copia nueva y se borra la vieja.
+      if (saved.repoUrl) void this.mirrors.prepare(saved.repoUrl);
+      if (before) await this.discardUnused(before);
+    }
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
-    await this.get(id);
+    const project = await this.get(id);
     await this.projects.delete(id);
+    if (project.repoUrl) await this.discardUnused(project.repoUrl);
+  }
+
+  /** Borra la copia de un enlace que ningún proyecto usa ya. */
+  private async discardUnused(repoUrl: string): Promise<void> {
+    const inUse = (await this.projects.findAll()).some(
+      (other) => other.repoUrl?.toLowerCase() === repoUrl.toLowerCase(),
+    );
+    if (!inUse) await this.mirrors.discard(repoUrl);
   }
 
   /**

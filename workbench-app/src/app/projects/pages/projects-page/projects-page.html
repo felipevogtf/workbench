@@ -3,9 +3,7 @@
     heading="Proyectos"
     subtitle="Un proyecto es un repositorio: su receta (cómo se levanta y se prueba), de quién depende y sus reglas. La IA que crea los tickets, quien los desarrolla y quien los revisa lo leen, y también lo de los proyectos de los que depende."
   >
-    <a actions app-button routerLink="new">
-      <app-icon name="plus" size="1em" /> Nuevo proyecto
-    </a>
+    <a actions app-button routerLink="new"> <app-icon name="plus" size="1em" /> Nuevo proyecto </a>
   </app-page-header>
 
   @if (store.error(); as error) {
@@ -77,7 +75,9 @@
                   }
                 </span>
               </td>
-              <td class="nowrap"><span class="repo">{{ project.mainBranch }}</span></td>
+              <td class="nowrap">
+                <span class="repo">{{ project.mainBranch }}</span>
+              </td>
               <td>
                 <span class="chips">
                   @if (store.labelsOf(project.repo).length > 0) {

@@ -41,24 +41,16 @@
           label="Repositorio"
           for="project-repo"
           required
-          hint="Elige uno de los repositorios de tus etiquetas (haz clic en el campo) o escribe organización/repositorio."
+          hint="El nombre con que se identifica: organización/repositorio. Si primero pegas el enlace, se completa solo."
           [error]="repoInvalid() ? 'Escribe organización/repositorio, sin espacios' : null"
         >
           <app-text-input
             inputId="project-repo"
             formControlName="repo"
             placeholder="garage-labs/miobra-ionicv6"
-            [suggestions]="repoSuggestions()"
             [invalid]="repoInvalid()"
           />
         </app-form-field>
-
-        @if (unlinked()) {
-          <p class="note" role="status">
-            Ninguna etiqueta apunta a este repositorio: el proyecto solo se usará cuando lo elijas
-            en una tarea o en una sesión, o la etiqueta de una tarea tenga su enlace.
-          </p>
-        }
 
         <app-form-field
           label="Nombre"
@@ -71,10 +63,10 @@
         <app-form-field
           label="Enlace del repositorio"
           for="project-url"
-          hint="Para clonarlo: https://github.com/organización/repo o https://bitbucket.org/organización/repo. Sin él, el proyecto solo sirve como receta."
+          hint="Para clonarlo: https://github.com/organización/repo o https://bitbucket.org/organización/repo. Si cambias el enlace (por ejemplo al migrar de Bitbucket a GitHub), el servidor prepara la copia nueva y borra la vieja. Sin enlace, el proyecto solo sirve como receta."
           [error]="
             urlInvalid()
-              ? 'Debe ser un enlace de GitHub o Bitbucket al mismo organización/repositorio'
+              ? 'Debe ser un enlace de GitHub o Bitbucket: https://host/organización/repo'
               : null
           "
         >

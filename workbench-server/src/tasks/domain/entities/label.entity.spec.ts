@@ -1,6 +1,33 @@
 import { LABEL_COLORS, randomLabelColor } from '@tasks/domain/label-colors';
 import { Label } from './label.entity';
 
+describe('Label project', () => {
+  it('points to no project by default', () => {
+    expect(Label.create({ name: 'bug' }).projectRepo).toBeNull();
+  });
+
+  it('keeps the project as organization/repo in lowercase', () => {
+    expect(
+      Label.create({ name: 'web', projectRepo: ' Acme/Web ' }).projectRepo,
+    ).toBe('acme/web');
+  });
+
+  it('changes it and removes it with an empty value', () => {
+    const label = Label.create({ name: 'web', projectRepo: 'acme/web' });
+
+    label.setProjectRepo('acme/api');
+    expect(label.projectRepo).toBe('acme/api');
+    label.setProjectRepo('');
+    expect(label.projectRepo).toBeNull();
+  });
+
+  it('rejects something that is not organization/repo', () => {
+    expect(() =>
+      Label.create({ name: 'web', projectRepo: 'https://github.com/a/b' }),
+    ).toThrow('organization');
+  });
+});
+
 describe('Label color', () => {
   it('keeps the color it is given', () => {
     expect(Label.create({ name: 'bug', color: '#123456' }).color).toBe(

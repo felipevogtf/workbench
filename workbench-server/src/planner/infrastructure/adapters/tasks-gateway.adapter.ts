@@ -59,13 +59,15 @@ export class TasksGatewayAdapter implements TasksGatewayPort {
       dueDate: issue.dueDate,
       estimatedHours: issue.estimatedHours,
       isLocal: issue.isLocal,
-      labels:
-        links.length > 0
-          ? links.map((link) => ({ name: link.name, repoUrl: link.repoUrl }))
-          : labels.map((label) => ({
-              name: label.name,
-              repoUrl: label.repoUrl,
-            })),
+      // Las etiquetas apuntan a un proyecto: su enlace es el del proyecto.
+      labels: (links.length > 0
+        ? links
+        : await this.projects.linksFor(
+            labels.flatMap((label) =>
+              label.projectRepo ? [label.projectRepo] : [],
+            ),
+          )
+      ).map((link) => ({ name: link.name, repoUrl: link.repoUrl })),
     };
   }
 }

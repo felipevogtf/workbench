@@ -48,14 +48,20 @@ const label = Label.reconstruct({
   id: 'l1',
   name: 'Web',
   color: '#000000',
-  repoUrl: 'https://bitbucket.org/acme/web',
+  projectRepo: 'acme/web',
 });
+
+// Los proyectos que existen: las etiquetas apuntan a ellos y de ahí sale el enlace.
+const KNOWN_LINKS = [
+  { repo: 'acme/web', name: 'web', repoUrl: 'https://bitbucket.org/acme/web' },
+  { repo: 'acme/api', name: 'api', repoUrl: 'https://bitbucket.org/acme/api' },
+];
 
 function adapter(
   found: Issue | null,
   of: TaskProject | null,
   extra: Partial<Record<'groupContext' | 'groupOf', unknown>> = {},
-  links: { repo: string; name: string; repoUrl: string }[] = [],
+  links: { repo: string; name: string; repoUrl: string }[] = KNOWN_LINKS,
 ) {
   return new TasksGatewayAdapter(
     {
@@ -66,7 +72,12 @@ function adapter(
       groupOf: () => Promise.resolve(null),
       ...extra,
     } as unknown as TasksFacade,
-    { linksFor: () => Promise.resolve(links) } as unknown as ProjectsFacade,
+    {
+      linksFor: (repos: string[]) =>
+        Promise.resolve(
+          repos.flatMap((repo) => links.filter((link) => link.repo === repo)),
+        ),
+    } as unknown as ProjectsFacade,
   );
 }
 
@@ -110,7 +121,7 @@ describe('TasksGatewayAdapter', () => {
       id: 'l2',
       name: 'Api',
       color: null,
-      repoUrl: 'https://bitbucket.org/acme/api',
+      projectRepo: 'acme/api',
     });
     const task = await adapter(
       issue({ isLocal: true, externalId: null, remoteSequence: null }),
@@ -204,7 +215,7 @@ describe('TasksGatewayAdapter', () => {
 
     await gateway.getTask('i1');
 
-    expect(asked).toEqual([['acme/web']]);
+    expect(asked[0]).toEqual(['acme/web']);
   });
 
   it('is null when the task does not exist', async () => {
