@@ -43,7 +43,6 @@
           <tr>
             <th scope="col">Proyecto</th>
             <th scope="col">Rama</th>
-            <th scope="col">Etiquetas</th>
             <th scope="col"><span class="visually-hidden">Acciones</span></th>
           </tr>
         </thead>
@@ -77,24 +76,6 @@
               </td>
               <td class="nowrap">
                 <span class="repo">{{ project.mainBranch }}</span>
-              </td>
-              <td>
-                <span class="chips">
-                  @if (store.labelsOf(project.repo).length > 0) {
-                    @for (label of store.labelsOf(project.repo); track label) {
-                      <app-badge tone="info">{{ label }}</app-badge>
-                    }
-                  } @else if (store.options().length > 0) {
-                    <app-badge
-                      tone="warning"
-                      title="Ninguna etiqueta apunta a este repositorio: se usa al elegirlo en una tarea o sesión"
-                    >
-                      Sin etiqueta
-                    </app-badge>
-                  } @else {
-                    <span class="muted">—</span>
-                  }
-                </span>
               </td>
               <td class="actions">
                 <a

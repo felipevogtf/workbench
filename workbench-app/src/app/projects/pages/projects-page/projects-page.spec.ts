@@ -72,7 +72,7 @@ describe('ProjectsPage', () => {
     const element = (await render()).nativeElement as HTMLElement;
 
     const headers = Array.from(element.querySelectorAll('th')).map((th) => th.textContent?.trim());
-    expect(headers).toEqual(['Proyecto', 'Rama', 'Etiquetas', 'Acciones']);
+    expect(headers).toEqual(['Proyecto', 'Rama', 'Acciones']);
     const rows = rowsOf(element);
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('acme/app');
@@ -111,24 +111,6 @@ describe('ProjectsPage', () => {
     expect(rows[1].textContent).not.toContain('Sin enlace');
     expect(rows[1].textContent).toContain('Reglas');
     expect(rows[1].textContent).toContain('Verifica');
-  });
-
-  it('shows which labels each project is linked to, and warns about one that no label points to', async () => {
-    api.list.mockReturnValue(of([project('acme/app'), project('acme/huérfano')]));
-    api.repositories.mockReturnValue(of([{ repo: 'acme/app', labels: ['app', 'flota'] }]));
-    const element = (await render()).nativeElement as HTMLElement;
-
-    const rows = rowsOf(element);
-    expect(rows[0].textContent).toContain('flota');
-    expect(rows[0].textContent).not.toContain('Sin etiqueta');
-    expect(rows[1].textContent).toContain('Sin etiqueta');
-  });
-
-  it('does not warn about the labels when none points to a repository, or they could not be read', async () => {
-    api.list.mockReturnValue(of([project('acme/app')]));
-    const element = (await render()).nativeElement as HTMLElement;
-
-    expect(element.textContent).not.toContain('Sin etiqueta');
   });
 
   it('asks before deleting, and deletes only when confirmed', async () => {

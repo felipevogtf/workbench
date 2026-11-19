@@ -13,7 +13,7 @@ import { ProjectsStore } from '../../data-access/projects.store';
 import { Project } from '../../models/project';
 
 /**
- * Los proyectos en una tabla: cada repositorio, su rama, las etiquetas que apuntan a él y si tiene reglas o verificación. La receta y de qué depende se editan en la página de cada proyecto. Crear y editar son páginas aparte
+ * Los proyectos en una tabla: cada repositorio, su rama y si tiene reglas o verificación. La receta y de qué depende se editan en la página de cada proyecto. Crear y editar son páginas aparte
  * (`/projects/new`, `/projects/:id/edit`). Los agentes de las ejecuciones reciben lo que escribes aquí en su prompt.
  */
 @Component({
