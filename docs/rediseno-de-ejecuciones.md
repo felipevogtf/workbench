@@ -62,6 +62,12 @@ Listo cuando: Lucy crea, edita, elimina y reasigna tickets del borrador sin preg
 - Que Lucy cambie tickets `pending` con la ejecución ya en marcha, cuidando que el runner no esté tomando ese ticket en ese momento.
 - Revisar cuántas llamadas a Claude gasta el chat con tantas acciones.
 
+## Estado
+
+- **Fase 1 · Interfaz: hecha (2026-11-19).** La ruta de la ejecución es de ancho completo (`immersive`, como el tablero y el organizador). El ticket abre en un modal centrado (se reutilizó `ticket-panel`, solo cambia cómo se ubica). El chat de Lucy es un cajón a la derecha que se abre con un botón fijo en la cabecera, con el contador de mensajes sin leer; sigue montado aunque esté cerrado, para que Lucy pueda avisar de una pregunta nueva. Los proyectos de la ejecución son chips con su rama, cuántos tickets tienen y su PR; con varios proyectos, pulsar un chip filtra el tablero. Sin cambios en el servidor.
+- **Fase 2 · Borrador y play:** pendiente.
+- **Fase 3 · Lucy con herramientas:** pendiente.
+
 ## Riesgos a vigilar
 
 - **Costo del chat.** Cada vuelta de Lucy es una llamada de Claude en el runner. Con herramientas que aplican cambios, conviene que una sola respuesta pueda traer varias acciones.
