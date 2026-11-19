@@ -80,6 +80,11 @@ export class ExecutionStore {
     return this.act((id) => this.api.assign(id, ticketId, body));
   }
 
+  /** Deshace un cambio del borrador. */
+  async undo(changeId: string): Promise<boolean> {
+    return this.act((id) => this.api.undo(id, changeId));
+  }
+
   async answer(ticketId: string, text: string): Promise<boolean> {
     return this.act((id) => this.api.answer(id, ticketId, text));
   }
@@ -163,7 +168,8 @@ export class ExecutionStore {
     this.timer = null;
   }
 
-  private async refresh(): Promise<void> {
+  /** Vuelve a pedir la ejecución (el sondeo, o tras cambios que hizo Lucy en el borrador); un fallo puntual no molesta. */
+  async refresh(): Promise<void> {
     try {
       await this.fetch();
     } catch {

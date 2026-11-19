@@ -7,6 +7,11 @@ import {
   ExecutionTicket,
   StageKey,
 } from '@executions/domain/entities/execution.props';
+import {
+  type AppliedAction,
+  type LucyAction,
+  type RejectedAction,
+} from '@executions/domain/chat-actions';
 import { Job } from '@executions/domain/entities/job.entity';
 import { JobKind, JobPayload } from '@executions/domain/entities/job.props';
 import {
@@ -1197,15 +1202,169 @@ export class ExecutionsService {
     }
 
     const ticket = execution.ticket(ticketId);
-    if (data.developerId) {
-      await this.assertAgent(data.developerId, 'task-developer');
-      ticket.developerId = data.developerId;
+    // Quien ya tiene el ticket no cambia nada: no queda en el historial.
+    const who = {
+      ...(data.developerId && data.developerId !== ticket.developerId
+        ? { developerId: data.developerId }
+        : {}),
+      ...(data.reviewerId && data.reviewerId !== ticket.reviewerId
+        ? { reviewerId: data.reviewerId }
+        : {}),
+    };
+    if (!who.developerId && !who.reviewerId) return execution;
+
+    const names: { developer?: string; reviewer?: string } = {};
+    if (who.developerId) {
+      await this.assertAgent(who.developerId, 'task-developer');
+      names.developer = await this.workerName(who.developerId);
     }
-    if (data.reviewerId) {
-      await this.assertAgent(data.reviewerId, 'task-reviewer');
-      ticket.reviewerId = data.reviewerId;
+    if (who.reviewerId) {
+      await this.assertAgent(who.reviewerId, 'task-reviewer');
+      names.reviewer = await this.workerName(who.reviewerId);
     }
+    execution.assignTicket(ticketId, who, 'user', names);
     return this.executions.save(execution);
+  }
+
+  private async workerName(agentId: string): Promise<string> {
+    const agent = await this.agents.getById(agentId);
+    return agent?.displayName?.trim() || agent?.name || 'otro agente';
+  }
+
+  /** Deshace un cambio del historial del borrador (los de Lucy y los del usuario). */
+  async undoChange(id: string, changeId: string): Promise<Execution> {
+    const execution = await this.executions.findById(id);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${id} not found`);
+    }
+    execution.undo(changeId);
+    return this.executions.save(execution);
+  }
+
+  /**
+   * Aplica lo que Lucy hizo sobre los tickets del borrador, una acción tras otra y sin pedir confirmación: cada una queda en el
+   * historial para poder deshacerla. Lo que no se puede (el ticket ya empezó, el borrador ya empezó a correr, el agente no existe)
+   * no se aplica y se devuelve con su motivo; el resto sigue.
+   */
+  async applyLucyActions(
+    executionId: string,
+    actions: readonly LucyAction[],
+  ): Promise<{ applied: AppliedAction[]; rejected: RejectedAction[] }> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw DomainError.notFound(`Execution with id ${executionId} not found`);
+    }
+    const workers = {
+      developer: (await this.agents.listByModule('task-developer')).filter(
+        (agent) => agent.provider === 'claude',
+      ),
+      reviewer: (await this.agents.listByModule('task-reviewer')).filter(
+        (agent) => agent.provider === 'claude',
+      ),
+    };
+
+    const applied: AppliedAction[] = [];
+    const rejected: RejectedAction[] = [];
+    for (const action of actions) {
+      try {
+        const change = await this.applyAction(execution, action, workers);
+        applied.push({
+          changeId: change.id,
+          kind: change.kind,
+          ticket: 'ticket' in action ? action.ticket : null,
+          summary: change.summary,
+        });
+      } catch (error) {
+        if (!(error instanceof DomainError)) throw error;
+        rejected.push({ action, reason: error.message });
+      }
+    }
+    if (applied.length > 0) await this.executions.save(execution);
+    return { applied, rejected };
+  }
+
+  private async applyAction(
+    execution: Execution,
+    action: LucyAction,
+    workers: {
+      developer: readonly ResolvedAgent[];
+      reviewer: readonly ResolvedAgent[];
+    },
+  ) {
+    switch (action.kind) {
+      case 'create': {
+        if (execution.tickets.length >= MAX_TICKETS_IN_TOTAL) {
+          throw new DomainError(
+            `An execution can have up to ${MAX_TICKETS_IN_TOTAL} tickets`,
+          );
+        }
+        // Solo una tarea con varios repositorios dice en cuál se desarrolla cada ticket.
+        const repo = execution.targets().length > 1 ? action.repo : null;
+        const ticket = this.ticketFrom({
+          title: action.title,
+          description: action.text,
+          level: action.level,
+          criteria: [],
+          files: [],
+          ...(repo ? { repo } : {}),
+        });
+        const change = execution.createTicket(ticket, 'lucy');
+        await this.assignTickets(execution, [ticket]);
+        return change;
+      }
+      case 'update': {
+        if (action.field === 'repo' && execution.targets().length < 2) {
+          throw new DomainError('This execution has a single repository');
+        }
+        return execution.updateTicket(
+          action.ticketId,
+          { [action.field]: action.value },
+          'lucy',
+        );
+      }
+      case 'remove':
+        return execution.removeTicket(action.ticketId, 'lucy');
+      case 'assign': {
+        // Lucy a veces copia el nombre con su nivel entre paréntesis, tal como lo ve en la lista: «Rebecca (nivel simple)».
+        const wanted = normalizedName(
+          action.agent.replace(/\s*\([^)]*\)\s*$/, ''),
+        );
+        const pool = workers[action.role];
+        const agent =
+          pool.find(
+            (each) => normalizedName(each.displayName ?? each.name) === wanted,
+          ) ??
+          pool.find((each) => normalizedName(each.name) === wanted) ??
+          pool.find((each) =>
+            normalizedName(each.displayName ?? each.name).startsWith(wanted),
+          );
+        if (!agent) {
+          throw new DomainError(
+            `There is no ${action.role === 'developer' ? 'developer' : 'reviewer'} named "${action.agent}"`,
+          );
+        }
+        const label = agent.displayName?.trim() || agent.name;
+        return action.role === 'developer'
+          ? execution.assignTicket(
+              action.ticketId,
+              { developerId: agent.id },
+              'lucy',
+              {
+                developer: label,
+              },
+            )
+          : execution.assignTicket(
+              action.ticketId,
+              { reviewerId: agent.id },
+              'lucy',
+              {
+                reviewer: label,
+              },
+            );
+      }
+      case 'note':
+        return execution.leaveNote(action.ticketId, action.text, 'lucy');
+    }
   }
 
   /** El play: el borrador empieza a desarrollar los tickets, uno a uno. */
@@ -1305,4 +1464,13 @@ export class ExecutionsService {
       reviewing ? 'running' : reviewed ? 'done' : 'pending',
     );
   }
+}
+
+/** El nombre de un agente para compararlo: sin mayúsculas, tildes ni espacios de más. */
+function normalizedName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }

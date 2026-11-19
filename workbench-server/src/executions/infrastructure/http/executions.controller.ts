@@ -29,10 +29,14 @@ import {
   ExecutionResponseDto,
   JobLogsDto,
   JobSummaryDto,
+  type TicketChangeView,
 } from '@executions/dto/execution.dto';
 
 /** Lo que se muestra de la respuesta de un desarrollador: su resumen, no un informe entero. */
 const MAX_OUTPUT = 2000;
+
+/** Cuántos de los últimos cambios del borrador viajan con la ejecución. */
+const MAX_CHANGES_SHOWN = 50;
 
 @Controller()
 export class ExecutionsController {
@@ -107,7 +111,10 @@ export class ExecutionsController {
     return this.toDto(await this.executions.cancel(id));
   }
 
-  /** Conversa con Lucy sobre la ejecución (no cambia nada). Puede tardar. */
+  /**
+   * Conversa con Lucy sobre la ejecución. En el borrador ella también cambia los tickets pendientes (los cambios vuelven en
+   * `changes` y se pueden deshacer); en lo demás solo contesta. Puede tardar.
+   */
   @Post('executions/:id/chat')
   @HttpCode(200)
   chat(
@@ -132,6 +139,16 @@ export class ExecutionsController {
     @Body() dto: AssignTicketDto,
   ): Promise<ExecutionResponseDto> {
     return this.toDto(await this.executions.assign(id, ticketId, dto));
+  }
+
+  /** Deshace un cambio de los tickets del borrador (de Lucy o del usuario). */
+  @Post('executions/:id/changes/:changeId/undo')
+  @HttpCode(200)
+  async undo(
+    @Param('id') id: string,
+    @Param('changeId') changeId: string,
+  ): Promise<ExecutionResponseDto> {
+    return this.toDto(await this.executions.undoChange(id, changeId));
   }
 
   /** El usuario contesta la pregunta de un desarrollador (o acepta la recomendación de Lucy). */
@@ -217,6 +234,18 @@ export class ExecutionsController {
       openPullRequest: execution.opensPullRequest,
       error: execution.error,
       finalReview: execution.finalReview,
+      changes: execution.changes
+        .slice(-MAX_CHANGES_SHOWN)
+        .map((change): TicketChangeView => ({
+          id: change.id,
+          at: change.at,
+          by: change.by,
+          kind: change.kind,
+          ticketId: change.ticketId,
+          title: change.title,
+          summary: change.summary,
+          undone: change.undone,
+        })),
       createdAt: execution.createdAt.toISOString(),
       updatedAt: execution.updatedAt.toISOString(),
       finishedAt: execution.finishedAt?.toISOString() ?? null,

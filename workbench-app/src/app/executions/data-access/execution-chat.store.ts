@@ -22,10 +22,16 @@ export class ExecutionChatStore extends ChatConversation {
   /** Lo que Lucy propone en su última respuesta (notas, tickets, la revisión final), a la espera de que el usuario lo confirme. */
   readonly proposals = signal<ChatProposal[]>([]);
 
+  /** Se llama cuando Lucy cambió tickets del borrador: la página vuelve a pedir la ejecución para mostrarlos al instante. */
+  onChanged: (() => void) | null = null;
+
   protected async request(executionId: string, messages: ChatMessage[]): Promise<string> {
     this.proposals.set([]);
-    const { reply, proposals } = await firstValueFrom(this.api.chat(executionId, messages));
+    const { reply, proposals, changes } = await firstValueFrom(
+      this.api.chat(executionId, messages),
+    );
     this.proposals.set(proposals ?? []);
+    if (changes?.length) this.onChanged?.();
     return reply;
   }
 }

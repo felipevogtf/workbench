@@ -115,12 +115,13 @@ export function extractProposals(
  * La línea sin el formato con que los modelos suelen envolverla: viñeta, número o cita (`- `, `1. `, `> `), negritas o comillas invertidas
  * (`**NOTA 2:** …`, `` `NOTA 2: …` ``). Así una propuesta bien escrita no se pierde por cómo se vea.
  */
-function unformatted(line: string): string {
+export function unformatted(line: string): string {
   let text = line.trim().replace(/^(?:(?:[-*+>]|\d+[.)])[ \t]+)+/, '');
   // Si toda la línea va entre marcas (`…`, **…**), se quitan las de las dos puntas.
-  const wrap = /^([*_`]{1,3})(?=(?:NOTA|TICKET|REPO|REVISI[OÓ]N)\b)/i.exec(
-    text,
-  );
+  const wrap =
+    /^([*_`]{1,3})(?=(?:NOTA|TICKET|REPO|REVISI[OÓ]N|CREAR|EDITAR|ELIMINAR|REASIGNAR)\b)/i.exec(
+      text,
+    );
   if (wrap) {
     text = text.slice(wrap[1].length);
     if (text.endsWith(wrap[1])) text = text.slice(0, -wrap[1].length);

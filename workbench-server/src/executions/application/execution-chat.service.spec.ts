@@ -512,4 +512,144 @@ describe('ExecutionChatService', () => {
       expect(jobs.items).toHaveLength(0);
     });
   });
+
+  describe('changing the tickets of the draft', () => {
+    let applied: unknown[][];
+    let outcome: { applied: unknown[]; rejected: unknown[] };
+
+    /** Un borrador con los tickets ya creados, y un servicio que anota lo que se le pide aplicar. */
+    async function drafted(): Promise<void> {
+      execution = Execution.create({
+        issueId: 'issue-1',
+        planId: 'plan-1',
+        repo: REPO,
+        branch: 'workbench/vista-1234abcd',
+      });
+      execution.setTickets([
+        ticket('a', { title: 'API' }),
+        ticket('b', { title: 'Pantalla' }),
+      ]);
+      execution.setStage('tickets', 'done');
+      await executions.save(execution);
+      applied = [];
+      outcome = { applied: [], rejected: [] };
+      service = new ExecutionChatService(
+        executions,
+        jobs,
+        new FakeTasks(),
+        plans,
+        agents,
+        repositories,
+        {
+          applyLucyActions: (_id: string, actions: unknown[]) => {
+            applied.push(actions);
+            return Promise.resolve(outcome);
+          },
+        } as unknown as ExecutionsService,
+        {
+          anyOnline: () => Promise.resolve(false),
+        } as unknown as RunnersService,
+      );
+    }
+
+    it('applies the actions she writes, without asking, and takes those lines out of her answer', async () => {
+      await drafted();
+      outcome = {
+        applied: [
+          {
+            changeId: 'c1',
+            kind: 'remove',
+            ticket: 2,
+            summary: 'Eliminé el ticket «Pantalla»',
+          },
+        ],
+        rejected: [],
+      };
+      agents.chatReply = 'Quité el de pantalla.\n\nELIMINAR 2\n\n¿Algo más?';
+
+      const answer = await ask('Quita el de pantalla');
+
+      expect(applied).toEqual([[{ kind: 'remove', ticketId: 'b', ticket: 2 }]]);
+      expect(answer.reply).toBe('Quité el de pantalla.\n\n\n¿Algo más?');
+      expect(answer.changes).toEqual(outcome.applied);
+      expect(answer.proposals).toEqual([]);
+    });
+
+    it('does not call the service when she wrote no action', async () => {
+      await drafted();
+      agents.chatReply = 'Todo bien con los tickets.';
+
+      const answer = await ask('¿Cómo vamos?');
+
+      expect(applied).toEqual([]);
+      expect(answer.changes).toEqual([]);
+      expect(answer.reply).toBe('Todo bien con los tickets.');
+    });
+
+    it('tells the user what could not be applied, instead of losing it', async () => {
+      await drafted();
+      outcome = {
+        applied: [],
+        rejected: [
+          { action: {}, reason: 'The ticket "API" is no longer pending' },
+          { action: {}, reason: 'The ticket "API" is no longer pending' },
+        ],
+      };
+      agents.chatReply = 'Listo.\nELIMINAR 1\nELIMINAR 2';
+
+      const answer = await ask('Borra todo');
+
+      expect(answer.reply).toContain('Listo.');
+      expect(answer.reply).toContain('No pude aplicar 2 cambios');
+      // El mismo motivo no se repite.
+      expect(answer.reply.match(/no longer pending/g)).toHaveLength(1);
+    });
+
+    it('does not say a button is missing: in a draft there are no buttons to confirm', async () => {
+      await drafted();
+      agents.chatReply = 'Confírmalo con el botón de abajo.';
+
+      const answer = await ask('Hazlo');
+
+      expect(answer.reply).toBe('Confírmalo con el botón de abajo.');
+    });
+
+    it('teaches her the actions and who she can assign to, only in a draft with its tickets ready', async () => {
+      await drafted();
+      agents.chatReply = 'ok';
+      await ask('Hola');
+
+      const prompt = agents.chats.at(-1)!;
+      expect(prompt).toContain('BORRADOR');
+      expect(prompt).toContain('ELIMINAR <número>');
+      expect(prompt).toContain('# A quién se puede asignar');
+      expect(prompt).toContain('Rebecca (nivel simple)');
+    });
+
+    it('does not act while she is still creating the tickets', async () => {
+      await drafted();
+      execution.setStage('tickets', 'running');
+      await executions.save(execution);
+      agents.chatReply = 'Espera.\nELIMINAR 1';
+
+      const answer = await ask('Quita uno');
+
+      expect(applied).toEqual([]);
+      expect(answer.reply).toContain('ELIMINAR 1');
+      expect(agents.chats.at(-1)!).not.toContain('ELIMINAR <número>');
+    });
+
+    it('leaves a running execution as it was: lines stay in the answer and nothing is applied', async () => {
+      await drafted();
+      execution.begin();
+      await executions.save(execution);
+      agents.chatReply = 'No puedo.\nELIMINAR 1';
+
+      const answer = await ask('Quita uno');
+
+      expect(applied).toEqual([]);
+      expect(answer.reply).toContain('ELIMINAR 1');
+      expect(answer.changes).toEqual([]);
+    });
+  });
 });

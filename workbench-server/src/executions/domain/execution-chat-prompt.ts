@@ -47,6 +47,12 @@ function oneLine(value: string, max: number): string {
   return clip(value.replace(/\s+/g, ' '), max);
 }
 
+/** Los agentes que Lucy puede elegir al reasignar un ticket, con el nombre con que se ven. */
+export interface ChatWorkers {
+  developers: readonly string[];
+  reviewers: readonly string[];
+}
+
 export interface ExecutionChatPromptInput {
   /** Cómo se llama quien contesta (Lucy). */
   assistantName: string;
@@ -66,6 +72,13 @@ export interface ExecutionChatPromptInput {
    * dependencias instaladas. Cambia solo la sección de código; `repos` no se usa.
    */
   onRunner?: boolean;
+  /**
+   * Lucy puede cambiar los tickets: la ejecución es un borrador con los tickets ya creados. Sus acciones se aplican solas, sin
+   * confirmación, y el usuario las deshace desde el historial.
+   */
+  canEditTickets?: boolean;
+  /** Quién puede desarrollar y revisar, para que pueda reasignar. Solo con `canEditTickets`. */
+  workers?: ChatWorkers;
 }
 
 /** El código que Lucy puede leer, y la advertencia de que no incluye el trabajo en curso. */
@@ -206,6 +219,19 @@ function ticketLines(input: ExecutionChatPromptInput): string[] {
   ];
 }
 
+/** Con el borrador abierto, a quién se puede asignar cada cosa. */
+function workerLines(input: ExecutionChatPromptInput): string[] {
+  if (!input.canEditTickets || !input.workers) return [];
+  const names = (list: readonly string[]) =>
+    list.length > 0 ? list.join(', ') : '(ninguno)';
+  return [
+    '# A quién se puede asignar',
+    `Desarrollan: ${names(input.workers.developers)}.`,
+    `Revisan: ${names(input.workers.reviewers)}.`,
+    '',
+  ];
+}
+
 /** El último trabajo que falló: su error y el final de su registro, que suele decir por qué. */
 function failureLines(jobs: readonly Job[]): string[] {
   const failed = [...jobs].reverse().find((job) => job.status === 'failed');
@@ -284,6 +310,21 @@ function conversationLines(
 }
 
 /**
+ * Lo que Lucy puede hacer con los tickets mientras la ejecución es un borrador. A diferencia de las notas y los tickets de una
+ * ejecución terminada, aquí NO hay botón de confirmar: lo que escribe se aplica al terminar su respuesta y el usuario puede deshacerlo.
+ */
+const DRAFT_TOOLS = [
+  '- La ejecución es un BORRADOR: todavía no se desarrolló nada. Puedes crear, modificar, eliminar y reasignar los tickets que siguen pendientes, SIN pedir confirmación: se aplican solos cuando termina tu respuesta y el usuario puede deshacer cada cambio con un botón. Cada acción va en una línea aparte, sola, sin viñetas, negritas ni comillas invertidas, con este formato exacto:',
+  '  `CREAR <simple|medium|complex> | <título> | <descripción completa en una línea> [| <organización/repo, solo si la tarea tiene varios>]`',
+  '  `EDITAR <número> | <título|descripción|criterios|nivel|repo> | <valor nuevo>` (los criterios, separados por `;`)',
+  '  `ELIMINAR <número>`',
+  '  `REASIGNAR <número> | <desarrolla|revisa> | <nombre del agente>` (uno de la lista «A quién se puede asignar»)',
+  '  `NOTA <número>: <instrucción>` (una nota para el agente del ticket; en el borrador se guarda al instante, sin botón)',
+  'Los números son los de la lista de Tickets de abajo tal como está ahora y NO cambian aunque en la misma respuesta elimines o crees otros. Puedes poner varias acciones en una respuesta. Si el usuario te pide algo (mejorar un ticket, agregar uno, quitar otro, dividir uno en dos, cambiar quién lo hace), hazlo directamente: no le pidas permiso ni le digas que use un botón. Al terminar, cuéntale en una o dos frases qué hiciste y por qué.',
+  'Un ticket que creas o editas tiene que bastarse solo: qué hay que hacer, dónde y cómo se comprueba. Prefiere EDITAR el ticket cuando el cambio es parte del plan; deja una NOTA solo para indicaciones de cómo trabajar. Solo puedes tocar tickets «pendiente»: si no lo están, no los intentes. No uses una línea de estas para explicar algo: si no quieres que se aplique, no la escribas.',
+];
+
+/**
  * Lo que recibe Lucy para conversar sobre una ejecución: quién es, la tarea, el estado, los tickets con
  * quién los tiene, el último fallo, el plan y la conversación. Ella no recuerda nada entre una pregunta y
  * otra, así que todo viaja en cada una. Función pura.
@@ -298,7 +339,11 @@ export function buildExecutionChatPrompt(
     `Eres ${assistantName}, la líder técnica que convirtió el plan en tickets y coordina esta ejecución. Conversas con el usuario, el desarrollador dueño de la tarea, sobre cómo va: qué pasó, por qué falló algo, qué sigue y qué opinas.`,
     '- Respondes en español, claro y directo, en Markdown. Sin rodeos.',
     '- Solo sabes lo que está en este contexto. Si algo no está, dilo: no inventes.',
-    '- No puedes cambiar la ejecución desde aquí. Si hace falta algo (reintentar, cancelar, reasignar un ticket mientras se espera el visto bueno), dile qué botón de la pantalla usar.',
+    ...(input.canEditTickets
+      ? DRAFT_TOOLS
+      : [
+          '- No puedes cambiar la ejecución desde aquí. Si hace falta algo (reintentar, cancelar), dile qué botón de la pantalla usar.',
+        ]),
     '- Si un ticket tiene una «Duda» de un agente, coméntasela al usuario cuando venga al caso y ayúdale a decidir: recomienda y, si hace falta corregir al agente, propón la nota.',
     '- Sí puedes proponer una nota para el agente de un ticket (los agentes no leen este chat: solo ven lo que se les deja en el ticket, la próxima vez que lo trabajen). Mientras tú y el usuario todavía están hablando de qué hacer, NO la escribas: conversa, recomienda, pregunta y ajusta tu recomendación con lo que el usuario responda. Cuando el usuario cierre la conversación («ya», «díselo a Kiwi», «pásale eso», «dejémoslo así») o te pida directamente que un agente sepa o haga algo, escribe UNA nota final que reúna lo acordado en toda la conversación (no solo el último mensaje), dirigida al agente y autocontenida, en una línea aparte con este formato exacto: `NOTA <número del ticket>: <instrucción>`. Esa línea es lo que crea el botón: si le dices al usuario que confirme con un botón, la línea TIENE que ir en tu respuesta, sola, al final y sin viñetas ni negritas; sin ella no hay botón. No se guarda sola: el usuario la confirma con un botón (si la ejecución falló, también puede dejarla y reintentar). Una línea por nota y solo con números de ticket de la lista de abajo; dile al usuario en una frase qué propones. Con la ejecución COMPLETADA, una nota para un ticket «hecho» lo REABRE: vuelve a desarrollo y revisión con tu nota y, al terminar, se actualiza la misma PR; propónla solo si el usuario quiere corregir ese ticket, y avísale que reabrirlo gasta una vuelta de agentes. Con la ejecución sin completar, no propongas notas para un ticket hecho.',
     '- Con la ejecución COMPLETADA también puedes proponer sumar tickets nuevos (un hotfix, algo que no se consideró al inicio), cada uno en una línea aparte con este formato exacto: `TICKET <simple|medium|complex> | <título> | <descripción completa en una línea> | <organización/repo, solo si la tarea tiene varios>`. Se desarrollan y revisan como los demás, en la misma rama. Propónlos solo cuando el usuario lo pida o ya lo hayan acordado; describe lo que hay que hacer y cómo se comprueba.',
@@ -315,6 +360,7 @@ export function buildExecutionChatPrompt(
     '',
     ...stateLines(input),
     ...ticketLines(input),
+    ...workerLines(input),
     ...failureLines(input.jobs),
     ...finalReviewLines(input.execution),
     ...(input.onRunner

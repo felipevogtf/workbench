@@ -483,3 +483,139 @@ describe('ExecutionChat', () => {
     });
   });
 });
+
+describe('ExecutionChat: what Lucy changed in the draft', () => {
+  let undo: ReturnType<typeof vi.fn<(changeId: string) => Promise<boolean>>>;
+  let refresh: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  let chatApi: ReturnType<typeof vi.fn>;
+  let detail: WritableSignal<Record<string, unknown> | null>;
+
+  const change = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    at: '2026-11-19T12:00:00Z',
+    by: 'lucy',
+    kind: 'remove',
+    ticketId: 't1',
+    title: 'Pantalla',
+    summary: `Eliminé el ticket «Pantalla ${id}»`,
+    undone: false,
+    ...extra,
+  });
+
+  beforeEach(() => {
+    undo = vi.fn(() => Promise.resolve(true));
+    refresh = vi.fn(() => Promise.resolve());
+    chatApi = vi.fn(() => of({ reply: 'Listo', proposals: [], changes: [] }));
+    detail = signal({ status: 'draft', error: null, changes: [] });
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [
+        ExecutionChatStore,
+        {
+          provide: ExecutionStore,
+          useValue: { acting: signal(false), undo, refresh, detail },
+        },
+        { provide: ExecutionsApi, useValue: { chat: chatApi } },
+        { provide: AgentsApi, useValue: { list: () => of([]) } },
+      ],
+    });
+  });
+
+  async function render() {
+    const fixture = TestBed.createComponent(ExecutionChat);
+    fixture.componentRef.setInput('executionId', 'e1');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, element: fixture.nativeElement as HTMLElement };
+  }
+
+  it('lists the changes she made, the newest first, each with its undo button', async () => {
+    detail.set({
+      status: 'draft',
+      error: null,
+      changes: [change('1'), change('2'), change('3')],
+    });
+    const { element } = await render();
+
+    const texts = [...element.querySelectorAll('.change__text')].map((each) => each.textContent);
+    expect(texts).toEqual([
+      'Eliminé el ticket «Pantalla 3»',
+      'Eliminé el ticket «Pantalla 2»',
+      'Eliminé el ticket «Pantalla 1»',
+    ]);
+    expect(element.querySelectorAll('.change button')).toHaveLength(3);
+  });
+
+  it('shows nothing about the changes of the user, only those of Lucy', async () => {
+    detail.set({
+      status: 'draft',
+      error: null,
+      changes: [change('1', { by: 'user', kind: 'assign', summary: 'Reasigné el ticket' })],
+    });
+    const { element } = await render();
+
+    expect(element.querySelector('.changes')).toBeNull();
+  });
+
+  it('shows only the last eight', async () => {
+    detail.set({
+      status: 'draft',
+      error: null,
+      changes: Array.from({ length: 12 }, (_, n) => change(String(n))),
+    });
+    const { element } = await render();
+
+    expect(element.querySelectorAll('.change')).toHaveLength(8);
+  });
+
+  it('undoes a change from its button', async () => {
+    detail.set({ status: 'draft', error: null, changes: [change('c1')] });
+    const { element } = await render();
+
+    (element.querySelector('.change button') as HTMLButtonElement).click();
+
+    expect(undo).toHaveBeenCalledWith('c1');
+  });
+
+  it('shows a change that was undone as such, without a button', async () => {
+    detail.set({ status: 'draft', error: null, changes: [change('c1', { undone: true })] });
+    const { element } = await render();
+
+    expect(element.querySelector('.change--undone')).not.toBeNull();
+    expect(element.querySelector('.change__state')?.textContent).toContain('Deshecho');
+    expect(element.querySelector('.change button')).toBeNull();
+  });
+
+  it('offers no undo once the development started: the ticket is no longer touched', async () => {
+    detail.set({ status: 'running', error: null, changes: [change('c1')] });
+    const { element } = await render();
+
+    expect(element.querySelectorAll('.change')).toHaveLength(1);
+    expect(element.querySelector('.change button')).toBeNull();
+  });
+
+  it('asks the page to refresh the execution when Lucy changed tickets, so they show up at once', async () => {
+    chatApi.mockReturnValue(
+      of({
+        reply: 'Quité el de pantalla.',
+        proposals: [],
+        changes: [{ changeId: 'c1', kind: 'remove', ticket: 2, summary: 'Eliminé el ticket' }],
+      }),
+    );
+    await render();
+    const chat = TestBed.inject(ExecutionChatStore);
+
+    await chat.send('Quita el de pantalla');
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh when she changed nothing', async () => {
+    await render();
+    const chat = TestBed.inject(ExecutionChatStore);
+
+    await chat.send('¿Cómo vamos?');
+
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});

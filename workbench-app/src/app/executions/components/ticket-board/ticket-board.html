@@ -33,7 +33,9 @@
                 }
               </span>
 
-              @if (card.repo || card.ticket.rounds > 0 || card.ticket.feedback?.length) {
+              @if (
+                card.repo || card.ticket.rounds > 0 || card.ticket.feedback?.length || card.byLucy
+              ) {
                 <span class="card__flags">
                   @if (card.repo) {
                     <app-badge tone="info">{{ card.repo }}</app-badge>
@@ -43,6 +45,11 @@
                   }
                   @if (card.ticket.feedback?.length) {
                     <app-badge tone="warning">Cambios pedidos</app-badge>
+                  }
+                  @if (card.byLucy) {
+                    <app-badge tone="info" title="Lucy lo creó o lo cambió en el borrador">
+                      Cambiado por Lucy
+                    </app-badge>
                   }
                 </span>
               }

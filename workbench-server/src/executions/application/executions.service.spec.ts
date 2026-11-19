@@ -2128,4 +2128,291 @@ describe('ExecutionsService', () => {
       expect(await runnerJobs.failStaleJobs()).toBe(0);
     });
   });
+
+  describe('Lucy changing the tickets of the draft', () => {
+    const worker = (id: string, level: string | null = null) => ({
+      id,
+      name: id,
+      displayName: id === 'agent-task-developer-simple' ? 'Rebecca' : null,
+      provider: 'claude',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'prompt',
+      allowedTools: ['Read'],
+      effort: null,
+      level,
+      isDefault: false,
+    });
+    const THREE = JSON.stringify({
+      tickets: [
+        { title: 'Texto', description: 'd', level: 'simple', criteria: [] },
+        { title: 'Lógica', description: 'd', level: 'medium', criteria: [] },
+        { title: 'Pantalla', description: 'd', level: 'medium', criteria: [] },
+      ],
+    });
+    const state = async (id: string) => (await service.get(id)).execution;
+    const draftOf = async () => {
+      const execution = await service.start('issue-1');
+      await answer({ output: THREE });
+      return execution.id;
+    };
+
+    beforeEach(() => {
+      agents.extra = [
+        worker('agent-task-developer-simple', 'simple'),
+        worker('agent-task-reviewer-2'),
+      ];
+    });
+
+    it('creates a ticket, assigns it by its level and records the change', async () => {
+      const id = await draftOf();
+
+      const { applied, rejected } = await service.applyLucyActions(id, [
+        {
+          kind: 'create',
+          title: 'Pruebas',
+          text: 'Escribir pruebas',
+          level: 'simple',
+          repo: null,
+        },
+      ]);
+
+      expect(rejected).toEqual([]);
+      expect(applied).toEqual([
+        {
+          changeId: expect.any(String) as string,
+          kind: 'create',
+          ticket: null,
+          summary: expect.stringContaining('Pruebas') as string,
+        },
+      ]);
+      const created = (await state(id)).tickets.at(-1)!;
+      expect(created).toMatchObject({
+        title: 'Pruebas',
+        status: 'pending',
+        level: 'simple',
+        developerId: 'agent-task-developer-simple',
+      });
+      expect(created.reviewerId).not.toBeNull();
+    });
+
+    it('edits, reassigns, leaves a note and removes, each recorded as Lucy', async () => {
+      const id = await draftOf();
+      const [a, b, c] = (await state(id)).tickets;
+
+      const { applied, rejected } = await service.applyLucyActions(id, [
+        {
+          kind: 'update',
+          ticketId: a.id,
+          ticket: 1,
+          field: 'title',
+          value: 'Textos de la app',
+        },
+        {
+          kind: 'update',
+          ticketId: a.id,
+          ticket: 1,
+          field: 'criteria',
+          value: ['Sin typos'],
+        },
+        {
+          kind: 'assign',
+          ticketId: a.id,
+          ticket: 1,
+          role: 'reviewer',
+          agent: 'agent-task-reviewer-2',
+        },
+        {
+          kind: 'note',
+          ticketId: b.id,
+          ticket: 2,
+          text: 'Usa el helper existente',
+        },
+        { kind: 'remove', ticketId: c.id, ticket: 3 },
+      ]);
+
+      expect(rejected).toEqual([]);
+      expect(applied.map((each) => each.kind)).toEqual([
+        'update',
+        'update',
+        'assign',
+        'note',
+        'remove',
+      ]);
+      const now = await state(id);
+      expect(now.tickets.map((each) => each.title)).toEqual([
+        'Textos de la app',
+        'Lógica',
+      ]);
+      expect(now.tickets[0].criteria).toEqual(['Sin typos']);
+      expect(now.tickets[0].reviewerId).toBe('agent-task-reviewer-2');
+      expect(now.tickets[1].notes?.[0]).toMatchObject({
+        from: 'lucy',
+        text: 'Usa el helper existente',
+      });
+      expect(now.changes.every((change) => change.by === 'lucy')).toBe(true);
+      expect(now.removedTickets.map((each) => each.id)).toEqual([c.id]);
+    });
+
+    it('finds the agent by the name it is shown with, ignoring case, accents and the level in parentheses', async () => {
+      const id = await draftOf();
+      const [, b] = (await state(id)).tickets;
+
+      const { applied, rejected } = await service.applyLucyActions(id, [
+        {
+          kind: 'assign',
+          ticketId: b.id,
+          ticket: 2,
+          role: 'developer',
+          agent: 'REBECCA (nivel simple)',
+        },
+      ]);
+
+      expect(rejected).toEqual([]);
+      expect(applied[0].summary).toContain('Rebecca');
+      expect((await state(id)).tickets[1].developerId).toBe(
+        'agent-task-developer-simple',
+      );
+    });
+
+    it('rejects what it cannot do with the reason, and still applies the rest', async () => {
+      const id = await draftOf();
+      const [a, b] = (await state(id)).tickets;
+
+      const { applied, rejected } = await service.applyLucyActions(id, [
+        {
+          kind: 'assign',
+          ticketId: a.id,
+          ticket: 1,
+          role: 'developer',
+          agent: 'Nadie',
+        },
+        { kind: 'remove', ticketId: b.id, ticket: 2 },
+        {
+          kind: 'update',
+          ticketId: a.id,
+          ticket: 1,
+          field: 'repo',
+          value: 'acme/otro',
+        },
+        { kind: 'remove', ticketId: 'no-existe', ticket: 9 },
+      ]);
+
+      expect(applied.map((each) => each.kind)).toEqual(['remove']);
+      expect(rejected.map((each) => each.reason)).toEqual([
+        expect.stringContaining('no developer named "Nadie"'),
+        expect.stringContaining('single repository'),
+        expect.stringContaining('not found'),
+      ]);
+      expect((await state(id)).tickets).toHaveLength(2);
+    });
+
+    it('applies nothing once the development began: it is no longer a draft', async () => {
+      const id = await draftOf();
+      const [a] = (await state(id)).tickets;
+      await service.begin(id);
+
+      const { applied, rejected } = await service.applyLucyActions(id, [
+        { kind: 'remove', ticketId: a.id, ticket: 1 },
+        { kind: 'create', title: 'X', text: 'x', level: 'simple', repo: null },
+      ]);
+
+      expect(applied).toEqual([]);
+      expect(rejected).toHaveLength(2);
+      expect(rejected[0].reason).toContain('draft');
+      expect((await state(id)).tickets).toHaveLength(3);
+    });
+
+    it('does not let an execution grow past fifteen tickets', async () => {
+      const id = await draftOf();
+      const many = Array.from({ length: 13 }, (_, n) => ({
+        kind: 'create' as const,
+        title: `Extra ${n}`,
+        text: 'x',
+        level: 'simple' as const,
+        repo: null,
+      }));
+
+      const { applied, rejected } = await service.applyLucyActions(id, many);
+
+      expect(applied).toHaveLength(12);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0].reason).toContain('15 tickets');
+      expect((await state(id)).tickets).toHaveLength(15);
+    });
+
+    it('undoes any change, in any order, and the ticket is as it was', async () => {
+      const id = await draftOf();
+      const [a, b] = (await state(id)).tickets;
+      const { applied } = await service.applyLucyActions(id, [
+        {
+          kind: 'update',
+          ticketId: a.id,
+          ticket: 1,
+          field: 'title',
+          value: 'Otro título',
+        },
+        { kind: 'remove', ticketId: b.id, ticket: 2 },
+        {
+          kind: 'create',
+          title: 'Nuevo',
+          text: 'x',
+          level: 'simple',
+          repo: null,
+        },
+      ]);
+
+      for (const change of [...applied].reverse()) {
+        await service.undoChange(id, change.changeId);
+      }
+
+      const now = await state(id);
+      expect(now.tickets.map((each) => each.title)).toEqual([
+        'Texto',
+        'Lógica',
+        'Pantalla',
+      ]);
+      expect(now.changes.every((change) => change.undone)).toBe(true);
+    });
+
+    it('cannot undo after the play, nor twice', async () => {
+      const id = await draftOf();
+      const [a] = (await state(id)).tickets;
+      const { applied } = await service.applyLucyActions(id, [
+        { kind: 'remove', ticketId: a.id, ticket: 1 },
+        {
+          kind: 'update',
+          ticketId: (await state(id)).tickets[1].id,
+          ticket: 2,
+          field: 'title',
+          value: 'Otro',
+        },
+      ]);
+      await service.undoChange(id, applied[0].changeId);
+      await expect(
+        service.undoChange(id, applied[0].changeId),
+      ).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+
+      await service.begin(id);
+
+      await expect(
+        service.undoChange(id, applied[1].changeId),
+      ).rejects.toMatchObject({
+        kind: 'conflict',
+      });
+    });
+
+    it('records the reassignment the user makes from the screen, and ignores assigning the same worker', async () => {
+      const id = await draftOf();
+      const [a] = (await state(id)).tickets;
+
+      await service.assign(id, a.id, { reviewerId: 'agent-task-reviewer-2' });
+      await service.assign(id, a.id, { reviewerId: 'agent-task-reviewer-2' });
+
+      const now = await state(id);
+      expect(now.changes).toHaveLength(1);
+      expect(now.changes[0]).toMatchObject({ kind: 'assign', by: 'user' });
+    });
+  });
 });

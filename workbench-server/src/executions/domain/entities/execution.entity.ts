@@ -1,5 +1,7 @@
 import { DomainError } from '@core/domain/domain.error';
 import {
+  ChangeAuthor,
+  EditableTicketFields,
   ExecutionExtraRepo,
   ExecutionProps,
   ExecutionRepo,
@@ -11,7 +13,15 @@ import {
   STAGE_KEYS,
   StageKey,
   StageStatus,
+  TICKET_LEVELS,
+  TicketChange,
+  TicketChangeKind,
 } from './execution.props';
+
+/** Cuántos tickets eliminados se guardan para poder restaurarlos. */
+const MAX_REMOVED = 30;
+/** Cuántos cambios se recuerdan. */
+const MAX_CHANGES = 200;
 
 export class Execution {
   private constructor(private props: ExecutionProps) {}
@@ -209,6 +219,257 @@ export class Execution {
     this.touch();
   }
 
+  /** Los cambios a los tickets del borrador, del más antiguo al más nuevo. */
+  get changes(): TicketChange[] {
+    return this.props.history?.changes ?? [];
+  }
+
+  /** Los tickets eliminados del borrador, que se pueden restaurar deshaciendo su cambio. */
+  get removedTickets(): ExecutionTicket[] {
+    return this.props.history?.removed ?? [];
+  }
+
+  /**
+   * Los tickets del borrador solo se tocan con la ejecución en borrador y una vez que Lucy los creó (antes, el trabajo que los crea
+   * los reemplazaría), y solo los que siguen pendientes: uno que ya empezó o terminó no se cambia.
+   */
+  private assertEditable(ticket?: ExecutionTicket): void {
+    if (this.props.status !== 'draft') {
+      throw DomainError.conflict(
+        'Tickets can only be changed while the execution is a draft',
+      );
+    }
+    if (
+      this.props.stages.find((stage) => stage.key === 'tickets')?.status !==
+      'done'
+    ) {
+      throw DomainError.conflict('The tickets are not ready yet');
+    }
+    if (ticket && ticket.status !== 'pending') {
+      throw DomainError.conflict(
+        `The ticket "${ticket.title}" is no longer pending`,
+      );
+    }
+  }
+
+  private record(change: {
+    by: ChangeAuthor;
+    kind: TicketChangeKind;
+    ticket: ExecutionTicket;
+    summary: string;
+    before?: Partial<EditableTicketFields> | null;
+    index?: number;
+    noteAt?: string;
+  }): TicketChange {
+    const entry: TicketChange = {
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      by: change.by,
+      kind: change.kind,
+      ticketId: change.ticket.id,
+      title: change.ticket.title,
+      summary: change.summary,
+      before: change.before ?? null,
+      ...(change.index !== undefined ? { index: change.index } : {}),
+      ...(change.noteAt ? { noteAt: change.noteAt } : {}),
+      undone: false,
+    };
+    const history = this.props.history ?? { changes: [], removed: [] };
+    this.props.history = {
+      changes: [...history.changes, entry].slice(-MAX_CHANGES),
+      removed: history.removed,
+    };
+    this.touch();
+    return entry;
+  }
+
+  /** Suma un ticket nuevo al final del borrador. */
+  createTicket(ticket: ExecutionTicket, by: ChangeAuthor): TicketChange {
+    this.assertEditable();
+    this.props.tickets = [...this.props.tickets, ticket];
+    return this.record({
+      by,
+      kind: 'create',
+      ticket,
+      summary: `Creé el ticket «${ticket.title}»`,
+    });
+  }
+
+  /** Cambia el título, la descripción, los criterios, el nivel o el repo de un ticket pendiente. */
+  updateTicket(
+    id: string,
+    changes: Partial<
+      Pick<
+        ExecutionTicket,
+        'title' | 'description' | 'criteria' | 'level' | 'repo'
+      >
+    >,
+    by: ChangeAuthor,
+  ): TicketChange {
+    const ticket = this.ticket(id);
+    this.assertEditable(ticket);
+    if (changes.level !== undefined && !TICKET_LEVELS.includes(changes.level)) {
+      throw new DomainError('The level must be simple, medium or complex');
+    }
+    if (changes.title !== undefined && !changes.title.trim()) {
+      throw new DomainError('The title cannot be empty');
+    }
+    if (changes.description !== undefined && !changes.description.trim()) {
+      throw new DomainError('The description cannot be empty');
+    }
+
+    const before: Partial<EditableTicketFields> = {};
+    const fields = Object.keys(changes) as (keyof typeof changes)[];
+    for (const field of fields) {
+      const next = changes[field];
+      if (
+        next === undefined ||
+        JSON.stringify(ticket[field]) === JSON.stringify(next)
+      )
+        continue;
+      (before as Record<string, unknown>)[field] = ticket[field];
+      (ticket as unknown as Record<string, unknown>)[field] = next;
+    }
+    const touched = Object.keys(before);
+    if (touched.length === 0)
+      throw new DomainError('That change leaves the ticket as it was');
+    return this.record({
+      by,
+      kind: 'update',
+      ticket,
+      before,
+      summary: `Modifiqué ${touched.map((field) => FIELD_LABEL[field] ?? field).join(', ')} del ticket «${ticket.title}»`,
+    });
+  }
+
+  /** Quita un ticket pendiente del borrador. No se borra: queda guardado y deshacer el cambio lo restaura. */
+  removeTicket(id: string, by: ChangeAuthor): TicketChange {
+    const ticket = this.ticket(id);
+    this.assertEditable(ticket);
+    const index = this.props.tickets.indexOf(ticket);
+    this.props.tickets = this.props.tickets.filter((each) => each !== ticket);
+    const entry = this.record({
+      by,
+      kind: 'remove',
+      ticket,
+      index,
+      summary: `Eliminé el ticket «${ticket.title}»`,
+    });
+    const history = this.props.history as NonNullable<
+      ExecutionProps['history']
+    >;
+    this.props.history = {
+      ...history,
+      removed: [...history.removed, ticket].slice(-MAX_REMOVED),
+    };
+    return entry;
+  }
+
+  /** Cambia quién desarrolla o revisa un ticket pendiente. */
+  assignTicket(
+    id: string,
+    who: { developerId?: string; reviewerId?: string },
+    by: ChangeAuthor,
+    names: { developer?: string; reviewer?: string } = {},
+  ): TicketChange {
+    const ticket = this.ticket(id);
+    this.assertEditable(ticket);
+    const before: Partial<EditableTicketFields> = {};
+    const said: string[] = [];
+    if (who.developerId && who.developerId !== ticket.developerId) {
+      before.developerId = ticket.developerId;
+      ticket.developerId = who.developerId;
+      said.push(`desarrolla ${names.developer ?? 'otro agente'}`);
+    }
+    if (who.reviewerId && who.reviewerId !== ticket.reviewerId) {
+      before.reviewerId = ticket.reviewerId;
+      ticket.reviewerId = who.reviewerId;
+      said.push(`revisa ${names.reviewer ?? 'otro agente'}`);
+    }
+    if (said.length === 0)
+      throw new DomainError('That worker already has the ticket');
+    return this.record({
+      by,
+      kind: 'assign',
+      ticket,
+      before,
+      summary: `Reasigné el ticket «${ticket.title}»: ${said.join(' y ')}`,
+    });
+  }
+
+  /** Deja una nota para el agente del ticket (en el borrador se guarda sin confirmar). */
+  leaveNote(id: string, text: string, by: ChangeAuthor): TicketChange {
+    const ticket = this.ticket(id);
+    this.assertEditable(ticket);
+    const note = text.trim();
+    if (!note) throw new DomainError('The note cannot be empty');
+    const at = new Date().toISOString();
+    ticket.notes = [...(ticket.notes ?? []), { at, from: by, text: note }];
+    return this.record({
+      by,
+      kind: 'note',
+      ticket,
+      noteAt: at,
+      summary: `Dejé una nota en el ticket «${ticket.title}»`,
+    });
+  }
+
+  /** Deshace un cambio del historial: devuelve el ticket a como estaba. Solo en el borrador y sobre tickets que siguen pendientes. */
+  undo(changeId: string): TicketChange {
+    const change = this.changes.find((each) => each.id === changeId);
+    if (!change) throw DomainError.notFound(`Change ${changeId} not found`);
+    if (change.undone)
+      throw DomainError.conflict('That change was already undone');
+    this.assertEditable();
+
+    if (change.kind === 'remove') {
+      const history = this.props.history as NonNullable<
+        ExecutionProps['history']
+      >;
+      const ticket = history.removed.find(
+        (each) => each.id === change.ticketId,
+      );
+      if (!ticket)
+        throw DomainError.notFound('The removed ticket is no longer stored');
+      const at = Math.min(
+        change.index ?? this.props.tickets.length,
+        this.props.tickets.length,
+      );
+      this.props.tickets = [
+        ...this.props.tickets.slice(0, at),
+        ticket,
+        ...this.props.tickets.slice(at),
+      ];
+      this.props.history = {
+        ...history,
+        removed: history.removed.filter((each) => each !== ticket),
+      };
+    } else {
+      const ticket = this.ticket(change.ticketId);
+      this.assertEditable(ticket);
+      if (change.kind === 'create') {
+        this.props.tickets = this.props.tickets.filter(
+          (each) => each !== ticket,
+        );
+      } else if (change.kind === 'note') {
+        ticket.notes = (ticket.notes ?? []).filter(
+          (note) => note.at !== change.noteAt,
+        );
+      } else {
+        Object.assign(ticket, change.before ?? {});
+        // Un campo opcional que antes no existía vuelve a no existir.
+        for (const field of Object.keys(
+          change.before ?? {},
+        ) as (keyof EditableTicketFields)[]) {
+          if (ticket[field] === undefined) delete ticket[field];
+        }
+      }
+    }
+    change.undone = true;
+    this.touch();
+    return change;
+  }
+
   /** Es un borrador: nada corre todavía y se pueden ajustar los tickets. */
   get isDraft(): boolean {
     return this.props.status === 'draft';
@@ -367,3 +628,11 @@ export class Execution {
     this.props.updatedAt = new Date();
   }
 }
+
+const FIELD_LABEL: Record<string, string> = {
+  title: 'el título',
+  description: 'la descripción',
+  criteria: 'los criterios',
+  level: 'el nivel',
+  repo: 'el repositorio',
+};

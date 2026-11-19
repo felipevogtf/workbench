@@ -110,6 +110,34 @@ export interface RepoProposal {
 /** Lo que Lucy propone y el usuario puede confirmar con un botón. */
 export type ChatProposal = NoteProposal | NewTicketProposal | FinalReviewProposal | RepoProposal;
 
+/** Qué se le hizo a un ticket del borrador. */
+export type TicketChangeKind = 'create' | 'update' | 'remove' | 'assign' | 'note';
+
+/**
+ * Un cambio a los tickets del borrador, de Lucy o del usuario. Los de Lucy se aplican sin preguntar: este historial es lo que
+ * permite deshacerlos.
+ */
+export interface TicketChange {
+  id: string;
+  at: string;
+  by: 'lucy' | 'user';
+  kind: TicketChangeKind;
+  ticketId: string;
+  /** El título del ticket cuando se hizo el cambio. */
+  title: string;
+  /** Lo que se hizo, en una frase («Eliminé el ticket «X»»). */
+  summary: string;
+  undone: boolean;
+}
+
+/** Lo que Lucy hizo en una respuesta, sobre los tickets del borrador. */
+export interface AppliedChange {
+  changeId: string;
+  kind: TicketChangeKind;
+  ticket: number | null;
+  summary: string;
+}
+
 /** Un ticket nuevo que el usuario manda sumar a una ejecución terminada. */
 export interface NewTicketInput {
   title: string;
@@ -183,6 +211,8 @@ export interface Execution {
   /** Todos los repositorios de la tarea, el primero igual que `repo`. */
   repos: ExecutionRepoTarget[];
   status: ExecutionStatus;
+  /** Los últimos cambios a los tickets del borrador; ausente en una respuesta que no los trae. */
+  changes?: TicketChange[];
   stages: StageRun[];
   tickets: ExecutionTicket[];
   pullRequestUrl: string | null;
@@ -364,4 +394,6 @@ export interface BoardCard {
   repo?: string | null;
   /** Todavía no lo toma: es el que lo hará cuando le toque. */
   upcoming: boolean;
+  /** Lucy lo creó o lo cambió en el borrador (y el cambio sigue en pie). */
+  byLucy?: boolean;
 }

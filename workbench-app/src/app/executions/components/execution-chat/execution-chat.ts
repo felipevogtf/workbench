@@ -14,7 +14,7 @@ import { Button } from '@shared/ui/button/button';
 import { MarkdownViewer } from '@shared/ui/markdown-viewer/markdown-viewer';
 import { ExecutionChatStore } from '../../data-access/execution-chat.store';
 import { ExecutionStore } from '../../data-access/execution.store';
-import { ChatProposal, NoteProposal } from '../../models/execution';
+import { ChatProposal, NoteProposal, TicketChange } from '../../models/execution';
 
 const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as const;
 
@@ -42,9 +42,37 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
       <p chat-empty>
         Conoce la tarea, el plan, los tickets, quién trabaja en cada uno y los errores. Te explica
         lo que pasó y te recomienda qué hacer. Si quieres que un trabajador sepa algo, ella te
-        propone una nota para su ticket y tú la confirmas. Con la ejecución terminada también puede
-        proponerte reabrir un ticket, sumar tickets nuevos o pedir la revisión final.
+        propone una nota para su ticket y tú la confirmas. Mientras la ejecución es un borrador
+        también puede crear, editar, eliminar y reasignar los tickets ella misma, sin preguntarte:
+        cada cambio queda abajo y lo puedes deshacer. Con la ejecución terminada puede proponerte
+        reabrir un ticket, sumar tickets nuevos o pedir la revisión final.
       </p>
+      @if (lucyChanges().length > 0) {
+        <section chat-actions class="changes" aria-label="Cambios de Lucy a los tickets">
+          <h3 class="changes__title">Cambios de {{ lucy()?.name ?? 'la IA' }}</h3>
+          <ul class="changes__list">
+            @for (change of lucyChanges(); track change.id) {
+              <li class="change" [class.change--undone]="change.undone">
+                <span class="change__text">{{ change.summary }}</span>
+                @if (change.undone) {
+                  <small class="change__state">Deshecho</small>
+                } @else if (canUndo()) {
+                  <button
+                    app-button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    [disabled]="store.acting()"
+                    (click)="undo(change)"
+                  >
+                    Deshacer
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
       @if (chat.proposals().length > 0) {
         <div chat-actions class="proposals">
           @for (proposal of chat.proposals(); track proposal) {
@@ -88,6 +116,48 @@ const LEVEL = { simple: 'simple', medium: 'medio', complex: 'complejo' } as cons
     </app-chat-panel>
   `,
   styles: `
+    /* Los cambios que Lucy hizo sin preguntar: lo último primero, con su botón para deshacer. */
+    .changes {
+      display: grid;
+      gap: var(--space-1);
+      max-height: 30vh;
+      overflow-y: auto;
+    }
+
+    .changes__title {
+      margin: 0;
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .changes__list {
+      display: grid;
+      gap: var(--space-1);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .change {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-2);
+      border: 1px solid var(--border);
+      border-radius: var(--border-radius);
+      font-size: 0.8125rem;
+    }
+
+    .change--undone .change__text {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .change__state {
+      flex: none;
+      opacity: 0.7;
+    }
     /* Una nota puede ser larga: el pie no pasa de un tramo del panel y se desplaza, para no tapar la conversación. */
     .proposals {
       display: grid;
@@ -161,6 +231,21 @@ export class ExecutionChat {
     '¿Por qué falló?',
     '¿Qué debería hacer ahora?',
   ];
+
+  /** Los últimos cambios de Lucy a los tickets del borrador, el más nuevo primero. */
+  protected readonly lucyChanges = computed(() =>
+    (this.store.detail()?.changes ?? [])
+      .filter((change) => change.by === 'lucy')
+      .slice(-8)
+      .reverse(),
+  );
+
+  /** Solo en el borrador se deshace: después de empezar, el ticket ya no se toca. */
+  protected readonly canUndo = computed(() => this.store.detail()?.status === 'draft');
+
+  protected undo(change: TicketChange): void {
+    void this.store.undo(change.id);
+  }
 
   /** Las preguntas que ya se vieron: al abrir la página las que ya había no se anuncian como nuevas. */
   private seen: Set<string> | null = null;
@@ -277,6 +362,8 @@ export class ExecutionChat {
   private finalStatus: string | null | undefined;
 
   constructor() {
+    // Lo que Lucy cambia en el borrador se ve al instante, sin esperar al sondeo.
+    this.chat.onChanged = () => void this.store.refresh();
     effect(() => this.chat.bind(this.executionId()));
 
     // Si la ejecución falla con la página abierta, Lucy lo dice en su chat para platicar qué hacer. Sin llamar al

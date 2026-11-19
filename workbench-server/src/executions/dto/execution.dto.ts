@@ -12,6 +12,7 @@ import {
   ValidateNested,
   IsBoolean,
 } from 'class-validator';
+import type { AppliedAction } from '@executions/domain/chat-actions';
 import type { ChatProposal } from '@executions/domain/chat-proposals';
 import {
   ExecutionRepo,
@@ -21,6 +22,7 @@ import {
   FinalReview,
   StageRun,
   TICKET_LEVELS,
+  TicketChange,
 } from '@executions/domain/entities/execution.props';
 import { BRANCH_TYPES, type BranchType } from '@executions/domain/repo';
 import { JobKind, JobStatus } from '@executions/domain/entities/job.props';
@@ -49,6 +51,12 @@ export class JobSummaryDto {
   tokens!: number | null;
 }
 
+/** Un cambio del historial tal como lo ve la pantalla: sin lo que solo sirve para deshacerlo. */
+export type TicketChangeView = Omit<
+  TicketChange,
+  'before' | 'index' | 'noteAt'
+>;
+
 export class ExecutionResponseDto {
   id!: string;
   issueId!: string;
@@ -66,6 +74,8 @@ export class ExecutionResponseDto {
   error!: string | null;
   /** La revisión final que pidió el usuario, si la pidió. */
   finalReview!: FinalReview | null;
+  /** Los últimos cambios a los tickets del borrador (de Lucy y del usuario), con lo que hace falta para deshacerlos. */
+  changes!: TicketChangeView[];
   createdAt!: string;
   updatedAt!: string;
   finishedAt!: string | null;
@@ -140,6 +150,8 @@ export class ExecutionChatReplyDto {
   model!: string;
   /** Lo que Lucy propone y el usuario puede confirmar: notas, tickets nuevos o la revisión final. */
   proposals!: ChatProposal[];
+  /** Lo que Lucy ya hizo en el borrador, sin preguntar: cada cambio se puede deshacer. */
+  changes!: AppliedAction[];
 }
 
 /** Cómo se ejecuta una tarea; todo es opcional. */

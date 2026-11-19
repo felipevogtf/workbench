@@ -10,6 +10,7 @@ describe('ExecutionStore', () => {
     | 'get'
     | 'logs'
     | 'cancel'
+    | 'undo'
     | 'retry'
     | 'addNote'
     | 'reopenTicket'
@@ -26,6 +27,7 @@ describe('ExecutionStore', () => {
       get: vi.fn(() => of(detail('e1', 'completed', { jobs: [job('j1'), job('j2')] }))),
       logs: vi.fn((id: string) => of({ logs: `registro de ${id}`, status: 'done' })),
       cancel: vi.fn(() => of(execution('e1', 'cancelled'))),
+      undo: vi.fn(() => of(execution('e1', 'draft'))),
       retry: vi.fn(() => of(execution('e1', 'running'))),
       addNote: vi.fn(() => of(execution('e1', 'running'))),
       reopenTicket: vi.fn(() => of(execution('e1', 'running'))),
@@ -165,6 +167,42 @@ describe('ExecutionStore', () => {
 
     expect(await store.addNote('t1', 'Hola')).toBe(false);
     expect(error).toHaveBeenCalled();
+  });
+
+  describe('the draft', () => {
+    it('undoes a change and shows the execution as it is now', async () => {
+      await store.load('e1');
+      api.get.mockClear();
+
+      const done = await store.undo('c1');
+
+      expect(done).toBe(true);
+      expect(api.undo).toHaveBeenCalledWith('e1', 'c1');
+      expect(api.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('tells the user when a change cannot be undone, and does not reload', async () => {
+      await store.load('e1');
+      api.get.mockClear();
+      api.undo.mockReturnValue(throwError(() => new Error('That change was already undone')));
+
+      const done = await store.undo('c1');
+
+      expect(done).toBe(false);
+      expect(api.get).not.toHaveBeenCalled();
+      expect(vi.mocked(toast.error)).toBeDefined();
+    });
+
+    it('refreshes on demand, without bothering when it fails', async () => {
+      await store.load('e1');
+      api.get.mockClear();
+
+      await store.refresh();
+      expect(api.get).toHaveBeenCalledTimes(1);
+
+      api.get.mockReturnValue(throwError(() => new Error('sin red')));
+      await expect(store.refresh()).resolves.toBeUndefined();
+    });
   });
 
   describe('correcting a finished execution', () => {

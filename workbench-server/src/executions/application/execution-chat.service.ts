@@ -6,6 +6,10 @@ import {
   type ExecutionChatMessage,
 } from '@executions/domain/execution-chat-prompt';
 import {
+  extractActions,
+  type AppliedAction,
+} from '@executions/domain/chat-actions';
+import {
   extractProposals,
   promisesAButton,
   type ChatProposal,
@@ -56,6 +60,8 @@ export interface ExecutionChatReply {
   model: string;
   /** Lo que Lucy propone (notas, tickets, la revisión final) y el usuario puede confirmar con un botón. */
   proposals: ChatProposal[];
+  /** Lo que Lucy ya hizo sobre los tickets del borrador, sin preguntar: cada cambio se puede deshacer. */
+  changes: AppliedAction[];
 }
 
 /**
@@ -120,6 +126,11 @@ export class ExecutionChatService {
       if (agent) names.set(id, agent.displayName?.trim() || agent.name);
     }
 
+    // Con el borrador y sus tickets ya creados, Lucy los cambia ella misma; si no, solo contesta.
+    const canEditTickets =
+      execution.isDraft &&
+      execution.stages.find((stage) => stage.key === 'tickets')?.status ===
+        'done';
     const input = {
       assistantName: lucy.displayName?.trim() || lucy.name,
       taskName: task?.name ?? execution.branch,
@@ -131,6 +142,8 @@ export class ExecutionChatService {
       nameOf: (agentId: string | null) =>
         (agentId && names.get(agentId)) || 'el agente por defecto',
       messages,
+      canEditTickets,
+      workers: canEditTickets ? await this.workersOf() : undefined,
     };
 
     const answer = await this.limiter.run(async () => {
@@ -154,8 +167,11 @@ export class ExecutionChatService {
         : undefined;
       return this.agents.chat({ prompt, workdir });
     });
-    // Lo que propone Lucy no va en el texto: el usuario lo confirma con un botón.
-    const { reply, proposals } = extractProposals(answer.reply, {
+    // Sus acciones sobre los tickets del borrador se aplican ya: lo demás que propone se confirma con un botón.
+    const acted = canEditTickets
+      ? await this.act(execution, answer.reply)
+      : { reply: answer.reply, applied: [], notApplied: '' };
+    const { reply, proposals } = extractProposals(acted.reply, {
       tickets: execution.tickets,
       status: execution.status,
       finalReviewRunning: execution.finalReview?.status === 'running',
@@ -163,8 +179,59 @@ export class ExecutionChatService {
     });
     // Si prometió un botón y no escribió la línea que lo crea, se le dice al usuario en vez de dejarlo esperando.
     const missing =
-      proposals.length === 0 && promisesAButton(reply) ? MISSING_BUTTON : '';
-    return { ...answer, reply: `${reply}${missing}`, proposals };
+      !canEditTickets && proposals.length === 0 && promisesAButton(reply)
+        ? MISSING_BUTTON
+        : '';
+    return {
+      ...answer,
+      reply: `${reply}${missing}${acted.notApplied}`,
+      proposals,
+      changes: acted.applied,
+    };
+  }
+
+  /**
+   * Aplica las acciones de Lucy sobre los tickets del borrador y devuelve su respuesta sin esas líneas. Lo que no se pudo aplicar
+   * (el ticket ya empezó, el usuario pulsó play mientras ella contestaba…) se le dice al usuario al final, no se pierde.
+   */
+  private async act(
+    execution: Execution,
+    reply: string,
+  ): Promise<{ reply: string; applied: AppliedAction[]; notApplied: string }> {
+    const { reply: text, actions } = extractActions(reply, {
+      tickets: execution.tickets,
+      repos: execution.targets().map((target) => target.repo.fullName),
+    });
+    if (actions.length === 0)
+      return { reply: text, applied: [], notApplied: '' };
+
+    const { applied, rejected } = await this.executionsService.applyLucyActions(
+      execution.id,
+      actions,
+    );
+    const notApplied =
+      rejected.length > 0
+        ? `\n\n_No pude aplicar ${rejected.length === 1 ? 'un cambio' : `${rejected.length} cambios`}: ${[...new Set(rejected.map((item) => item.reason))].join('; ')}._`
+        : '';
+    return { reply: text, applied, notApplied };
+  }
+
+  /** Los agentes entre los que Lucy puede elegir al reasignar, con el nombre con que se ven. */
+  private async workersOf(): Promise<{
+    developers: string[];
+    reviewers: string[];
+  }> {
+    const names = async (module: 'task-developer' | 'task-reviewer') =>
+      (await this.agents.listByModule(module))
+        .filter((agent) => agent.provider === 'claude')
+        .map((agent) => {
+          const name = agent.displayName?.trim() || agent.name;
+          return agent.level ? `${name} (nivel ${agent.level})` : name;
+        });
+    return {
+      developers: await names('task-developer'),
+      reviewers: await names('task-reviewer'),
+    };
   }
   /**
    * La pregunta la contesta un runner, en la rama de la ejecución. `null` si no hay runner, si no la toma a tiempo, si

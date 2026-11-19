@@ -12,6 +12,7 @@ import type {
   ExecutionTicket,
   FinalReview,
   StageRun,
+  TicketHistory,
 } from '@executions/domain/entities/execution.props';
 
 @Entity('executions')
@@ -58,6 +59,10 @@ export class ExecutionOrmEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   final_review!: FinalReview | null;
+
+  /** Los cambios a los tickets del borrador y los tickets eliminados. */
+  @Column({ type: 'jsonb', nullable: true })
+  ticket_history!: TicketHistory | null;
 
   @CreateDateColumn()
   created_at!: Date;

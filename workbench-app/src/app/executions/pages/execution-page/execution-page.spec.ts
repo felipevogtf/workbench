@@ -302,6 +302,53 @@ describe('ExecutionPage', () => {
     });
   });
 
+  describe('what Lucy changed in the draft', () => {
+    const change = (id: string, ticketId: string, extra: Record<string, unknown> = {}) => ({
+      id,
+      at: '2026-11-19T12:00:00Z',
+      by: 'lucy' as const,
+      kind: 'update' as const,
+      ticketId,
+      title: 'Ticket',
+      summary: 'Modifiqué el título',
+      undone: false,
+      ...extra,
+    });
+    const withChanges = (changes: ReturnType<typeof change>[]) =>
+      detail('e1', 'draft', {
+        stages: [
+          { key: 'tickets', status: 'done', startedAt: null, finishedAt: null },
+          { key: 'develop', status: 'pending', startedAt: null, finishedAt: null },
+          { key: 'review', status: 'pending', startedAt: null, finishedAt: null },
+          { key: 'publish', status: 'pending', startedAt: null, finishedAt: null },
+        ],
+        tickets: [ticket('a', { title: 'Uno' }), ticket('b', { title: 'Dos' })],
+        changes,
+      });
+    const marks = (element: HTMLElement) =>
+      [...element.querySelectorAll('.card')]
+        .filter((card) => card.textContent?.includes('Cambiado por Lucy'))
+        .map((card) =>
+          card.querySelector('.card__title')?.textContent?.replace(/\s+/g, ' ').trim(),
+        );
+
+    it('marks the tickets she created or changed', async () => {
+      const element: HTMLElement = (await render(withChanges([change('c1', 'a')]))).nativeElement;
+
+      expect(marks(element)).toEqual(['1 Uno']);
+    });
+
+    it('does not mark a ticket whose change was undone, nor one that was changed by the user', async () => {
+      const element: HTMLElement = (
+        await render(
+          withChanges([change('c1', 'a', { undone: true }), change('c2', 'b', { by: 'user' })]),
+        )
+      ).nativeElement;
+
+      expect(marks(element)).toEqual([]);
+    });
+  });
+
   describe('the projects of the execution', () => {
     const target = (fullName: string, extra: Record<string, unknown> = {}) => ({
       repo: { url: 'u', host: 'github.com', fullName, sshUrl: 's' },

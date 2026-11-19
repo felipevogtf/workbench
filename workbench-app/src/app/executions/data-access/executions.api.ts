@@ -5,6 +5,7 @@ import { API_BASE_URL } from '@core/api/api-base-url.token';
 import { ChatMessage } from '@shared/chat/chat.models';
 import { UsageOverview } from '../models/usage';
 import {
+  AppliedChange,
   CreatedRunner,
   Execution,
   ExecutionDetail,
@@ -88,11 +89,16 @@ export class ExecutionsApi {
   chat(
     id: string,
     messages: readonly ChatMessage[],
-  ): Observable<{ reply: string; proposals: ChatProposal[] }> {
-    return this.http.post<{ reply: string; proposals: ChatProposal[] }>(
+  ): Observable<{ reply: string; proposals: ChatProposal[]; changes?: AppliedChange[] }> {
+    return this.http.post<{ reply: string; proposals: ChatProposal[]; changes?: AppliedChange[] }>(
       `${this.base}/executions/${id}/chat`,
       { messages },
     );
+  }
+
+  /** Deshace un cambio de los tickets del borrador (de Lucy o del usuario). */
+  undo(id: string, changeId: string): Observable<Execution> {
+    return this.http.post<Execution>(`${this.base}/executions/${id}/changes/${changeId}/undo`, {});
   }
 
   /** Reabre un ticket terminado de una ejecución completada, con una nota del usuario. */

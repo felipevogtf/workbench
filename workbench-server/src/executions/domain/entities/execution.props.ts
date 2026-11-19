@@ -102,6 +102,54 @@ export interface ExecutionTicket {
   questionsAsked: number;
 }
 
+/** Quién hizo un cambio en los tickets del borrador. */
+export type ChangeAuthor = 'lucy' | 'user';
+
+/** Qué se le hizo a un ticket del borrador. `note`: se le dejó una nota. */
+export type TicketChangeKind =
+  'create' | 'update' | 'remove' | 'assign' | 'note';
+
+/** Los campos de un ticket que se pueden modificar (y que el historial guarda para poder deshacer). */
+export type EditableTicketFields = Pick<
+  ExecutionTicket,
+  | 'title'
+  | 'description'
+  | 'criteria'
+  | 'level'
+  | 'repo'
+  | 'developerId'
+  | 'reviewerId'
+>;
+
+/**
+ * Un cambio a los tickets del borrador, con lo que hace falta para deshacerlo. Los cambios de Lucy se aplican sin preguntar; este
+ * historial es lo que permite arrepentirse.
+ */
+export interface TicketChange {
+  id: string;
+  at: string;
+  by: ChangeAuthor;
+  kind: TicketChangeKind;
+  ticketId: string;
+  /** El título del ticket cuando se hizo el cambio, para mostrarlo aunque ya no esté. */
+  title: string;
+  /** Lo que se hizo, en una frase. */
+  summary: string;
+  /** Cómo estaban antes los campos que cambiaron (`update` y `assign`); `null` en los demás. */
+  before: Partial<EditableTicketFields> | null;
+  /** Dónde estaba el ticket en la lista antes de eliminarlo (`remove`). */
+  index?: number;
+  /** La nota que se dejó, por su fecha (`note`). */
+  noteAt?: string;
+  undone: boolean;
+}
+
+/** Lo que se cambió en los tickets del borrador y los tickets eliminados (que no se borran: se pueden restaurar). */
+export interface TicketHistory {
+  changes: TicketChange[];
+  removed: ExecutionTicket[];
+}
+
 export interface ExecutionRepo {
   /** Enlace https del repositorio, tal como está en la etiqueta de la tarea. */
   url: string;
@@ -172,6 +220,8 @@ export interface ExecutionProps {
   error: string | null;
   /** La revisión final pedida por el usuario; ausente si nunca se pidió. */
   finalReview?: FinalReview | null;
+  /** Los cambios a los tickets del borrador; ausente si nunca hubo. */
+  history?: TicketHistory;
   createdAt: Date;
   updatedAt: Date;
   finishedAt: Date | null;

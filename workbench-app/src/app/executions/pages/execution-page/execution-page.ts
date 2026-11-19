@@ -123,6 +123,12 @@ export class ExecutionPage {
     const detail = this.store.detail();
     if (!detail) return [];
     const defaultDeveloper = this.agents.defaultAgentOf('task-developer');
+    // Los tickets que Lucy creó o cambió en el borrador y cuyo cambio sigue en pie.
+    const byLucy = new Set(
+      (detail.changes ?? [])
+        .filter((change) => change.by === 'lucy' && !change.undone && change.kind !== 'remove')
+        .map((change) => change.ticketId),
+    );
 
     return detail.tickets.map((ticket, index) => {
       const mine = detail.jobs.filter((job) => job.ticketId === ticket.id);
@@ -150,7 +156,7 @@ export class ExecutionPage {
       // Con varios repositorios, cada tarjeta dice en cuál se desarrolla.
       const repo =
         detail.repos.length > 1 ? (ticket.repo ?? detail.repo.fullName).split('/').pop() : null;
-      return { ticket, number: index + 1, worker, repo, upcoming };
+      return { ticket, number: index + 1, worker, repo, upcoming, byLucy: byLucy.has(ticket.id) };
     });
   });
 
