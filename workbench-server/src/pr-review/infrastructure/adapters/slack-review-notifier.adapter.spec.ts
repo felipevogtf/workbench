@@ -97,6 +97,29 @@ describe('SlackReviewNotifierAdapter', () => {
     expect(post.mock.calls[0][2].headers.Cookie).toBe('d=xoxd-1');
   });
 
+  it('puts the verdict and the problems in the message, and leaves the detail to the file', async () => {
+    const { adapter, post } = build(CREDENTIALS, [
+      { id: 'U1', profile: { real_name: 'Jose Perez' } },
+    ]);
+
+    await adapter.notifyAuthor(
+      pullRequest,
+      '### Problemas\n- `a.ts:1`: rompe el login.\n\n## Veredicto\n`Pedir cambios`: hay un bug.',
+    );
+
+    const done = new URLSearchParams(post.mock.calls[4][1]);
+    const text = done.get('initial_comment') ?? '';
+    expect(text).toContain('Tu PR necesita cambios.');
+    expect(text).toContain(
+      'Esto es lo que encontré:\n• `a.ts:1`: rompe el login.',
+    );
+    expect(text).not.toContain('Veredicto');
+    expect(text).not.toContain('IA');
+    expect(text).toContain(
+      'Es una revisión automática y puede contener errores; el detalle va en el archivo adjunto.',
+    );
+  });
+
   it('sends the review as text in a thread when the file cannot be attached', async () => {
     const { adapter, post } = build(CREDENTIALS, [
       { id: 'U1', profile: { real_name: 'Jose Perez' } },

@@ -4,8 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { SlackApiClient, SlackResponse } from '@core/slack/slack-api.client';
 import {
+  type ReviewOutcome,
   splitForSlack,
   slackText,
+  summarizeReview,
   toSlackMrkdwn,
 } from '@pr-review/application/slack-format';
 import type {
@@ -25,6 +27,13 @@ interface SlackUser {
   is_bot?: boolean;
   profile?: { real_name?: string; display_name?: string };
 }
+
+const OUTCOME_SENTENCE: Record<ReviewOutcome, string> = {
+  approved: 'Tu PR quedó aprobada.',
+  'approved-with-comments': 'Tu PR quedó aprobada, con algunos comentarios.',
+  'changes-requested': 'Tu PR necesita cambios.',
+  rejected: 'Tu PR fue rechazada.',
+};
 
 /** Minúsculas, sin tildes y con espacios simples: «José  Pérez» == «jose perez». */
 export function normalizeName(name: string): string {
@@ -75,7 +84,7 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
     const opened = await this.call('conversations.open', { users: userId });
     const channel = (opened.channel as { id: string }).id;
 
-    const message = this.buildMessage(pullRequest);
+    const message = this.buildMessage(pullRequest, markdown);
     try {
       await this.sendAsFile(channel, pullRequest, markdown, message);
     } catch (error) {
@@ -87,13 +96,31 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
     }
   }
 
-  private buildMessage(pullRequest: ReviewedPullRequest): string {
+  private buildMessage(
+    pullRequest: ReviewedPullRequest,
+    markdown: string,
+  ): string {
     const provider = pullRequest.provider === 'github' ? 'GitHub' : 'Bitbucket';
+    const { outcome, problems, hiddenProblems } = summarizeReview(markdown);
+
+    const highlights: string[] = [];
+    if (outcome) highlights.push(OUTCOME_SENTENCE[outcome]);
+    if (problems.length > 0) {
+      highlights.push(
+        'Esto es lo que encontré:',
+        ...problems.map((problem) => `• ${problem}`),
+        ...(hiddenProblems > 0
+          ? [`…y ${hiddenProblems} más en el archivo.`]
+          : []),
+      );
+    }
+
     return (
       `:mag: *Revisión de tu pull request*\n` +
       `<${pullRequest.url}|${slackText(pullRequest.title)}>\n` +
       `\`${slackText(pullRequest.repo)}\` · ${provider} · #${pullRequest.externalId}\n\n` +
-      `_Revisión automática generada por IA. Es un borrador y puede contener errores; ` +
+      (highlights.length > 0 ? `${highlights.join('\n')}\n\n` : '') +
+      `_Es una revisión automática y puede contener errores; ` +
       `el detalle va en el archivo adjunto._`
     );
   }
