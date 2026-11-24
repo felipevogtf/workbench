@@ -7,7 +7,7 @@ import {
   type ReviewOutcome,
   splitForSlack,
   slackText,
-  summarizeReview,
+  reviewOutcome,
   toSlackMrkdwn,
 } from '@pr-review/application/slack-format';
 import type {
@@ -101,25 +101,13 @@ export class SlackReviewNotifierAdapter implements ReviewNotifierPort {
     markdown: string,
   ): string {
     const provider = pullRequest.provider === 'github' ? 'GitHub' : 'Bitbucket';
-    const { outcome, problems, hiddenProblems } = summarizeReview(markdown);
-
-    const highlights: string[] = [];
-    if (outcome) highlights.push(OUTCOME_SENTENCE[outcome]);
-    if (problems.length > 0) {
-      highlights.push(
-        'Esto es lo que encontré:',
-        ...problems.map((problem) => `• ${problem}`),
-        ...(hiddenProblems > 0
-          ? [`…y ${hiddenProblems} más en el archivo.`]
-          : []),
-      );
-    }
+    const outcome = reviewOutcome(markdown);
 
     return (
       `:mag: *Revisión de tu pull request*\n` +
       `<${pullRequest.url}|${slackText(pullRequest.title)}>\n` +
       `\`${slackText(pullRequest.repo)}\` · ${provider} · #${pullRequest.externalId}\n\n` +
-      (highlights.length > 0 ? `${highlights.join('\n')}\n\n` : '') +
+      (outcome ? `${OUTCOME_SENTENCE[outcome]}\n\n` : '') +
       `_Es una revisión automática y puede contener errores; ` +
       `el detalle va en el archivo adjunto._`
     );

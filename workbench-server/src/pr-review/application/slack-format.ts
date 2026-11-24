@@ -32,50 +32,29 @@ export function toSlackMrkdwn(markdown: string): string {
     .join('\n');
 }
 
-const MAX_PROBLEMS_SHOWN = 5;
-const MAX_PROBLEM_CHARS = 160;
-
 /** Cómo terminó la revisión, según su veredicto. */
 export type ReviewOutcome =
   'approved' | 'approved-with-comments' | 'changes-requested' | 'rejected';
 
-/** Lo que el aviso de Slack adelanta de la revisión: cómo terminó y los problemas, en una línea cada uno. */
-export interface ReviewHighlights {
-  /** null = la revisión no trae un veredicto que se reconozca. */
-  outcome: ReviewOutcome | null;
-  /** Ya recortados y listos para mostrar; vacío = sin problemas (o no se pudieron leer). */
-  problems: string[];
-  /** Problemas que no caben en el aviso y quedan solo en el archivo. */
-  hiddenProblems: number;
-}
-
-/** Las líneas de una sección (`## Veredicto`, `### Problemas`…) hasta el siguiente título o `---`. */
-function sectionLines(markdown: string, title: RegExp): string[] | null {
+/** Las líneas de la sección `## Veredicto` hasta el siguiente título o `---`. */
+function verdictLine(markdown: string): string | undefined {
   const lines = markdown.split('\n');
   const start = lines.findIndex((line) =>
-    new RegExp(`^#{2,4}\\s*(?:\\d+[.)]\\s*)?${title.source}\\s*$`, 'i').test(
-      line.trim(),
-    ),
+    /^#{2,4}\s*(?:\d+[.)]\s*)?veredicto\s*$/i.test(line.trim()),
   );
-  if (start === -1) return null;
+  if (start === -1) return undefined;
 
-  const body: string[] = [];
   for (const line of lines.slice(start + 1)) {
-    if (/^#{1,6}\s/.test(line.trim()) || /^-{3,}\s*$/.test(line.trim())) break;
-    body.push(line);
+    const text = line.trim();
+    if (/^#{1,6}\s/.test(text) || /^-{3,}$/.test(text)) return undefined;
+    if (text) return text;
   }
-  return body;
+  return undefined;
 }
 
-function shorten(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
-}
-
-function outcomeOf(verdictLine: string | undefined): ReviewOutcome | null {
-  const text = (verdictLine ?? '')
+/** Cómo terminó la revisión, leído de su veredicto; null si no trae uno que se reconozca. */
+export function reviewOutcome(markdown: string): ReviewOutcome | null {
+  const text = (verdictLine(markdown) ?? '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
@@ -86,29 +65,6 @@ function outcomeOf(verdictLine: string | undefined): ReviewOutcome | null {
   }
   if (/aprobar|aprobad[ao]/.test(text)) return 'approved';
   return null;
-}
-
-/**
- * Saca de la revisión (markdown) cómo terminó y los problemas del código para ponerlos en el aviso, de modo que
- * quien la recibe sepa qué pasó sin abrir el archivo. Si la revisión no trae esas secciones, devuelve lo que haya.
- */
-export function summarizeReview(markdown: string): ReviewHighlights {
-  const verdictLine = sectionLines(markdown, /veredicto/)
-    ?.map((line) => line.trim())
-    .find(Boolean);
-
-  const bullets = (sectionLines(markdown, /problemas/) ?? [])
-    .map((line) => /^(?:[-*•]|\d+[.)])\s+(.*)$/.exec(line.trim())?.[1])
-    .filter((text): text is string => !!text?.trim())
-    .filter((text) => !/^ninguno\b/i.test(text.trim()));
-
-  return {
-    outcome: outcomeOf(verdictLine),
-    problems: bullets
-      .slice(0, MAX_PROBLEMS_SHOWN)
-      .map((text) => shorten(toSlackMrkdwn(text.trim()), MAX_PROBLEM_CHARS)),
-    hiddenProblems: Math.max(0, bullets.length - MAX_PROBLEMS_SHOWN),
-  };
 }
 
 /** Parte un texto en trozos de como máximo `max` caracteres, cortando por líneas. */

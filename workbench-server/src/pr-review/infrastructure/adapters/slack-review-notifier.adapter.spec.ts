@@ -97,7 +97,7 @@ describe('SlackReviewNotifierAdapter', () => {
     expect(post.mock.calls[0][2].headers.Cookie).toBe('d=xoxd-1');
   });
 
-  it('puts the verdict and the problems in the message, and leaves the detail to the file', async () => {
+  it('says how the review ended in the message, without listing the problems', async () => {
     const { adapter, post } = build(CREDENTIALS, [
       { id: 'U1', profile: { real_name: 'Jose Perez' } },
     ]);
@@ -110,11 +110,8 @@ describe('SlackReviewNotifierAdapter', () => {
     const done = new URLSearchParams(post.mock.calls[4][1]);
     const text = done.get('initial_comment') ?? '';
     expect(text).toContain('Tu PR necesita cambios.');
-    expect(text).toContain(
-      'Esto es lo que encontré:\n• `a.ts:1`: rompe el login.',
-    );
+    expect(text).not.toContain('rompe el login');
     expect(text).not.toContain('Veredicto');
-    expect(text).not.toContain('IA');
     expect(text).toContain(
       'Es una revisión automática y puede contener errores; el detalle va en el archivo adjunto.',
     );
